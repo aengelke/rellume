@@ -1,0 +1,4 @@
+[wrap-git]
+directory=fadec
+url=https://github.com/aengelke/fadec.git
+revision=head
