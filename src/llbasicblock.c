@@ -33,6 +33,7 @@
 #include <llflags-internal.h>
 #include <llinstr-internal.h>
 #include <llinstruction-internal.h>
+#include <llsupport-internal.h>
 
 /**
  * \defgroup LLBasicBlock Basic Block
@@ -287,13 +288,37 @@ ll_basic_block_add_branches(LLBasicBlock* bb, LLBasicBlock* branch, LLBasicBlock
 )
 
 void
-ll_basic_block_add_inst(LLBasicBlock* bb, LLInstr* inst)
+ll_basic_block_add_inst(LLBasicBlock* bb, LLInstr* instr)
 {
     LLState* state = bb->state;
     state->currentBB = bb;
     LLVMPositionBuilderAtEnd(state->builder, bb->llvmBB);
-    ll_generate_instruction(inst, state);
-    bb->endType = inst->type;
+
+    // Set new instruction pointer register
+    uintptr_t rip = instr->addr + instr->len;
+    LLVMValueRef ripValue = LLVMConstInt(LLVMInt64TypeInContext(state->context), rip, false);
+    ll_set_register(ll_reg(LL_RT_IP, 0), FACET_I64, ripValue, true, state);
+
+    // Add Metadata for debugging.
+    LLVMValueRef intrinsicDoNothing = ll_support_get_intrinsic(state->module, LL_INTRINSIC_DO_NOTHING, NULL, 0);
+    const char* instructionName = instr2string(instr, 0, NULL);
+    LLVMValueRef mdCall = LLVMBuildCall(state->builder, intrinsicDoNothing, NULL, 0, "");
+    LLVMValueRef mdNode = LLVMMDStringInContext(state->context, instructionName, strlen(instructionName));
+    LLVMSetMetadata(mdCall, LLVMGetMDKindIDInContext(state->context, "asm.instr", 9), mdNode);
+
+    switch (instr->type)
+    {
+#define DEF_IT(opc,handler) case LL_INS_ ## opc : handler; break;
+#include <opcodes.inc>
+#undef DEF_IT
+
+        default:
+            printf("Could not handle instruction: %s\n", instructionName);
+            warn_if_reached();
+            break;
+    }
+
+    bb->endType = instr->type;
 }
 
 /**

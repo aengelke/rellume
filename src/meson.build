@@ -9,7 +9,6 @@ sources = [
   'llinstruction-gp.c',
   'llinstruction-sse.c',
   'llinstruction-stack.c',
-  'llinstruction.c',
   'lloperand.c',
   'llregfile.c',
   'llsupport.cc',
