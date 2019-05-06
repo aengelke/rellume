@@ -34,6 +34,10 @@
 #include <llbasicblock.h>
 #include <llcommon-internal.h>
 
+#ifdef __cplusplus
+extern "C" {
+#endif
+
 
 /**
  * \brief Emit a warning and jump into a debugger
@@ -120,5 +124,9 @@ struct LLState {
 };
 
 typedef struct LLState LLState;
+
+#ifdef __cplusplus
+}
+#endif
 
 #endif

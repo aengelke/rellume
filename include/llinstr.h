@@ -26,6 +26,10 @@
 
 #include <stdint.h>
 
+#ifdef __cplusplus
+extern "C" {
+#endif
+
 enum LLInstrType {
     LL_INS_None = 0,
     LL_INS_Invalid = 1,
@@ -105,5 +109,9 @@ struct LLInstr {
 };
 
 typedef struct LLInstr LLInstr;
+
+#ifdef __cplusplus
+}
+#endif
 
 #endif

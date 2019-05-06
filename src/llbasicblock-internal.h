@@ -35,6 +35,9 @@
 #include <llcommon-internal.h>
 #include <llregfile-internal.h>
 
+#ifdef __cplusplus
+extern "C" {
+#endif
 
 LLBasicBlock* ll_basic_block_new(LLVMBasicBlockRef, LLState* state);
 void ll_basic_block_dispose(LLBasicBlock*);
@@ -60,5 +63,9 @@ void ll_basic_block_set_flag(LLBasicBlock*, int, LLVMValueRef);
 LLFlagCache* ll_basic_block_get_flag_cache(LLBasicBlock*);
 
 LLVMBasicBlockRef ll_basic_block_llvm(LLBasicBlock*);
+
+#ifdef __cplusplus
+}
+#endif
 
 #endif

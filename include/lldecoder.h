@@ -28,7 +28,14 @@
 
 #include <llfunc.h>
 
+#ifdef __cplusplus
+extern "C" {
+#endif
 
 int ll_func_decode(LLFunc* func, uintptr_t addr);
+
+#ifdef __cplusplus
+}
+#endif
 
 #endif

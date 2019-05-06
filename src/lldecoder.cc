@@ -30,13 +30,11 @@ extern "C" {
 #include <fadec.h>
 }
 
-extern "C" {
 #include <lldecoder.h>
 
 #include <llbasicblock.h>
 #include <llinstr.h>
 #include <llinstr-internal.h>
-}
 
 static LLReg
 convert_reg(int size, int idx, int type)

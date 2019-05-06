@@ -26,6 +26,9 @@
 
 #include <llinstr.h>
 
+#ifdef __cplusplus
+extern "C" {
+#endif
 
 struct LLBasicBlock;
 
@@ -33,5 +36,9 @@ typedef struct LLBasicBlock LLBasicBlock;
 
 void ll_basic_block_add_inst(LLBasicBlock*, LLInstr*);
 void ll_basic_block_add_branches(LLBasicBlock*, LLBasicBlock*, LLBasicBlock*);
+
+#ifdef __cplusplus
+}
+#endif
 
 #endif

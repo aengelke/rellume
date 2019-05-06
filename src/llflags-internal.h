@@ -32,6 +32,9 @@
 #include <llcommon-internal.h>
 #include <llinstr-internal.h>
 
+#ifdef __cplusplus
+extern "C" {
+#endif
 
 LLVMValueRef ll_flags_condition(LLInstrType, LLInstrType, LLState*);
 
@@ -51,5 +54,9 @@ void ll_flags_set_shl(LLState*, LLVMValueRef, LLVMValueRef, LLVMValueRef);
 void ll_flags_set_shr(LLState*, LLVMValueRef, LLVMValueRef, LLVMValueRef);
 void ll_flags_set_sar(LLState*, LLVMValueRef, LLVMValueRef, LLVMValueRef);
 void ll_flags_invalidate(LLState*);
+
+#ifdef __cplusplus
+}
+#endif
 
 #endif

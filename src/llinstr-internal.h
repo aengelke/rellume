@@ -26,7 +26,15 @@
 
 #include <llinstr.h>
 
+#ifdef __cplusplus
+extern "C" {
+#endif
+
+#ifdef __cplusplus
+#define ll_reg(t,i) LLReg{ t, i }
+#else
 #define ll_reg(t,i) ((LLReg) { .rt = t, .ri = i })
+#endif
 LLReg ll_reg_gp(size_t size, bool legacy, int index);
 
 const char* ll_reg_name(LLReg reg);
@@ -40,6 +48,10 @@ size_t ll_reg_size(LLReg reg);
 #define getRegOp(r) &((LLInstrOp) { .type = 1, .reg = (r), .val = 0, .ireg = ll_reg(LL_RT_None, LL_RI_None), .scale = 0, .seg = LL_RI_None, .size = ll_reg_size(r) })
 
 #define instr2string(instr, ...) "<llinstr>"
+
+#ifdef __cplusplus
+}
+#endif
 
 #endif
 

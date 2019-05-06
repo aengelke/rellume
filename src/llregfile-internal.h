@@ -33,6 +33,9 @@
 #include <llcommon-internal.h>
 #include <llinstr-internal.h>
 
+#ifdef __cplusplus
+extern "C" {
+#endif
 
 /**
  * \ingroup LLRegFile
@@ -163,5 +166,9 @@ void ll_regfile_set_flag(LLRegisterFile*, int, LLVMValueRef);
 LLFlagCache* ll_regfile_get_flag_cache(LLRegisterFile*);
 
 LLVMTypeRef ll_register_facet_type(RegisterFacet, LLState*);
+
+#ifdef __cplusplus
+}
+#endif
 
 #endif

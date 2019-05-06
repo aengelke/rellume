@@ -31,6 +31,10 @@
 #include <llcommon-internal.h>
 #include <llinstr-internal.h>
 
+#ifdef __cplusplus
+extern "C" {
+#endif
+
 void ll_instruction_movgp(LLInstr*, LLState*);
 void ll_instruction_add(LLInstr*, LLState*);
 void ll_instruction_sub(LLInstr*, LLState*);
@@ -61,5 +65,9 @@ void ll_instruction_movhpd(LLInstr* instr, LLState* state);
 void ll_instruction_unpckl(LLInstr* instr, LLState* state);
 
 void ll_generate_instruction(LLInstr*, LLState*);
+
+#ifdef __cplusplus
+}
+#endif
 
 #endif

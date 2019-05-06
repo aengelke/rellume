@@ -32,6 +32,9 @@
 
 #include <llbasicblock.h>
 
+#ifdef __cplusplus
+extern "C" {
+#endif
 
 struct LLFunc;
 
@@ -49,5 +52,8 @@ LLVMValueRef ll_func_lift(LLFunc* fn);
 void ll_func_dump(LLFunc*);
 void ll_func_dispose(LLFunc*);
 
+#ifdef __cplusplus
+}
+#endif
 
 #endif

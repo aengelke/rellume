@@ -32,6 +32,9 @@
 #include <llcommon-internal.h>
 #include <llinstr-internal.h>
 
+#ifdef __cplusplus
+extern "C" {
+#endif
 
 /**
  * \ingroup LLInstrOp
@@ -144,5 +147,9 @@ LLVMValueRef ll_operand_get_address(OperandDataType, LLInstrOp*, LLState*);
 LLVMValueRef ll_operand_load(OperandDataType, Alignment, LLInstrOp*, LLState*);
 void ll_operand_store(OperandDataType, Alignment, LLInstrOp*, PartialRegisterHandling, LLVMValueRef, LLState*);
 void ll_operand_construct_args(LLVMTypeRef, LLVMValueRef*, LLState*);
+
+#ifdef __cplusplus
+}
+#endif
 
 #endif
