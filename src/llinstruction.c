@@ -72,9 +72,6 @@ ll_generate_instruction(LLInstr* instr, LLState* state)
 
     switch (instr->type)
     {
-#define CD_FUNCTION(fn,...) fn(instr, state, ##__VA_ARGS__)
-#define CD_NOP()
-
 #define DEF_IT(opc,handler) case LL_INS_ ## opc : handler; break;
 #include <opcodes.inc>
 #undef DEF_IT
