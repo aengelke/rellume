@@ -1,0 +1,3 @@
+[submodule "subprojects/fadec"]
+	path = subprojects/fadec
+	url = git@github.com:aengelke/fadec.git
