@@ -53,10 +53,6 @@ struct LLConfig {
     size_t stackSize;
 
     /**
-     * \brief Whether unsafe pointer optimizations are enabled.
-     **/
-    bool enableUnsafePointerOptimizations;
-    /**
      * \brief Whether overflow intrinsics should be used.
      **/
     bool enableOverflowIntrinsics;

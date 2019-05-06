@@ -88,7 +88,6 @@ ll_func(const char* name, LLVMTypeRef ty, LLVMModuleRef mod)
     state->unrollMD = ll_support_metadata_loop_unroll(state->context);
     state->cfg.globalBase = NULL;
     state->cfg.stackSize = 128; // FIXME
-    state->cfg.enableUnsafePointerOptimizations = false;
     state->cfg.enableOverflowIntrinsics = false;
     state->cfg.enableFastMath = false;
     state->cfg.enableFullLoopUnroll = false;
