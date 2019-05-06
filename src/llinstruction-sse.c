@@ -177,6 +177,18 @@ ll_instruction_movhpd(LLInstr* instr, LLState* state)
 }
 
 void
+ll_instruction_sse_binary(LLInstr* instr, LLState* state, LLVMOpcode opcode,
+                          bool fast_math, OperandDataType data_type)
+{
+    LLVMValueRef operand1 = ll_operand_load(data_type, ALIGN_MAXIMUM, &instr->dst, state);
+    LLVMValueRef operand2 = ll_operand_load(data_type, ALIGN_MAXIMUM, &instr->src, state);
+    LLVMValueRef result = LLVMBuildBinOp(state->builder, opcode, operand1, operand2, "");
+    if (fast_math && state->cfg.enableFastMath)
+        ll_support_enable_fast_math(result);
+    ll_operand_store(data_type, ALIGN_MAXIMUM, &instr->dst, REG_KEEP_UPPER, result, state);
+}
+
+void
 ll_instruction_unpckl(LLInstr* instr, LLState* state)
 {
     LLVMTypeRef i32 = LLVMInt32TypeInContext(state->context);

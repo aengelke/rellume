@@ -132,6 +132,16 @@ ll_instruction_cmp(LLInstr* instr, LLState* state)
 }
 
 void
+ll_instruction_logical(LLInstr* instr, LLState* state, LLVMOpcode opcode)
+{
+    LLVMValueRef operand1 = ll_operand_load(OP_SI, ALIGN_MAXIMUM, &instr->dst, state);
+    LLVMValueRef operand2 = ll_operand_load(OP_SI, ALIGN_MAXIMUM, &instr->src, state);
+    LLVMValueRef result = LLVMBuildBinOp(state->builder, opcode, operand1, operand2, "");
+    ll_flags_set_bit(state, result, operand1, operand2);
+    ll_operand_store(OP_SI, ALIGN_MAXIMUM, &instr->dst, REG_DEFAULT, result, state);
+}
+
+void
 ll_instruction_test(LLInstr* instr, LLState* state)
 {
     LLVMValueRef operand1 = ll_operand_load(OP_SI, ALIGN_MAXIMUM, &instr->dst, state);

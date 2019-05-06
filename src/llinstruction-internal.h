@@ -27,9 +27,11 @@
 #include <stdbool.h>
 #include <stdlib.h>
 #include <stdint.h>
+#include <llvm-c/Core.h>
 
 #include <llcommon-internal.h>
 #include <llinstr-internal.h>
+#include <lloperand-internal.h>
 
 #ifdef __cplusplus
 extern "C" {
@@ -39,6 +41,7 @@ void ll_instruction_movgp(LLInstr*, LLState*);
 void ll_instruction_add(LLInstr*, LLState*);
 void ll_instruction_sub(LLInstr*, LLState*);
 void ll_instruction_cmp(LLInstr*, LLState*);
+void ll_instruction_logical(LLInstr* instr, LLState* state, LLVMOpcode opcode);
 void ll_instruction_test(LLInstr*, LLState*);
 void ll_instruction_notneg(LLInstr*, LLState*);
 void ll_instruction_incdec(LLInstr*, LLState*);
@@ -62,6 +65,8 @@ void ll_instruction_movdq(LLInstr* instr, LLState* state);
 void ll_instruction_movlp(LLInstr* instr, LLState* state);
 void ll_instruction_movhps(LLInstr* instr, LLState* state);
 void ll_instruction_movhpd(LLInstr* instr, LLState* state);
+void ll_instruction_sse_binary(LLInstr*, LLState*, LLVMOpcode, bool,
+                               OperandDataType);
 void ll_instruction_unpckl(LLInstr* instr, LLState* state);
 
 void ll_generate_instruction(LLInstr*, LLState*);

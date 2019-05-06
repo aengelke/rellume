@@ -72,25 +72,8 @@ ll_generate_instruction(LLInstr* instr, LLState* state)
 
     switch (instr->type)
     {
-        LLVMValueRef operand1;
-        LLVMValueRef operand2;
-        LLVMValueRef result;
-
 #define CD_FUNCTION(fn,...) fn(instr, state, ##__VA_ARGS__)
 #define CD_NOP()
-#define CD_BINARY_INT_LLVM(build_fn,flag_fn) \
-            operand1 = ll_operand_load(OP_SI, ALIGN_MAXIMUM, &instr->dst, state); \
-            operand2 = ll_operand_load(OP_SI, ALIGN_MAXIMUM, &instr->src, state); \
-            result = build_fn(state->builder, operand1, operand2, ""); \
-            flag_fn(state, result, operand1, operand2); \
-            ll_operand_store(OP_SI, ALIGN_MAXIMUM, &instr->dst, REG_DEFAULT, result, state);
-#define CD_BINARY_FP_LLVM(data_type,prh,build_fn,fastmath) \
-            operand1 = ll_operand_load(data_type, ALIGN_MAXIMUM, &instr->dst, state); \
-            operand2 = ll_operand_load(data_type, ALIGN_MAXIMUM, &instr->src, state); \
-            result = build_fn(state->builder, operand1, operand2, ""); \
-            if (fastmath && state->cfg.enableFastMath) \
-                ll_support_enable_fast_math(result); \
-            ll_operand_store(data_type, ALIGN_MAXIMUM, &instr->dst, prh, result, state);
 
 #define DEF_IT(opc,handler) case LL_INS_ ## opc : handler; break;
 #include <opcodes.inc>
