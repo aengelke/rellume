@@ -29,7 +29,9 @@
 #include <vector>
 
 #include <llvm/IR/BasicBlock.h>
+#include <llvm/IR/Constants.h>
 #include <llvm/IR/Instructions.h>
+#include <llvm/IR/Intrinsics.h>
 #include <llvm/IR/IRBuilder.h>
 #include <llvm/IR/LLVMContext.h>
 #include <llvm/IR/Metadata.h>
@@ -55,7 +57,6 @@ struct LLRegister {
 };
 
 typedef struct LLRegister LLRegister;
-// typedef LLVMValueRef LLRegister[FACET_COUNT];
 
 struct LLBasicBlock {
     LLState* state;
@@ -273,19 +274,18 @@ ll_basic_block_add_inst(LLBasicBlock* bb, LLInstr* instr)
 {
     LLState* state = bb->state;
     state->currentBB = bb;
-    llvm::unwrap(state->builder)->SetInsertPoint(bb->llvmBB);
+
+    llvm::IRBuilder<>* builder = llvm::unwrap(state->builder);
+    builder->SetInsertPoint(bb->llvmBB);
 
     // Set new instruction pointer register
     uintptr_t rip = instr->addr + instr->len;
-    LLVMValueRef ripValue = LLVMConstInt(LLVMInt64TypeInContext(state->context), rip, false);
-    ll_set_register(ll_reg(LL_RT_IP, 0), FACET_I64, ripValue, true, state);
+    llvm::Value* ripValue = llvm::ConstantInt::get(builder->getInt64Ty(), rip);
+    ll_set_register(ll_reg(LL_RT_IP, 0), FACET_I64, llvm::wrap(ripValue), true, state);
 
-    // Add Metadata for debugging.
-    LLVMValueRef intrinsicDoNothing = ll_support_get_intrinsic(state->module, LL_INTRINSIC_DO_NOTHING, NULL, 0);
-    const char* instructionName = instr2string(instr, 0, NULL);
-    LLVMValueRef mdCall = LLVMBuildCall(state->builder, intrinsicDoNothing, NULL, 0, "");
-    LLVMValueRef mdNode = LLVMMDStringInContext(state->context, instructionName, strlen(instructionName));
-    LLVMSetMetadata(mdCall, LLVMGetMDKindIDInContext(state->context, "asm.instr", 9), mdNode);
+    // Add separator for debugging.
+    llvm::Function* intrinsicDoNothing = llvm::Intrinsic::getDeclaration(llvm::unwrap(state->module), llvm::Intrinsic::donothing, {});
+    builder->CreateCall(intrinsicDoNothing);
 
     switch (instr->type)
     {
@@ -294,7 +294,7 @@ ll_basic_block_add_inst(LLBasicBlock* bb, LLInstr* instr)
 #undef DEF_IT
 
         default:
-            printf("Could not handle instruction: %s\n", instructionName);
+            printf("Could not handle instruction at %#zx\n", instr->addr);
             warn_if_reached();
             break;
     }
