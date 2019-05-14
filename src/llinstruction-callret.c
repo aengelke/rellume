@@ -112,8 +112,7 @@ ll_instruction_call(LLInstr* instr, LLState* state)
 void
 ll_instruction_ret(LLInstr* instr, LLState* state)
 {
-    LLVMTypeRef fnType = LLVMGetElementType(LLVMTypeOf(state->llvm_function));
-    LLVMTypeRef retType = LLVMGetReturnType(fnType);
+    LLVMTypeRef retType = ll_support_builder_return_type(state->builder);
     LLVMTypeKind retTypeKind = LLVMGetTypeKind(retType);
 
     LLVMValueRef result = NULL;

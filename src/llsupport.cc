@@ -25,6 +25,7 @@
 #include <llvm/ExecutionEngine/ExecutionEngine.h>
 #include <llvm/IR/DataLayout.h>
 #include <llvm/IR/Intrinsics.h>
+#include <llvm/IR/IRBuilder.h>
 #include <llvm/IR/Module.h>
 #include <llvm/IR/Operator.h>
 #include <llvm/Support/CommandLine.h>
@@ -138,6 +139,13 @@ LLVMBool
 ll_support_is_constant_int(LLVMValueRef value)
 {
     return llvm::isa<llvm::ConstantInt>(llvm::unwrap(value));
+}
+
+extern "C"
+LLVMTypeRef
+ll_support_builder_return_type(LLVMBuilderRef builder)
+{
+    return llvm::wrap(llvm::unwrap(builder)->getCurrentFunctionReturnType());
 }
 
 /**

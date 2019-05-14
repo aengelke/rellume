@@ -48,6 +48,7 @@ LLVMValueRef ll_support_get_intrinsic(LLVMModuleRef, LLSupportIntrinsics, LLVMTy
 LLVMAttributeRef ll_support_get_enum_attr(LLVMContextRef, const char*);
 void ll_support_enable_fast_math(LLVMValueRef);
 LLVMBool ll_support_is_constant_int(LLVMValueRef);
+LLVMTypeRef ll_support_builder_return_type(LLVMBuilderRef builder);
 
 #ifdef __cplusplus
 }
