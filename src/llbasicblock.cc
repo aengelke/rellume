@@ -284,7 +284,7 @@ ll_basic_block_add_inst(LLBasicBlock* bb, LLInstr* instr)
     ll_set_register(ll_reg(LL_RT_IP, 0), FACET_I64, llvm::wrap(ripValue), true, state);
 
     // Add separator for debugging.
-    llvm::Function* intrinsicDoNothing = llvm::Intrinsic::getDeclaration(llvm::unwrap(state->module), llvm::Intrinsic::donothing, {});
+    llvm::Function* intrinsicDoNothing = llvm::Intrinsic::getDeclaration(bb->llvmBB->getModule(), llvm::Intrinsic::donothing, {});
     builder->CreateCall(intrinsicDoNothing);
 
     switch (instr->type)

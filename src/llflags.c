@@ -209,7 +209,7 @@ ll_flags_set_of_sub(LLVMValueRef result, LLVMValueRef lhs, LLVMValueRef rhs, LLS
 
     if (state->cfg.enableOverflowIntrinsics)
     {
-        LLVMValueRef intrinsicSsubWithOverflow = ll_support_get_intrinsic(state->module, LL_INTRINSIC_SSUB_WITH_OVERFLOW, &intType, 1);
+        LLVMValueRef intrinsicSsubWithOverflow = ll_support_get_intrinsic(state->builder, LL_INTRINSIC_SSUB_WITH_OVERFLOW, &intType, 1);
         LLVMValueRef args[2] = { lhs, rhs };
         LLVMValueRef packedData = LLVMBuildCall(state->builder, intrinsicSsubWithOverflow, args, 2, "");
         overflowFlag = LLVMBuildExtractValue(state->builder, packedData, 1, "");
@@ -270,7 +270,7 @@ ll_flags_set_of_add(LLVMValueRef result, LLVMValueRef lhs, LLVMValueRef rhs, LLS
 
     if (state->cfg.enableOverflowIntrinsics)
     {
-        LLVMValueRef intrinsicSaddWithOverflow = ll_support_get_intrinsic(state->module, LL_INTRINSIC_SADD_WITH_OVERFLOW, &intType, 1);
+        LLVMValueRef intrinsicSaddWithOverflow = ll_support_get_intrinsic(state->builder, LL_INTRINSIC_SADD_WITH_OVERFLOW, &intType, 1);
         LLVMValueRef args[2] = { lhs, rhs };
         LLVMValueRef packedData = LLVMBuildCall(state->builder, intrinsicSaddWithOverflow, args, 2, "");
         overflowFlag = LLVMBuildExtractValue(state->builder, packedData, 1, "");
@@ -320,7 +320,7 @@ ll_flags_set_of_imul(LLVMValueRef result, LLVMValueRef lhs, LLVMValueRef rhs, LL
 
     if (state->cfg.enableOverflowIntrinsics)
     {
-        LLVMValueRef intrinsicSmulWithOverflow = ll_support_get_intrinsic(state->module, LL_INTRINSIC_SMUL_WITH_OVERFLOW, &intType, 1);
+        LLVMValueRef intrinsicSmulWithOverflow = ll_support_get_intrinsic(state->builder, LL_INTRINSIC_SMUL_WITH_OVERFLOW, &intType, 1);
         LLVMValueRef args[2] = { lhs, rhs };
         LLVMValueRef packedData = LLVMBuildCall(state->builder, intrinsicSmulWithOverflow, args, 2, "");
         overflowFlag = LLVMBuildExtractValue(state->builder, packedData, 1, "");
@@ -369,7 +369,7 @@ ll_flags_set_pf(LLVMValueRef result, LLState* state)
     LLVMTypeRef i1 = LLVMInt1TypeInContext(state->context);
     LLVMTypeRef i8 = LLVMInt8TypeInContext(state->context);
 
-    LLVMValueRef intrinsicCtpop8 = ll_support_get_intrinsic(state->module, LL_INTRINSIC_CTPOP, &i8, 1);
+    LLVMValueRef intrinsicCtpop8 = ll_support_get_intrinsic(state->builder, LL_INTRINSIC_CTPOP, &i8, 1);
 
     LLVMValueRef arg = LLVMBuildTruncOrBitCast(state->builder, result, i8, "");
     LLVMValueRef count = LLVMBuildCall(state->builder, intrinsicCtpop8, &arg, 1, "");

@@ -57,8 +57,9 @@
  **/
 extern "C"
 LLVMValueRef
-ll_support_get_intrinsic(LLVMModuleRef module, LLSupportIntrinsics intrinsic, LLVMTypeRef* types, unsigned typeCount)
+ll_support_get_intrinsic(LLVMBuilderRef builder, LLSupportIntrinsics intrinsic, LLVMTypeRef* types, unsigned typeCount)
 {
+    llvm::Module* module = llvm::unwrap(builder)->GetInsertBlock()->getModule();
     llvm::ArrayRef<llvm::Type*> Tys(llvm::unwrap(types), typeCount);
     llvm::Intrinsic::ID intrinsicId;
 
@@ -72,7 +73,7 @@ ll_support_get_intrinsic(LLVMModuleRef module, LLSupportIntrinsics intrinsic, LL
         default: intrinsicId = llvm::Intrinsic::not_intrinsic; break;
     }
 
-    return llvm::wrap(llvm::Intrinsic::getDeclaration(llvm::unwrap(module), intrinsicId, Tys));
+    return llvm::wrap(llvm::Intrinsic::getDeclaration(module, intrinsicId, Tys));
 }
 
 extern "C"
