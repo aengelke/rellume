@@ -80,9 +80,7 @@ ll_func(const char* name, LLVMTypeRef ty, LLVMModuleRef mod)
 
     LLState* state = &fn->state;
     state->context = LLVMGetModuleContext(mod);
-    state->module = mod;
     state->builder = LLVMCreateBuilderInContext(state->context);
-    state->llvm_function = fn->llvm;
 
     state->emptyMD = LLVMMDNodeInContext(state->context, NULL, 0);
     state->cfg.globalBase = NULL;
@@ -322,7 +320,7 @@ ll_func_lift(LLFunc* fn)
         return NULL;
 
     // Run some optimization passes to remove most of the bloat
-    LLVMPassManagerRef pm = LLVMCreateFunctionPassManagerForModule(fn->state.module);
+    LLVMPassManagerRef pm = LLVMCreateFunctionPassManagerForModule(LLVMGetGlobalParent(fn->llvm));
     LLVMInitializeFunctionPassManager(pm);
 
     LLVMAddEarlyCSEPass(pm);

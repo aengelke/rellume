@@ -90,10 +90,6 @@ struct LLState {
      **/
     LLVMContextRef context;
     /**
-     * \brief The LLVM Module
-     **/
-    LLVMModuleRef module;
-    /**
      * \brief The LLVM Builder
      **/
     LLVMBuilderRef builder;
@@ -103,11 +99,6 @@ struct LLState {
      **/
     LLVMValueRef emptyMD;
 
-    /**
-     * \brief The current function
-     **/
-    // LLFunction* currentFunction;
-    LLVMValueRef llvm_function;
     /**
      * \brief The current basic block
      **/
