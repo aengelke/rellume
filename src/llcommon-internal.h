@@ -104,11 +104,6 @@ struct LLState {
     LLVMValueRef emptyMD;
 
     /**
-     * \brief The loop unrolling metadata
-     **/
-    LLVMValueRef unrollMD;
-
-    /**
      * \brief The current function
      **/
     // LLFunction* currentFunction;

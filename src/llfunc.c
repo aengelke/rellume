@@ -85,7 +85,6 @@ ll_func(const char* name, LLVMTypeRef ty, LLVMModuleRef mod)
     state->llvm_function = fn->llvm;
 
     state->emptyMD = LLVMMDNodeInContext(state->context, NULL, 0);
-    state->unrollMD = ll_support_metadata_loop_unroll(state->context);
     state->cfg.globalBase = NULL;
     state->cfg.stackSize = 128; // FIXME
     state->cfg.enableOverflowIntrinsics = false;

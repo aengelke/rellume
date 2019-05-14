@@ -141,38 +141,5 @@ ll_support_is_constant_int(LLVMValueRef value)
 }
 
 /**
- * Construct a metadata node to force full loop unrolling.
- *
- * \private
- *
- * \author Alexis Engelke
- *
- * \param context The LLVM context
- * \returns A metadata node
- **/
-extern "C"
-LLVMValueRef
-ll_support_metadata_loop_unroll(LLVMContextRef context)
-{
-    llvm::SmallVector<llvm::Metadata *, 1> unrollElts;
-    llvm::SmallVector<llvm::Metadata *, 2> loopElts;
-
-    llvm::LLVMContext* C = llvm::unwrap(context);
-    llvm::MDString* unrollString = llvm::MDString::get(*C, "llvm.loop.unroll.full");
-    unrollElts.push_back(unrollString);
-
-    llvm::MDNode* unrollNode = llvm::MDTuple::get(*C, unrollElts);
-
-    llvm::TempMDNode temp = llvm::MDNode::getTemporary(*C, unrollElts);
-    loopElts.push_back(temp.get());
-    loopElts.push_back(unrollNode);
-    llvm::MDNode* loopNode = llvm::MDTuple::get(*C, loopElts);
-
-    temp->replaceAllUsesWith(loopNode);
-
-    return llvm::wrap(llvm::MetadataAsValue::get(*C, loopNode));
-}
-
-/**
  * @}
  **/
