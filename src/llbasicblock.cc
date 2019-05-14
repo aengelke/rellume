@@ -26,6 +26,8 @@
 #include <stdint.h>
 #include <string.h>
 
+#include <vector>
+
 #include <llvm/IR/Instructions.h>
 #include <llvm-c/Core.h>
 
@@ -63,19 +65,10 @@ struct LLBasicBlock {
      **/
     LLBasicBlock* nextFallThrough;
 
-    // Predecessors needed for phi nodes
     /**
-     * \brief The predecessor count
+     * \brief Preceding basic blocks
      **/
-    size_t predCount;
-    /**
-     * \brief The number predecessors allocated
-     **/
-    size_t predsAllocated;
-    /**
-     * \brief The preceding basic blocks
-     **/
-    LLBasicBlock** preds;
+    std::vector<LLBasicBlock*> preds;
 
     /**
      * \brief The LLVM basic block
@@ -120,13 +113,11 @@ ll_basic_block_new(LLVMBasicBlockRef llvmBB, LLState* state)
 {
     LLBasicBlock* bb;
 
-    bb = (LLBasicBlock*) malloc(sizeof(LLBasicBlock));
+    bb = (LLBasicBlock*) calloc(sizeof(LLBasicBlock), 1);
     bb->state = state;
     bb->llvmBB = llvmBB;
     bb->nextBranch = NULL;
     bb->nextFallThrough = NULL;
-    bb->predCount = 0;
-    bb->predsAllocated = 0;
     bb->endType = LL_INS_None;
     bb->regfile = ll_regfile_new(bb);
 
@@ -187,8 +178,7 @@ ll_basic_block_dispose(LLBasicBlock* bb)
 {
     ll_regfile_dispose(bb->regfile);
 
-    if (bb->predsAllocated != 0)
-        free(bb->preds);
+    bb->preds.~vector();
 
     free(bb);
 }
@@ -206,25 +196,7 @@ ll_basic_block_dispose(LLBasicBlock* bb)
 void
 ll_basic_block_add_predecessor(LLBasicBlock* bb, LLBasicBlock* pred)
 {
-    if (bb->predsAllocated == 0)
-    {
-        bb->preds = (LLBasicBlock**) malloc(sizeof(LLBasicBlock*) * 10);
-        bb->predsAllocated = 10;
-
-        if (bb->preds == NULL)
-            warn_if_reached();
-    }
-    else if (bb->predsAllocated == bb->predCount)
-    {
-        bb->preds = (LLBasicBlock**) realloc(bb->preds, sizeof(LLBasicBlock*) * bb->predsAllocated * 2);
-        bb->predsAllocated *= 2;
-
-        if (bb->preds == NULL)
-            warn_if_reached();
-    }
-
-    bb->preds[bb->predCount] = pred;
-    bb->predCount++;
+    bb->preds.push_back(pred);
 }
 
 /**
@@ -369,21 +341,20 @@ ll_basic_block_terminate(LLBasicBlock* bb)
 void
 ll_basic_block_fill_phis(LLBasicBlock* bb)
 {
-    if (bb->predCount == 0)
-        return;
-
     LLState* state = bb->state;
     state->currentBB = NULL;
 
-    for (size_t i = 0; i < bb->predCount; i++)
+    for (auto pred_it = bb->preds.begin(); pred_it != bb->preds.end(); ++pred_it)
     {
+        LLBasicBlock* pred = *pred_it;
+
         for (int j = 0; j < LL_RI_GPMax; j++)
         {
             for (size_t k = 0; k < FACET_COUNT; k++)
             {
                 llvm::PHINode* phi = llvm::unwrap<llvm::PHINode>(bb->phiNodesGpRegisters[j].facets[k]);
-                llvm::Value* value = llvm::unwrap(ll_basic_block_get_register(bb->preds[i], (RegisterFacet)k, ll_reg(LL_RT_GP64, j), state));
-                phi->addIncoming(value, llvm::unwrap(bb->preds[i]->llvmBB));
+                llvm::Value* value = llvm::unwrap(ll_basic_block_get_register(pred, (RegisterFacet)k, ll_reg(LL_RT_GP64, j), state));
+                phi->addIncoming(value, llvm::unwrap(pred->llvmBB));
             }
         }
 
@@ -392,16 +363,16 @@ ll_basic_block_fill_phis(LLBasicBlock* bb)
             for (size_t k = 0; k < FACET_COUNT; k++)
             {
                 llvm::PHINode* phi = llvm::unwrap<llvm::PHINode>(bb->phiNodesSseRegisters[j].facets[k]);
-                llvm::Value* value = llvm::unwrap(ll_basic_block_get_register(bb->preds[i], (RegisterFacet)k, ll_reg(LL_RT_XMM, j), state));
-                phi->addIncoming(value, llvm::unwrap(bb->preds[i]->llvmBB));
+                llvm::Value* value = llvm::unwrap(ll_basic_block_get_register(pred, (RegisterFacet)k, ll_reg(LL_RT_XMM, j), state));
+                phi->addIncoming(value, llvm::unwrap(pred->llvmBB));
             }
         }
 
         for (int j = 0; j < RFLAG_Max; j++)
         {
             llvm::PHINode* phi = llvm::unwrap<llvm::PHINode>(bb->phiNodesFlags[j]);
-            llvm::Value* value = llvm::unwrap(ll_regfile_get_flag(bb->preds[i]->regfile, j));
-            phi->addIncoming(value, llvm::unwrap(bb->preds[i]->llvmBB));
+            llvm::Value* value = llvm::unwrap(ll_regfile_get_flag(pred->regfile, j));
+            phi->addIncoming(value, llvm::unwrap(pred->llvmBB));
         }
     }
 }
