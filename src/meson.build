@@ -1,6 +1,6 @@
 
 sources = [
-  'llbasicblock.c',
+  'llbasicblock.cc',
   'lldecoder.cc',
   'llflags.c',
   'llfunc.c',

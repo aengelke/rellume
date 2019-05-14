@@ -31,7 +31,7 @@ extern "C" {
 #endif
 
 #ifdef __cplusplus
-#define ll_reg(t,i) LLReg{ t, i }
+#define ll_reg(t,i) LLReg{ (uint16_t) t, (uint16_t) i }
 #else
 #define ll_reg(t,i) ((LLReg) { .rt = t, .ri = i })
 #endif

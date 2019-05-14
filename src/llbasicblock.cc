@@ -25,6 +25,8 @@
 #include <stdlib.h>
 #include <stdint.h>
 #include <string.h>
+
+#include <llvm/IR/Instructions.h>
 #include <llvm-c/Core.h>
 
 #include <llbasicblock-internal.h>
@@ -118,7 +120,7 @@ ll_basic_block_new(LLVMBasicBlockRef llvmBB, LLState* state)
 {
     LLBasicBlock* bb;
 
-    bb = malloc(sizeof(LLBasicBlock));
+    bb = (LLBasicBlock*) malloc(sizeof(LLBasicBlock));
     bb->state = state;
     bb->llvmBB = llvmBB;
     bb->nextBranch = NULL;
@@ -144,9 +146,9 @@ ll_basic_block_add_phis(LLBasicBlock* bb)
     {
         for (size_t k = 0; k < FACET_COUNT; k++)
         {
-            phiNode = LLVMBuildPhi(state->builder, ll_register_facet_type(k, state), "");
+            phiNode = LLVMBuildPhi(state->builder, ll_register_facet_type((RegisterFacet) k, state), "");
 
-            ll_regfile_set(bb->regfile, k, ll_reg(LL_RT_GP64, i), phiNode, false, state);
+            ll_regfile_set(bb->regfile, (RegisterFacet) k, ll_reg(LL_RT_GP64, i), phiNode, false, state);
             bb->phiNodesGpRegisters[i].facets[k] = phiNode;
         }
     }
@@ -155,9 +157,9 @@ ll_basic_block_add_phis(LLBasicBlock* bb)
     {
         for (size_t k = 0; k < FACET_COUNT; k++)
         {
-            phiNode = LLVMBuildPhi(state->builder, ll_register_facet_type(k, state), "");
+            phiNode = LLVMBuildPhi(state->builder, ll_register_facet_type((RegisterFacet) k, state), "");
 
-            ll_regfile_set(bb->regfile, k, ll_reg(LL_RT_XMM, i), phiNode, false, state);
+            ll_regfile_set(bb->regfile, (RegisterFacet) k, ll_reg(LL_RT_XMM, i), phiNode, false, state);
             bb->phiNodesSseRegisters[i].facets[k] = phiNode;
         }
     }
@@ -206,7 +208,7 @@ ll_basic_block_add_predecessor(LLBasicBlock* bb, LLBasicBlock* pred)
 {
     if (bb->predsAllocated == 0)
     {
-        bb->preds = malloc(sizeof(LLBasicBlock*) * 10);
+        bb->preds = (LLBasicBlock**) malloc(sizeof(LLBasicBlock*) * 10);
         bb->predsAllocated = 10;
 
         if (bb->preds == NULL)
@@ -214,7 +216,7 @@ ll_basic_block_add_predecessor(LLBasicBlock* bb, LLBasicBlock* pred)
     }
     else if (bb->predsAllocated == bb->predCount)
     {
-        bb->preds = realloc(bb->preds, sizeof(LLBasicBlock*) * bb->predsAllocated * 2);
+        bb->preds = (LLBasicBlock**) realloc(bb->preds, sizeof(LLBasicBlock*) * bb->predsAllocated * 2);
         bb->predsAllocated *= 2;
 
         if (bb->preds == NULL)
@@ -373,46 +375,34 @@ ll_basic_block_fill_phis(LLBasicBlock* bb)
     LLState* state = bb->state;
     state->currentBB = NULL;
 
-    LLVMValueRef values[bb->predCount];
-    LLVMBasicBlockRef bbs[bb->predCount];
-
-    for (int j = 0; j < LL_RI_GPMax; j++)
+    for (size_t i = 0; i < bb->predCount; i++)
     {
-        for (size_t k = 0; k < FACET_COUNT; k++)
+        for (int j = 0; j < LL_RI_GPMax; j++)
         {
-            for (size_t i = 0; i < bb->predCount; i++)
+            for (size_t k = 0; k < FACET_COUNT; k++)
             {
-                bbs[i] = bb->preds[i]->llvmBB;
-                values[i] = ll_basic_block_get_register(bb->preds[i], k, ll_reg(LL_RT_GP64, j), state); //bb->preds[i]->gpRegisters[j].facets[k];
+                llvm::PHINode* phi = llvm::unwrap<llvm::PHINode>(bb->phiNodesGpRegisters[j].facets[k]);
+                llvm::Value* value = llvm::unwrap(ll_basic_block_get_register(bb->preds[i], (RegisterFacet)k, ll_reg(LL_RT_GP64, j), state));
+                phi->addIncoming(value, llvm::unwrap(bb->preds[i]->llvmBB));
             }
-
-            LLVMAddIncoming(bb->phiNodesGpRegisters[j].facets[k], values, bbs, bb->predCount);
         }
-    }
 
-    for (int j = 0; j < LL_RI_XMMMax; j++)
-    {
-        for (size_t k = 0; k < FACET_COUNT; k++)
+        for (int j = 0; j < LL_RI_XMMMax; j++)
         {
-            for (size_t i = 0; i < bb->predCount; i++)
+            for (size_t k = 0; k < FACET_COUNT; k++)
             {
-                bbs[i] = bb->preds[i]->llvmBB;
-                values[i] = ll_basic_block_get_register(bb->preds[i], k, ll_reg(LL_RT_XMM, j), state); //bb->preds[i]->gpRegisters[j].facets[k];
+                llvm::PHINode* phi = llvm::unwrap<llvm::PHINode>(bb->phiNodesSseRegisters[j].facets[k]);
+                llvm::Value* value = llvm::unwrap(ll_basic_block_get_register(bb->preds[i], (RegisterFacet)k, ll_reg(LL_RT_XMM, j), state));
+                phi->addIncoming(value, llvm::unwrap(bb->preds[i]->llvmBB));
             }
-
-            LLVMAddIncoming(bb->phiNodesSseRegisters[j].facets[k], values, bbs, bb->predCount);
         }
-    }
 
-    for (int j = 0; j < RFLAG_Max; j++)
-    {
-        for (size_t i = 0; i < bb->predCount; i++)
+        for (int j = 0; j < RFLAG_Max; j++)
         {
-            bbs[i] = bb->preds[i]->llvmBB;
-            values[i] = ll_regfile_get_flag(bb->preds[i]->regfile, j);
+            llvm::PHINode* phi = llvm::unwrap<llvm::PHINode>(bb->phiNodesFlags[j]);
+            llvm::Value* value = llvm::unwrap(ll_regfile_get_flag(bb->preds[i]->regfile, j));
+            phi->addIncoming(value, llvm::unwrap(bb->preds[i]->llvmBB));
         }
-
-        LLVMAddIncoming(bb->phiNodesFlags[j], values, bbs, bb->predCount);
     }
 }
 
