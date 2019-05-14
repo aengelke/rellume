@@ -309,25 +309,25 @@ ll_basic_block_add_inst(LLBasicBlock* bb, LLInstr* instr)
  *
  * \author Alexis Engelke
  *
- * \param context The LLVM context
+ * \param C The LLVM context
  * \returns A metadata node
  **/
 static
 llvm::MDNode*
-ll_basic_block_metadata_loop_unroll(llvm::LLVMContext* C)
+ll_basic_block_metadata_loop_unroll(llvm::LLVMContext& C)
 {
     llvm::SmallVector<llvm::Metadata *, 1> unrollElts;
     llvm::SmallVector<llvm::Metadata *, 2> loopElts;
 
-    llvm::MDString* unrollString = llvm::MDString::get(*C, "llvm.loop.unroll.full");
+    llvm::MDString* unrollString = llvm::MDString::get(C, "llvm.loop.unroll.full");
     unrollElts.push_back(unrollString);
 
-    llvm::MDNode* unrollNode = llvm::MDTuple::get(*C, unrollElts);
+    llvm::MDNode* unrollNode = llvm::MDTuple::get(C, unrollElts);
 
-    llvm::TempMDNode temp = llvm::MDNode::getTemporary(*C, unrollElts);
+    llvm::TempMDNode temp = llvm::MDNode::getTemporary(C, unrollElts);
     loopElts.push_back(temp.get());
     loopElts.push_back(unrollNode);
-    llvm::MDNode* loopNode = llvm::MDTuple::get(*C, loopElts);
+    llvm::MDNode* loopNode = llvm::MDTuple::get(C, loopElts);
 
     temp->replaceAllUsesWith(loopNode);
 
@@ -367,7 +367,7 @@ ll_basic_block_terminate(LLBasicBlock* bb)
 
     if (state->cfg.enableFullLoopUnroll && branch != NULL)
     {
-        llvm::MDNode* md = ll_basic_block_metadata_loop_unroll(llvm::unwrap(state->context));
+        llvm::MDNode* md = ll_basic_block_metadata_loop_unroll(builder->getContext());
         branch->setMetadata(llvm::LLVMContext::MD_loop, md);
     }
 }
