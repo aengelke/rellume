@@ -28,7 +28,11 @@
 
 #include <vector>
 
+#include <llvm/IR/BasicBlock.h>
 #include <llvm/IR/Instructions.h>
+#include <llvm/IR/IRBuilder.h>
+#include <llvm/IR/LLVMContext.h>
+#include <llvm/IR/Metadata.h>
 #include <llvm-c/Core.h>
 
 #include <llbasicblock-internal.h>
@@ -73,7 +77,7 @@ struct LLBasicBlock {
     /**
      * \brief The LLVM basic block
      **/
-    LLVMBasicBlockRef llvmBB;
+    llvm::BasicBlock* llvmBB;
 
     /**
      * \brief The register file for the basic block
@@ -115,7 +119,7 @@ ll_basic_block_new(LLVMBasicBlockRef llvmBB, LLState* state)
 
     bb = (LLBasicBlock*) calloc(sizeof(LLBasicBlock), 1);
     bb->state = state;
-    bb->llvmBB = llvmBB;
+    bb->llvmBB = llvm::unwrap(llvmBB);
     bb->nextBranch = NULL;
     bb->nextFallThrough = NULL;
     bb->endType = LL_INS_None;
@@ -131,7 +135,7 @@ ll_basic_block_add_phis(LLBasicBlock* bb)
     LLState* state = bb->state;
 
     state->currentBB = bb;
-    LLVMPositionBuilderAtEnd(state->builder, bb->llvmBB);
+    llvm::unwrap(state->builder)->SetInsertPoint(bb->llvmBB);
 
     for (int i = 0; i < LL_RI_GPMax; i++)
     {
@@ -212,7 +216,7 @@ ll_basic_block_add_predecessor(LLBasicBlock* bb, LLBasicBlock* pred)
 LLVMBasicBlockRef
 ll_basic_block_llvm(LLBasicBlock* bb)
 {
-    return bb->llvmBB;
+    return llvm::wrap(bb->llvmBB);
 }
 
 /**
@@ -266,7 +270,7 @@ ll_basic_block_add_inst(LLBasicBlock* bb, LLInstr* instr)
 {
     LLState* state = bb->state;
     state->currentBB = bb;
-    LLVMPositionBuilderAtEnd(state->builder, bb->llvmBB);
+    llvm::unwrap(state->builder)->SetInsertPoint(bb->llvmBB);
 
     // Set new instruction pointer register
     uintptr_t rip = instr->addr + instr->len;
@@ -296,6 +300,38 @@ ll_basic_block_add_inst(LLBasicBlock* bb, LLInstr* instr)
 }
 
 /**
+ * Construct a metadata node to force full loop unrolling.
+ *
+ * \private
+ *
+ * \author Alexis Engelke
+ *
+ * \param context The LLVM context
+ * \returns A metadata node
+ **/
+static
+llvm::MDNode*
+ll_basic_block_metadata_loop_unroll(llvm::LLVMContext* C)
+{
+    llvm::SmallVector<llvm::Metadata *, 1> unrollElts;
+    llvm::SmallVector<llvm::Metadata *, 2> loopElts;
+
+    llvm::MDString* unrollString = llvm::MDString::get(*C, "llvm.loop.unroll.full");
+    unrollElts.push_back(unrollString);
+
+    llvm::MDNode* unrollNode = llvm::MDTuple::get(*C, unrollElts);
+
+    llvm::TempMDNode temp = llvm::MDNode::getTemporary(*C, unrollElts);
+    loopElts.push_back(temp.get());
+    loopElts.push_back(unrollNode);
+    llvm::MDNode* loopNode = llvm::MDTuple::get(*C, loopElts);
+
+    temp->replaceAllUsesWith(loopNode);
+
+    return loopNode;
+}
+
+/**
  * Build the LLVM IR.
  *
  * \private
@@ -309,23 +345,28 @@ void
 ll_basic_block_terminate(LLBasicBlock* bb)
 {
     LLState* state = bb->state;
-    LLVMValueRef branch = NULL;
-    state->currentBB = bb;
-    LLVMPositionBuilderAtEnd(state->builder, bb->llvmBB);
+    llvm::IRBuilder<>* builder = llvm::unwrap(state->builder);
+    builder->SetInsertPoint(bb->llvmBB);
+
+    llvm::Instruction* branch = NULL;
 
     LLInstrType endType = bb->endType;
     if (instrIsJcc(endType))
     {
-        LLVMValueRef cond = ll_flags_condition(endType, LL_INS_JO, state);
-        branch = LLVMBuildCondBr(state->builder, cond, bb->nextBranch->llvmBB, bb->nextFallThrough->llvmBB);
+        state->currentBB = bb;
+        llvm::Value* cond = llvm::unwrap(ll_flags_condition(endType, LL_INS_JO, state));
+        branch = builder->CreateCondBr(cond, bb->nextBranch->llvmBB, bb->nextFallThrough->llvmBB);
     }
     else if (endType == LL_INS_JMP)
-        branch = LLVMBuildBr(state->builder, bb->nextBranch->llvmBB);
+        branch = builder->CreateBr(bb->nextBranch->llvmBB);
     else if (endType != LL_INS_RET && endType != LL_INS_Invalid) // Any other instruction which is not a terminator
-        branch = LLVMBuildBr(state->builder, bb->nextFallThrough->llvmBB);
+        branch = builder->CreateBr(bb->nextFallThrough->llvmBB);
 
     if (state->cfg.enableFullLoopUnroll && branch != NULL)
-        LLVMSetMetadata(branch, LLVMGetMDKindIDInContext(state->context, "llvm.loop", 9), state->unrollMD);
+    {
+        llvm::MDNode* md = ll_basic_block_metadata_loop_unroll(llvm::unwrap(state->context));
+        branch->setMetadata(llvm::LLVMContext::MD_loop, md);
+    }
 }
 
 /**
@@ -354,7 +395,7 @@ ll_basic_block_fill_phis(LLBasicBlock* bb)
             {
                 llvm::PHINode* phi = llvm::unwrap<llvm::PHINode>(bb->phiNodesGpRegisters[j].facets[k]);
                 llvm::Value* value = llvm::unwrap(ll_basic_block_get_register(pred, (RegisterFacet)k, ll_reg(LL_RT_GP64, j), state));
-                phi->addIncoming(value, llvm::unwrap(pred->llvmBB));
+                phi->addIncoming(value, pred->llvmBB);
             }
         }
 
@@ -364,7 +405,7 @@ ll_basic_block_fill_phis(LLBasicBlock* bb)
             {
                 llvm::PHINode* phi = llvm::unwrap<llvm::PHINode>(bb->phiNodesSseRegisters[j].facets[k]);
                 llvm::Value* value = llvm::unwrap(ll_basic_block_get_register(pred, (RegisterFacet)k, ll_reg(LL_RT_XMM, j), state));
-                phi->addIncoming(value, llvm::unwrap(pred->llvmBB));
+                phi->addIncoming(value, pred->llvmBB);
             }
         }
 
@@ -372,7 +413,7 @@ ll_basic_block_fill_phis(LLBasicBlock* bb)
         {
             llvm::PHINode* phi = llvm::unwrap<llvm::PHINode>(bb->phiNodesFlags[j]);
             llvm::Value* value = llvm::unwrap(ll_regfile_get_flag(pred->regfile, j));
-            phi->addIncoming(value, llvm::unwrap(pred->llvmBB));
+            phi->addIncoming(value, pred->llvmBB);
         }
     }
 }
