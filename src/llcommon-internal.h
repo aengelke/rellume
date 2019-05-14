@@ -31,9 +31,6 @@
 #include <llvm-c/Core.h>
 #include <llvm-c/ExecutionEngine.h>
 
-#include <llbasicblock.h>
-#include <llcommon-internal.h>
-
 #ifdef __cplusplus
 extern "C" {
 #endif
@@ -79,6 +76,10 @@ struct LLConfig {
 
 typedef struct LLConfig LLConfig;
 
+struct LLRegisterFile;
+
+typedef struct LLRegisterFile LLRegisterFile;
+
 /**
  * \brief The LLVM state of the back-end.
  **/
@@ -100,9 +101,9 @@ struct LLState {
     LLVMValueRef emptyMD;
 
     /**
-     * \brief The current basic block
+     * \brief The current register file
      **/
-    LLBasicBlock* currentBB;
+    LLRegisterFile* regfile;
 };
 
 typedef struct LLState LLState;

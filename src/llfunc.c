@@ -98,7 +98,7 @@ ll_func(const char* name, LLVMTypeRef ty, LLVMModuleRef mod)
 
     LLVMBasicBlockRef llvmBB = LLVMAppendBasicBlockInContext(state->context, fn->llvm, "");
     LLBasicBlock* initialBB = ll_basic_block_new(llvmBB, &fn->state);
-    state->currentBB = initialBB;
+    ll_basic_block_set_current(initialBB);
 
     // Position IR builder at a new basic block in the function
     LLVMPositionBuilderAtEnd(state->builder, ll_basic_block_llvm(initialBB));

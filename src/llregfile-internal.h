@@ -149,10 +149,6 @@ enum RegisterFacet {
 
 typedef enum RegisterFacet RegisterFacet;
 
-struct LLRegisterFile;
-
-typedef struct LLRegisterFile LLRegisterFile;
-
 
 LLRegisterFile* ll_regfile_new(LLBasicBlock*);
 void ll_regfile_dispose(LLRegisterFile*);

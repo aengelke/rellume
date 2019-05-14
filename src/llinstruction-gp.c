@@ -46,7 +46,7 @@ void
 ll_instruction_movgp(LLInstr* instr, LLState* state)
 {
     if (instr->dst.type == LL_OP_REG && instr->src.type == LL_OP_REG && instr->dst.size == 8 && instr->src.size == 8)
-        ll_basic_block_rename_register(state->currentBB, instr->dst.reg, instr->src.reg, state);
+        ll_regfile_rename(state->regfile, instr->dst.reg, instr->src.reg, state);
     else
     {
         LLVMTypeRef targetType = LLVMIntTypeInContext(state->context, instr->dst.size * 8);

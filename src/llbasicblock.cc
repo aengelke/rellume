@@ -130,6 +130,15 @@ ll_basic_block_new(LLVMBasicBlockRef llvmBB, LLState* state)
 }
 
 void
+ll_basic_block_set_current(LLBasicBlock* bb)
+{
+    bb->state->regfile = bb->regfile;
+
+    llvm::IRBuilder<>* builder = llvm::unwrap(bb->state->builder);
+    builder->SetInsertPoint(bb->llvmBB);
+}
+
+void
 ll_basic_block_add_phis(LLBasicBlock* bb)
 {
     LLState* state = bb->state;
@@ -137,7 +146,7 @@ ll_basic_block_add_phis(LLBasicBlock* bb)
     llvm::IRBuilder<>* builder = llvm::unwrap(state->builder);
     builder->SetInsertPoint(bb->llvmBB);
 
-    state->currentBB = bb;
+    state->regfile = bb->regfile;
 
     for (int i = 0; i < LL_RI_GPMax; i++)
     {
@@ -273,7 +282,7 @@ void
 ll_basic_block_add_inst(LLBasicBlock* bb, LLInstr* instr)
 {
     LLState* state = bb->state;
-    state->currentBB = bb;
+    state->regfile = bb->regfile;
 
     llvm::IRBuilder<>* builder = llvm::unwrap(state->builder);
     builder->SetInsertPoint(bb->llvmBB);
@@ -356,7 +365,7 @@ ll_basic_block_terminate(LLBasicBlock* bb)
     LLInstrType endType = bb->endType;
     if (instrIsJcc(endType))
     {
-        state->currentBB = bb;
+        state->regfile = bb->regfile;
         llvm::Value* cond = llvm::unwrap(ll_flags_condition(endType, LL_INS_JO, state));
         branch = builder->CreateCondBr(cond, bb->nextBranch->llvmBB, bb->nextFallThrough->llvmBB);
     }
@@ -386,7 +395,7 @@ void
 ll_basic_block_fill_phis(LLBasicBlock* bb)
 {
     LLState* state = bb->state;
-    state->currentBB = NULL;
+    state->regfile = NULL;
 
     for (auto pred_it = bb->preds.begin(); pred_it != bb->preds.end(); ++pred_it)
     {
