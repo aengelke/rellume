@@ -51,7 +51,7 @@
  **/
 
 struct LLRegister {
-    LLVMValueRef facets[FACET_COUNT];
+    llvm::PHINode* facets[FACET_COUNT];
 };
 
 typedef struct LLRegister LLRegister;
@@ -97,7 +97,7 @@ struct LLBasicBlock {
     /**
      * \brief The phi nodes for the flags
      **/
-    LLVMValueRef phiNodesFlags[RFLAG_Max];
+    llvm::PHINode* phiNodesFlags[RFLAG_Max];
 
     LLInstrType endType;
 };
@@ -131,19 +131,21 @@ ll_basic_block_new(LLVMBasicBlockRef llvmBB, LLState* state)
 void
 ll_basic_block_add_phis(LLBasicBlock* bb)
 {
-    LLVMValueRef phiNode;
     LLState* state = bb->state;
 
+    llvm::IRBuilder<>* builder = llvm::unwrap(state->builder);
+    builder->SetInsertPoint(bb->llvmBB);
+
     state->currentBB = bb;
-    llvm::unwrap(state->builder)->SetInsertPoint(bb->llvmBB);
 
     for (int i = 0; i < LL_RI_GPMax; i++)
     {
         for (size_t k = 0; k < FACET_COUNT; k++)
         {
-            phiNode = LLVMBuildPhi(state->builder, ll_register_facet_type((RegisterFacet) k, state), "");
+            LLVMTypeRef ty = ll_register_facet_type((RegisterFacet) k, state);
+            llvm::PHINode* phiNode = builder->CreatePHI(llvm::unwrap(ty), 0);
 
-            ll_regfile_set(bb->regfile, (RegisterFacet) k, ll_reg(LL_RT_GP64, i), phiNode, false, state);
+            ll_regfile_set(bb->regfile, (RegisterFacet) k, ll_reg(LL_RT_GP64, i), llvm::wrap(phiNode), false, state);
             bb->phiNodesGpRegisters[i].facets[k] = phiNode;
         }
     }
@@ -152,18 +154,19 @@ ll_basic_block_add_phis(LLBasicBlock* bb)
     {
         for (size_t k = 0; k < FACET_COUNT; k++)
         {
-            phiNode = LLVMBuildPhi(state->builder, ll_register_facet_type((RegisterFacet) k, state), "");
+            LLVMTypeRef ty = ll_register_facet_type((RegisterFacet) k, state);
+            llvm::PHINode* phiNode = builder->CreatePHI(llvm::unwrap(ty), 0);
 
-            ll_regfile_set(bb->regfile, (RegisterFacet) k, ll_reg(LL_RT_XMM, i), phiNode, false, state);
+            ll_regfile_set(bb->regfile, (RegisterFacet) k, ll_reg(LL_RT_XMM, i), llvm::wrap(phiNode), false, state);
             bb->phiNodesSseRegisters[i].facets[k] = phiNode;
         }
     }
 
     for (int i = 0; i < RFLAG_Max; i++)
     {
-        phiNode = LLVMBuildPhi(state->builder, LLVMInt1TypeInContext(state->context), "");
+        llvm::PHINode* phiNode = builder->CreatePHI(builder->getInt1Ty(), 0);
 
-        ll_regfile_set_flag(bb->regfile, i, phiNode);
+        ll_regfile_set_flag(bb->regfile, i, llvm::wrap(phiNode));
         bb->phiNodesFlags[i] = phiNode;
     }
 }
@@ -393,9 +396,8 @@ ll_basic_block_fill_phis(LLBasicBlock* bb)
         {
             for (size_t k = 0; k < FACET_COUNT; k++)
             {
-                llvm::PHINode* phi = llvm::unwrap<llvm::PHINode>(bb->phiNodesGpRegisters[j].facets[k]);
                 llvm::Value* value = llvm::unwrap(ll_basic_block_get_register(pred, (RegisterFacet)k, ll_reg(LL_RT_GP64, j), state));
-                phi->addIncoming(value, pred->llvmBB);
+                bb->phiNodesGpRegisters[j].facets[k]->addIncoming(value, pred->llvmBB);
             }
         }
 
@@ -403,17 +405,15 @@ ll_basic_block_fill_phis(LLBasicBlock* bb)
         {
             for (size_t k = 0; k < FACET_COUNT; k++)
             {
-                llvm::PHINode* phi = llvm::unwrap<llvm::PHINode>(bb->phiNodesSseRegisters[j].facets[k]);
                 llvm::Value* value = llvm::unwrap(ll_basic_block_get_register(pred, (RegisterFacet)k, ll_reg(LL_RT_XMM, j), state));
-                phi->addIncoming(value, pred->llvmBB);
+                bb->phiNodesSseRegisters[j].facets[k]->addIncoming(value, pred->llvmBB);
             }
         }
 
         for (int j = 0; j < RFLAG_Max; j++)
         {
-            llvm::PHINode* phi = llvm::unwrap<llvm::PHINode>(bb->phiNodesFlags[j]);
             llvm::Value* value = llvm::unwrap(ll_regfile_get_flag(pred->regfile, j));
-            phi->addIncoming(value, pred->llvmBB);
+            bb->phiNodesFlags[j]->addIncoming(value, pred->llvmBB);
         }
     }
 }
