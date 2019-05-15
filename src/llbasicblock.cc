@@ -405,7 +405,7 @@ ll_basic_block_fill_phis(LLBasicBlock* bb)
         {
             for (size_t k = 0; k < FACET_COUNT; k++)
             {
-                llvm::Value* value = llvm::unwrap(ll_basic_block_get_register(pred, (RegisterFacet)k, ll_reg(LL_RT_GP64, j), state));
+                llvm::Value* value = llvm::unwrap(ll_regfile_get(pred->regfile, (RegisterFacet)k, ll_reg(LL_RT_GP64, j), state));
                 bb->phiGpRegs[j].facets[k]->addIncoming(value, pred->llvmBB);
             }
         }
@@ -414,7 +414,7 @@ ll_basic_block_fill_phis(LLBasicBlock* bb)
         {
             for (size_t k = 0; k < FACET_COUNT; k++)
             {
-                llvm::Value* value = llvm::unwrap(ll_basic_block_get_register(pred, (RegisterFacet)k, ll_reg(LL_RT_XMM, j), state));
+                llvm::Value* value = llvm::unwrap(ll_regfile_get(pred->regfile, (RegisterFacet)k, ll_reg(LL_RT_XMM, j), state));
                 bb->phiVRegs[j].facets[k]->addIncoming(value, pred->llvmBB);
             }
         }
@@ -425,142 +425,6 @@ ll_basic_block_fill_phis(LLBasicBlock* bb)
             bb->phiFlags[j]->addIncoming(value, pred->llvmBB);
         }
     }
-}
-
-/**
- * Get a register value of the basic block.
- *
- * \private
- *
- * \author Alexis Engelke
- *
- * \param bb The basic block
- * \param reg The register
- * \returns The register value in the given facet
- **/
-LLVMValueRef
-ll_basic_block_get_register(LLBasicBlock* bb, RegisterFacet facet, LLReg reg, LLState* state)
-{
-    return ll_regfile_get(bb->regfile, facet, reg, state);
-}
-
-/**
- * Clear a register to undefined of the basic block.
- *
- * \private
- *
- * \author Alexis Engelke
- *
- * \param bb The basic block
- * \param reg The register
- * \param value The new value
- **/
-void
-ll_basic_block_clear_register(LLBasicBlock* bb, LLReg reg, LLState* state)
-{
-    ll_regfile_clear(bb->regfile, reg, state->context);
-}
-
-/**
- * Set a register in all facets to zero within the basic block.
- *
- * \private
- *
- * \author Alexis Engelke
- *
- * \param bb The basic block
- * \param reg The name of the new register
- * \param state The state
- **/
-void
-ll_basic_block_zero_register(LLBasicBlock* bb, LLReg reg, LLState* state)
-{
-    ll_regfile_zero(bb->regfile, reg, state->context);
-}
-
-/**
- * Rename a register to another register of the basic block.
- *
- * \private
- *
- * \author Alexis Engelke
- *
- * \param bb The basic block
- * \param reg The name of the new register
- * \param current The name of the current register
- * \param state The state
- **/
-void
-ll_basic_block_rename_register(LLBasicBlock* bb, LLReg reg, LLReg current, LLState* state)
-{
-    ll_regfile_rename(bb->regfile, reg, current);
-}
-
-/**
- * Set a register value of the basic block.
- *
- * \private
- *
- * \author Alexis Engelke
- *
- * \param bb The basic block
- * \param reg The register
- * \param value The new value
- **/
-void
-ll_basic_block_set_register(LLBasicBlock* bb, RegisterFacet facet, LLReg reg, LLVMValueRef value, bool clearOthers, LLState* state)
-{
-    ll_regfile_set(bb->regfile, facet, reg, value, clearOthers, state);
-}
-
-/**
- * Get a flag value of the basic block.
- *
- * \private
- *
- * \author Alexis Engelke
- *
- * \param bb The basic block
- * \param flag The flag
- * \returns The current flag value
- **/
-LLVMValueRef
-ll_basic_block_get_flag(LLBasicBlock* bb, int flag)
-{
-    return ll_regfile_get_flag(bb->regfile, flag);
-}
-
-/**
- * Set a flag value of the basic block.
- *
- * \private
- *
- * \author Alexis Engelke
- *
- * \param bb The basic block
- * \param flag The flag
- * \param value The new value
- **/
-void
-ll_basic_block_set_flag(LLBasicBlock* bb, int flag, LLVMValueRef value)
-{
-    ll_regfile_set_flag(bb->regfile, flag, value);
-}
-
-/**
- * Get the flag cache.
- *
- * \private
- *
- * \author Alexis Engelke
- *
- * \param bb The basic block
- * \returns The flag cache
- **/
-LLFlagCache*
-ll_basic_block_get_flag_cache(LLBasicBlock* bb)
-{
-    return ll_regfile_get_flag_cache(bb->regfile);
 }
 
 /**

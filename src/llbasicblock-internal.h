@@ -54,15 +54,6 @@ void ll_basic_block_fill_phis(LLBasicBlock*);
 #define ll_set_flag(reg,value,state) ll_regfile_set_flag(state->regfile,reg,value)
 #define ll_get_flag_cache(state) ll_regfile_get_flag_cache(state->regfile)
 
-LLVMValueRef ll_basic_block_get_register(LLBasicBlock*, RegisterFacet, LLReg, LLState*);
-void ll_basic_block_clear_register(LLBasicBlock*, LLReg, LLState*);
-void ll_basic_block_zero_register(LLBasicBlock*, LLReg, LLState*);
-void ll_basic_block_rename_register(LLBasicBlock*, LLReg, LLReg, LLState*);
-void ll_basic_block_set_register(LLBasicBlock*, RegisterFacet, LLReg, LLVMValueRef, bool, LLState*);
-LLVMValueRef ll_basic_block_get_flag(LLBasicBlock*, int);
-void ll_basic_block_set_flag(LLBasicBlock*, int, LLVMValueRef);
-LLFlagCache* ll_basic_block_get_flag_cache(LLBasicBlock*);
-
 LLVMBasicBlockRef ll_basic_block_llvm(LLBasicBlock*);
 
 #ifdef __cplusplus
