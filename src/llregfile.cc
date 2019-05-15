@@ -48,7 +48,7 @@
  **/
 
 struct LLRegister {
-    LLVMValueRef facets[FACET_COUNT];
+    llvm::Value* facets[FACET_COUNT];
 };
 
 typedef struct LLRegister LLRegister;
@@ -73,7 +73,7 @@ struct LLRegisterFile {
     /**
      * \brief The LLVM values of the architectural general purpose registers
      **/
-    LLVMValueRef flags[RFLAG_Max];
+    llvm::Value* flags[RFLAG_Max];
 
     /**
      * \brief The LLVM value of the current instruction address
@@ -292,7 +292,7 @@ ll_regfile_get(LLRegisterFile* regfile, RegisterFacet facet, LLReg reg, LLVMBuil
 
     LLRegister* regFileEntry = ll_regfile_get_ptr(regfile, reg);
     llvm::Type* facetType = llvm::unwrap(ll_register_facet_type(facet, llvm::wrap(&builder->getContext())));
-    llvm::Value* value = llvm::unwrap(regFileEntry->facets[facet]);
+    llvm::Value* value = regFileEntry->facets[facet];
 
     if (value != NULL)
     {
@@ -310,7 +310,7 @@ ll_regfile_get(LLRegisterFile* regfile, RegisterFacet facet, LLReg reg, LLVMBuil
 
     if (regIsGP(reg) || reg.rt == LL_RT_IP)
     {
-        llvm::Value* native = llvm::unwrap(regFileEntry->facets[FACET_I64]);
+        llvm::Value* native = regFileEntry->facets[FACET_I64];
 
         switch (facet)
         {
@@ -404,7 +404,7 @@ ll_regfile_get(LLRegisterFile* regfile, RegisterFacet facet, LLReg reg, LLVMBuil
 #endif
             case FACET_I128:
                 // TODO: Try to induce from other 128-bit facets first
-                value = builder->CreateTruncOrBitCast(llvm::unwrap(regFileEntry->facets[FACET_IVEC]), builder->getIntNTy(128));
+                value = builder->CreateTruncOrBitCast(regFileEntry->facets[FACET_IVEC], builder->getIntNTy(128));
                 break;
             case FACET_PTR:
             case FACET_I8H:
@@ -418,13 +418,13 @@ ll_regfile_get(LLRegisterFile* regfile, RegisterFacet facet, LLReg reg, LLVMBuil
 #if LL_VECTOR_REGISTER_SIZE >= 256
         if (value == NULL && targetBits == 128 && regFileEntry->facets[FACET_I128] != NULL)
         {
-            llvm::Value* native = llvm::unwrap(regFileEntry->facets[FACET_I128]);
+            llvm::Value* native = regFileEntry->facets[FACET_I128];
             value = builder->CreateBitCast(native, facetType);
         }
 #endif
         if (value == NULL)
         {
-            llvm::Value* native = llvm::unwrap(regFileEntry->facets[FACET_IVEC]);
+            llvm::Value* native = regFileEntry->facets[FACET_IVEC];
             llvm::VectorType* facetVecType = llvm::cast<llvm::VectorType>(facetType);
 
             int targetCount = facetVecType->getNumElements();
@@ -449,7 +449,7 @@ ll_regfile_get(LLRegisterFile* regfile, RegisterFacet facet, LLReg reg, LLVMBuil
     if (value == NULL || value->getType() != facetType)
         warn_if_reached();
 
-    regFileEntry->facets[facet] = llvm::wrap(value);
+    regFileEntry->facets[facet] = value;
 
     return llvm::wrap(value);
 }
@@ -471,7 +471,7 @@ ll_regfile_clear(LLRegisterFile* regfile, LLReg reg, LLVMContextRef ctx)
     LLRegister* regFileEntry = ll_regfile_get_ptr(regfile, reg);
 
     for (size_t i = 0; i < FACET_COUNT; i++)
-        regFileEntry->facets[i] = LLVMGetUndef(ll_register_facet_type((RegisterFacet) i, ctx));
+        regFileEntry->facets[i] = llvm::UndefValue::get(llvm::unwrap(ll_register_facet_type((RegisterFacet) i, ctx)));
 }
 
 /**
@@ -491,7 +491,7 @@ ll_regfile_zero(LLRegisterFile* regfile, LLReg reg, LLVMContextRef ctx)
     LLRegister* regFileEntry = ll_regfile_get_ptr(regfile, reg);
 
     for (size_t i = 0; i < FACET_COUNT; i++)
-        regFileEntry->facets[i] = LLVMConstNull(ll_register_facet_type((RegisterFacet) i, ctx));
+        regFileEntry->facets[i] = llvm::Constant::getNullValue(llvm::unwrap(ll_register_facet_type((RegisterFacet) i, ctx)));
 }
 
 /**
@@ -527,16 +527,23 @@ ll_regfile_rename(LLRegisterFile* regfile, LLReg reg, LLReg current)
  * \param value The new value
  **/
 void
-ll_regfile_set(LLRegisterFile* regfile, RegisterFacet facet, LLReg reg, LLVMValueRef value, bool clearOthers, LLState* state)
+ll_regfile_set(LLRegisterFile* regfile, RegisterFacet facet, LLReg reg, LLVMValueRef value_w, bool clearOthers, LLState* state)
 {
-    if (!LLVMIsConstant(value))
+    llvm::Value* value = llvm::unwrap(value_w);
+    llvm::IRBuilder<>* builder = llvm::unwrap(state->builder);
+    llvm::LLVMContext& ctx = builder->getContext();
+
+    if (llvm::isa<llvm::Instruction>(value))
     {
         char buffer[20];
-        int len = snprintf(buffer, sizeof(buffer), "asm.reg.%s", ll_register_name_for_facet(facet, reg));
-        LLVMSetMetadata(value, LLVMGetMDKindIDInContext(state->context, buffer, len), state->emptyMD);
+        snprintf(buffer, sizeof(buffer), "asm.reg.%s", ll_register_name_for_facet(facet, reg));
+        unsigned md_id = ctx.getMDKindID(buffer);
+        llvm::MDNode* md = llvm::MDNode::get(builder->getContext(), llvm::ArrayRef<llvm::Metadata*>());
+        llvm::cast<llvm::Instruction>(value)->setMetadata(md_id, md);
     }
 
-    if (LLVMTypeOf(value) != ll_register_facet_type(facet, state->context))
+    llvm::Type* facetType = llvm::unwrap(ll_register_facet_type(facet, llvm::wrap(&ctx)));
+    if (value->getType() != facetType)
         warn_if_reached();
 
     LLRegister* regFileEntry = ll_regfile_get_ptr(regfile, reg);
@@ -551,8 +558,8 @@ ll_regfile_set(LLRegisterFile* regfile, RegisterFacet facet, LLReg reg, LLVMValu
             if (facet != FACET_PTR)
                 warn_if_reached();
 
-            LLVMTypeRef i64 = LLVMInt64TypeInContext(state->context);
-            regFileEntry->facets[FACET_I64] = LLVMBuildPtrToInt(state->builder, value, i64, "");
+            llvm::Type* i64 = builder->getInt64Ty();
+            regFileEntry->facets[FACET_I64] = builder->CreatePtrToInt(value, i64);
         }
         else if (regIsV(reg) && facet != FACET_IVEC)
             warn_if_reached();
@@ -575,7 +582,7 @@ ll_regfile_set(LLRegisterFile* regfile, RegisterFacet facet, LLReg reg, LLVMValu
 LLVMValueRef
 ll_regfile_get_flag(LLRegisterFile* regfile, int flag)
 {
-    return regfile->flags[flag];
+    return llvm::wrap(regfile->flags[flag]);
 }
 
 /**
@@ -592,7 +599,7 @@ ll_regfile_get_flag(LLRegisterFile* regfile, int flag)
 void
 ll_regfile_set_flag(LLRegisterFile* regfile, int flag, LLVMValueRef value)
 {
-    regfile->flags[flag] = value;
+    regfile->flags[flag] = llvm::unwrap(value);
 }
 
 /**
