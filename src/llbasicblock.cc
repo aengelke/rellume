@@ -152,7 +152,7 @@ ll_basic_block_add_phis(LLBasicBlock* bb)
     {
         for (size_t k = 0; k < FACET_COUNT; k++)
         {
-            LLVMTypeRef ty = ll_register_facet_type((RegisterFacet) k, state);
+            LLVMTypeRef ty = ll_register_facet_type((RegisterFacet) k, state->context);
             llvm::PHINode* phiNode = builder->CreatePHI(llvm::unwrap(ty), 0);
 
             ll_regfile_set(bb->regfile, (RegisterFacet) k, ll_reg(LL_RT_GP64, i), llvm::wrap(phiNode), false, state);
@@ -164,7 +164,7 @@ ll_basic_block_add_phis(LLBasicBlock* bb)
     {
         for (size_t k = 0; k < FACET_COUNT; k++)
         {
-            LLVMTypeRef ty = ll_register_facet_type((RegisterFacet) k, state);
+            LLVMTypeRef ty = ll_register_facet_type((RegisterFacet) k, state->context);
             llvm::PHINode* phiNode = builder->CreatePHI(llvm::unwrap(ty), 0);
 
             ll_regfile_set(bb->regfile, (RegisterFacet) k, ll_reg(LL_RT_XMM, i), llvm::wrap(phiNode), false, state);
@@ -458,7 +458,7 @@ ll_basic_block_get_register(LLBasicBlock* bb, RegisterFacet facet, LLReg reg, LL
 void
 ll_basic_block_clear_register(LLBasicBlock* bb, LLReg reg, LLState* state)
 {
-    ll_regfile_clear(bb->regfile, reg, state);
+    ll_regfile_clear(bb->regfile, reg, state->context);
 }
 
 /**
@@ -475,7 +475,7 @@ ll_basic_block_clear_register(LLBasicBlock* bb, LLReg reg, LLState* state)
 void
 ll_basic_block_zero_register(LLBasicBlock* bb, LLReg reg, LLState* state)
 {
-    ll_regfile_zero(bb->regfile, reg, state);
+    ll_regfile_zero(bb->regfile, reg, state->context);
 }
 
 /**
@@ -493,7 +493,7 @@ ll_basic_block_zero_register(LLBasicBlock* bb, LLReg reg, LLState* state)
 void
 ll_basic_block_rename_register(LLBasicBlock* bb, LLReg reg, LLReg current, LLState* state)
 {
-    ll_regfile_rename(bb->regfile, reg, current, state);
+    ll_regfile_rename(bb->regfile, reg, current);
 }
 
 /**

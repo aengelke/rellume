@@ -153,15 +153,15 @@ typedef enum RegisterFacet RegisterFacet;
 LLRegisterFile* ll_regfile_new(LLVMBasicBlockRef);
 void ll_regfile_dispose(LLRegisterFile*);
 LLVMValueRef ll_regfile_get(LLRegisterFile*, RegisterFacet, LLReg, LLState*);
-void ll_regfile_clear(LLRegisterFile*, LLReg, LLState*);
-void ll_regfile_zero(LLRegisterFile*, LLReg, LLState*);
-void ll_regfile_rename(LLRegisterFile*, LLReg, LLReg, LLState*);
+void ll_regfile_clear(LLRegisterFile*, LLReg, LLVMContextRef);
+void ll_regfile_zero(LLRegisterFile*, LLReg, LLVMContextRef);
+void ll_regfile_rename(LLRegisterFile*, LLReg, LLReg);
 void ll_regfile_set(LLRegisterFile*, RegisterFacet, LLReg, LLVMValueRef, bool, LLState*);
 LLVMValueRef ll_regfile_get_flag(LLRegisterFile*, int);
 void ll_regfile_set_flag(LLRegisterFile*, int, LLVMValueRef);
 LLFlagCache* ll_regfile_get_flag_cache(LLRegisterFile*);
 
-LLVMTypeRef ll_register_facet_type(RegisterFacet, LLState*);
+LLVMTypeRef ll_register_facet_type(RegisterFacet, LLVMContextRef);
 
 #ifdef __cplusplus
 }

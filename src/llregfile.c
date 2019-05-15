@@ -83,14 +83,14 @@ struct LLRegisterFile {
 
 
 LLVMTypeRef
-ll_register_facet_type(RegisterFacet facet, LLState* state)
+ll_register_facet_type(RegisterFacet facet, LLVMContextRef ctx)
 {
-    LLVMTypeRef i8 = LLVMInt8TypeInContext(state->context);
-    LLVMTypeRef i16 = LLVMInt16TypeInContext(state->context);
-    LLVMTypeRef i32 = LLVMInt32TypeInContext(state->context);
-    LLVMTypeRef i64 = LLVMInt64TypeInContext(state->context);
-    LLVMTypeRef f32 = LLVMFloatTypeInContext(state->context);
-    LLVMTypeRef f64 = LLVMDoubleTypeInContext(state->context);
+    LLVMTypeRef i8 = LLVMInt8TypeInContext(ctx);
+    LLVMTypeRef i16 = LLVMInt16TypeInContext(ctx);
+    LLVMTypeRef i32 = LLVMInt32TypeInContext(ctx);
+    LLVMTypeRef i64 = LLVMInt64TypeInContext(ctx);
+    LLVMTypeRef f32 = LLVMFloatTypeInContext(ctx);
+    LLVMTypeRef f64 = LLVMDoubleTypeInContext(ctx);
 
     switch (facet)
     {
@@ -99,8 +99,8 @@ ll_register_facet_type(RegisterFacet facet, LLState* state)
         case FACET_I16: return i16;
         case FACET_I32: return i32;
         case FACET_I64: return i64;
-        case FACET_I128: return LLVMIntTypeInContext(state->context, 128);
-        case FACET_I256: return LLVMIntTypeInContext(state->context, 256);
+        case FACET_I128: return LLVMIntTypeInContext(ctx, 128);
+        case FACET_I256: return LLVMIntTypeInContext(ctx, 256);
         case FACET_F32: return f32;
         case FACET_F64: return f64;
         case FACET_V16I8: return LLVMVectorType(i8, 16);
@@ -118,7 +118,7 @@ ll_register_facet_type(RegisterFacet facet, LLState* state)
         case FACET_V8F32: return LLVMVectorType(f32, 8);
         case FACET_V4F64: return LLVMVectorType(f64, 4);
 #endif
-        case FACET_PTR: return LLVMPointerType(LLVMInt8TypeInContext(state->context), 0);
+        case FACET_PTR: return LLVMPointerType(LLVMInt8TypeInContext(ctx), 0);
         case FACET_COUNT:
         default:
             warn_if_reached();
@@ -284,7 +284,7 @@ LLVMValueRef
 ll_regfile_get(LLRegisterFile* regfile, RegisterFacet facet, LLReg reg, LLState* state)
 {
     LLRegister* regFileEntry = ll_regfile_get_ptr(regfile, reg);
-    LLVMTypeRef facetType = ll_register_facet_type(facet, state);
+    LLVMTypeRef facetType = ll_register_facet_type(facet, state->context);
     LLVMValueRef value = regFileEntry->facets[facet];
 
     if (value != NULL)
@@ -346,7 +346,7 @@ ll_regfile_get(LLRegisterFile* regfile, RegisterFacet facet, LLReg reg, LLState*
 #endif
             case FACET_COUNT:
             default:
-                value = LLVMGetUndef(ll_register_facet_type(facet, state));
+                value = LLVMGetUndef(ll_register_facet_type(facet, state->context));
         }
     }
     else if (regIsV(reg))
@@ -409,7 +409,7 @@ ll_regfile_get(LLRegisterFile* regfile, RegisterFacet facet, LLReg reg, LLState*
             case FACET_I256:
             case FACET_COUNT:
             default:
-                value = LLVMGetUndef(ll_register_facet_type(facet, state));
+                value = LLVMGetUndef(ll_register_facet_type(facet, state->context));
         }
 
         // Its a vector.
@@ -464,12 +464,12 @@ ll_regfile_get(LLRegisterFile* regfile, RegisterFacet facet, LLReg reg, LLState*
  * \param value The new value
  **/
 void
-ll_regfile_clear(LLRegisterFile* regfile, LLReg reg, LLState* state)
+ll_regfile_clear(LLRegisterFile* regfile, LLReg reg, LLVMContextRef ctx)
 {
     LLRegister* regFileEntry = ll_regfile_get_ptr(regfile, reg);
 
     for (size_t i = 0; i < FACET_COUNT; i++)
-        regFileEntry->facets[i] = LLVMGetUndef(ll_register_facet_type(i, state));
+        regFileEntry->facets[i] = LLVMGetUndef(ll_register_facet_type(i, ctx));
 }
 
 /**
@@ -484,12 +484,12 @@ ll_regfile_clear(LLRegisterFile* regfile, LLReg reg, LLState* state)
  * \param state The state
  **/
 void
-ll_regfile_zero(LLRegisterFile* regfile, LLReg reg, LLState* state)
+ll_regfile_zero(LLRegisterFile* regfile, LLReg reg, LLVMContextRef ctx)
 {
     LLRegister* regFileEntry = ll_regfile_get_ptr(regfile, reg);
 
     for (size_t i = 0; i < FACET_COUNT; i++)
-        regFileEntry->facets[i] = LLVMConstNull(ll_register_facet_type(i, state));
+        regFileEntry->facets[i] = LLVMConstNull(ll_register_facet_type(i, ctx));
 }
 
 /**
@@ -505,14 +505,12 @@ ll_regfile_zero(LLRegisterFile* regfile, LLReg reg, LLState* state)
  * \param state The state
  **/
 void
-ll_regfile_rename(LLRegisterFile* regfile, LLReg reg, LLReg current, LLState* state)
+ll_regfile_rename(LLRegisterFile* regfile, LLReg reg, LLReg current)
 {
     LLRegister* regFileEntry1 = ll_regfile_get_ptr(regfile, reg);
     LLRegister* regFileEntry2 = ll_regfile_get_ptr(regfile, current);
 
     memcpy(regFileEntry1, regFileEntry2, sizeof(LLRegister));
-
-    (void) state;
 }
 
 /**
@@ -536,7 +534,7 @@ ll_regfile_set(LLRegisterFile* regfile, RegisterFacet facet, LLReg reg, LLVMValu
         LLVMSetMetadata(value, LLVMGetMDKindIDInContext(state->context, buffer, len), state->emptyMD);
     }
 
-    if (LLVMTypeOf(value) != ll_register_facet_type(facet, state))
+    if (LLVMTypeOf(value) != ll_register_facet_type(facet, state->context))
         warn_if_reached();
 
     LLRegister* regFileEntry = ll_regfile_get_ptr(regfile, reg);
