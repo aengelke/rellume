@@ -114,7 +114,7 @@ ll_func(const char* name, LLVMTypeRef ty, LLVMModuleRef mod)
         ll_set_register(ll_reg(LL_RT_XMM, i), FACET_IVEC, LLVMGetUndef(iVec), true, state);
 
     for (int i = 0; i < RFLAG_Max; i++)
-        ll_basic_block_set_flag(initialBB, i, LLVMGetUndef(i1));
+        ll_set_flag(i, LLVMGetUndef(i1), state);
 
 
     LLReg gpRegs[6] = {
@@ -162,7 +162,7 @@ ll_func(const char* name, LLVMTypeRef ty, LLVMModuleRef mod)
     LLVMValueRef stackSize = LLVMConstInt(i64, state->cfg.stackSize, false);
     LLVMValueRef stack = LLVMBuildArrayAlloca(state->builder, i8, stackSize, "");
     LLVMValueRef sp = LLVMBuildGEP(state->builder, stack, &stackSize, 1, "");
-    ll_basic_block_set_register(initialBB, FACET_PTR, ll_reg(LL_RT_GP64, LL_RI_SP), sp, true, state);
+    ll_set_register(ll_reg(LL_RT_GP64, LL_RI_SP), FACET_PTR, sp, true, state);
 
     LLVMSetAlignment(stack, 16);
 
