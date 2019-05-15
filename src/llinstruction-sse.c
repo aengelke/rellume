@@ -33,6 +33,7 @@
 #include <llflags-internal.h>
 #include <llinstr-internal.h>
 #include <lloperand-internal.h>
+#include <llstate-internal.h>
 #include <llsupport-internal.h>
 
 /**

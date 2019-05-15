@@ -46,68 +46,6 @@ extern "C" {
  **/
 #define LL_VECTOR_REGISTER_SIZE 128
 
-struct LLConfig {
-    size_t stackSize;
-
-    /**
-     * \brief Whether overflow intrinsics should be used.
-     **/
-    bool enableOverflowIntrinsics;
-    /**
-     * \brief Whether unsafe floating-point optimizations may be applied.
-     * Corresponds to -ffast-math.
-     **/
-    bool enableFastMath;
-    /**
-     * \brief Whether to force full loop unrolling on all loops
-     **/
-    bool enableFullLoopUnroll;
-
-    /**
-     * \brief The global offset base
-     **/
-    uintptr_t globalOffsetBase;
-    /**
-     * \brief The global variable used to access constant memory regions. Points
-     * to globalOffsetBase.
-     **/
-    LLVMValueRef globalBase;
-};
-
-typedef struct LLConfig LLConfig;
-
-struct LLRegisterFile;
-
-typedef struct LLRegisterFile LLRegisterFile;
-
-/**
- * \brief The LLVM state of the back-end.
- **/
-struct LLState {
-    LLConfig cfg;
-
-    /**
-     * \brief The LLVM Context
-     **/
-    LLVMContextRef context;
-    /**
-     * \brief The LLVM Builder
-     **/
-    LLVMBuilderRef builder;
-
-    /**
-     * \brief The empty metadata node
-     **/
-    LLVMValueRef emptyMD;
-
-    /**
-     * \brief The current register file
-     **/
-    LLRegisterFile* regfile;
-};
-
-typedef struct LLState LLState;
-
 #ifdef __cplusplus
 }
 #endif

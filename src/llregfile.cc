@@ -35,7 +35,6 @@
 #include <llregfile-internal.h>
 
 #include <llbasicblock-internal.h>
-#include <llcommon-internal.h>
 #include <llflags-internal.h>
 #include <llinstr-internal.h>
 #include <llinstruction-internal.h>

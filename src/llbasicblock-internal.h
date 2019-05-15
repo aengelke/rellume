@@ -33,6 +33,7 @@
 #include <llbasicblock.h>
 
 #include <llcommon-internal.h>
+#include <llstate-internal.h>
 
 #ifdef __cplusplus
 extern "C" {

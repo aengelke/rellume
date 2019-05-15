@@ -33,6 +33,7 @@
 #include <llcommon-internal.h>
 #include <llinstr-internal.h>
 #include <llregfile-internal.h>
+#include <llstate-internal.h>
 
 /**
  * \defgroup LLInstrOp LLInstrOp

@@ -31,6 +31,7 @@
 
 #include <llcommon-internal.h>
 #include <llinstr-internal.h>
+#include <llstate-internal.h>
 
 #ifdef __cplusplus
 extern "C" {

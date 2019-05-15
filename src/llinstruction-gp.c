@@ -34,6 +34,7 @@
 #include <llinstr-internal.h>
 #include <lloperand-internal.h>
 #include <llregfile-internal.h>
+#include <llstate-internal.h>
 #include <llsupport-internal.h>
 
 /**
