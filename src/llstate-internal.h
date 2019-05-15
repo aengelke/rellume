@@ -83,11 +83,6 @@ struct LLState {
     LLVMBuilderRef builder;
 
     /**
-     * \brief The empty metadata node
-     **/
-    LLVMValueRef emptyMD;
-
-    /**
      * \brief The current register file
      **/
     LLRegisterFile* regfile;

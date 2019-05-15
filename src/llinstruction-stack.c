@@ -116,7 +116,6 @@ ll_instruction_stack(LLInstr* instr, LLState* state)
 
     // Cast back to int for register store
     LLVMValueRef newSpReg = LLVMBuildPointerCast(state->builder, newSp, pi8, "");
-    LLVMSetMetadata(newSpReg, LLVMGetMDKindIDInContext(state->context, "asm.reg.rsp", 11), state->emptyMD);
 
     ll_set_register(ll_reg(LL_RT_GP64, LL_RI_SP), FACET_PTR, newSpReg, true, state);
 }

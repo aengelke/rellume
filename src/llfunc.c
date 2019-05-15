@@ -83,7 +83,6 @@ ll_func(const char* name, LLVMTypeRef ty, LLVMModuleRef mod)
     state->context = LLVMGetModuleContext(mod);
     state->builder = LLVMCreateBuilderInContext(state->context);
 
-    state->emptyMD = LLVMMDNodeInContext(state->context, NULL, 0);
     state->cfg.globalBase = NULL;
     state->cfg.stackSize = 128; // FIXME
     state->cfg.enableOverflowIntrinsics = false;
