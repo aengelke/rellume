@@ -69,6 +69,9 @@ static const char* names_reg_gp64 =
 static const char* names_reg_vec128 =
     "xmm0\0 xmm1\0 xmm2\0 xmm3\0 xmm4\0 xmm5\0 xmm6\0 xmm7\0 "
     "xmm8\0 xmm9\0 xmm10\0xmm11\0xmm12\0xmm13\0xmm14\0xmm15\0";
+static const char* names_reg_vec256 =
+    "ymm0\0 ymm1\0 ymm2\0 ymm3\0 ymm4\0 ymm5\0 ymm6\0 ymm7\0 "
+    "ymm8\0 ymm9\0 ymm10\0ymm11\0ymm12\0ymm13\0ymm14\0ymm15\0";
 
 const char*
 ll_reg_name(LLReg reg)
@@ -84,6 +87,7 @@ ll_reg_name(LLReg reg)
     case LL_RT_GP64:    max = 16; table = names_reg_gp64; break;
     case LL_RT_IP:      max = 1;  table = "rip"; break;
     case LL_RT_XMM:     max = 16; table = names_reg_vec128; break;
+    case LL_RT_YMM:     max = 16; table = names_reg_vec256; break;
     default:            max = 1;  table = "(unk)"; break;
     }
 
