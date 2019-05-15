@@ -49,7 +49,7 @@ struct LLRegister {
 typedef struct LLRegister LLRegister;
 
 struct LLRegisterFile {
-    LLBasicBlock* bb;
+    LLVMBasicBlockRef llvm_block;
 
     /**
      * \brief The LLVM values of the architectural general purpose registers
@@ -212,10 +212,10 @@ ll_register_name_for_facet(RegisterFacet facet, LLReg reg)
 }
 
 LLRegisterFile*
-ll_regfile_new(LLBasicBlock* bb)
+ll_regfile_new(LLVMBasicBlockRef llvm_block)
 {
     LLRegisterFile* regfile = malloc(sizeof(LLRegisterFile));
-    regfile->bb = bb;
+    regfile->llvm_block = llvm_block;
     regfile->flagCache.valid = false;
 
     return regfile;
@@ -295,11 +295,11 @@ ll_regfile_get(LLRegisterFile* regfile, RegisterFacet facet, LLReg reg, LLState*
         return value;
     }
 
-    LLVMValueRef terminator = LLVMGetBasicBlockTerminator(ll_basic_block_llvm(regfile->bb));
+    LLVMValueRef terminator = LLVMGetBasicBlockTerminator(regfile->llvm_block);
     if (terminator != NULL)
         LLVMPositionBuilderBefore(state->builder, terminator);
     else
-        LLVMPositionBuilderAtEnd(state->builder, ll_basic_block_llvm(regfile->bb));
+        LLVMPositionBuilderAtEnd(state->builder, regfile->llvm_block);
 
     LLVMTypeRef i8 = LLVMInt8TypeInContext(state->context);
     LLVMTypeRef i32 = LLVMInt32TypeInContext(state->context);

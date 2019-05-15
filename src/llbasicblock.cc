@@ -124,7 +124,7 @@ ll_basic_block_new(LLVMBasicBlockRef llvmBB, LLState* state)
     bb->nextBranch = NULL;
     bb->nextFallThrough = NULL;
     bb->endType = LL_INS_None;
-    bb->regfile = ll_regfile_new(bb);
+    bb->regfile = ll_regfile_new(llvmBB);
 
     return bb;
 }

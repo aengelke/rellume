@@ -150,7 +150,7 @@ enum RegisterFacet {
 typedef enum RegisterFacet RegisterFacet;
 
 
-LLRegisterFile* ll_regfile_new(LLBasicBlock*);
+LLRegisterFile* ll_regfile_new(LLVMBasicBlockRef);
 void ll_regfile_dispose(LLRegisterFile*);
 LLVMValueRef ll_regfile_get(LLRegisterFile*, RegisterFacet, LLReg, LLState*);
 void ll_regfile_clear(LLRegisterFile*, LLReg, LLState*);
