@@ -43,6 +43,7 @@
 #include <llflags-internal.h>
 #include <llinstr-internal.h>
 #include <llinstruction-internal.h>
+#include <llregfile-internal.h>
 #include <llsupport-internal.h>
 
 /**

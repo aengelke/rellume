@@ -163,6 +163,13 @@ LLFlagCache* ll_regfile_get_flag_cache(LLRegisterFile*);
 
 LLVMTypeRef ll_register_facet_type(RegisterFacet, LLVMContextRef);
 
+#define ll_get_register(reg,facet,state) ll_regfile_get(state->regfile,facet,reg,state)
+#define ll_clear_register(reg,state) ll_regfile_clear(state->regfile,reg,state->context)
+#define ll_set_register(reg,facet,value,clear,state) ll_regfile_set(state->regfile,facet,reg,value,clear,state)
+#define ll_get_flag(reg,state) ll_regfile_get_flag(state->regfile,reg)
+#define ll_set_flag(reg,value,state) ll_regfile_set_flag(state->regfile,reg,value)
+#define ll_get_flag_cache(state) ll_regfile_get_flag_cache(state->regfile)
+
 #ifdef __cplusplus
 }
 #endif
