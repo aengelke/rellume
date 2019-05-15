@@ -22,16 +22,8 @@
  **/
 
 #include <llvm/ADT/ArrayRef.h>
-#include <llvm/ExecutionEngine/ExecutionEngine.h>
-#include <llvm/IR/DataLayout.h>
 #include <llvm/IR/Intrinsics.h>
 #include <llvm/IR/IRBuilder.h>
-#include <llvm/IR/Module.h>
-#include <llvm/IR/Operator.h>
-#include <llvm/Support/CommandLine.h>
-#include <llvm/Transforms/IPO/PassManagerBuilder.h>
-#include <llvm-c/ExecutionEngine.h>
-#include <llvm-c/Transforms/PassManagerBuilder.h>
 
 #include <llsupport-internal.h>
 
@@ -65,7 +57,6 @@ ll_support_get_intrinsic(LLVMBuilderRef builder, LLSupportIntrinsics intrinsic, 
 
     switch (intrinsic)
     {
-        case LL_INTRINSIC_DO_NOTHING: intrinsicId = llvm::Intrinsic::donothing; break;
         case LL_INTRINSIC_CTPOP: intrinsicId = llvm::Intrinsic::ctpop; break;
         case LL_INTRINSIC_SADD_WITH_OVERFLOW: intrinsicId = llvm::Intrinsic::sadd_with_overflow; break;
         case LL_INTRINSIC_SSUB_WITH_OVERFLOW: intrinsicId = llvm::Intrinsic::ssub_with_overflow; break;
@@ -74,35 +65,6 @@ ll_support_get_intrinsic(LLVMBuilderRef builder, LLSupportIntrinsics intrinsic, 
     }
 
     return llvm::wrap(llvm::Intrinsic::getDeclaration(module, intrinsicId, Tys));
-}
-
-extern "C"
-LLVMAttributeRef
-ll_support_get_enum_attr(LLVMContextRef context, const char* name)
-{
-    unsigned len = strlen(name);
-    unsigned id = LLVMGetEnumAttributeKindForName(name, len);
-    assert(id != 0);
-    return LLVMCreateEnumAttribute(context, id, 0);
-}
-
-/**
- * Enable vectorization on a pass manager builder.
- *
- * \private
- *
- * \author Alexis Engelke
- *
- * \param PMB The pass manager builder
- * \param value Whether to enable vectorization
- **/
-extern "C"
-void
-ll_support_pass_manager_builder_set_enable_vectorize(LLVMPassManagerBuilderRef PMB, LLVMBool value)
-{
-    llvm::PassManagerBuilder* Builder = reinterpret_cast<llvm::PassManagerBuilder*>(PMB);
-    Builder->SLPVectorize = value;
-    Builder->LoopVectorize = value;
 }
 
 /**
@@ -123,23 +85,6 @@ ll_support_enable_fast_math(LLVMValueRef value)
 #else
     llvm::unwrap<llvm::Instruction>(value)->setHasUnsafeAlgebra(true);
 #endif
-}
-
-/**
- * Whether a value is a constant integer
- *
- * \private
- *
- * \author Alexis Engelke
- *
- * \param value The value to check
- * \returns Whether the value is a constant integer
- **/
-extern "C"
-LLVMBool
-ll_support_is_constant_int(LLVMValueRef value)
-{
-    return llvm::isa<llvm::ConstantInt>(llvm::unwrap(value));
 }
 
 extern "C"

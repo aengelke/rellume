@@ -35,7 +35,6 @@ extern "C" {
  * \ingroup LLSupport
  **/
 enum LLSupportIntrinsics {
-    LL_INTRINSIC_DO_NOTHING,
     LL_INTRINSIC_CTPOP,
     LL_INTRINSIC_SADD_WITH_OVERFLOW,
     LL_INTRINSIC_SSUB_WITH_OVERFLOW,
@@ -45,9 +44,7 @@ enum LLSupportIntrinsics {
 typedef enum LLSupportIntrinsics LLSupportIntrinsics;
 
 LLVMValueRef ll_support_get_intrinsic(LLVMBuilderRef, LLSupportIntrinsics, LLVMTypeRef*, unsigned);
-LLVMAttributeRef ll_support_get_enum_attr(LLVMContextRef, const char*);
 void ll_support_enable_fast_math(LLVMValueRef);
-LLVMBool ll_support_is_constant_int(LLVMValueRef);
 LLVMTypeRef ll_support_builder_return_type(LLVMBuilderRef builder);
 
 #ifdef __cplusplus
