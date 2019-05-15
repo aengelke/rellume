@@ -152,7 +152,7 @@ typedef enum RegisterFacet RegisterFacet;
 
 LLRegisterFile* ll_regfile_new(LLVMBasicBlockRef);
 void ll_regfile_dispose(LLRegisterFile*);
-LLVMValueRef ll_regfile_get(LLRegisterFile*, RegisterFacet, LLReg, LLState*);
+LLVMValueRef ll_regfile_get(LLRegisterFile*, RegisterFacet, LLReg, LLVMBuilderRef);
 void ll_regfile_clear(LLRegisterFile*, LLReg, LLVMContextRef);
 void ll_regfile_zero(LLRegisterFile*, LLReg, LLVMContextRef);
 void ll_regfile_rename(LLRegisterFile*, LLReg, LLReg);
@@ -163,7 +163,7 @@ LLFlagCache* ll_regfile_get_flag_cache(LLRegisterFile*);
 
 LLVMTypeRef ll_register_facet_type(RegisterFacet, LLVMContextRef);
 
-#define ll_get_register(reg,facet,state) ll_regfile_get(state->regfile,facet,reg,state)
+#define ll_get_register(reg,facet,state) ll_regfile_get(state->regfile,facet,reg,state->builder)
 #define ll_clear_register(reg,state) ll_regfile_clear(state->regfile,reg,state->context)
 #define ll_set_register(reg,facet,value,clear,state) ll_regfile_set(state->regfile,facet,reg,value,clear,state)
 #define ll_get_flag(reg,state) ll_regfile_get_flag(state->regfile,reg)

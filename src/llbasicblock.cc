@@ -406,7 +406,7 @@ ll_basic_block_fill_phis(LLBasicBlock* bb)
         {
             for (size_t k = 0; k < FACET_COUNT; k++)
             {
-                llvm::Value* value = llvm::unwrap(ll_regfile_get(pred->regfile, (RegisterFacet)k, ll_reg(LL_RT_GP64, j), state));
+                llvm::Value* value = llvm::unwrap(ll_regfile_get(pred->regfile, (RegisterFacet)k, ll_reg(LL_RT_GP64, j), state->builder));
                 bb->phiGpRegs[j].facets[k]->addIncoming(value, pred->llvmBB);
             }
         }
@@ -415,7 +415,7 @@ ll_basic_block_fill_phis(LLBasicBlock* bb)
         {
             for (size_t k = 0; k < FACET_COUNT; k++)
             {
-                llvm::Value* value = llvm::unwrap(ll_regfile_get(pred->regfile, (RegisterFacet)k, ll_reg(LL_RT_XMM, j), state));
+                llvm::Value* value = llvm::unwrap(ll_regfile_get(pred->regfile, (RegisterFacet)k, ll_reg(LL_RT_XMM, j), state->builder));
                 bb->phiVRegs[j].facets[k]->addIncoming(value, pred->llvmBB);
             }
         }
