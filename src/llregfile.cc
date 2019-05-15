@@ -214,7 +214,7 @@ ll_register_name_for_facet(RegisterFacet facet, LLReg reg)
 LLRegisterFile*
 ll_regfile_new(LLVMBasicBlockRef llvm_block)
 {
-    LLRegisterFile* regfile = malloc(sizeof(LLRegisterFile));
+    LLRegisterFile* regfile = (LLRegisterFile*) malloc(sizeof(LLRegisterFile));
     regfile->llvm_block = llvm_block;
     regfile->flagCache.valid = false;
 
@@ -469,7 +469,7 @@ ll_regfile_clear(LLRegisterFile* regfile, LLReg reg, LLVMContextRef ctx)
     LLRegister* regFileEntry = ll_regfile_get_ptr(regfile, reg);
 
     for (size_t i = 0; i < FACET_COUNT; i++)
-        regFileEntry->facets[i] = LLVMGetUndef(ll_register_facet_type(i, ctx));
+        regFileEntry->facets[i] = LLVMGetUndef(ll_register_facet_type((RegisterFacet) i, ctx));
 }
 
 /**
@@ -489,7 +489,7 @@ ll_regfile_zero(LLRegisterFile* regfile, LLReg reg, LLVMContextRef ctx)
     LLRegister* regFileEntry = ll_regfile_get_ptr(regfile, reg);
 
     for (size_t i = 0; i < FACET_COUNT; i++)
-        regFileEntry->facets[i] = LLVMConstNull(ll_register_facet_type(i, ctx));
+        regFileEntry->facets[i] = LLVMConstNull(ll_register_facet_type((RegisterFacet) i, ctx));
 }
 
 /**

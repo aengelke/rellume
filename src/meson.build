@@ -10,7 +10,7 @@ sources = [
   'llinstruction-sse.c',
   'llinstruction-stack.c',
   'lloperand.c',
-  'llregfile.c',
+  'llregfile.cc',
   'llsupport.cc',
 ]
 
