@@ -596,9 +596,21 @@ ll_regfile_get_flag(LLRegisterFile* regfile, int flag)
  * \param value The new value
  **/
 void
-ll_regfile_set_flag(LLRegisterFile* regfile, int flag, LLVMValueRef value)
+ll_regfile_set_flag(LLRegisterFile* regfile, int flag, LLVMValueRef value_w, LLVMContextRef context)
 {
-    regfile->flags[flag] = llvm::unwrap(value);
+    llvm::Value* value = llvm::unwrap(value_w);
+
+    if (llvm::isa<llvm::Instruction>(value))
+    {
+        char buffer[20];
+        snprintf(buffer, sizeof(buffer), "asm.reg.%cf", "zspcoa"[flag]);
+        llvm::LLVMContext& ctx = *llvm::unwrap(context);
+        unsigned md_id = ctx.getMDKindID(buffer);
+        llvm::MDNode* md = llvm::MDNode::get(ctx, llvm::ArrayRef<llvm::Metadata*>());
+        llvm::cast<llvm::Instruction>(value)->setMetadata(md_id, md);
+    }
+
+    regfile->flags[flag] = value;
 }
 
 /**

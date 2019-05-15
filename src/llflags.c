@@ -151,8 +151,6 @@ ll_flags_set_af(LLVMValueRef result, LLVMValueRef lhs, LLVMValueRef rhs, LLState
     LLVMValueRef xor2 = LLVMBuildXor(state->builder, xor1, rhs, "");
     LLVMValueRef and1 = LLVMBuildAnd(state->builder, xor2, LLVMConstInt(LLVMTypeOf(result), 16, false), "");
     ll_set_flag(RFLAG_AF, LLVMBuildICmp(state->builder, LLVMIntNE, and1, LLVMConstInt(LLVMTypeOf(result), 0, false), ""), state);
-
-    LLVMSetMetadata(ll_get_flag(RFLAG_AF, state), LLVMGetMDKindIDInContext(state->context, "asm.flag.af", 11), state->emptyMD);
 }
 
 /**
@@ -169,8 +167,6 @@ void
 ll_flags_set_zf(LLVMValueRef result, LLState* state)
 {
     ll_set_flag(RFLAG_ZF, LLVMBuildICmp(state->builder, LLVMIntEQ, result, LLVMConstInt(LLVMTypeOf(result), 0, false), ""), state);
-
-    LLVMSetMetadata(ll_get_flag(RFLAG_ZF, state), LLVMGetMDKindIDInContext(state->context, "asm.flag.zf", 11), state->emptyMD);
 }
 
 /**
@@ -187,8 +183,6 @@ void
 ll_flags_set_sf(LLVMValueRef result, LLState* state)
 {
     ll_set_flag(RFLAG_SF, LLVMBuildICmp(state->builder, LLVMIntSLT, result, LLVMConstInt(LLVMTypeOf(result), 0, false), ""), state);
-
-    LLVMSetMetadata(ll_get_flag(RFLAG_SF, state), LLVMGetMDKindIDInContext(state->context, "asm.flag.sf", 11), state->emptyMD);
 }
 
 /**
@@ -229,8 +223,6 @@ ll_flags_set_of_sub(LLVMValueRef result, LLVMValueRef lhs, LLVMValueRef rhs, LLS
     }
 
     ll_set_flag(RFLAG_OF, overflowFlag, state);
-
-    LLVMSetMetadata(ll_get_flag(RFLAG_OF, state), LLVMGetMDKindIDInContext(state->context, "asm.flag.of", 11), state->emptyMD);
 }
 
 /**
@@ -248,8 +240,6 @@ static void
 ll_flags_set_cf_sub(LLVMValueRef lhs, LLVMValueRef rhs, LLState* state)
 {
     ll_set_flag(RFLAG_CF, LLVMBuildICmp(state->builder, LLVMIntULT, lhs, rhs, ""), state);
-
-    LLVMSetMetadata(ll_get_flag(RFLAG_CF, state), LLVMGetMDKindIDInContext(state->context, "asm.flag.cf", 11), state->emptyMD);
 }
 
 /**
@@ -291,7 +281,6 @@ ll_flags_set_of_add(LLVMValueRef result, LLVMValueRef lhs, LLVMValueRef rhs, LLS
     }
 
     ll_set_flag(RFLAG_OF, overflowFlag, state);
-    LLVMSetMetadata(ll_get_flag(RFLAG_OF, state), LLVMGetMDKindIDInContext(state->context, "asm.flag.of", 11), state->emptyMD);
 }
 
 /**
@@ -309,8 +298,6 @@ static void
 ll_flags_set_cf_add(LLVMValueRef result, LLVMValueRef lhs, LLState* state)
 {
     ll_set_flag(RFLAG_CF, LLVMBuildICmp(state->builder, LLVMIntULT, result, lhs, ""), state);
-
-    LLVMSetMetadata(ll_get_flag(RFLAG_CF, state), LLVMGetMDKindIDInContext(state->context, "asm.flag.cf", 11), state->emptyMD);
 }
 
 void
@@ -351,7 +338,6 @@ ll_flags_set_of_imul(LLVMValueRef result, LLVMValueRef lhs, LLVMValueRef rhs, LL
 
     ll_set_flag(RFLAG_OF, overflowFlag, state);
     ll_set_flag(RFLAG_CF, overflowFlag, state);
-    LLVMSetMetadata(overflowFlag, LLVMGetMDKindIDInContext(state->context, "asm.flag.of", 11), state->emptyMD);
 }
 
 /**
@@ -377,8 +363,6 @@ ll_flags_set_pf(LLVMValueRef result, LLState* state)
     LLVMValueRef count = LLVMBuildCall(state->builder, intrinsicCtpop8, &arg, 1, "");
     LLVMValueRef bit = LLVMBuildTruncOrBitCast(state->builder, count, i1, "");
     ll_set_flag(RFLAG_PF, LLVMBuildNot(state->builder, bit, ""), state);
-
-    LLVMSetMetadata(ll_get_flag(RFLAG_PF, state), LLVMGetMDKindIDInContext(state->context, "asm.flag.pf", 11), state->emptyMD);
 }
 
 /**

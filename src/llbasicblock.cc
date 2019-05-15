@@ -177,7 +177,7 @@ ll_basic_block_add_phis(LLBasicBlock* bb)
     {
         llvm::PHINode* phiNode = builder->CreatePHI(builder->getInt1Ty(), 0);
 
-        ll_regfile_set_flag(bb->regfile, i, llvm::wrap(phiNode));
+        ll_regfile_set_flag(bb->regfile, i, llvm::wrap(phiNode), state->context);
         bb->phiFlags[i] = phiNode;
     }
 }

@@ -162,7 +162,7 @@ void ll_regfile_zero(LLRegisterFile*, LLReg, LLVMContextRef);
 void ll_regfile_rename(LLRegisterFile*, LLReg, LLReg);
 void ll_regfile_set(LLRegisterFile*, RegisterFacet, LLReg, LLVMValueRef, bool, LLVMBuilderRef);
 LLVMValueRef ll_regfile_get_flag(LLRegisterFile*, int);
-void ll_regfile_set_flag(LLRegisterFile*, int, LLVMValueRef);
+void ll_regfile_set_flag(LLRegisterFile*, int, LLVMValueRef, LLVMContextRef);
 LLFlagCache* ll_regfile_get_flag_cache(LLRegisterFile*);
 
 LLVMTypeRef ll_register_facet_type(RegisterFacet, LLVMContextRef);
