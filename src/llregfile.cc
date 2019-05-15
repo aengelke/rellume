@@ -527,10 +527,10 @@ ll_regfile_rename(LLRegisterFile* regfile, LLReg reg, LLReg current)
  * \param value The new value
  **/
 void
-ll_regfile_set(LLRegisterFile* regfile, RegisterFacet facet, LLReg reg, LLVMValueRef value_w, bool clearOthers, LLState* state)
+ll_regfile_set(LLRegisterFile* regfile, RegisterFacet facet, LLReg reg, LLVMValueRef value_w, bool clearOthers, LLVMBuilderRef builder_w)
 {
     llvm::Value* value = llvm::unwrap(value_w);
-    llvm::IRBuilder<>* builder = llvm::unwrap(state->builder);
+    llvm::IRBuilder<>* builder = llvm::unwrap(builder_w);
     llvm::LLVMContext& ctx = builder->getContext();
 
     if (llvm::isa<llvm::Instruction>(value))

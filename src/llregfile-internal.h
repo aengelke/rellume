@@ -156,7 +156,7 @@ LLVMValueRef ll_regfile_get(LLRegisterFile*, RegisterFacet, LLReg, LLVMBuilderRe
 void ll_regfile_clear(LLRegisterFile*, LLReg, LLVMContextRef);
 void ll_regfile_zero(LLRegisterFile*, LLReg, LLVMContextRef);
 void ll_regfile_rename(LLRegisterFile*, LLReg, LLReg);
-void ll_regfile_set(LLRegisterFile*, RegisterFacet, LLReg, LLVMValueRef, bool, LLState*);
+void ll_regfile_set(LLRegisterFile*, RegisterFacet, LLReg, LLVMValueRef, bool, LLVMBuilderRef);
 LLVMValueRef ll_regfile_get_flag(LLRegisterFile*, int);
 void ll_regfile_set_flag(LLRegisterFile*, int, LLVMValueRef);
 LLFlagCache* ll_regfile_get_flag_cache(LLRegisterFile*);
@@ -165,7 +165,7 @@ LLVMTypeRef ll_register_facet_type(RegisterFacet, LLVMContextRef);
 
 #define ll_get_register(reg,facet,state) ll_regfile_get(state->regfile,facet,reg,state->builder)
 #define ll_clear_register(reg,state) ll_regfile_clear(state->regfile,reg,state->context)
-#define ll_set_register(reg,facet,value,clear,state) ll_regfile_set(state->regfile,facet,reg,value,clear,state)
+#define ll_set_register(reg,facet,value,clear,state) ll_regfile_set(state->regfile,facet,reg,value,clear,state->builder)
 #define ll_get_flag(reg,state) ll_regfile_get_flag(state->regfile,reg)
 #define ll_set_flag(reg,value,state) ll_regfile_set_flag(state->regfile,reg,value)
 #define ll_get_flag_cache(state) ll_regfile_get_flag_cache(state->regfile)

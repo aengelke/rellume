@@ -156,7 +156,7 @@ ll_basic_block_add_phis(LLBasicBlock* bb)
             LLVMTypeRef ty = ll_register_facet_type((RegisterFacet) k, state->context);
             llvm::PHINode* phiNode = builder->CreatePHI(llvm::unwrap(ty), 0);
 
-            ll_regfile_set(bb->regfile, (RegisterFacet) k, ll_reg(LL_RT_GP64, i), llvm::wrap(phiNode), false, state);
+            ll_regfile_set(bb->regfile, (RegisterFacet) k, ll_reg(LL_RT_GP64, i), llvm::wrap(phiNode), false, state->builder);
             bb->phiGpRegs[i].facets[k] = phiNode;
         }
     }
@@ -168,7 +168,7 @@ ll_basic_block_add_phis(LLBasicBlock* bb)
             LLVMTypeRef ty = ll_register_facet_type((RegisterFacet) k, state->context);
             llvm::PHINode* phiNode = builder->CreatePHI(llvm::unwrap(ty), 0);
 
-            ll_regfile_set(bb->regfile, (RegisterFacet) k, ll_reg(LL_RT_XMM, i), llvm::wrap(phiNode), false, state);
+            ll_regfile_set(bb->regfile, (RegisterFacet) k, ll_reg(LL_RT_XMM, i), llvm::wrap(phiNode), false, state->builder);
             bb->phiVRegs[i].facets[k] = phiNode;
         }
     }
