@@ -3,7 +3,7 @@ sources = [
   'llbasicblock.cc',
   'lldecoder.cc',
   'llflags.c',
-  'llfunc.c',
+  'llfunc.cc',
   'llinstr.c',
   'llinstruction-callret.c',
   'llinstruction-gp.c',

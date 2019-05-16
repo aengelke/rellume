@@ -45,7 +45,11 @@ size_t ll_reg_size(LLReg reg);
 #define regIsGP(r) ((r).rt == LL_RT_GP8Leg || (r).rt == LL_RT_GP8 || (r).rt == LL_RT_GP16 || (r).rt == LL_RT_GP32 || (r).rt == LL_RT_GP64)
 #define regIsV(r) ((r).rt == LL_RT_XMM || (r).rt == LL_RT_YMM)
 
-#define getRegOp(r) &((LLInstrOp) { .type = 1, .reg = (r), .val = 0, .ireg = ll_reg(LL_RT_None, LL_RI_None), .scale = 0, .seg = LL_RI_None, .size = ll_reg_size(r) })
+#ifdef __cplusplus
+#define getRegOp(r) LLInstrOp{0, LL_OP_REG, (r), ll_reg(LL_RT_None, LL_RI_None), 0, LL_RI_None, (int) ll_reg_size(r)}
+#else
+#define getRegOp(r) ((LLInstrOp) { .type = 1, .reg = (r), .val = 0, .ireg = ll_reg(LL_RT_None, LL_RI_None), .scale = 0, .seg = LL_RI_None, .size = ll_reg_size(r) })
+#endif
 
 #define instr2string(instr, ...) "<llinstr>"
 

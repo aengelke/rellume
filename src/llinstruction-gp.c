@@ -267,10 +267,10 @@ ll_instruction_mul(LLInstr* instr, LLState* state)
         LLVMOpcode shift = instr->type == LL_INS_IMUL ? LLVMAShr : LLVMLShr;
         LLVMTypeRef targetHalfType = LLVMIntTypeInContext(state->context, instr->dst.size * 8);
         LLVMTypeRef targetType = LLVMIntTypeInContext(state->context, instr->dst.size * 16);
-        LLInstrOp* regOp = getRegOp(ll_reg_gp(instr->dst.size, false, LL_RI_A));
+        LLInstrOp regOp = getRegOp(ll_reg_gp(instr->dst.size, false, LL_RI_A));
 
         operand1 = ll_operand_load(OP_SI, ALIGN_MAXIMUM, &instr->dst, state);
-        operand2 = ll_operand_load(OP_SI, ALIGN_MAXIMUM, regOp, state);
+        operand2 = ll_operand_load(OP_SI, ALIGN_MAXIMUM, &regOp, state);
 
         LLVMValueRef largeOperand1 = LLVMBuildCast(state->builder, ext, operand1, targetType, "");
         LLVMValueRef largeOperand2 = LLVMBuildCast(state->builder, ext, operand2, targetType, "");
@@ -283,15 +283,16 @@ ll_instruction_mul(LLInstr* instr, LLState* state)
 
         if (instr->dst.size == 1)
         {
-            ll_operand_store(OP_SI, ALIGN_MAXIMUM, getRegOp(ll_reg(LL_RT_GP16, LL_RI_A)), REG_DEFAULT, result, state);
+            regOp = getRegOp(ll_reg(LL_RT_GP16, LL_RI_A));
+            ll_operand_store(OP_SI, ALIGN_MAXIMUM, &regOp, REG_DEFAULT, result, state);
         }
         else
         {
             regOp = getRegOp(ll_reg_gp(instr->dst.size, false, LL_RI_A));
-            ll_operand_store(OP_SI, ALIGN_MAXIMUM, regOp, REG_DEFAULT, resultA, state);
+            ll_operand_store(OP_SI, ALIGN_MAXIMUM, &regOp, REG_DEFAULT, resultA, state);
 
             regOp = getRegOp(ll_reg_gp(instr->dst.size, false, LL_RI_D));
-            ll_operand_store(OP_SI, ALIGN_MAXIMUM, regOp, REG_DEFAULT, resultD, state);
+            ll_operand_store(OP_SI, ALIGN_MAXIMUM, &regOp, REG_DEFAULT, resultD, state);
         }
 
         if (instr->type == LL_INS_MUL)
@@ -389,8 +390,8 @@ ll_instruction_setcc(LLInstr* instr, LLState* state)
 void
 ll_instruction_cdqe(LLInstr* instr, LLState* state)
 {
-    LLVMValueRef operand1 = ll_operand_load(OP_SI, ALIGN_MAXIMUM, getRegOp(ll_reg(LL_RT_GP32, LL_RI_A)), state);
-    ll_operand_store(OP_SI, ALIGN_MAXIMUM, getRegOp(ll_reg(LL_RT_GP64, LL_RI_A)), REG_DEFAULT, operand1, state);
+    LLVMValueRef operand1 = ll_operand_load(OP_SI, ALIGN_MAXIMUM, &getRegOp(ll_reg(LL_RT_GP32, LL_RI_A)), state);
+    ll_operand_store(OP_SI, ALIGN_MAXIMUM, &getRegOp(ll_reg(LL_RT_GP64, LL_RI_A)), REG_DEFAULT, operand1, state);
 
     (void) instr;
 }

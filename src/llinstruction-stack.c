@@ -101,7 +101,7 @@ ll_instruction_stack(LLInstr* instr, LLState* state)
     else if (instr->type == LL_INS_POP || instr->type == LL_INS_LEAVE)
     {
         LLInstrOp* operand = instr->type == LL_INS_LEAVE
-            ? getRegOp(ll_reg(LL_RT_GP64, LL_RI_BP))
+            ? &getRegOp(ll_reg(LL_RT_GP64, LL_RI_BP))
             : &instr->dst;
 
         value = LLVMBuildLoad(state->builder, sp, "");

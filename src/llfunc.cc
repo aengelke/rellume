@@ -73,7 +73,7 @@ struct LLFunc {
 LLFunc*
 ll_func(const char* name, LLVMTypeRef ty, LLVMModuleRef mod)
 {
-    LLFunc* fn = malloc(sizeof(LLFunc));
+    LLFunc* fn = new LLFunc();
     fn->llvm = LLVMAddFunction(mod, name, ty);
     fn->bbCount = 0;
     fn->bbs = NULL;
@@ -127,26 +127,31 @@ ll_func(const char* name, LLVMTypeRef ty, LLVMModuleRef mod)
     for (size_t i = 0; i < paramCount; i++)
     {
         LLVMTypeKind paramTypeKind = LLVMGetTypeKind(LLVMTypeOf(params));
+        LLInstrOp operand;
 
         if (paramTypeKind == LLVMPointerTypeKind)
         {
             LLVMValueRef intValue = LLVMBuildPtrToInt(state->builder, params, i64, "");
-            ll_operand_store(OP_SI, ALIGN_MAXIMUM, getRegOp(gpRegs[gpRegOffset]), REG_DEFAULT, intValue, state);
+            operand = getRegOp(gpRegs[gpRegOffset]);
+            ll_operand_store(OP_SI, ALIGN_MAXIMUM, &operand, REG_DEFAULT, intValue, state);
             gpRegOffset++;
         }
         else if (paramTypeKind == LLVMIntegerTypeKind)
         {
-            ll_operand_store(OP_SI, ALIGN_MAXIMUM, getRegOp(gpRegs[gpRegOffset]), REG_DEFAULT, params, state);
+            operand = getRegOp(gpRegs[gpRegOffset]);
+            ll_operand_store(OP_SI, ALIGN_MAXIMUM, &operand, REG_DEFAULT, params, state);
             gpRegOffset++;
         }
         else if (paramTypeKind == LLVMFloatTypeKind)
         {
-            ll_operand_store(OP_SF32, ALIGN_MAXIMUM, getRegOp(ll_reg(LL_RT_XMM, fpRegOffset)), REG_ZERO_UPPER_SSE, params, state);
+            operand = getRegOp(ll_reg(LL_RT_XMM, fpRegOffset));
+            ll_operand_store(OP_SF32, ALIGN_MAXIMUM, &operand, REG_ZERO_UPPER_SSE, params, state);
             fpRegOffset++;
         }
         else if (paramTypeKind == LLVMDoubleTypeKind)
         {
-            ll_operand_store(OP_SF64, ALIGN_MAXIMUM, getRegOp(ll_reg(LL_RT_XMM, fpRegOffset)), REG_ZERO_UPPER_SSE, params, state);
+            operand = getRegOp(ll_reg(LL_RT_XMM, fpRegOffset));
+            ll_operand_store(OP_SF64, ALIGN_MAXIMUM, &operand, REG_ZERO_UPPER_SSE, params, state);
             fpRegOffset++;
         }
         else
@@ -267,7 +272,7 @@ ll_func_add_basic_block(LLFunc* function, LLBasicBlock* bb)
 {
     if (function->bbsAllocated == 0)
     {
-        function->bbs = malloc(sizeof(LLBasicBlock*) * 10);
+        function->bbs = (LLBasicBlock**) malloc(sizeof(LLBasicBlock*) * 10);
         function->bbsAllocated = 10;
 
         if (function->bbs == NULL)
@@ -275,7 +280,7 @@ ll_func_add_basic_block(LLFunc* function, LLBasicBlock* bb)
     }
     else if (function->bbsAllocated == function->bbCount)
     {
-        function->bbs = realloc(function->bbs, sizeof(LLBasicBlock*) * function->bbsAllocated * 2);
+        function->bbs = (LLBasicBlock**) realloc(function->bbs, sizeof(LLBasicBlock*) * function->bbsAllocated * 2);
         function->bbsAllocated *= 2;
 
         if (function->bbs == NULL)
