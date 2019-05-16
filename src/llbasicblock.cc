@@ -202,38 +202,6 @@ ll_basic_block_dispose(LLBasicBlock* bb)
 }
 
 /**
- * Add a predecessor.
- *
- * \private
- *
- * \author Alexis Engelke
- *
- * \param bb The basic block
- * \param pred The preceding basic block
- **/
-void
-ll_basic_block_add_predecessor(LLBasicBlock* bb, LLBasicBlock* pred)
-{
-    bb->preds.push_back(pred);
-}
-
-/**
- * Get the LLVM value of the basic block.
- *
- * \private
- *
- * \author Alexis Engelke
- *
- * \param bb The basic block
- * \returns The LLVM basic block
- **/
-LLVMBasicBlockRef
-ll_basic_block_llvm(LLBasicBlock* bb)
-{
-    return llvm::wrap(bb->llvmBB);
-}
-
-/**
  * Add branches to the basic block. This also registers them as predecessors.
  *
  * \private
@@ -249,13 +217,13 @@ ll_basic_block_add_branches(LLBasicBlock* bb, LLBasicBlock* branch, LLBasicBlock
 {
     if (branch != NULL)
     {
-        ll_basic_block_add_predecessor(branch, bb);
+        branch->preds.push_back(bb);
         bb->nextBranch = branch;
     }
 
     if (fallThrough != NULL)
     {
-        ll_basic_block_add_predecessor(fallThrough, bb);
+        fallThrough->preds.push_back(bb);
         bb->nextFallThrough = fallThrough;
     }
 }

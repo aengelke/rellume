@@ -42,12 +42,9 @@ extern "C" {
 LLBasicBlock* ll_basic_block_new(LLVMBasicBlockRef, LLState* state);
 void ll_basic_block_dispose(LLBasicBlock*);
 void ll_basic_block_set_current(LLBasicBlock* bb);
-void ll_basic_block_add_predecessor(LLBasicBlock*, LLBasicBlock*);
 void ll_basic_block_add_phis(LLBasicBlock*);
 void ll_basic_block_terminate(LLBasicBlock*);
 void ll_basic_block_fill_phis(LLBasicBlock*);
-
-LLVMBasicBlockRef ll_basic_block_llvm(LLBasicBlock*);
 
 #ifdef __cplusplus
 }

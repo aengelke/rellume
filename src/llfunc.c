@@ -100,9 +100,6 @@ ll_func(const char* name, LLVMTypeRef ty, LLVMModuleRef mod)
     LLBasicBlock* initialBB = ll_basic_block_new(llvmBB, &fn->state);
     ll_basic_block_set_current(initialBB);
 
-    // Position IR builder at a new basic block in the function
-    LLVMPositionBuilderAtEnd(state->builder, ll_basic_block_llvm(initialBB));
-
     // Iterate over the parameters to initialize the registers.
     LLVMValueRef params = LLVMGetFirstParam(fn->llvm);
 
@@ -275,8 +272,6 @@ ll_func_add_basic_block(LLFunc* function, LLBasicBlock* bb)
 
         if (function->bbs == NULL)
             warn_if_reached();
-
-        ll_basic_block_add_predecessor(bb, function->initialBB);
     }
     else if (function->bbsAllocated == function->bbCount)
     {
@@ -306,8 +301,12 @@ ll_func_lift(LLFunc* fn)
 {
     size_t bbCount = fn->bbCount;
 
-    LLVMPositionBuilderAtEnd(fn->state.builder, ll_basic_block_llvm(fn->initialBB));
-    LLVMBuildBr(fn->state.builder, ll_basic_block_llvm(fn->bbs[0]));
+    if (fn->bbCount == 0)
+        return NULL;
+
+    // The initial basic block falls through to the first lifted block.
+    ll_basic_block_add_branches(fn->initialBB, NULL, fn->bbs[0]);
+    ll_basic_block_terminate(fn->initialBB);
 
     for (size_t i = 0; i < bbCount; i++)
     {
