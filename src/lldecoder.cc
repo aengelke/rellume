@@ -144,6 +144,7 @@ end_ops:
     case FDI_XOR: llinst.type = LL_INS_XOR; break;
     case FDI_XOR_IMM: llinst.type = LL_INS_XOR; break;
     case FDI_TEST: llinst.type = LL_INS_TEST; break;
+    case FDI_TEST_IMM: llinst.type = LL_INS_TEST; break;
     case FDI_IMUL: llinst.type = LL_INS_IMUL; break;
     case FDI_IMUL2: llinst.type = LL_INS_IMUL; break;
     case FDI_IMUL3: llinst.type = LL_INS_IMUL; break;
