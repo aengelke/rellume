@@ -205,6 +205,7 @@ end_ops:
     case FDI_SSE_MOVHPD: llinst.type = LL_INS_MOVHPD; break;
     case FDI_SSE_UNPACKLPS: llinst.type = LL_INS_UNPCKLPS; break;
     case FDI_SSE_UNPACKLPD: llinst.type = LL_INS_UNPCKLPD; break;
+    case FDI_SSE_SHUFPS: llinst.type = LL_INS_SHUFPS; break;
     case FDI_SSE_ADDSS: llinst.type = LL_INS_ADDSS; break;
     case FDI_SSE_ADDSD: llinst.type = LL_INS_ADDSD; break;
     case FDI_SSE_ADDPS: llinst.type = LL_INS_ADDPS; break;

@@ -66,6 +66,7 @@ void ll_instruction_movdq(LLInstr* instr, LLState* state);
 void ll_instruction_movlp(LLInstr* instr, LLState* state);
 void ll_instruction_movhps(LLInstr* instr, LLState* state);
 void ll_instruction_movhpd(LLInstr* instr, LLState* state);
+void ll_instruction_shufps(LLInstr* instr, LLState* state);
 void ll_instruction_sse_binary(LLInstr*, LLState*, LLVMOpcode, bool,
                                OperandDataType);
 void ll_instruction_unpckl(LLInstr* instr, LLState* state);

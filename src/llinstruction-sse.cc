@@ -26,6 +26,9 @@
 #include <stdint.h>
 #include <llvm-c/Core.h>
 
+#include <llvm/IR/Instructions.h>
+#include <llvm/IR/IRBuilder.h>
+
 #include <llinstruction-internal.h>
 
 #include <llbasicblock-internal.h>
@@ -226,6 +229,20 @@ ll_instruction_unpckl(LLInstr* instr, LLState* state)
     LLVMValueRef operand2 = ll_operand_load(type, ALIGN_MAXIMUM, &instr->src, state);
     LLVMValueRef result = LLVMBuildShuffleVector(state->builder, operand1, operand2, mask, "");
     ll_operand_store(type, ALIGN_MAXIMUM, &instr->dst, REG_KEEP_UPPER, result, state);
+}
+
+void
+ll_instruction_shufps(LLInstr* instr, LLState* state)
+{
+    llvm::IRBuilder<>* builder = llvm::unwrap(state->builder);
+    uint32_t mask[4];
+    for (int i = 0; i < 4; i++)
+        mask[i] = (i < 2 ? 0 : 4) + ((instr->src2.val >> 2*i) & 3);
+
+    LLVMValueRef operand1 = ll_operand_load(OP_VF32, ALIGN_MAXIMUM, &instr->dst, state);
+    LLVMValueRef operand2 = ll_operand_load(OP_VF32, ALIGN_MAXIMUM, &instr->src, state);
+    llvm::Value* result = builder->CreateShuffleVector(llvm::unwrap(operand1), llvm::unwrap(operand2), mask);
+    ll_operand_store(OP_VF32, ALIGN_MAXIMUM, &instr->dst, REG_KEEP_UPPER, llvm::wrap(result), state);
 }
 
 /**
