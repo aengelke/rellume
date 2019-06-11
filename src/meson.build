@@ -7,7 +7,7 @@ sources = [
   'llinstr.c',
   'llinstruction-callret.c',
   'llinstruction-gp.c',
-  'llinstruction-sse.c',
+  'llinstruction-sse.cc',
   'llinstruction-stack.c',
   'lloperand.c',
   'llregfile.cc',
