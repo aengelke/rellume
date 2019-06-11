@@ -181,8 +181,6 @@ ll_func(const char* name, LLVMTypeRef ty, LLVMModuleRef mod)
     state->cfg.enableFastMath = false;
     state->cfg.enableFullLoopUnroll = false;
 
-    ll_func_create_entry(fn);
-
     return fn;
 }
 
@@ -321,6 +319,8 @@ ll_func_lift(LLFunc* fn)
 
     if (fn->bbCount == 0)
         return NULL;
+
+    ll_func_create_entry(fn);
 
     // The initial basic block falls through to the first lifted block.
     ll_basic_block_add_branches(fn->initialBB, NULL, fn->bbs[0]);
