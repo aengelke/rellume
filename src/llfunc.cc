@@ -234,6 +234,12 @@ ll_func_enable_full_loop_unroll(LLFunc* fn, bool enable)
 }
 
 void
+ll_func_set_stack_size(LLFunc* fn, size_t size)
+{
+    fn->state.cfg.stackSize = size;
+}
+
+void
 ll_func_set_global_base(LLFunc* fn, uintptr_t base, LLVMValueRef value)
 {
     fn->state.cfg.globalOffsetBase = base;
