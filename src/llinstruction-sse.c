@@ -125,7 +125,9 @@ ll_instruction_movhps(LLInstr* instr, LLState* state)
         LLVMValueRef mask = LLVMConstVector(maskElements, 4);
 
         LLVMValueRef operand1 = ll_operand_load(OP_VF32, ALIGN_MAXIMUM, &instr->dst, state);
-        LLVMValueRef operand2 = ll_operand_load(OP_VF32, ALIGN_MAXIMUM, &instr->src, state);
+        // The source memory operand does not need to be aligned.
+        // FIXME: actually remove the hack above...
+        LLVMValueRef operand2 = ll_operand_load(OP_VF32, ALIGN_1, &instr->src, state);
         LLVMValueRef result = LLVMBuildShuffleVector(state->builder, operand1, operand2, mask, "");
         ll_operand_store(OP_VF32, ALIGN_MAXIMUM, &instr->dst, REG_KEEP_UPPER, result, state);
     }
