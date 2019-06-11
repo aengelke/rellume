@@ -31,6 +31,8 @@
 #include <llvm-c/Transforms/IPO.h>
 #include <llvm-c/Transforms/Scalar.h>
 #include <llvm-c/Transforms/Vectorize.h>
+#include <llvm/IR/BasicBlock.h>
+#include <llvm/IR/Function.h>
 
 #include <llfunc.h>
 
@@ -70,24 +72,11 @@ struct LLFunc {
     LLBasicBlock* initialBB;
 };
 
-LLFunc*
-ll_func(const char* name, LLVMTypeRef ty, LLVMModuleRef mod)
+static
+void
+ll_func_create_entry(LLFunc* fn)
 {
-    LLFunc* fn = new LLFunc();
-    fn->llvm = LLVMAddFunction(mod, name, ty);
-    fn->bbCount = 0;
-    fn->bbs = NULL;
-    fn->bbsAllocated = 0;
-
     LLState* state = &fn->state;
-    state->context = LLVMGetModuleContext(mod);
-    state->builder = LLVMCreateBuilderInContext(state->context);
-
-    state->cfg.globalBase = NULL;
-    state->cfg.stackSize = 128; // FIXME
-    state->cfg.enableOverflowIntrinsics = false;
-    state->cfg.enableFastMath = false;
-    state->cfg.enableFullLoopUnroll = false;
 
     LLVMTypeRef i1 = LLVMInt1TypeInContext(state->context);
     LLVMTypeRef i8 = LLVMInt8TypeInContext(state->context);
@@ -96,8 +85,10 @@ ll_func(const char* name, LLVMTypeRef ty, LLVMModuleRef mod)
 
     size_t paramCount = LLVMCountParams(fn->llvm);
 
-    LLVMBasicBlockRef llvmBB = LLVMAppendBasicBlockInContext(state->context, fn->llvm, "");
-    LLBasicBlock* initialBB = ll_basic_block_new(llvmBB, &fn->state);
+    llvm::Function* llvm_fn = llvm::unwrap<llvm::Function>(fn->llvm);
+    llvm::BasicBlock* first_bb = llvm_fn->empty() ? nullptr : &llvm_fn->front();
+    llvm::BasicBlock* llvm_bb = llvm::BasicBlock::Create(*llvm::unwrap(state->context), "", llvm_fn, first_bb);
+    LLBasicBlock* initialBB = ll_basic_block_new(llvm::wrap(llvm_bb), &fn->state);
     ll_basic_block_set_current(initialBB);
 
     // Iterate over the parameters to initialize the registers.
@@ -169,6 +160,28 @@ ll_func(const char* name, LLVMTypeRef ty, LLVMModuleRef mod)
     LLVMSetAlignment(stack, 16);
 
     fn->initialBB = initialBB;
+}
+
+LLFunc*
+ll_func(const char* name, LLVMTypeRef ty, LLVMModuleRef mod)
+{
+    LLFunc* fn = new LLFunc();
+    fn->llvm = LLVMAddFunction(mod, name, ty);
+    fn->bbCount = 0;
+    fn->bbs = NULL;
+    fn->bbsAllocated = 0;
+
+    LLState* state = &fn->state;
+    state->context = LLVMGetModuleContext(mod);
+    state->builder = LLVMCreateBuilderInContext(state->context);
+
+    state->cfg.globalBase = NULL;
+    state->cfg.stackSize = 128; // FIXME
+    state->cfg.enableOverflowIntrinsics = false;
+    state->cfg.enableFastMath = false;
+    state->cfg.enableFullLoopUnroll = false;
+
+    ll_func_create_entry(fn);
 
     return fn;
 }
