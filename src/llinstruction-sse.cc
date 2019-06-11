@@ -195,40 +195,31 @@ ll_instruction_sse_binary(LLInstr* instr, LLState* state, LLVMOpcode opcode,
 }
 
 void
-ll_instruction_unpckl(LLInstr* instr, LLState* state)
+ll_instruction_unpck(LLInstr* instr, LLState* state, OperandDataType op_type)
 {
     LLVMTypeRef i32 = LLVMInt32TypeInContext(state->context);
-    OperandDataType type = instr->type == LL_INS_UNPCKLPS ? OP_VF32 : OP_VF64;
-
-    LLVMValueRef maskElements[4];
-    LLVMValueRef mask;
 
     // This is actually legal as an implementation "MAY only fetch 64-bit".
     // See Intel SDM Vol. 2B 4-696 (Dec. 2016).
     instr->src.size = 16;
     if (instr->src.type == LL_OP_REG)
         instr->src.reg.rt = LL_RT_XMM;
-    // opOverwriteType(&instr->src, VT_128);
 
+    llvm::Value* operand1 = llvm::unwrap(ll_operand_load(op_type, ALIGN_MAXIMUM, &instr->dst, state));
+    llvm::Value* operand2 = llvm::unwrap(ll_operand_load(op_type, ALIGN_MAXIMUM, &instr->src, state));
+
+    llvm::IRBuilder<>* builder = llvm::unwrap(state->builder);
+    llvm::Value* result = NULL;
     if (instr->type == LL_INS_UNPCKLPS)
-    {
-        maskElements[0] = LLVMConstInt(i32, 0, false);
-        maskElements[1] = LLVMConstInt(i32, 4, false);
-        maskElements[2] = LLVMConstInt(i32, 1, false);
-        maskElements[3] = LLVMConstInt(i32, 5, false);
-        mask = LLVMConstVector(maskElements, 4);
-    }
-    else // LL_INS_UNPCKLPD
-    {
-        maskElements[0] = LLVMConstInt(i32, 0, false);
-        maskElements[1] = LLVMConstInt(i32, 2, false);
-        mask = LLVMConstVector(maskElements, 2);
-    }
+        result = builder->CreateShuffleVector(operand1, operand2, {0, 4, 1, 5});
+    else if (instr->type == LL_INS_UNPCKLPD)
+        result = builder->CreateShuffleVector(operand1, operand2, {0, 2});
+    else if (instr->type == LL_INS_UNPCKHPS)
+        result = builder->CreateShuffleVector(operand1, operand2, {2, 6, 3, 7});
+    else if (instr->type == LL_INS_UNPCKHPD)
+        result = builder->CreateShuffleVector(operand1, operand2, {1, 3});
 
-    LLVMValueRef operand1 = ll_operand_load(type, ALIGN_MAXIMUM, &instr->dst, state);
-    LLVMValueRef operand2 = ll_operand_load(type, ALIGN_MAXIMUM, &instr->src, state);
-    LLVMValueRef result = LLVMBuildShuffleVector(state->builder, operand1, operand2, mask, "");
-    ll_operand_store(type, ALIGN_MAXIMUM, &instr->dst, REG_KEEP_UPPER, result, state);
+    ll_operand_store(op_type, ALIGN_MAXIMUM, &instr->dst, REG_KEEP_UPPER, llvm::wrap(result), state);
 }
 
 void
