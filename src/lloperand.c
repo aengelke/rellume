@@ -334,20 +334,27 @@ ll_operand_store_vreg(LLVMValueRef value, OperandDataType dataType, LLInstrOp* o
     if (valueIsVector)
     {
         LLVMTypeRef vectorType = LLVMVectorType(LLVMGetElementType(valueType), totalCount);
-        LLVMValueRef vectorCurrent = LLVMBuildBitCast(state->builder, current, vectorType, "");
 
-        LLVMValueRef maskElements[totalCount];
-        for (int i = 0; i < totalCount; i++)
-            maskElements[i] = LLVMConstInt(i32, i, false);
-        for (int i = elementCount; i < totalCount; i++)
-            maskElements[i] = LLVMConstInt(i32, elementCount, false);
-        LLVMValueRef mask = LLVMConstVector(maskElements, totalCount);
-        LLVMValueRef enlarged = LLVMBuildShuffleVector(state->builder, value, LLVMGetUndef(valueType), mask, "");
+        if (totalCount == elementCount)
+        {
+            result = value;
+        }
+        else
+        {
+            LLVMValueRef vectorCurrent = LLVMBuildBitCast(state->builder, current, vectorType, "");
+            LLVMValueRef maskElements[totalCount];
+            for (int i = 0; i < totalCount; i++)
+                maskElements[i] = LLVMConstInt(i32, i, false);
+            for (int i = elementCount; i < totalCount; i++)
+                maskElements[i] = LLVMConstInt(i32, elementCount, false);
+            LLVMValueRef mask = LLVMConstVector(maskElements, totalCount);
+            LLVMValueRef enlarged = LLVMBuildShuffleVector(state->builder, value, LLVMConstNull(valueType), mask, "");
 
-        for (int i = elementCount; i < totalCount; i++)
-            maskElements[i] = LLVMConstInt(i32, totalCount + i, false);
-        mask = LLVMConstVector(maskElements, totalCount);
-        result = LLVMBuildShuffleVector(state->builder, enlarged, vectorCurrent, mask, "");
+            for (int i = elementCount; i < totalCount; i++)
+                maskElements[i] = LLVMConstInt(i32, totalCount + i, false);
+            mask = LLVMConstVector(maskElements, totalCount);
+            result = LLVMBuildShuffleVector(state->builder, enlarged, vectorCurrent, mask, "");
+        }
 
         result = LLVMBuildBitCast(state->builder, result, iVec, "");
         ll_set_register(operand->reg, FACET_IVEC, result, true, state);
