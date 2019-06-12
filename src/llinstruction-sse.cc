@@ -92,15 +92,26 @@ ll_instruction_movdq(LLInstr* instr, LLState* state)
 void
 ll_instruction_movlp(LLInstr* instr, LLState* state)
 {
-    OperandDataType type = instr->type == LL_INS_MOVLPS ? OP_VF32 : OP_SF64;
+    if (instr->dst.type == LL_OP_REG && instr->src.type == LL_OP_REG)
+    {
+        // move high 64-bit from src to low 64-bit from dst
+        if (instr->type != LL_INS_MOVLPS)
+            warn_if_reached();
 
-    // XXX: Hack for XED. Should use OP_V2F32.
-    instr->dst.size = 8;
-    if (instr->src.type == LL_OP_REG)
-        instr->src.size = 8;
+        llvm::Value* operand1 = llvm::unwrap(ll_operand_load(OP_V4F32, ALIGN_MAXIMUM, &instr->dst, state));
+        llvm::Value* operand2 = llvm::unwrap(ll_operand_load(OP_V4F32, ALIGN_MAXIMUM, &instr->src, state));
 
-    LLVMValueRef operand1 = ll_operand_load(type, ALIGN_MAXIMUM, &instr->src, state);
-    ll_operand_store(type, ALIGN_MAXIMUM, &instr->dst, REG_KEEP_UPPER, operand1, state);
+        llvm::IRBuilder<>* builder = llvm::unwrap(state->builder);
+        llvm::Value* result = builder->CreateShuffleVector(operand1, operand2, {6, 7, 2, 3});
+        ll_operand_store(OP_VF32, ALIGN_MAXIMUM, &instr->dst, REG_KEEP_UPPER, llvm::wrap(result), state);
+    }
+    else
+    {
+        // move (low) 64-bit from src to (low) 64-bit from dst
+        OperandDataType type = instr->type == LL_INS_MOVLPS ? OP_V2F32 : OP_V1F64;
+        LLVMValueRef operand1 = ll_operand_load(type, ALIGN_MAXIMUM, &instr->src, state);
+        ll_operand_store(type, ALIGN_MAXIMUM, &instr->dst, REG_KEEP_UPPER, operand1, state);
+    }
 }
 
 void
