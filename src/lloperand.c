@@ -70,11 +70,18 @@ ll_operand_get_type_length(OperandDataType dataType, LLInstrOp* operand)
             break;
         case OP_SI32:
         case OP_SF32:
+        case OP_V1F32:
             bits = 32;
             break;
         case OP_SI64:
         case OP_SF64:
+        case OP_V2F32:
+        case OP_V1F64:
             bits = 64;
+            break;
+        case OP_V4F32:
+        case OP_V2F64:
+            bits = 128;
             break;
         default:
             warn_if_reached();
@@ -118,10 +125,15 @@ ll_operand_get_facet(OperandDataType dataType, LLInstrOp* operand)
             if (bits == 128) return FACET_V4F32;
             warn_if_reached();
             break;
+        case OP_V1F32: return FACET_V1F32;
+        case OP_V2F32: return FACET_V2F32;
+        case OP_V4F32: return FACET_V4F32;
         case OP_VF64:
             if (bits == 128) return FACET_V2F64;
             warn_if_reached();
             break;
+        case OP_V1F64: return FACET_V1F64;
+        case OP_V2F64: return FACET_V2F64;
         case OP_SF32: return FACET_F32;
         case OP_SF64: return FACET_F64;
         default:
@@ -189,12 +201,22 @@ ll_operand_get_type(OperandDataType dataType, int bits, LLState* state)
             else
                 warn_if_reached();
             break;
+        case OP_V1F32:
+            return LLVMVectorType(LLVMFloatTypeInContext(state->context), 1);
+        case OP_V2F32:
+            return LLVMVectorType(LLVMFloatTypeInContext(state->context), 2);
+        case OP_V4F32:
+            return LLVMVectorType(LLVMFloatTypeInContext(state->context), 4);
         case OP_VF64:
             if (bits % 64 == 0)
                 type = LLVMVectorType(LLVMDoubleTypeInContext(state->context), bits / 64);
             else
                 warn_if_reached();
             break;
+        case OP_V1F64:
+            return LLVMVectorType(LLVMDoubleTypeInContext(state->context), 1);
+        case OP_V2F64:
+            return LLVMVectorType(LLVMDoubleTypeInContext(state->context), 2);
         default:
             warn_if_reached();
             break;

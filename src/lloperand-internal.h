@@ -78,10 +78,15 @@ enum OperandDataType {
      * \brief Vector of floats
      **/
     OP_VF32,
+    OP_V1F32,
+    OP_V2F32,
+    OP_V4F32,
     /**
      * \brief Vector of doubles
      **/
     OP_VF64,
+    OP_V1F64,
+    OP_V2F64,
 };
 
 typedef enum OperandDataType OperandDataType;

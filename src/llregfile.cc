@@ -104,17 +104,19 @@ ll_register_facet_type(RegisterFacet facet, LLVMContextRef ctx)
         case FACET_I32: return i32;
         case FACET_I64: return i64;
         case FACET_I128: return LLVMIntTypeInContext(ctx, 128);
-        case FACET_I256: return LLVMIntTypeInContext(ctx, 256);
         case FACET_F32: return f32;
         case FACET_F64: return f64;
         case FACET_V16I8: return LLVMVectorType(i8, 16);
         case FACET_V8I16: return LLVMVectorType(i16, 8);
         case FACET_V4I32: return LLVMVectorType(i32, 4);
         case FACET_V2I64: return LLVMVectorType(i64, 2);
+        case FACET_V1F32: return LLVMVectorType(f32, 1);
         case FACET_V2F32: return LLVMVectorType(f32, 2);
         case FACET_V4F32: return LLVMVectorType(f32, 4);
+        case FACET_V1F64: return LLVMVectorType(f64, 1);
         case FACET_V2F64: return LLVMVectorType(f64, 2);
 #if LL_VECTOR_REGISTER_SIZE >= 256
+        case FACET_I256: return LLVMIntTypeInContext(ctx, 256);
         case FACET_V32I8: return LLVMVectorType(i8, 32);
         case FACET_V16I16: return LLVMVectorType(i16, 16);
         case FACET_V8I32: return LLVMVectorType(i32, 8);
@@ -151,17 +153,19 @@ ll_register_name_for_facet(RegisterFacet facet, LLReg reg)
             case FACET_I64:
             case FACET_PTR:
             case FACET_I128:
-            case FACET_I256:
             case FACET_F32:
             case FACET_F64:
             case FACET_V16I8:
             case FACET_V8I16:
             case FACET_V4I32:
             case FACET_V2I64:
+            case FACET_V1F32:
             case FACET_V2F32:
             case FACET_V4F32:
+            case FACET_V1F64:
             case FACET_V2F64:
     #if LL_VECTOR_REGISTER_SIZE >= 256
+            case FACET_I256:
             case FACET_V32I8:
             case FACET_V16I16:
             case FACET_V8I32:
@@ -192,20 +196,22 @@ ll_register_name_for_facet(RegisterFacet facet, LLReg reg)
             case FACET_V8I16:
             case FACET_V4I32:
             case FACET_V2I64:
+            case FACET_V1F32:
             case FACET_V2F32:
             case FACET_V4F32:
+            case FACET_V1F64:
             case FACET_V2F64:
                 return ll_reg_name(ll_reg(LL_RT_XMM, reg.ri));
+#if LL_VECTOR_REGISTER_SIZE >= 256
             case FACET_I256:
-    #if LL_VECTOR_REGISTER_SIZE >= 256
             case FACET_V32I8:
             case FACET_V16I16:
             case FACET_V8I32:
             case FACET_V4I64:
             case FACET_V8F32:
             case FACET_V4F64:
-    #endif
                 return ll_reg_name(ll_reg(LL_RT_YMM, reg.ri));
+#endif
             case FACET_COUNT:
             default:
                 warn_if_reached();
@@ -327,17 +333,19 @@ ll_regfile_get(LLRegisterFile* regfile, RegisterFacet facet, LLReg reg, LLVMBuil
                 break;
             case FACET_I64:
             case FACET_I128:
-            case FACET_I256:
             case FACET_F32:
             case FACET_F64:
-            case FACET_V2F32:
             case FACET_V16I8:
             case FACET_V8I16:
             case FACET_V4I32:
             case FACET_V2I64:
+            case FACET_V1F32:
+            case FACET_V2F32:
             case FACET_V4F32:
+            case FACET_V1F64:
             case FACET_V2F64:
 #if LL_VECTOR_REGISTER_SIZE >= 256
+            case FACET_I256:
             case FACET_V32I8:
             case FACET_V16I16:
             case FACET_V8I32:
@@ -380,7 +388,11 @@ ll_regfile_get(LLRegisterFile* regfile, RegisterFacet facet, LLReg reg, LLVMBuil
                 value = llvm::unwrap(ll_regfile_get(regfile, FACET_V2F64, reg, builder_w));
                 value = builder->CreateExtractElement(value, int{0});
                 break;
+            case FACET_V1F32:
+                targetBits = 32;
+                break;
             case FACET_V2F32:
+            case FACET_V1F64:
                 targetBits = 64;
                 break;
             case FACET_V16I8:
@@ -407,7 +419,9 @@ ll_regfile_get(LLRegisterFile* regfile, RegisterFacet facet, LLReg reg, LLVMBuil
                 break;
             case FACET_PTR:
             case FACET_I8H:
+#if LL_VECTOR_REGISTER_SIZE >= 256
             case FACET_I256:
+#endif
             case FACET_COUNT:
             default:
                 value = llvm::UndefValue::get(facetType);

@@ -104,11 +104,12 @@ enum RegisterFacet {
     FACET_I32,
     FACET_I64,
     FACET_I128,
-    FACET_I256,
     FACET_F32,
     FACET_F64,
 
+    FACET_V1F32,
     FACET_V2F32,
+    FACET_V1F64,
 
     FACET_V16I8,
     FACET_V8I16,
@@ -118,6 +119,7 @@ enum RegisterFacet {
     FACET_V2F64,
 
 #if LL_VECTOR_REGISTER_SIZE >= 256
+    FACET_I256,
     FACET_V32I8,
     FACET_V16I16,
     FACET_V8I32,
