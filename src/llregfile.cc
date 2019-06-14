@@ -548,9 +548,8 @@ ll_regfile_set(LLRegisterFile* regfile, RegisterFacet facet, LLReg reg, LLVMValu
     {
         char buffer[20];
         snprintf(buffer, sizeof(buffer), "asm.reg.%s", ll_register_name_for_facet(facet, reg));
-        unsigned md_id = ctx.getMDKindID(buffer);
-        llvm::MDNode* md = llvm::MDNode::get(builder->getContext(), llvm::ArrayRef<llvm::Metadata*>());
-        llvm::cast<llvm::Instruction>(value)->setMetadata(md_id, md);
+        llvm::MDNode* md = llvm::MDNode::get(builder->getContext(), {});
+        llvm::cast<llvm::Instruction>(value)->setMetadata(buffer, md);
     }
 
     llvm::Type* facetType = llvm::unwrap(ll_register_facet_type(facet, llvm::wrap(&ctx)));
@@ -616,10 +615,8 @@ ll_regfile_set_flag(LLRegisterFile* regfile, int flag, LLVMValueRef value_w, LLV
     {
         char buffer[20];
         snprintf(buffer, sizeof(buffer), "asm.reg.%cf", "zspcoa"[flag]);
-        llvm::LLVMContext& ctx = *llvm::unwrap(context);
-        unsigned md_id = ctx.getMDKindID(buffer);
-        llvm::MDNode* md = llvm::MDNode::get(ctx, llvm::ArrayRef<llvm::Metadata*>());
-        llvm::cast<llvm::Instruction>(value)->setMetadata(md_id, md);
+        llvm::MDNode* md = llvm::MDNode::get(*llvm::unwrap(context), {});
+        llvm::cast<llvm::Instruction>(value)->setMetadata(buffer, md);
     }
 
     regfile->flags[flag] = value;
