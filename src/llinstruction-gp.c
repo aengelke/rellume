@@ -121,7 +121,8 @@ ll_instruction_cmp(LLInstr* instr, LLState* state)
 
     ll_flags_set_sub(result, operand1, operand2, state);
 
-    if (LLVMGetIntTypeWidth(LLVMTypeOf(operand1)) == 64 &&
+    if (state->cfg.prefer_pointer_cmp &&
+        LLVMGetIntTypeWidth(LLVMTypeOf(operand1)) == 64 &&
         instr->dst.type == LL_OP_REG &&instr->src.type == LL_OP_REG)
     {
         LLVMValueRef ptr1 = ll_get_register(instr->dst.reg, FACET_PTR, state);

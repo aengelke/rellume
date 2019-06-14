@@ -176,10 +176,11 @@ ll_func(const char* name, LLVMTypeRef ty, LLVMModuleRef mod)
     state->builder = LLVMCreateBuilderInContext(state->context);
 
     state->cfg.globalBase = NULL;
-    state->cfg.stackSize = 128; // FIXME
+    state->cfg.stackSize = 128;
     state->cfg.enableOverflowIntrinsics = false;
     state->cfg.enableFastMath = false;
     state->cfg.enableFullLoopUnroll = false;
+    state->cfg.prefer_pointer_cmp = false;
 
     return fn;
 }

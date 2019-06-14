@@ -54,6 +54,10 @@ struct LLConfig {
      **/
     bool enableFullLoopUnroll;
 
+    /// Whether to use pointer for 64-bit reg-reg compares instead of using
+    /// ptrtoint.
+    bool prefer_pointer_cmp;
+
     /**
      * \brief The global offset base
      **/
