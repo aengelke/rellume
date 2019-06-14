@@ -247,6 +247,42 @@ ll_instruction_shufps(LLInstr* instr, LLState* state)
     ll_operand_store(OP_VF32, ALIGN_MAXIMUM, &instr->dst, REG_KEEP_UPPER, llvm::wrap(result), state);
 }
 
+void
+ll_instruction_insertps(LLInstr* instr, LLState* state)
+{
+    llvm::IRBuilder<>* builder = llvm::unwrap(state->builder);
+    llvm::Value* src;
+
+    int count_s = (instr->src2.val >> 6) & 3;
+    int count_d = (instr->src2.val >> 4) & 3;
+    int zmask = instr->src2.val & 0xf;
+
+    // If src is a reg, extract element, otherwise load scalar from memory.
+    if (instr->src.type == LL_OP_REG)
+    {
+        src = llvm::unwrap(ll_operand_load(OP_V4F32, ALIGN_MAXIMUM, &instr->src, state));
+        src = builder->CreateExtractElement(src, count_s);
+    }
+    else
+    {
+        src = llvm::unwrap(ll_operand_load(OP_SF32, ALIGN_MAXIMUM, &instr->src, state));
+    }
+
+    llvm::Value* dst = llvm::unwrap(ll_operand_load(OP_VF32, ALIGN_MAXIMUM, &instr->dst, state));
+    dst = builder->CreateInsertElement(dst, src, count_d);
+
+    if (zmask)
+    {
+        uint32_t mask[4];
+        for (int i = 0; i < 4; i++)
+            mask[i] = zmask & (1 << i) ? 4 : i;
+        llvm::Value* zero = llvm::Constant::getNullValue(dst->getType());
+        dst = builder->CreateShuffleVector(dst, zero, mask);
+    }
+
+    ll_operand_store(OP_VF32, ALIGN_MAXIMUM, &instr->dst, REG_KEEP_UPPER, llvm::wrap(dst), state);
+}
+
 /**
  * @}
  **/

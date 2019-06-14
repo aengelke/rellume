@@ -70,6 +70,7 @@ void ll_instruction_shufps(LLInstr* instr, LLState* state);
 void ll_instruction_sse_binary(LLInstr*, LLState*, LLVMOpcode, bool,
                                OperandDataType);
 void ll_instruction_unpck(LLInstr* instr, LLState* state, OperandDataType);
+void ll_instruction_insertps(LLInstr* instr, LLState* state);
 
 void ll_generate_instruction(LLInstr*, LLState*);
 

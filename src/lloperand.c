@@ -121,6 +121,7 @@ ll_operand_get_facet(OperandDataType dataType, LLInstrOp* operand)
             warn_if_reached();
             break;
         case OP_VF32:
+            if (bits == 32) return FACET_V1F32;
             if (bits == 64) return FACET_V2F32;
             if (bits == 128) return FACET_V4F32;
             warn_if_reached();
