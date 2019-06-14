@@ -449,11 +449,9 @@ ll_regfile_get(LLRegisterFile* regfile, RegisterFacet facet, LLReg reg, LLVMBuil
 
             if (nativeCount > targetCount)
             {
-                llvm::Constant* maskElements[targetCount];
+                llvm::SmallVector<uint32_t, 16> mask;
                 for (int i = 0; i < targetCount; i++)
-                    maskElements[i] = builder->getInt32(i);
-
-                llvm::Value* mask = llvm::ConstantVector::get(llvm::makeArrayRef(maskElements, targetCount));
+                    mask.push_back(i);
                 value = builder->CreateShuffleVector(value, llvm::UndefValue::get(nativeVectorType), mask);
             }
         }
