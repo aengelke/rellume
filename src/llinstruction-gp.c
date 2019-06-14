@@ -126,10 +126,7 @@ ll_instruction_cmp(LLInstr* instr, LLState* state)
     {
         LLVMValueRef ptr1 = ll_get_register(instr->dst.reg, FACET_PTR, state);
         LLVMValueRef ptr2 = ll_get_register(instr->src.reg, FACET_PTR, state);
-        LLVMTypeRef i64 = LLVMInt64TypeInContext(state->context);
-        operand1 = LLVMBuildPtrToInt(state->builder, ptr1, i64, "");
-        operand2 = LLVMBuildPtrToInt(state->builder, ptr2, i64, "");
-        ll_set_flag(RFLAG_ZF, LLVMBuildICmp(state->builder, LLVMIntEQ, operand1, operand2, ""), state);
+        ll_set_flag(RFLAG_ZF, LLVMBuildICmp(state->builder, LLVMIntEQ, ptr1, ptr2, ""), state);
     }
 }
 
