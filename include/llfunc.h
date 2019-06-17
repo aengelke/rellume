@@ -53,6 +53,8 @@ LLVMValueRef ll_func_lift(LLFunc* fn);
 void ll_func_dump(LLFunc*);
 void ll_func_dispose(LLFunc*);
 
+LLVMValueRef ll_func_wrap_sysv(LLVMValueRef llvm_fn, LLVMTypeRef ty, LLVMModuleRef mod);
+
 #ifdef __cplusplus
 }
 #endif

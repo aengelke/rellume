@@ -35,8 +35,10 @@
 #include <llvm/IR/BasicBlock.h>
 #include <llvm/IR/DerivedTypes.h>
 #include <llvm/IR/Function.h>
+#include <llvm/IR/GlobalValue.h>
 #include <llvm/IR/IRBuilder.h>
 #include <llvm/IR/Type.h>
+#include <llvm/Transforms/Utils/Cloning.h>
 
 #include <llfunc.h>
 
@@ -335,6 +337,100 @@ ll_func_lift(LLFunc* fn)
     ll_func_optimize(fn->llvm);
 
     return fn->llvm;
+}
+
+LLVMValueRef
+ll_func_wrap_sysv(LLVMValueRef llvm_fn, LLVMTypeRef ty, LLVMModuleRef mod)
+{
+    llvm::LLVMContext& ctx = llvm::unwrap(mod)->getContext();
+    llvm::Function* orig_fn = llvm::unwrap<llvm::Function>(llvm_fn);
+    llvm::FunctionType* fn_ty = llvm::unwrap<llvm::FunctionType>(ty);
+    llvm::Function* new_fn = llvm::Function::Create(fn_ty, llvm::GlobalValue::ExternalLinkage, "glob", llvm::unwrap(mod));
+    llvm::BasicBlock* llvm_bb = llvm::BasicBlock::Create(ctx, "", new_fn, nullptr);
+
+    llvm::IRBuilder<>* builder = new llvm::IRBuilder<>(ctx);
+    builder->SetInsertPoint(llvm_bb);
+
+    llvm::FunctionType* cpu_call_type = orig_fn->getFunctionType();
+    llvm::Type* cpu_type = cpu_call_type->getParamType(0)->getPointerElementType();
+    llvm::Value* cpu_arg = llvm::UndefValue::get(cpu_type);
+
+    unsigned gp_regs[6] = { 7, 6, 2, 1, 8, 9 };
+    unsigned gpRegOffset = 0;
+    unsigned fpRegOffset = 0;
+    for (auto arg = new_fn->arg_begin(); arg != new_fn->arg_end(); ++arg)
+    {
+        llvm::Type::TypeID type_kind = arg->getType()->getTypeID();
+
+        if (type_kind == llvm::Type::TypeID::IntegerTyID)
+        {
+            cpu_arg = builder->CreateInsertValue(cpu_arg, arg, {1, gp_regs[gpRegOffset]});
+            gpRegOffset++;
+        }
+        else if (type_kind == llvm::Type::TypeID::PointerTyID)
+        {
+            llvm::Value* intval = builder->CreatePtrToInt(arg, builder->getInt64Ty());
+            cpu_arg = builder->CreateInsertValue(cpu_arg, intval, {1, gp_regs[gpRegOffset]});
+            gpRegOffset++;
+        }
+        else if (type_kind == llvm::Type::TypeID::FloatTyID || type_kind == llvm::Type::TypeID::DoubleTyID)
+        {
+            llvm::Type* int_type = builder->getIntNTy(arg->getType()->getPrimitiveSizeInBits());
+            llvm::Type* vec_type = builder->getIntNTy(LL_VECTOR_REGISTER_SIZE);
+            llvm::Value* intval = builder->CreateBitCast(arg, int_type);
+            llvm::Value* ext = builder->CreateZExt(intval, vec_type);
+            cpu_arg = builder->CreateInsertValue(cpu_arg, ext, {3, fpRegOffset});
+            fpRegOffset++;
+        }
+        else
+            warn_if_reached();
+    }
+
+    llvm::Value* alloca = builder->CreateAlloca(cpu_type, int{0});
+    builder->CreateStore(cpu_arg, alloca);
+    llvm::CallInst* call = builder->CreateCall(cpu_call_type, orig_fn, {alloca});
+    cpu_arg = builder->CreateLoad(cpu_type, alloca);
+
+    llvm::Type* ret_type = new_fn->getReturnType();
+    switch (ret_type->getTypeID())
+    {
+        llvm::Value* ret;
+
+        case llvm::Type::TypeID::VoidTyID:
+            builder->CreateRetVoid();
+            break;
+        case llvm::Type::TypeID::IntegerTyID:
+            ret = builder->CreateExtractValue(cpu_arg, {1, 0});
+            ret = builder->CreateTruncOrBitCast(ret, ret_type);
+            builder->CreateRet(ret);
+            break;
+        case llvm::Type::TypeID::PointerTyID:
+            ret = builder->CreateExtractValue(cpu_arg, {1, 0});
+            ret = builder->CreateIntToPtr(ret, ret_type);
+            builder->CreateRet(ret);
+            break;
+        case llvm::Type::TypeID::FloatTyID:
+        case llvm::Type::TypeID::DoubleTyID:
+            ret = builder->CreateExtractValue(cpu_arg, {3, 0});
+            ret = builder->CreateTrunc(ret, builder->getIntNTy(ret_type->getPrimitiveSizeInBits()));
+            ret = builder->CreateBitCast(ret, ret_type);
+            builder->CreateRet(ret);
+            break;
+        default:
+            warn_if_reached();
+            break;
+    }
+
+    llvm::InlineFunctionInfo ifi;
+    llvm::InlineFunction(llvm::CallSite(call), ifi);
+
+    bool error = LLVMVerifyFunction(llvm::wrap(new_fn), LLVMPrintMessageAction);
+    if (error)
+        return NULL;
+
+    ll_func_optimize(llvm::wrap(new_fn));
+
+    return llvm::wrap(new_fn);
 }
 
 /**
