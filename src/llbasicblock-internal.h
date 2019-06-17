@@ -30,7 +30,7 @@
 #include <stdlib.h>
 #include <llvm-c/Core.h>
 
-#include <llbasicblock.h>
+#include <rellume/basicblock.h>
 
 #include <llcommon-internal.h>
 #include <llstate-internal.h>

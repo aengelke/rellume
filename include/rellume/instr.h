@@ -34,7 +34,7 @@ enum LLInstrType {
     LL_INS_None = 0,
     LL_INS_Invalid = 1,
 #define DEF_IT(opc,...) LL_INS_ ## opc,
-#include <opcodes.inc>
+#include "rellume/opcodes.inc"
 #undef DEF_IT
     LL_INS_Max
 };

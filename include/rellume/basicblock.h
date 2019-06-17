@@ -21,18 +21,21 @@
  * \file
  **/
 
-#ifndef LL_DECODER_H
-#define LL_DECODER_H
+#ifndef LL_BASICBLOCK_H
+#define LL_BASICBLOCK_H
 
-#include <stdint.h>
-
-#include <llfunc.h>
+#include <rellume/instr.h>
 
 #ifdef __cplusplus
 extern "C" {
 #endif
 
-int ll_func_decode(LLFunc* func, uintptr_t addr);
+struct LLBasicBlock;
+
+typedef struct LLBasicBlock LLBasicBlock;
+
+void ll_basic_block_add_inst(LLBasicBlock*, LLInstr*);
+void ll_basic_block_add_branches(LLBasicBlock*, LLBasicBlock*, LLBasicBlock*);
 
 #ifdef __cplusplus
 }

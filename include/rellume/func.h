@@ -21,21 +21,38 @@
  * \file
  **/
 
-#ifndef LL_BASICBLOCK_H
-#define LL_BASICBLOCK_H
+#ifndef LL_FUNC_H
+#define LL_FUNC_H
 
-#include <llinstr.h>
+#include <stdbool.h>
+#include <stdlib.h>
+#include <stdint.h>
+
+#include <llvm-c/Core.h>
+
+#include "rellume/basicblock.h"
 
 #ifdef __cplusplus
 extern "C" {
 #endif
 
-struct LLBasicBlock;
+struct LLFunc;
 
-typedef struct LLBasicBlock LLBasicBlock;
+typedef struct LLFunc LLFunc;
 
-void ll_basic_block_add_inst(LLBasicBlock*, LLInstr*);
-void ll_basic_block_add_branches(LLBasicBlock*, LLBasicBlock*, LLBasicBlock*);
+LLFunc* ll_func(const char* name, LLVMModuleRef mod);
+
+void ll_func_enable_overflow_intrinsics(LLFunc* fn, bool enable);
+void ll_func_enable_fast_math(LLFunc* fn, bool enable);
+void ll_func_set_stack_size(LLFunc* fn, size_t size);
+void ll_func_set_global_base(LLFunc* fn, uintptr_t base, LLVMValueRef value);
+
+LLBasicBlock* ll_func_add_block(LLFunc* fn);
+LLVMValueRef ll_func_lift(LLFunc* fn);
+void ll_func_dump(LLFunc*);
+void ll_func_dispose(LLFunc*);
+
+LLVMValueRef ll_func_wrap_sysv(LLVMValueRef llvm_fn, LLVMTypeRef ty, LLVMModuleRef mod);
 
 #ifdef __cplusplus
 }

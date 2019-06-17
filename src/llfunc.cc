@@ -40,7 +40,7 @@
 #include <llvm/IR/Type.h>
 #include <llvm/Transforms/Utils/Cloning.h>
 
-#include <llfunc.h>
+#include <rellume/func.h>
 
 #include <llbasicblock-internal.h>
 #include <llcommon-internal.h>

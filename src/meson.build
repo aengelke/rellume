@@ -20,4 +20,5 @@ librellume_lib = static_library('rellume', sources,
                                 include_directories: [rellume_inc, rellume_inc_priv],
                                 dependencies: [libllvm, fadec],
                                 c_args: rellume_flags,
-                                cpp_args: rellume_flags)
+                                cpp_args: rellume_flags,
+                                install: true)

@@ -27,7 +27,7 @@
 #include <string.h>
 #include <llvm-c/Core.h>
 
-#include <llinstr.h>
+#include <rellume/instr.h>
 #include <llinstr-internal.h>
 
 #include <llcommon-internal.h>

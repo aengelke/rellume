@@ -39,6 +39,7 @@ fadec = fadec_subproject.get_variable('fadec')
 
 rellume_inc = include_directories('include')
 subdir('src')
+subdir('include')
 librellume = declare_dependency(include_directories: rellume_inc,
                                 link_with: librellume_lib,
                                 dependencies: [libllvm])

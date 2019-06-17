@@ -24,7 +24,7 @@
 #include <stdlib.h>
 #include <stdint.h>
 
-#include <llinstr.h>
+#include <rellume/instr.h>
 
 #ifdef __cplusplus
 extern "C" {

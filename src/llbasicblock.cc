@@ -268,7 +268,7 @@ ll_basic_block_add_inst(LLBasicBlock* bb, LLInstr* instr)
     switch (instr->type)
     {
 #define DEF_IT(opc,handler) case LL_INS_ ## opc : handler; break;
-#include <opcodes.inc>
+#include "rellume/opcodes.inc"
 #undef DEF_IT
 
         default:

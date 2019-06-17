@@ -30,10 +30,10 @@ extern "C" {
 #include <fadec.h>
 }
 
-#include <lldecoder.h>
+#include <rellume/decoder.h>
 
-#include <llbasicblock.h>
-#include <llinstr.h>
+#include <rellume/basicblock.h>
+#include <rellume/instr.h>
 #include <llinstr-internal.h>
 
 static LLReg
