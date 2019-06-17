@@ -283,6 +283,30 @@ ll_func_add_block(LLFunc* fn)
     return bb;
 }
 
+static
+void
+ll_func_optimize(LLVMValueRef llvm_fn)
+{
+    LLVMPassManagerRef pm = LLVMCreateFunctionPassManagerForModule(LLVMGetGlobalParent(llvm_fn));
+    LLVMInitializeFunctionPassManager(pm);
+
+    // Fold some common subexpressions
+    LLVMAddEarlyCSEPass(pm);
+    // Replace aggregates (i.e. cpu type struct) with scalars
+    LLVMAddScalarReplAggregatesPass(pm);
+    // Combine instructions to simplify code
+    LLVMAddInstructionCombiningPass(pm);
+    // Aggressive DCE to remove phi cycles, etc.
+    LLVMAddAggressiveDCEPass(pm);
+    // Simplify CFG, removes some redundant function exists and empty blocks
+    LLVMAddCFGSimplificationPass(pm);
+
+    LLVMRunFunctionPassManager(pm, llvm_fn);
+
+    LLVMFinalizeFunctionPassManager(pm);
+    LLVMDisposePassManager(pm);
+}
+
 LLVMValueRef
 ll_func_lift(LLFunc* fn)
 {
@@ -308,19 +332,7 @@ ll_func_lift(LLFunc* fn)
         return NULL;
 
     // Run some optimization passes to remove most of the bloat
-    LLVMPassManagerRef pm = LLVMCreateFunctionPassManagerForModule(LLVMGetGlobalParent(fn->llvm));
-    LLVMInitializeFunctionPassManager(pm);
-
-    LLVMAddEarlyCSEPass(pm);
-    LLVMAddGVNPass(pm);
-    LLVMAddCFGSimplificationPass(pm);
-    LLVMAddInstructionCombiningPass(pm);
-    LLVMAddAggressiveDCEPass(pm);
-
-    LLVMRunFunctionPassManager(pm, fn->llvm);
-
-    LLVMFinalizeFunctionPassManager(pm);
-    LLVMDisposePassManager(pm);
+    ll_func_optimize(fn->llvm);
 
     return fn->llvm;
 }
