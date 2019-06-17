@@ -44,8 +44,6 @@ enum LLSupportIntrinsics {
 typedef enum LLSupportIntrinsics LLSupportIntrinsics;
 
 LLVMValueRef ll_support_get_intrinsic(LLVMBuilderRef, LLSupportIntrinsics, LLVMTypeRef*, unsigned);
-void ll_support_enable_fast_math(LLVMValueRef);
-LLVMTypeRef ll_support_builder_return_type(LLVMBuilderRef builder);
 
 #ifdef __cplusplus
 }

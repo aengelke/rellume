@@ -201,7 +201,13 @@ ll_instruction_sse_binary(LLInstr* instr, LLState* state, LLVMOpcode opcode,
     LLVMValueRef operand2 = ll_operand_load(data_type, ALIGN_MAXIMUM, &instr->src, state);
     LLVMValueRef result = LLVMBuildBinOp(state->builder, opcode, operand1, operand2, "");
     if (fast_math && state->cfg.enableFastMath)
-        ll_support_enable_fast_math(result);
+    {
+#if LL_LLVM_MAJOR >= 6
+        llvm::unwrap<llvm::Instruction>(result)->setFast(true);
+#else
+        llvm::unwrap<llvm::Instruction>(result)->setHasUnsafeAlgebra(true);
+#endif
+    }
     ll_operand_store(data_type, ALIGN_MAXIMUM, &instr->dst, REG_KEEP_UPPER, result, state);
 }
 

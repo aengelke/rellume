@@ -68,32 +68,5 @@ ll_support_get_intrinsic(LLVMBuilderRef builder, LLSupportIntrinsics intrinsic, 
 }
 
 /**
- * Enable unsafe algebra on the result of a floating-point instruction.
- *
- * \private
- *
- * \author Alexis Engelke
- *
- * \param value The result of a supported floating-point instruction
- **/
-extern "C"
-void
-ll_support_enable_fast_math(LLVMValueRef value)
-{
-#if LL_LLVM_MAJOR >= 6
-    llvm::unwrap<llvm::Instruction>(value)->setFast(true);
-#else
-    llvm::unwrap<llvm::Instruction>(value)->setHasUnsafeAlgebra(true);
-#endif
-}
-
-extern "C"
-LLVMTypeRef
-ll_support_builder_return_type(LLVMBuilderRef builder)
-{
-    return llvm::wrap(llvm::unwrap(builder)->getCurrentFunctionReturnType());
-}
-
-/**
  * @}
  **/
