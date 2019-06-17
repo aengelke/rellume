@@ -31,8 +31,12 @@
 #include <llvm-c/Transforms/IPO.h>
 #include <llvm-c/Transforms/Scalar.h>
 #include <llvm-c/Transforms/Vectorize.h>
+#include <llvm/ADT/SmallVector.h>
 #include <llvm/IR/BasicBlock.h>
+#include <llvm/IR/DerivedTypes.h>
 #include <llvm/IR/Function.h>
+#include <llvm/IR/IRBuilder.h>
+#include <llvm/IR/Type.h>
 
 #include <llfunc.h>
 
@@ -78,80 +82,28 @@ ll_func_create_entry(LLFunc* fn)
 {
     LLState* state = &fn->state;
 
-    LLVMTypeRef i1 = LLVMInt1TypeInContext(state->context);
-    LLVMTypeRef i8 = LLVMInt8TypeInContext(state->context);
-    LLVMTypeRef i64 = LLVMInt64TypeInContext(state->context);
-    LLVMTypeRef iVec = LLVMIntTypeInContext(state->context, LL_VECTOR_REGISTER_SIZE);
-
-    size_t paramCount = LLVMCountParams(fn->llvm);
-
     llvm::Function* llvm_fn = llvm::unwrap<llvm::Function>(fn->llvm);
     llvm::BasicBlock* first_bb = llvm_fn->empty() ? nullptr : &llvm_fn->front();
     llvm::BasicBlock* llvm_bb = llvm::BasicBlock::Create(*llvm::unwrap(state->context), "", llvm_fn, first_bb);
     LLBasicBlock* initialBB = ll_basic_block_new(llvm::wrap(llvm_bb), &fn->state);
     ll_basic_block_set_current(initialBB);
 
-    // Iterate over the parameters to initialize the registers.
-    LLVMValueRef params = LLVMGetFirstParam(fn->llvm);
+    llvm::Value* param = llvm_fn->arg_begin();
+    llvm::IRBuilder<>* builder = llvm::unwrap(state->builder);
 
-    // Set all registers to undef first.
-    for (int i = 0; i < LL_RI_GPMax; i++)
-        ll_set_register(ll_reg(LL_RT_GP64, i), FACET_I64, LLVMGetUndef(i64), true, state);
+    llvm::Value* regs = builder->CreateLoad(param);
+    for (unsigned i = 0; i < LL_RI_GPMax; i++)
+        ll_set_register(ll_reg(LL_RT_GP64, i), FACET_I64, llvm::wrap(builder->CreateExtractValue(regs, {1, i})), true, state);
 
-    for (int i = 0; i < LL_RI_XMMMax; i++)
-        ll_set_register(ll_reg(LL_RT_XMM, i), FACET_IVEC, LLVMGetUndef(iVec), true, state);
+    for (unsigned i = 0; i < LL_RI_XMMMax; i++)
+        ll_set_register(ll_reg(LL_RT_XMM, i), FACET_IVEC, llvm::wrap(builder->CreateExtractValue(regs, {3, i})), true, state);
 
-    for (int i = 0; i < RFLAG_Max; i++)
-        ll_set_flag(i, LLVMGetUndef(i1), state);
-
-
-    LLReg gpRegs[6] = {
-        ll_reg(LL_RT_GP64, LL_RI_DI),
-        ll_reg(LL_RT_GP64, LL_RI_SI),
-        ll_reg(LL_RT_GP64, LL_RI_D),
-        ll_reg(LL_RT_GP64, LL_RI_C),
-        ll_reg(LL_RT_GP64, 8),
-        ll_reg(LL_RT_GP64, 9),
-    };
-    int gpRegOffset = 0;
-    int fpRegOffset = 0;
-    for (size_t i = 0; i < paramCount; i++)
-    {
-        LLVMTypeKind paramTypeKind = LLVMGetTypeKind(LLVMTypeOf(params));
-        LLInstrOp operand;
-
-        if (paramTypeKind == LLVMPointerTypeKind)
-        {
-            LLVMValueRef intValue = LLVMBuildPtrToInt(state->builder, params, i64, "");
-            operand = getRegOp(gpRegs[gpRegOffset]);
-            ll_operand_store(OP_SI, ALIGN_MAXIMUM, &operand, REG_DEFAULT, intValue, state);
-            gpRegOffset++;
-        }
-        else if (paramTypeKind == LLVMIntegerTypeKind)
-        {
-            operand = getRegOp(gpRegs[gpRegOffset]);
-            ll_operand_store(OP_SI, ALIGN_MAXIMUM, &operand, REG_DEFAULT, params, state);
-            gpRegOffset++;
-        }
-        else if (paramTypeKind == LLVMFloatTypeKind)
-        {
-            operand = getRegOp(ll_reg(LL_RT_XMM, fpRegOffset));
-            ll_operand_store(OP_SF32, ALIGN_MAXIMUM, &operand, REG_ZERO_UPPER_SSE, params, state);
-            fpRegOffset++;
-        }
-        else if (paramTypeKind == LLVMDoubleTypeKind)
-        {
-            operand = getRegOp(ll_reg(LL_RT_XMM, fpRegOffset));
-            ll_operand_store(OP_SF64, ALIGN_MAXIMUM, &operand, REG_ZERO_UPPER_SSE, params, state);
-            fpRegOffset++;
-        }
-        else
-            warn_if_reached();
-
-        params = LLVMGetNextParam(params);
-    }
+    for (unsigned i = 0; i < RFLAG_Max; i++)
+        ll_set_flag(i, llvm::wrap(builder->CreateExtractValue(regs, {2, i})), state);
 
     // Setup virtual stack
+    LLVMTypeRef i8 = LLVMInt8TypeInContext(state->context);
+    LLVMTypeRef i64 = LLVMInt64TypeInContext(state->context);
     LLVMValueRef stackSize = LLVMConstInt(i64, state->cfg.stackSize, false);
     LLVMValueRef stack = LLVMBuildArrayAlloca(state->builder, i8, stackSize, "");
     LLVMValueRef sp = LLVMBuildGEP(state->builder, stack, &stackSize, 1, "");
@@ -163,17 +115,29 @@ ll_func_create_entry(LLFunc* fn)
 }
 
 LLFunc*
-ll_func(const char* name, LLVMTypeRef ty, LLVMModuleRef mod)
+ll_func(const char* name, LLVMModuleRef mod)
 {
     LLFunc* fn = new LLFunc();
-    fn->llvm = LLVMAddFunction(mod, name, ty);
-    fn->bbCount = 0;
-    fn->bbs = NULL;
-    fn->bbsAllocated = 0;
 
     LLState* state = &fn->state;
     state->context = LLVMGetModuleContext(mod);
     state->builder = LLVMCreateBuilderInContext(state->context);
+
+    llvm::IRBuilder<>* builder = llvm::unwrap(state->builder);
+    llvm::SmallVector<llvm::Type*, LL_RI_GPMax+LL_RI_XMMMax+RFLAG_Max> cpu_types;
+    cpu_types.push_back(builder->getInt64Ty()); // instruction pointer
+    cpu_types.push_back(llvm::ArrayType::get(builder->getInt64Ty(), 16));
+    cpu_types.push_back(llvm::ArrayType::get(builder->getInt1Ty(), 6));
+    cpu_types.push_back(llvm::ArrayType::get(builder->getIntNTy(LL_VECTOR_REGISTER_SIZE), 16));
+    llvm::Type* cpu_type = llvm::StructType::get(builder->getContext(), cpu_types);
+    llvm::Type* cpu_type_ptr = llvm::PointerType::get(cpu_type, 0);
+    llvm::Type* void_type = builder->getVoidTy();
+    llvm::Type* fn_type = llvm::FunctionType::get(void_type, {cpu_type_ptr}, false);
+
+    fn->llvm = LLVMAddFunction(mod, name, llvm::wrap(fn_type));
+    fn->bbCount = 0;
+    fn->bbs = NULL;
+    fn->bbsAllocated = 0;
 
     state->cfg.globalBase = NULL;
     state->cfg.stackSize = 128;

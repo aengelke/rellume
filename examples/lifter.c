@@ -44,12 +44,8 @@ main(void)
     // Create LLVM module
     LLVMModuleRef mod = LLVMModuleCreateWithName("lifter");
 
-    // Construct type of function in LLVM IR
-    LLVMTypeRef fnty_args[2] = {LLVMInt64Type(), LLVMPointerType(LLVMFloatType(), 0)};
-    LLVMTypeRef fnty = LLVMFunctionType(LLVMFloatType(), fnty_args, 2, false);
-
     // Create function for lifting
-    LLFunc* fn = ll_func("sample_func", fnty, mod);
+    LLFunc* fn = ll_func("sample_func", mod);
     // Lift the whole function by following all direct jumps
     ll_func_decode(fn, (uintptr_t) sample_func);
     LLVMValueRef llvm_fn = ll_func_lift(fn);

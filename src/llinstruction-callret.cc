@@ -25,6 +25,8 @@
 #include <stdlib.h>
 #include <stdint.h>
 #include <llvm-c/Core.h>
+#include <llvm/IR/Instructions.h>
+#include <llvm/IR/IRBuilder.h>
 
 #include <llinstruction-internal.h>
 
@@ -114,29 +116,36 @@ ll_instruction_call(LLInstr* instr, LLState* state)
 void
 ll_instruction_ret(LLInstr* instr, LLState* state)
 {
-    LLVMTypeRef retType = ll_support_builder_return_type(state->builder);
-    LLVMTypeKind retTypeKind = LLVMGetTypeKind(retType);
+    llvm::IRBuilder<>* builder = llvm::unwrap(state->builder);
+    llvm::Value* param = builder->GetInsertBlock()->getParent()->arg_begin();
+    llvm::Type* cpu_type = llvm::cast<llvm::PointerType>(param->getType())->getElementType();
+    llvm::Value* result = llvm::UndefValue::get(cpu_type);
 
-    LLVMValueRef result = NULL;
+    // Set all registers to undef first.
+    for (unsigned i = 0; i < LL_RI_GPMax; i++)
+    {
+        LLVMValueRef value = ll_get_register(ll_reg(LL_RT_GP64, i), FACET_I64, state);
+        // Don't let the local stack pointer escape...
+        if (i == 4)
+            value = LLVMGetUndef(LLVMTypeOf(value));
+        result = builder->CreateInsertValue(result, llvm::unwrap(value), {1, i});
+    }
 
-    if (retTypeKind == LLVMPointerTypeKind)
-        result = ll_get_register(ll_reg(LL_RT_GP64, LL_RI_A), FACET_PTR, state);
-    else if (retTypeKind == LLVMIntegerTypeKind)
-        // TODO: Non 64-bit integers!
-        result = ll_get_register(ll_reg(LL_RT_GP64, LL_RI_A), FACET_I64, state);
-    else if (retTypeKind == LLVMFloatTypeKind)
-        result = ll_get_register(ll_reg(LL_RT_XMM, 0), FACET_F32, state);
-    else if (retTypeKind == LLVMDoubleTypeKind)
-        result = ll_get_register(ll_reg(LL_RT_XMM, 0), FACET_F64, state);
-    else if (retTypeKind == LLVMVoidTypeKind)
-        result = NULL;
-    else
-        warn_if_reached();
+    for (unsigned i = 0; i < LL_RI_XMMMax; i++)
+    {
+        LLVMValueRef value = ll_get_register(ll_reg(LL_RT_XMM, i), FACET_IVEC, state);
+        result = builder->CreateInsertValue(result, llvm::unwrap(value), {3, i});
+    }
 
-    if (result != NULL)
-        LLVMBuildRet(state->builder, result);
-    else
-        LLVMBuildRetVoid(state->builder);
+    for (unsigned i = 0; i < RFLAG_Max; i++)
+    {
+        LLVMValueRef value = ll_get_flag(i, state);
+        result = builder->CreateInsertValue(result, llvm::unwrap(value), {2, i});
+    }
+
+    builder->CreateStore(result, param);
+
+    builder->CreateRetVoid();
 
     (void) instr;
 }
