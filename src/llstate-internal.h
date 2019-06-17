@@ -49,10 +49,6 @@ struct LLConfig {
      * Corresponds to -ffast-math.
      **/
     bool enableFastMath;
-    /**
-     * \brief Whether to force full loop unrolling on all loops
-     **/
-    bool enableFullLoopUnroll;
 
     /// Whether to use pointer for 64-bit reg-reg compares instead of using
     /// ptrtoint.

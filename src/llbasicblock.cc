@@ -281,38 +281,6 @@ ll_basic_block_add_inst(LLBasicBlock* bb, LLInstr* instr)
 }
 
 /**
- * Construct a metadata node to force full loop unrolling.
- *
- * \private
- *
- * \author Alexis Engelke
- *
- * \param C The LLVM context
- * \returns A metadata node
- **/
-static
-llvm::MDNode*
-ll_basic_block_metadata_loop_unroll(llvm::LLVMContext& C)
-{
-    llvm::SmallVector<llvm::Metadata *, 1> unrollElts;
-    llvm::SmallVector<llvm::Metadata *, 2> loopElts;
-
-    llvm::MDString* unrollString = llvm::MDString::get(C, "llvm.loop.unroll.full");
-    unrollElts.push_back(unrollString);
-
-    llvm::MDNode* unrollNode = llvm::MDTuple::get(C, unrollElts);
-
-    llvm::TempMDNode temp = llvm::MDNode::getTemporary(C, unrollElts);
-    loopElts.push_back(temp.get());
-    loopElts.push_back(unrollNode);
-    llvm::MDNode* loopNode = llvm::MDTuple::get(C, loopElts);
-
-    temp->replaceAllUsesWith(loopNode);
-
-    return loopNode;
-}
-
-/**
  * Build the LLVM IR.
  *
  * \private
@@ -329,25 +297,17 @@ ll_basic_block_terminate(LLBasicBlock* bb)
     llvm::IRBuilder<>* builder = llvm::unwrap(state->builder);
     builder->SetInsertPoint(bb->llvmBB);
 
-    llvm::Instruction* branch = NULL;
-
     LLInstrType endType = bb->endType;
     if (instrIsJcc(endType))
     {
         state->regfile = bb->regfile;
         llvm::Value* cond = llvm::unwrap(ll_flags_condition(endType, LL_INS_JO, state));
-        branch = builder->CreateCondBr(cond, bb->nextBranch->llvmBB, bb->nextFallThrough->llvmBB);
+        builder->CreateCondBr(cond, bb->nextBranch->llvmBB, bb->nextFallThrough->llvmBB);
     }
     else if (endType == LL_INS_JMP)
-        branch = builder->CreateBr(bb->nextBranch->llvmBB);
+        builder->CreateBr(bb->nextBranch->llvmBB);
     else if (endType != LL_INS_RET && endType != LL_INS_Invalid) // Any other instruction which is not a terminator
-        branch = builder->CreateBr(bb->nextFallThrough->llvmBB);
-
-    if (state->cfg.enableFullLoopUnroll && branch != NULL)
-    {
-        llvm::MDNode* md = ll_basic_block_metadata_loop_unroll(builder->getContext());
-        branch->setMetadata(llvm::LLVMContext::MD_loop, md);
-    }
+        builder->CreateBr(bb->nextFallThrough->llvmBB);
 }
 
 /**

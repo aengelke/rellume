@@ -145,7 +145,6 @@ ll_func(const char* name, LLVMModuleRef mod)
     state->cfg.stackSize = 128;
     state->cfg.enableOverflowIntrinsics = false;
     state->cfg.enableFastMath = false;
-    state->cfg.enableFullLoopUnroll = false;
     state->cfg.prefer_pointer_cmp = false;
 
     return fn;
@@ -184,20 +183,6 @@ void
 ll_func_enable_fast_math(LLFunc* fn, bool enable)
 {
     fn->state.cfg.enableFastMath = enable;
-}
-
-/**
- * Force loop unrolling whenever possible.
- *
- * \author Alexis Engelke
- *
- * \param state The module state
- * \param enable Whether force loop unrolling
- **/
-void
-ll_func_enable_full_loop_unroll(LLFunc* fn, bool enable)
-{
-    fn->state.cfg.enableFullLoopUnroll = enable;
 }
 
 void
