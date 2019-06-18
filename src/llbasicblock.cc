@@ -117,9 +117,7 @@ struct LLBasicBlock {
 LLBasicBlock*
 ll_basic_block_new(LLVMBasicBlockRef llvmBB, LLState* state)
 {
-    LLBasicBlock* bb;
-
-    bb = (LLBasicBlock*) calloc(sizeof(LLBasicBlock), 1);
+    LLBasicBlock* bb = new LLBasicBlock();
     bb->state = state;
     bb->llvmBB = llvm::unwrap(llvmBB);
     bb->nextBranch = NULL;
@@ -196,9 +194,7 @@ ll_basic_block_dispose(LLBasicBlock* bb)
 {
     ll_regfile_dispose(bb->regfile);
 
-    bb->preds.~vector();
-
-    free(bb);
+    delete bb;
 }
 
 /**

@@ -127,6 +127,7 @@ ll_func(LLVMModuleRef mod)
     llvm::FunctionType* fn_type = llvm::FunctionType::get(void_type, {cpu_type_ptr}, false);
 
     fn->llvm = llvm::Function::Create(fn_type, llvm::GlobalValue::ExternalLinkage, "", llvm::unwrap(mod));
+    fn->initialBB = nullptr;
 
     state->cfg.globalBase = NULL;
     state->cfg.stackSize = 128;
@@ -199,10 +200,10 @@ ll_func_dispose(LLFunc* fn)
 
     for (auto it = fn->blocks.begin(); it != fn->blocks.end(); ++it)
         ll_basic_block_dispose(*it);
+    if (fn->initialBB != nullptr)
+        ll_basic_block_dispose(fn->initialBB);
 
-    fn->blocks.~vector();
-
-    free(fn);
+    delete fn;
 }
 
 LLBasicBlock*
@@ -347,6 +348,8 @@ ll_func_wrap_sysv(LLVMValueRef llvm_fn, LLVMTypeRef ty, LLVMModuleRef mod)
             warn_if_reached();
             break;
     }
+
+    delete builder;
 
     llvm::InlineFunctionInfo ifi;
     llvm::InlineFunction(llvm::CallSite(call), ifi);
