@@ -49,7 +49,6 @@ void ll_func_set_global_base(LLFunc* fn, uintptr_t base, LLVMValueRef value);
 
 LLBasicBlock* ll_func_add_block(LLFunc* fn);
 LLVMValueRef ll_func_lift(LLFunc* fn);
-void ll_func_dump(LLFunc*);
 void ll_func_dispose(LLFunc*);
 
 LLVMValueRef ll_func_wrap_sysv(LLVMValueRef llvm_fn, LLVMTypeRef ty, LLVMModuleRef mod);

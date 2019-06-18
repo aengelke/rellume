@@ -25,6 +25,7 @@
 #include <stdlib.h>
 #include <stdint.h>
 #include <string.h>
+#include <vector>
 #include <llvm-c/Analysis.h>
 #include <llvm-c/Core.h>
 #include <llvm-c/Support.h>
@@ -38,6 +39,7 @@
 #include <llvm/IR/GlobalValue.h>
 #include <llvm/IR/IRBuilder.h>
 #include <llvm/IR/Type.h>
+#include <llvm/IR/Verifier.h>
 #include <llvm/Transforms/Utils/Cloning.h>
 
 #include <rellume/func.h>
@@ -56,21 +58,10 @@
  **/
 
 struct LLFunc {
-    LLVMValueRef llvm;
     LLState state;
 
-    /**
-     * \brief The basic block count
-     **/
-    size_t bbCount;
-    /**
-     * \brief The allocated size for basic blocks
-     **/
-    size_t bbsAllocated;
-    /**
-     * \brief Array of basics blocks belonging to this function
-     **/
-    LLBasicBlock** bbs;
+    llvm::Function* llvm;
+    std::vector<LLBasicBlock*> blocks;
 
     /**
      * \brief The initial basic block, which is the entry point
@@ -84,13 +75,12 @@ ll_func_create_entry(LLFunc* fn)
 {
     LLState* state = &fn->state;
 
-    llvm::Function* llvm_fn = llvm::unwrap<llvm::Function>(fn->llvm);
-    llvm::BasicBlock* first_bb = llvm_fn->empty() ? nullptr : &llvm_fn->front();
-    llvm::BasicBlock* llvm_bb = llvm::BasicBlock::Create(*llvm::unwrap(state->context), "", llvm_fn, first_bb);
+    llvm::BasicBlock* first_bb = fn->llvm->empty() ? nullptr : &fn->llvm->front();
+    llvm::BasicBlock* llvm_bb = llvm::BasicBlock::Create(*llvm::unwrap(state->context), "", fn->llvm, first_bb);
     LLBasicBlock* initialBB = ll_basic_block_new(llvm::wrap(llvm_bb), &fn->state);
     ll_basic_block_set_current(initialBB);
 
-    llvm::Value* param = llvm_fn->arg_begin();
+    llvm::Value* param = fn->llvm->arg_begin();
     llvm::IRBuilder<>* builder = llvm::unwrap(state->builder);
 
     llvm::Value* regs = builder->CreateLoad(param);
@@ -136,10 +126,7 @@ ll_func(LLVMModuleRef mod)
     llvm::Type* void_type = builder->getVoidTy();
     llvm::FunctionType* fn_type = llvm::FunctionType::get(void_type, {cpu_type_ptr}, false);
 
-    fn->llvm = LLVMAddFunction(mod, "", llvm::wrap(fn_type));
-    fn->bbCount = 0;
-    fn->bbs = NULL;
-    fn->bbsAllocated = 0;
+    fn->llvm = llvm::Function::Create(fn_type, llvm::GlobalValue::ExternalLinkage, "", llvm::unwrap(mod));
 
     state->cfg.globalBase = NULL;
     state->cfg.stackSize = 128;
@@ -210,63 +197,21 @@ ll_func_dispose(LLFunc* fn)
 {
     LLVMDisposeBuilder(fn->state.builder);
 
-    if (fn->bbsAllocated != 0)
-    {
-        for (size_t i = 0; i < fn->bbCount; i++)
-            ll_basic_block_dispose(fn->bbs[i]);
+    for (auto it = fn->blocks.begin(); it != fn->blocks.end(); ++it)
+        ll_basic_block_dispose(*it);
 
-        free(fn->bbs);
-    }
+    fn->blocks.~vector();
 
     free(fn);
-}
-
-/**
- * Dump the LLVM IR of the function.
- *
- * \author Alexis Engelke
- *
- * \param state The function
- **/
-void
-ll_func_dump(LLFunc* fn)
-{
-    char* value = LLVMPrintValueToString(fn->llvm);
-    puts(value);
-    LLVMDisposeMessage(value);
-}
-
-static void
-ll_func_add_basic_block(LLFunc* function, LLBasicBlock* bb)
-{
-    if (function->bbsAllocated == 0)
-    {
-        function->bbs = (LLBasicBlock**) malloc(sizeof(LLBasicBlock*) * 10);
-        function->bbsAllocated = 10;
-
-        if (function->bbs == NULL)
-            warn_if_reached();
-    }
-    else if (function->bbsAllocated == function->bbCount)
-    {
-        function->bbs = (LLBasicBlock**) realloc(function->bbs, sizeof(LLBasicBlock*) * function->bbsAllocated * 2);
-        function->bbsAllocated *= 2;
-
-        if (function->bbs == NULL)
-            warn_if_reached();
-    }
-
-    function->bbs[function->bbCount] = bb;
-    function->bbCount++;
 }
 
 LLBasicBlock*
 ll_func_add_block(LLFunc* fn)
 {
-    LLVMBasicBlockRef llvmBB = LLVMAppendBasicBlockInContext(fn->state.context, fn->llvm, "");
-    LLBasicBlock* bb = ll_basic_block_new(llvmBB, &fn->state);
+    llvm::BasicBlock* llvm_bb = llvm::BasicBlock::Create(fn->llvm->getContext(), "", fn->llvm, nullptr);
+    LLBasicBlock* bb = ll_basic_block_new(llvm::wrap(llvm_bb), &fn->state);
     ll_basic_block_add_phis(bb);
-    ll_func_add_basic_block(fn, bb);
+    fn->blocks.push_back(bb);
     return bb;
 }
 
@@ -297,31 +242,28 @@ ll_func_optimize(LLVMValueRef llvm_fn)
 LLVMValueRef
 ll_func_lift(LLFunc* fn)
 {
-    size_t bbCount = fn->bbCount;
-
-    if (fn->bbCount == 0)
+    if (fn->blocks.size() == 0)
         return NULL;
 
     ll_func_create_entry(fn);
 
     // The initial basic block falls through to the first lifted block.
-    ll_basic_block_add_branches(fn->initialBB, NULL, fn->bbs[0]);
+    ll_basic_block_add_branches(fn->initialBB, NULL, fn->blocks[0]);
     ll_basic_block_terminate(fn->initialBB);
 
-    for (size_t i = 0; i < bbCount; i++)
+    for (auto it = fn->blocks.begin(); it != fn->blocks.end(); ++it)
     {
-        ll_basic_block_terminate(fn->bbs[i]);
-        ll_basic_block_fill_phis(fn->bbs[i]);
+        ll_basic_block_terminate(*it);
+        ll_basic_block_fill_phis(*it);
     }
 
-    bool error = LLVMVerifyFunction(fn->llvm, LLVMPrintMessageAction);
-    if (error)
+    if (llvm::verifyFunction(*(fn->llvm), &llvm::errs()))
         return NULL;
 
     // Run some optimization passes to remove most of the bloat
-    ll_func_optimize(fn->llvm);
+    ll_func_optimize(llvm::wrap(fn->llvm));
 
-    return fn->llvm;
+    return llvm::wrap(fn->llvm);
 }
 
 LLVMValueRef
