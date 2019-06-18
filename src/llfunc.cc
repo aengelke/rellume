@@ -117,7 +117,7 @@ ll_func_create_entry(LLFunc* fn)
 }
 
 LLFunc*
-ll_func(const char* name, LLVMModuleRef mod)
+ll_func(LLVMModuleRef mod)
 {
     LLFunc* fn = new LLFunc();
 
@@ -126,7 +126,7 @@ ll_func(const char* name, LLVMModuleRef mod)
     state->builder = LLVMCreateBuilderInContext(state->context);
 
     llvm::IRBuilder<>* builder = llvm::unwrap(state->builder);
-    llvm::SmallVector<llvm::Type*, LL_RI_GPMax+LL_RI_XMMMax+RFLAG_Max> cpu_types;
+    llvm::SmallVector<llvm::Type*, 4> cpu_types;
     cpu_types.push_back(builder->getInt64Ty()); // instruction pointer
     cpu_types.push_back(llvm::ArrayType::get(builder->getInt64Ty(), 16));
     cpu_types.push_back(llvm::ArrayType::get(builder->getInt1Ty(), 6));
@@ -134,9 +134,9 @@ ll_func(const char* name, LLVMModuleRef mod)
     llvm::Type* cpu_type = llvm::StructType::get(builder->getContext(), cpu_types);
     llvm::Type* cpu_type_ptr = llvm::PointerType::get(cpu_type, 0);
     llvm::Type* void_type = builder->getVoidTy();
-    llvm::Type* fn_type = llvm::FunctionType::get(void_type, {cpu_type_ptr}, false);
+    llvm::FunctionType* fn_type = llvm::FunctionType::get(void_type, {cpu_type_ptr}, false);
 
-    fn->llvm = LLVMAddFunction(mod, name, llvm::wrap(fn_type));
+    fn->llvm = LLVMAddFunction(mod, "", llvm::wrap(fn_type));
     fn->bbCount = 0;
     fn->bbs = NULL;
     fn->bbsAllocated = 0;
@@ -331,7 +331,7 @@ ll_func_wrap_sysv(LLVMValueRef llvm_fn, LLVMTypeRef ty, LLVMModuleRef mod)
     llvm::Function* orig_fn = llvm::unwrap<llvm::Function>(llvm_fn);
     llvm::FunctionType* fn_ty = llvm::unwrap<llvm::FunctionType>(ty);
     llvm::Function* new_fn = llvm::Function::Create(fn_ty, llvm::GlobalValue::ExternalLinkage, "glob", llvm::unwrap(mod));
-    llvm::BasicBlock* llvm_bb = llvm::BasicBlock::Create(ctx, "", new_fn, nullptr);
+    llvm::BasicBlock* llvm_bb = llvm::BasicBlock::Create(ctx, "", new_fn);
 
     llvm::IRBuilder<>* builder = new llvm::IRBuilder<>(ctx);
     builder->SetInsertPoint(llvm_bb);

@@ -40,7 +40,7 @@ struct LLFunc;
 
 typedef struct LLFunc LLFunc;
 
-LLFunc* ll_func(const char* name, LLVMModuleRef mod);
+LLFunc* ll_func(LLVMModuleRef mod);
 
 void ll_func_enable_overflow_intrinsics(LLFunc* fn, bool enable);
 void ll_func_enable_fast_math(LLFunc* fn, bool enable);
