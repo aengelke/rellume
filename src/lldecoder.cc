@@ -71,8 +71,6 @@ ll_decode_instr(LLInstr& llinst, uintptr_t addr)
     llinst.addr = addr;
     llinst.len = FD_SIZE(&fdi);
 
-    LLInstrOp* ops[] = {&llinst.dst, &llinst.src, &llinst.src2};
-
     llinst.operand_count = 0;
     for (int i = 0; i < 3; i++)
     {
@@ -81,33 +79,33 @@ ll_decode_instr(LLInstr& llinst, uintptr_t addr)
         case FD_OT_NONE:
             goto end_ops;
         case FD_OT_IMM:
-            ops[i]->type = LL_OP_IMM;
-            ops[i]->val = FD_OP_IMM(&fdi, i);
-            ops[i]->size = FD_OP_SIZE(&fdi, i);
+            llinst.ops[i].type = LL_OP_IMM;
+            llinst.ops[i].val = FD_OP_IMM(&fdi, i);
+            llinst.ops[i].size = FD_OP_SIZE(&fdi, i);
             break;
         case FD_OT_REG:
-            ops[i]->type = LL_OP_REG;
-            ops[i]->size = FD_OP_SIZE(&fdi, i);
-            ops[i]->scale = 0;
-            ops[i]->val = 0;
-            ops[i]->reg = convert_reg(FD_OP_SIZE(&fdi, i), FD_OP_REG(&fdi, i),
+            llinst.ops[i].type = LL_OP_REG;
+            llinst.ops[i].size = FD_OP_SIZE(&fdi, i);
+            llinst.ops[i].scale = 0;
+            llinst.ops[i].val = 0;
+            llinst.ops[i].reg = convert_reg(FD_OP_SIZE(&fdi, i), FD_OP_REG(&fdi, i),
                                       FD_OP_REG_TYPE(&fdi, i));
             break;
         case FD_OT_MEM:
-            ops[i]->type = LL_OP_MEM;
-            ops[i]->seg = convert_reg(2, FD_SEGMENT(&fdi), FD_RT_SEG).ri;
-            ops[i]->val = FD_OP_DISP(&fdi, i);
-            ops[i]->reg = convert_reg(8, FD_OP_BASE(&fdi, i), FD_RT_GPL);
+            llinst.ops[i].type = LL_OP_MEM;
+            llinst.ops[i].seg = convert_reg(2, FD_SEGMENT(&fdi), FD_RT_SEG).ri;
+            llinst.ops[i].val = FD_OP_DISP(&fdi, i);
+            llinst.ops[i].reg = convert_reg(8, FD_OP_BASE(&fdi, i), FD_RT_GPL);
             if (FD_OP_INDEX(&fdi, i) != FD_REG_NONE)
             {
-                ops[i]->ireg = convert_reg(8, FD_OP_INDEX(&fdi, i), FD_RT_GPL);
-                ops[i]->scale = 1 << FD_OP_SCALE(&fdi, i);
+                llinst.ops[i].ireg = convert_reg(8, FD_OP_INDEX(&fdi, i), FD_RT_GPL);
+                llinst.ops[i].scale = 1 << FD_OP_SCALE(&fdi, i);
             }
             else
             {
-                ops[i]->scale = 0;
+                llinst.ops[i].scale = 0;
             }
-            ops[i]->size = FD_OP_SIZE(&fdi, i);
+            llinst.ops[i].size = FD_OP_SIZE(&fdi, i);
             break;
         }
         llinst.operand_count = i + 1;
@@ -152,11 +150,11 @@ end_ops:
     case FDI_IMUL3: llinst.type = LL_INS_IMUL; break;
     case FDI_MUL: llinst.type = LL_INS_MUL; break;
     case FDI_SHL_IMM: llinst.type = LL_INS_SHL; break;
-    case FDI_SHL_CL: llinst.type = LL_INS_SHL; llinst.src.type = LL_OP_REG; llinst.src.size = 1; llinst.src.reg = ll_reg_gp(1, false, 1); llinst.operand_count = 2; break;
+    case FDI_SHL_CL: llinst.type = LL_INS_SHL; llinst.ops[1].type = LL_OP_REG; llinst.ops[1].size = 1; llinst.ops[1].reg = ll_reg_gp(1, false, 1); llinst.operand_count = 2; break;
     case FDI_SHR_IMM: llinst.type = LL_INS_SHR; break;
-    case FDI_SHR_CL: llinst.type = LL_INS_SHR; llinst.src.type = LL_OP_REG; llinst.src.size = 1; llinst.src.reg = ll_reg_gp(1, false, 1); llinst.operand_count = 2; break;
+    case FDI_SHR_CL: llinst.type = LL_INS_SHR; llinst.ops[1].type = LL_OP_REG; llinst.ops[1].size = 1; llinst.ops[1].reg = ll_reg_gp(1, false, 1); llinst.operand_count = 2; break;
     case FDI_SAR_IMM: llinst.type = LL_INS_SAR; break;
-    case FDI_SAR_CL: llinst.type = LL_INS_SAR; llinst.src.type = LL_OP_REG; llinst.src.size = 1; llinst.src.reg = ll_reg_gp(1, false, 1); llinst.operand_count = 2; break;
+    case FDI_SAR_CL: llinst.type = LL_INS_SAR; llinst.ops[1].type = LL_OP_REG; llinst.ops[1].size = 1; llinst.ops[1].reg = ll_reg_gp(1, false, 1); llinst.operand_count = 2; break;
     case FDI_CMOVO: llinst.type = LL_INS_CMOVO; break;
     case FDI_CMOVNO: llinst.type = LL_INS_CMOVNO; break;
     case FDI_CMOVC: llinst.type = LL_INS_CMOVC; break;
@@ -321,7 +319,7 @@ int Function::Decode(uintptr_t addr)
                 if (instrIsJcc(inst.type) || inst.type == LL_INS_CALL)
                     addr_queue.push_back(cur_addr + inst.len);
                 if (instrIsJcc(inst.type) || inst.type == LL_INS_JMP)
-                    addr_queue.push_back(inst.dst.val);
+                    addr_queue.push_back(inst.ops[0].val);
                 break;
             }
             cur_addr += inst.len;
@@ -363,7 +361,7 @@ int Function::Decode(uintptr_t addr)
         if (inst.type != LL_INS_JMP && inst.type != LL_INS_RET)
             fallthrough = block_objs[addr_map[inst.addr + inst.len].first];
         if (instrIsJcc(inst.type) || inst.type == LL_INS_JMP)
-            branch = block_objs[addr_map[inst.dst.val].first];
+            branch = block_objs[addr_map[inst.ops[0].val].first];
         block_objs[j]->AddBranches(branch, fallthrough);
     }
 

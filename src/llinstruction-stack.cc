@@ -91,7 +91,7 @@ ll_instruction_stack(LLInstr* instr, LLState* state)
         newSp = LLVMBuildGEP(state->builder, sp, &constSub, 1, "");
 
         if (instr->type == LL_INS_PUSH)
-            value = ll_operand_load(OP_SI, ALIGN_MAXIMUM, &instr->dst, state);
+            value = ll_operand_load(OP_SI, ALIGN_MAXIMUM, &instr->ops[0], state);
         else
             value = ll_instruction_get_flags(true, state);
 
@@ -102,7 +102,7 @@ ll_instruction_stack(LLInstr* instr, LLState* state)
     {
         LLInstrOp operand = instr->type == LL_INS_LEAVE
             ? getRegOp(ll_reg(LL_RT_GP64, LL_RI_BP))
-            : instr->dst;
+            : instr->ops[0];
 
         value = LLVMBuildLoad(state->builder, sp, "");
         ll_operand_store(OP_SI, ALIGN_MAXIMUM, &operand, REG_DEFAULT, value, state);

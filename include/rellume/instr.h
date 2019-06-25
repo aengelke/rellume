@@ -100,9 +100,7 @@ struct LLInstr {
     int operand_count;
     int operand_size;
     int address_size;
-    LLInstrOp dst;
-    LLInstrOp src;
-    LLInstrOp src2;
+    LLInstrOp ops[4];
 
     uintptr_t addr;
     int len;
