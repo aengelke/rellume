@@ -52,7 +52,7 @@ main(void)
     // Lift the whole function by following all direct jumps
     ll_func_decode(fn, (uintptr_t) sample_func);
     LLVMValueRef llvm_fn = ll_func_lift(fn);
-    llvm_fn = ll_func_wrap_sysv(llvm_fn, fnty, mod);
+    llvm_fn = ll_func_wrap_sysv(llvm_fn, fnty, mod, 128);
 
     LLVMDumpValue(llvm_fn);
 

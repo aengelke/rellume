@@ -79,16 +79,6 @@ void Function::CreateEntry()
 
     for (unsigned i = 0; i < RFLAG_Max; i++)
         state.SetFlag(i, builder->CreateExtractValue(regs, {2, i}));
-
-    // Setup virtual stack
-    LLVMTypeRef i8 = LLVMInt8TypeInContext(state.context);
-    LLVMTypeRef i64 = LLVMInt64TypeInContext(state.context);
-    LLVMValueRef stackSize = LLVMConstInt(i64, state.cfg.stackSize, false);
-    LLVMValueRef stack = LLVMBuildArrayAlloca(state.builder, i8, stackSize, "");
-    LLVMValueRef sp = LLVMBuildGEP(state.builder, stack, &stackSize, 1, "");
-    state.SetReg(ll_reg(LL_RT_GP64, LL_RI_SP), FACET_PTR, llvm::unwrap(sp));
-
-    LLVMSetAlignment(stack, 16);
 }
 
 Function::Function(llvm::Module* mod) : state(mod->getContext())
@@ -147,11 +137,6 @@ void Function::EnableOverflowIntrinsics(bool enable)
 void Function::EnableFastMath(bool enable)
 {
     state.cfg.enableFastMath = enable;
-}
-
-void Function::SetStackSize(size_t size)
-{
-    state.cfg.stackSize = size;
 }
 
 void Function::SetGlobalBase(uintptr_t base, llvm::Value* value)
@@ -238,7 +223,7 @@ llvm::Function* Function::Lift()
 
 extern "C"
 LLVMValueRef
-ll_func_wrap_sysv(LLVMValueRef llvm_fn, LLVMTypeRef ty, LLVMModuleRef mod)
+ll_func_wrap_sysv(LLVMValueRef llvm_fn, LLVMTypeRef ty, LLVMModuleRef mod, size_t stack_size)
 {
     llvm::LLVMContext& ctx = llvm::unwrap(mod)->getContext();
     llvm::Function* orig_fn = llvm::unwrap<llvm::Function>(llvm_fn);
@@ -283,6 +268,13 @@ ll_func_wrap_sysv(LLVMValueRef llvm_fn, LLVMTypeRef ty, LLVMModuleRef mod)
         else
             warn_if_reached();
     }
+
+    llvm::Value* stack_sz_val = builder->getInt64(stack_size);
+    llvm::AllocaInst* stack = builder->CreateAlloca(builder->getInt8Ty(), stack_sz_val);
+    stack->setAlignment(16);
+    llvm::Value* sp_ptr = builder->CreateGEP(stack, {stack_sz_val});
+    llvm::Value* sp = builder->CreatePtrToInt(sp_ptr, builder->getInt64Ty());
+    cpu_arg = builder->CreateInsertValue(cpu_arg, sp, {1, 4});
 
     llvm::Value* alloca = builder->CreateAlloca(cpu_type, int{0});
     builder->CreateStore(cpu_arg, alloca);

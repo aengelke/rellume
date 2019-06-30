@@ -56,7 +56,6 @@ public:
 
     void EnableOverflowIntrinsics(bool enable);
     void EnableFastMath(bool enable);
-    void SetStackSize(size_t size);
     void SetGlobalBase(uintptr_t base, llvm::Value* value);
     BasicBlock* AddBlock();
     llvm::Function* Lift();

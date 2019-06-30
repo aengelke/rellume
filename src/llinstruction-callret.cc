@@ -125,9 +125,6 @@ ll_instruction_ret(LLInstr* instr, LLState* state)
     for (unsigned i = 0; i < LL_RI_GPMax; i++)
     {
         LLVMValueRef value = ll_get_register(ll_reg(LL_RT_GP64, i), FACET_I64, state);
-        // Don't let the local stack pointer escape...
-        if (i == 4)
-            value = LLVMGetUndef(LLVMTypeOf(value));
         result = builder->CreateInsertValue(result, llvm::unwrap(value), {1, i});
     }
 

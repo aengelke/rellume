@@ -48,9 +48,6 @@ void ll_func_enable_overflow_intrinsics(LLFunc* fn, bool enable) {
 void ll_func_enable_fast_math(LLFunc* fn, bool enable) {
     reinterpret_cast<rellume::Function*>(fn)->EnableFastMath(enable);
 }
-void ll_func_set_stack_size(LLFunc* fn, size_t size) {
-    reinterpret_cast<rellume::Function*>(fn)->SetStackSize(size);
-}
 void ll_func_set_global_base(LLFunc* fn, uintptr_t base, LLVMValueRef value) {
     reinterpret_cast<rellume::Function*>(fn)->SetGlobalBase(base, llvm::unwrap(value));
 }
