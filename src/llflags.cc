@@ -217,8 +217,8 @@ ll_flags_set_of_sub(LLVMValueRef result, LLVMValueRef lhs, LLVMValueRef rhs, LLS
         LLVMTypeRef i1 = LLVMInt1TypeInContext(state->context);
         LLVMValueRef xor1 = LLVMBuildXor(state->builder, lhs, result, "");
         LLVMValueRef xor2 = LLVMBuildXor(state->builder, lhs, rhs, "");
-        LLVMValueRef and = LLVMBuildAnd(state->builder, xor1, xor2, "");
-        LLVMValueRef overflow = LLVMBuildLShr(state->builder, and, LLVMConstInt(intType, width - 1, false), "");
+        LLVMValueRef andv = LLVMBuildAnd(state->builder, xor1, xor2, "");
+        LLVMValueRef overflow = LLVMBuildLShr(state->builder, andv, LLVMConstInt(intType, width - 1, false), "");
         overflowFlag = LLVMBuildTrunc(state->builder, overflow, i1, "");
     }
 
@@ -274,9 +274,9 @@ ll_flags_set_of_add(LLVMValueRef result, LLVMValueRef lhs, LLVMValueRef rhs, LLS
         LLVMTypeRef i1 = LLVMInt1TypeInContext(state->context);
         LLVMValueRef xor1 = LLVMBuildXor(state->builder, lhs, result, "");
         LLVMValueRef xor2 = LLVMBuildXor(state->builder, lhs, rhs, "");
-        LLVMValueRef not = LLVMBuildNot(state->builder, xor2, "");
-        LLVMValueRef and = LLVMBuildAnd(state->builder, xor1, not, "");
-        LLVMValueRef overflow = LLVMBuildLShr(state->builder, and, LLVMConstInt(intType, width - 1, false), "");
+        LLVMValueRef notv = LLVMBuildNot(state->builder, xor2, "");
+        LLVMValueRef andv = LLVMBuildAnd(state->builder, xor1, notv, "");
+        LLVMValueRef overflow = LLVMBuildLShr(state->builder, andv, LLVMConstInt(intType, width - 1, false), "");
         overflowFlag = LLVMBuildTrunc(state->builder, overflow, i1, "");
     }
 

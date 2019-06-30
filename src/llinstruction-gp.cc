@@ -388,8 +388,11 @@ ll_instruction_setcc(LLInstr* instr, LLState* state)
 void
 ll_instruction_cdqe(LLInstr* instr, LLState* state)
 {
-    LLVMValueRef operand1 = ll_operand_load(OP_SI, ALIGN_MAXIMUM, &getRegOp(ll_reg(LL_RT_GP32, LL_RI_A)), state);
-    ll_operand_store(OP_SI, ALIGN_MAXIMUM, &getRegOp(ll_reg(LL_RT_GP64, LL_RI_A)), REG_DEFAULT, operand1, state);
+    LLInstrOp srcOp = getRegOp(ll_reg(LL_RT_GP32, LL_RI_A));
+    LLInstrOp dstOp = getRegOp(ll_reg(LL_RT_GP64, LL_RI_A));
+
+    LLVMValueRef operand1 = ll_operand_load(OP_SI, ALIGN_MAXIMUM, &srcOp, state);
+    ll_operand_store(OP_SI, ALIGN_MAXIMUM, &dstOp, REG_DEFAULT, operand1, state);
 
     (void) instr;
 }

@@ -141,7 +141,7 @@ ll_operand_get_facet(OperandDataType dataType, LLInstrOp* operand)
             warn_if_reached();
     }
 
-    return INT32_MAX;
+    return (RegisterFacet) INT32_MAX;
 }
 
 /**
