@@ -44,7 +44,7 @@ namespace rellume
 class BasicBlock
 {
 public:
-    BasicBlock(llvm::BasicBlock* block, LLState* state);
+    BasicBlock(llvm::BasicBlock* block, LLState& state);
     ~BasicBlock();
 
     BasicBlock(BasicBlock&& rhs);
@@ -61,7 +61,7 @@ public:
     void FillPhis();
 
 private:
-    LLState* state;
+    LLState& state;
 
     /// The branch basic block, or NULL
     BasicBlock* nextBranch;

@@ -66,9 +66,8 @@ namespace rellume
  * \param address The address of the basic block
  * \returns The new basic block
  **/
-BasicBlock::BasicBlock(llvm::BasicBlock* llvm, LLState* state)
+BasicBlock::BasicBlock(llvm::BasicBlock* llvm, LLState& state) : state(state)
 {
-    this->state = state;
     this->llvmBB = llvm;
     nextBranch = NULL;
     nextFallThrough = NULL;
@@ -83,27 +82,27 @@ BasicBlock::~BasicBlock()
 
 void BasicBlock::SetCurrent()
 {
-    state->regfile = regfile;
+    state.regfile = regfile;
 
-    llvm::IRBuilder<>* builder = llvm::unwrap(state->builder);
+    llvm::IRBuilder<>* builder = llvm::unwrap(state.builder);
     builder->SetInsertPoint(llvmBB);
 }
 
 void BasicBlock::AddPhis()
 {
-    llvm::IRBuilder<>* builder = llvm::unwrap(state->builder);
+    llvm::IRBuilder<>* builder = llvm::unwrap(state.builder);
     builder->SetInsertPoint(llvmBB);
 
-    state->regfile = regfile;
+    state.regfile = regfile;
 
     for (int i = 0; i < LL_RI_GPMax; i++)
     {
         for (size_t k = 0; k < FACET_COUNT; k++)
         {
-            LLVMTypeRef ty = ll_register_facet_type((RegisterFacet) k, state->context);
+            LLVMTypeRef ty = ll_register_facet_type((RegisterFacet) k, state.context);
             llvm::PHINode* phiNode = builder->CreatePHI(llvm::unwrap(ty), 0);
 
-            ll_regfile_set(regfile, (RegisterFacet) k, ll_reg(LL_RT_GP64, i), llvm::wrap(phiNode), false, state->builder);
+            ll_regfile_set(regfile, (RegisterFacet) k, ll_reg(LL_RT_GP64, i), llvm::wrap(phiNode), false, state.builder);
             phiGpRegs[i].facets[k] = phiNode;
         }
     }
@@ -112,10 +111,10 @@ void BasicBlock::AddPhis()
     {
         for (size_t k = 0; k < FACET_COUNT; k++)
         {
-            LLVMTypeRef ty = ll_register_facet_type((RegisterFacet) k, state->context);
+            LLVMTypeRef ty = ll_register_facet_type((RegisterFacet) k, state.context);
             llvm::PHINode* phiNode = builder->CreatePHI(llvm::unwrap(ty), 0);
 
-            ll_regfile_set(regfile, (RegisterFacet) k, ll_reg(LL_RT_XMM, i), llvm::wrap(phiNode), false, state->builder);
+            ll_regfile_set(regfile, (RegisterFacet) k, ll_reg(LL_RT_XMM, i), llvm::wrap(phiNode), false, state.builder);
             phiVRegs[i].facets[k] = phiNode;
         }
     }
@@ -124,7 +123,7 @@ void BasicBlock::AddPhis()
     {
         llvm::PHINode* phiNode = builder->CreatePHI(builder->getInt1Ty(), 0);
 
-        ll_regfile_set_flag(regfile, i, llvm::wrap(phiNode), state->context);
+        ll_regfile_set_flag(regfile, i, llvm::wrap(phiNode), state.context);
         phiFlags[i] = phiNode;
     }
 }
@@ -176,15 +175,15 @@ void BasicBlock::AddBranches(BasicBlock* branch, BasicBlock* fallThrough)
 
 void BasicBlock::AddInst(LLInstr* instr)
 {
-    state->regfile = regfile;
+    state.regfile = regfile;
 
-    llvm::IRBuilder<>* builder = llvm::unwrap(state->builder);
+    llvm::IRBuilder<>* builder = llvm::unwrap(state.builder);
     builder->SetInsertPoint(llvmBB);
 
     // Set new instruction pointer register
     uintptr_t rip = instr->addr + instr->len;
     llvm::Value* ripValue = llvm::ConstantInt::get(builder->getInt64Ty(), rip);
-    ll_set_register(ll_reg(LL_RT_IP, 0), FACET_I64, llvm::wrap(ripValue), true, state);
+    ll_regfile_set(regfile, FACET_I64, ll_reg(LL_RT_IP, 0), llvm::wrap(ripValue), true, llvm::wrap(builder));
 
     // Add separator for debugging.
     llvm::Function* intrinsicDoNothing = llvm::Intrinsic::getDeclaration(llvmBB->getModule(), llvm::Intrinsic::donothing, {});
@@ -218,13 +217,13 @@ void BasicBlock::AddInst(LLInstr* instr)
 void
 BasicBlock::Terminate()
 {
-    llvm::IRBuilder<>* builder = llvm::unwrap(state->builder);
+    llvm::IRBuilder<>* builder = llvm::unwrap(state.builder);
     builder->SetInsertPoint(llvmBB);
 
     if (instrIsJcc(endType))
     {
-        state->regfile = regfile;
-        llvm::Value* cond = llvm::unwrap(ll_flags_condition(endType, LL_INS_JO, state));
+        state.regfile = regfile;
+        llvm::Value* cond = llvm::unwrap(ll_flags_condition(endType, LL_INS_JO, &state));
         builder->CreateCondBr(cond, nextBranch->llvmBB, nextFallThrough->llvmBB);
     }
     else if (endType == LL_INS_JMP)
@@ -245,7 +244,7 @@ BasicBlock::Terminate()
  **/
 void BasicBlock::FillPhis()
 {
-    state->regfile = NULL;
+    state.regfile = NULL;
 
     for (auto pred_it = preds.begin(); pred_it != preds.end(); ++pred_it)
     {
@@ -255,7 +254,7 @@ void BasicBlock::FillPhis()
         {
             for (size_t k = 0; k < FACET_COUNT; k++)
             {
-                llvm::Value* value = llvm::unwrap(ll_regfile_get(pred->regfile, (RegisterFacet)k, ll_reg(LL_RT_GP64, j), state->builder));
+                llvm::Value* value = llvm::unwrap(ll_regfile_get(pred->regfile, (RegisterFacet)k, ll_reg(LL_RT_GP64, j), state.builder));
                 phiGpRegs[j].facets[k]->addIncoming(value, pred->llvmBB);
             }
         }
@@ -264,7 +263,7 @@ void BasicBlock::FillPhis()
         {
             for (size_t k = 0; k < FACET_COUNT; k++)
             {
-                llvm::Value* value = llvm::unwrap(ll_regfile_get(pred->regfile, (RegisterFacet)k, ll_reg(LL_RT_XMM, j), state->builder));
+                llvm::Value* value = llvm::unwrap(ll_regfile_get(pred->regfile, (RegisterFacet)k, ll_reg(LL_RT_XMM, j), state.builder));
                 phiVRegs[j].facets[k]->addIncoming(value, pred->llvmBB);
             }
         }

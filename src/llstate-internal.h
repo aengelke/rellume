@@ -77,6 +77,12 @@ public:
         builder = llvm::wrap(&irb);
     }
 
+    LLState(LLState&& rhs);
+    LLState& operator=(LLState&& rhs);
+
+    LLState(const LLState&) = delete;
+    LLState& operator=(const LLState&) = delete;
+
     LLConfig cfg;
 
     /**

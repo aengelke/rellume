@@ -62,33 +62,31 @@ namespace rellume
 
 void Function::CreateEntry()
 {
-    LLState* state = &this->state;
-
     llvm::BasicBlock* first_bb = llvm->empty() ? nullptr : &llvm->front();
-    llvm::BasicBlock* llvm_bb = llvm::BasicBlock::Create(*llvm::unwrap(state->context), "", llvm, first_bb);
+    llvm::BasicBlock* llvm_bb = llvm::BasicBlock::Create(state.irb.getContext(), "", llvm, first_bb);
     initialBB = new BasicBlock(llvm_bb, state);
     initialBB->SetCurrent();
 
     llvm::Value* param = llvm->arg_begin();
-    llvm::IRBuilder<>* builder = llvm::unwrap(state->builder);
+    llvm::IRBuilder<>* builder = llvm::unwrap(state.builder);
 
     llvm::Value* regs = builder->CreateLoad(param);
     for (unsigned i = 0; i < LL_RI_GPMax; i++)
-        state->SetReg(ll_reg(LL_RT_GP64, i), FACET_I64, builder->CreateExtractValue(regs, {1, i}));
+        state.SetReg(ll_reg(LL_RT_GP64, i), FACET_I64, builder->CreateExtractValue(regs, {1, i}));
 
     for (unsigned i = 0; i < LL_RI_XMMMax; i++)
-        state->SetReg(ll_reg(LL_RT_XMM, i), FACET_IVEC, builder->CreateExtractValue(regs, {3, i}));
+        state.SetReg(ll_reg(LL_RT_XMM, i), FACET_IVEC, builder->CreateExtractValue(regs, {3, i}));
 
     for (unsigned i = 0; i < RFLAG_Max; i++)
-        state->SetFlag(i, builder->CreateExtractValue(regs, {2, i}));
+        state.SetFlag(i, builder->CreateExtractValue(regs, {2, i}));
 
     // Setup virtual stack
-    LLVMTypeRef i8 = LLVMInt8TypeInContext(state->context);
-    LLVMTypeRef i64 = LLVMInt64TypeInContext(state->context);
-    LLVMValueRef stackSize = LLVMConstInt(i64, state->cfg.stackSize, false);
-    LLVMValueRef stack = LLVMBuildArrayAlloca(state->builder, i8, stackSize, "");
-    LLVMValueRef sp = LLVMBuildGEP(state->builder, stack, &stackSize, 1, "");
-    state->SetReg(ll_reg(LL_RT_GP64, LL_RI_SP), FACET_PTR, llvm::unwrap(sp));
+    LLVMTypeRef i8 = LLVMInt8TypeInContext(state.context);
+    LLVMTypeRef i64 = LLVMInt64TypeInContext(state.context);
+    LLVMValueRef stackSize = LLVMConstInt(i64, state.cfg.stackSize, false);
+    LLVMValueRef stack = LLVMBuildArrayAlloca(state.builder, i8, stackSize, "");
+    LLVMValueRef sp = LLVMBuildGEP(state.builder, stack, &stackSize, 1, "");
+    state.SetReg(ll_reg(LL_RT_GP64, LL_RI_SP), FACET_PTR, llvm::unwrap(sp));
 
     LLVMSetAlignment(stack, 16);
 }
@@ -180,7 +178,7 @@ Function::~Function()
 BasicBlock* Function::AddBlock()
 {
     llvm::BasicBlock* llvm_bb = llvm::BasicBlock::Create(llvm->getContext(), "", llvm, nullptr);
-    BasicBlock* bb = new BasicBlock(llvm_bb, &state);
+    BasicBlock* bb = new BasicBlock(llvm_bb, state);
     bb->AddPhis();
     blocks.push_back(bb);
     return bb;
