@@ -280,38 +280,6 @@ void BasicBlock::FillPhis()
 } // namespace
 
 
-LLBasicBlock*
-ll_basic_block_new(LLVMBasicBlockRef llvm, LLState* state)
-{
-    return reinterpret_cast<LLBasicBlock*>(new rellume::BasicBlock(llvm::unwrap(llvm), state));
-}
-
-void
-ll_basic_block_dispose(LLBasicBlock* bb)
-{
-    delete reinterpret_cast<rellume::BasicBlock*>(bb);
-}
-void
-ll_basic_block_set_current(LLBasicBlock* bb)
-{
-    reinterpret_cast<rellume::BasicBlock*>(bb)->SetCurrent();
-}
-void
-ll_basic_block_add_phis(LLBasicBlock* bb)
-{
-    reinterpret_cast<rellume::BasicBlock*>(bb)->AddPhis();
-}
-void
-ll_basic_block_terminate(LLBasicBlock* bb)
-{
-    reinterpret_cast<rellume::BasicBlock*>(bb)->Terminate();
-}
-void
-ll_basic_block_fill_phis(LLBasicBlock* bb)
-{
-    reinterpret_cast<rellume::BasicBlock*>(bb)->FillPhis();
-}
-
 void
 ll_basic_block_add_branches(LLBasicBlock* bb, LLBasicBlock* a, LLBasicBlock* b)
 {
