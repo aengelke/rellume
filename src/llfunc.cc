@@ -74,13 +74,13 @@ void Function::CreateEntry()
 
     llvm::Value* regs = builder->CreateLoad(param);
     for (unsigned i = 0; i < LL_RI_GPMax; i++)
-        ll_set_register(ll_reg(LL_RT_GP64, i), FACET_I64, llvm::wrap(builder->CreateExtractValue(regs, {1, i})), true, state);
+        state->SetReg(ll_reg(LL_RT_GP64, i), FACET_I64, builder->CreateExtractValue(regs, {1, i}));
 
     for (unsigned i = 0; i < LL_RI_XMMMax; i++)
-        ll_set_register(ll_reg(LL_RT_XMM, i), FACET_IVEC, llvm::wrap(builder->CreateExtractValue(regs, {3, i})), true, state);
+        state->SetReg(ll_reg(LL_RT_XMM, i), FACET_IVEC, builder->CreateExtractValue(regs, {3, i}));
 
     for (unsigned i = 0; i < RFLAG_Max; i++)
-        ll_set_flag(i, llvm::wrap(builder->CreateExtractValue(regs, {2, i})), state);
+        state->SetFlag(i, builder->CreateExtractValue(regs, {2, i}));
 
     // Setup virtual stack
     LLVMTypeRef i8 = LLVMInt8TypeInContext(state->context);
@@ -88,18 +88,16 @@ void Function::CreateEntry()
     LLVMValueRef stackSize = LLVMConstInt(i64, state->cfg.stackSize, false);
     LLVMValueRef stack = LLVMBuildArrayAlloca(state->builder, i8, stackSize, "");
     LLVMValueRef sp = LLVMBuildGEP(state->builder, stack, &stackSize, 1, "");
-    ll_set_register(ll_reg(LL_RT_GP64, LL_RI_SP), FACET_PTR, sp, true, state);
+    state->SetReg(ll_reg(LL_RT_GP64, LL_RI_SP), FACET_PTR, llvm::unwrap(sp));
 
     LLVMSetAlignment(stack, 16);
 }
 
-Function::Function(llvm::Module* mod)
+Function::Function(llvm::Module* mod) : state(mod->getContext())
 {
     LLState* state = &this->state;
-    state->context = LLVMGetModuleContext(llvm::wrap(mod));
-    state->builder = LLVMCreateBuilderInContext(state->context);
 
-    llvm::IRBuilder<>* builder = llvm::unwrap(state->builder);
+    llvm::IRBuilder<>* builder = &state->irb;
     llvm::SmallVector<llvm::Type*, 4> cpu_types;
     cpu_types.push_back(builder->getInt64Ty()); // instruction pointer
     cpu_types.push_back(llvm::ArrayType::get(builder->getInt64Ty(), 16));
@@ -173,7 +171,10 @@ void Function::SetGlobalBase(uintptr_t base, llvm::Value* value)
  **/
 Function::~Function()
 {
-    LLVMDisposeBuilder(state.builder);
+    for (auto it = blocks.begin(); it != blocks.end(); ++it)
+        delete *it;
+    if (initialBB != nullptr)
+        delete initialBB;
 }
 
 BasicBlock* Function::AddBlock()

@@ -28,6 +28,7 @@
 #include <stdlib.h>
 #include <stdint.h>
 #include <stdio.h>
+#include <llvm/IR/IRBuilder.h>
 #include <llvm-c/Core.h>
 #include <llvm-c/ExecutionEngine.h>
 
@@ -70,7 +71,12 @@ typedef struct LLConfig LLConfig;
 /**
  * \brief The LLVM state of the back-end.
  **/
-struct LLState {
+class LLState {
+public:
+    LLState(llvm::LLVMContext& ctx) : context(llvm::wrap(&ctx)), irb(ctx) {
+        builder = llvm::wrap(&irb);
+    }
+
     LLConfig cfg;
 
     /**
@@ -86,15 +92,29 @@ struct LLState {
      * \brief The current register file
      **/
     LLRegisterFile* regfile;
+
+    llvm::IRBuilder<> irb;
+
+
+    llvm::Value* GetReg(LLReg reg, RegisterFacet facet) {
+        return llvm::unwrap(ll_regfile_get(regfile, facet, reg, llvm::wrap(&irb)));
+    }
+    void SetReg(LLReg reg, RegisterFacet facet, llvm::Value* value, bool clear = true) {
+        ll_regfile_set(regfile, facet, reg, llvm::wrap(value), clear, llvm::wrap(&irb));
+    }
+    llvm::Value* GetFlag(int flag) {
+        return llvm::unwrap(ll_regfile_get_flag(regfile, flag));
+    }
+    void SetFlag(int flag, llvm::Value* value) {
+        ll_regfile_set_flag(regfile, flag, llvm::wrap(value), llvm::wrap(&(irb.getContext())));
+    }
 };
 
-typedef struct LLState LLState;
-
-#define ll_get_register(reg,facet,state) ll_regfile_get(state->regfile,facet,reg,state->builder)
+#define ll_get_register(reg,facet,state) llvm::wrap((state)->GetReg(reg, facet))
+#define ll_set_register(reg,facet,value,clear,state) (state)->SetReg(reg, facet, llvm::unwrap(value), clear)
+#define ll_get_flag(reg,state) llvm::wrap((state)->GetFlag(reg))
+#define ll_set_flag(reg,value,state) (state)->SetFlag(reg, llvm::unwrap(value))
 #define ll_clear_register(reg,state) ll_regfile_clear(state->regfile,reg,state->context)
-#define ll_set_register(reg,facet,value,clear,state) ll_regfile_set(state->regfile,facet,reg,value,clear,state->builder)
-#define ll_get_flag(reg,state) ll_regfile_get_flag(state->regfile,reg)
-#define ll_set_flag(reg,value,state) ll_regfile_set_flag(state->regfile,reg,value,state->context)
 #define ll_get_flag_cache(state) ll_regfile_get_flag_cache(state->regfile)
 
 #ifdef __cplusplus
