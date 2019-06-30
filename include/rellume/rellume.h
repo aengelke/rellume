@@ -21,16 +21,45 @@
  * \file
  **/
 
-#ifndef LL_DECODER_H
-#define LL_DECODER_H
+#ifndef RELLUME_RELLUME_H
+#define RELLUME_RELLUME_H
 
+#include <stdbool.h>
+#include <stdlib.h>
 #include <stdint.h>
 
-#include "rellume/func.h"
+#include <llvm-c/Core.h>
+
+#include "rellume/instr.h"
 
 #ifdef __cplusplus
 extern "C" {
 #endif
+
+struct LLBasicBlock;
+
+typedef struct LLBasicBlock LLBasicBlock;
+
+void ll_basic_block_add_inst(LLBasicBlock*, LLInstr*);
+void ll_basic_block_add_branches(LLBasicBlock*, LLBasicBlock*, LLBasicBlock*);
+
+
+struct LLFunc;
+
+typedef struct LLFunc LLFunc;
+
+LLFunc* ll_func(LLVMModuleRef mod);
+
+void ll_func_enable_overflow_intrinsics(LLFunc* fn, bool enable);
+void ll_func_enable_fast_math(LLFunc* fn, bool enable);
+void ll_func_set_stack_size(LLFunc* fn, size_t size);
+void ll_func_set_global_base(LLFunc* fn, uintptr_t base, LLVMValueRef value);
+
+LLBasicBlock* ll_func_add_block(LLFunc* fn);
+LLVMValueRef ll_func_lift(LLFunc* fn);
+void ll_func_dispose(LLFunc*);
+
+LLVMValueRef ll_func_wrap_sysv(LLVMValueRef llvm_fn, LLVMTypeRef ty, LLVMModuleRef mod);
 
 int ll_func_decode(LLFunc* func, uintptr_t addr);
 

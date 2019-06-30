@@ -30,11 +30,13 @@ extern "C" {
 #include <fadec.h>
 }
 
-#include <rellume/decoder.h>
+#include <rellume/rellume.h>
 
-#include <rellume/basicblock.h>
-#include <rellume/instr.h>
 #include <llinstr-internal.h>
+#include <llfunction-internal.h>
+
+namespace rellume
+{
 
 static LLReg
 convert_reg(int size, int idx, int type)
@@ -284,8 +286,7 @@ end_ops:
                         (instr) == LL_INS_JMP || (instr) == LL_INS_CALL)
 
 extern "C"
-int
-ll_func_decode(LLFunc* func, uintptr_t addr)
+int Function::Decode(uintptr_t addr)
 {
     LLInstr inst;
 
@@ -344,27 +345,29 @@ ll_func_decode(LLFunc* func, uintptr_t addr)
         }
     }
 
-    std::vector<LLBasicBlock*> block_objs;
+    std::vector<BasicBlock*> block_objs;
     block_objs.reserve(blocks.size());
     for (auto it = blocks.begin(); it != blocks.end(); it++)
     {
-        LLBasicBlock* block = ll_func_add_block(func);
+        BasicBlock* block = AddBlock();
         for (size_t j = it->first; j < it->second; j++)
-            ll_basic_block_add_inst(block, &insts[j]);
+            block->AddInst(&insts[j]);
         block_objs.push_back(block);
     }
 
     for (size_t j = 0; j < blocks.size(); j++)
     {
         LLInstr& inst = insts[blocks[j].second-1];
-        LLBasicBlock* fallthrough = NULL;
-        LLBasicBlock* branch = NULL;
+        BasicBlock* fallthrough = nullptr;
+        BasicBlock* branch = nullptr;
         if (inst.type != LL_INS_JMP && inst.type != LL_INS_RET)
             fallthrough = block_objs[addr_map[inst.addr + inst.len].first];
         if (instrIsJcc(inst.type) || inst.type == LL_INS_JMP)
             branch = block_objs[addr_map[inst.dst.val].first];
-        ll_basic_block_add_branches(block_objs[j], branch, fallthrough);
+        block_objs[j]->AddBranches(branch, fallthrough);
     }
 
     return 0;
 }
+
+} // namespace

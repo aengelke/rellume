@@ -280,16 +280,6 @@ void BasicBlock::FillPhis()
 } // namespace
 
 
-void
-ll_basic_block_add_branches(LLBasicBlock* bb, LLBasicBlock* a, LLBasicBlock* b)
-{
-    reinterpret_cast<rellume::BasicBlock*>(bb)->AddBranches(reinterpret_cast<rellume::BasicBlock*>(a), reinterpret_cast<rellume::BasicBlock*>(b));
-}
-void
-ll_basic_block_add_inst(LLBasicBlock* bb, LLInstr* instr)
-{
-    reinterpret_cast<rellume::BasicBlock*>(bb)->AddInst(instr);
-}
 
 /**
  * @}

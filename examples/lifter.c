@@ -24,8 +24,7 @@
 #include <string.h>
 #include <llvm-c/Core.h>
 
-#include <rellume/decoder.h>
-#include <rellume/func.h>
+#include <rellume/rellume.h>
 
 
 static

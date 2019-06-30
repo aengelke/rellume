@@ -33,8 +33,6 @@
 #include <llvm/IR/BasicBlock.h>
 #include <llvm-c/Core.h>
 
-#include <rellume/basicblock.h>
-
 #include <llcommon-internal.h>
 #include <llregfile-internal.h>
 #include <llstate-internal.h>

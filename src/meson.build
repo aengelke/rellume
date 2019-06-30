@@ -12,6 +12,7 @@ sources = [
   'lloperand.cc',
   'llregfile.cc',
   'llsupport.cc',
+  'rellume.cc',
 ]
 
 rellume_inc_priv = include_directories('.')

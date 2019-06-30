@@ -42,7 +42,6 @@
 #include <llvm/IR/Verifier.h>
 #include <llvm/Transforms/Utils/Cloning.h>
 
-#include <rellume/func.h>
 #include <llfunction-internal.h>
 
 #include <llbasicblock-internal.h>
@@ -238,6 +237,7 @@ llvm::Function* Function::Lift()
 
 }
 
+extern "C"
 LLVMValueRef
 ll_func_wrap_sysv(LLVMValueRef llvm_fn, LLVMTypeRef ty, LLVMModuleRef mod)
 {
@@ -333,33 +333,6 @@ ll_func_wrap_sysv(LLVMValueRef llvm_fn, LLVMTypeRef ty, LLVMModuleRef mod)
 
     return llvm::wrap(new_fn);
 }
-
-LLFunc* ll_func(LLVMModuleRef mod) {
-    return reinterpret_cast<LLFunc*>(new rellume::Function(llvm::unwrap(mod)));
-}
-void ll_func_enable_overflow_intrinsics(LLFunc* fn, bool enable) {
-    reinterpret_cast<rellume::Function*>(fn)->EnableOverflowIntrinsics(enable);
-}
-void ll_func_enable_fast_math(LLFunc* fn, bool enable) {
-    reinterpret_cast<rellume::Function*>(fn)->EnableFastMath(enable);
-}
-void ll_func_set_stack_size(LLFunc* fn, size_t size) {
-    reinterpret_cast<rellume::Function*>(fn)->SetStackSize(size);
-}
-void ll_func_set_global_base(LLFunc* fn, uintptr_t base, LLVMValueRef value) {
-    reinterpret_cast<rellume::Function*>(fn)->SetGlobalBase(base, llvm::unwrap(value));
-}
-
-LLBasicBlock* ll_func_add_block(LLFunc* fn) {
-    return reinterpret_cast<LLBasicBlock*>(reinterpret_cast<rellume::Function*>(fn)->AddBlock());
-}
-LLVMValueRef ll_func_lift(LLFunc* fn) {
-    return llvm::wrap(reinterpret_cast<rellume::Function*>(fn)->Lift());
-}
-void ll_func_dispose(LLFunc* fn) {
-    delete reinterpret_cast<rellume::Function*>(fn);
-}
-
 
 /**
  * @}
