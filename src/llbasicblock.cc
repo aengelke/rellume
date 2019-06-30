@@ -53,56 +53,8 @@
  * @{
  **/
 
-struct LLRegister {
-    llvm::PHINode* facets[FACET_COUNT];
-};
-
-typedef struct LLRegister LLRegister;
-
-struct LLBasicBlock {
-    LLState* state;
-
-    /**
-     * \brief The branch basic block, or NULL
-     **/
-    LLBasicBlock* nextBranch;
-    /**
-     * \brief The fall-through basic block, or NULL
-     **/
-    LLBasicBlock* nextFallThrough;
-
-    /**
-     * \brief Preceding basic blocks
-     **/
-    std::vector<LLBasicBlock*> preds;
-
-    /**
-     * \brief The LLVM basic block
-     **/
-    llvm::BasicBlock* llvmBB;
-
-    /**
-     * \brief The register file for the basic block
-     **/
-    LLRegisterFile* regfile;
-
-    /**
-     * \brief The phi nodes for the registers
-     **/
-    LLRegister phiGpRegs[LL_RI_GPMax];
-
-    /**
-     * \brief The phi nodes for the registers
-     **/
-    LLRegister phiVRegs[LL_RI_XMMMax];
-
-    /**
-     * \brief The phi nodes for the flags
-     **/
-    llvm::PHINode* phiFlags[RFLAG_Max];
-
-    LLInstrType endType;
-};
+namespace rellume
+{
 
 /**
  * Create a new basic block.
@@ -114,38 +66,35 @@ struct LLBasicBlock {
  * \param address The address of the basic block
  * \returns The new basic block
  **/
-LLBasicBlock*
-ll_basic_block_new(LLVMBasicBlockRef llvmBB, LLState* state)
+BasicBlock::BasicBlock(llvm::BasicBlock* llvm, LLState* state)
 {
-    LLBasicBlock* bb = new LLBasicBlock();
-    bb->state = state;
-    bb->llvmBB = llvm::unwrap(llvmBB);
-    bb->nextBranch = NULL;
-    bb->nextFallThrough = NULL;
-    bb->endType = LL_INS_None;
-    bb->regfile = ll_regfile_new(llvmBB);
-
-    return bb;
+    this->state = state;
+    this->llvmBB = llvm;
+    nextBranch = NULL;
+    nextFallThrough = NULL;
+    endType = LL_INS_None;
+    regfile = ll_regfile_new(llvm::wrap(llvmBB));
 }
 
-void
-ll_basic_block_set_current(LLBasicBlock* bb)
+BasicBlock::~BasicBlock()
 {
-    bb->state->regfile = bb->regfile;
-
-    llvm::IRBuilder<>* builder = llvm::unwrap(bb->state->builder);
-    builder->SetInsertPoint(bb->llvmBB);
+    ll_regfile_dispose(regfile);
 }
 
-void
-ll_basic_block_add_phis(LLBasicBlock* bb)
+void BasicBlock::SetCurrent()
 {
-    LLState* state = bb->state;
+    state->regfile = regfile;
 
     llvm::IRBuilder<>* builder = llvm::unwrap(state->builder);
-    builder->SetInsertPoint(bb->llvmBB);
+    builder->SetInsertPoint(llvmBB);
+}
 
-    state->regfile = bb->regfile;
+void BasicBlock::AddPhis()
+{
+    llvm::IRBuilder<>* builder = llvm::unwrap(state->builder);
+    builder->SetInsertPoint(llvmBB);
+
+    state->regfile = regfile;
 
     for (int i = 0; i < LL_RI_GPMax; i++)
     {
@@ -154,8 +103,8 @@ ll_basic_block_add_phis(LLBasicBlock* bb)
             LLVMTypeRef ty = ll_register_facet_type((RegisterFacet) k, state->context);
             llvm::PHINode* phiNode = builder->CreatePHI(llvm::unwrap(ty), 0);
 
-            ll_regfile_set(bb->regfile, (RegisterFacet) k, ll_reg(LL_RT_GP64, i), llvm::wrap(phiNode), false, state->builder);
-            bb->phiGpRegs[i].facets[k] = phiNode;
+            ll_regfile_set(regfile, (RegisterFacet) k, ll_reg(LL_RT_GP64, i), llvm::wrap(phiNode), false, state->builder);
+            phiGpRegs[i].facets[k] = phiNode;
         }
     }
 
@@ -166,8 +115,8 @@ ll_basic_block_add_phis(LLBasicBlock* bb)
             LLVMTypeRef ty = ll_register_facet_type((RegisterFacet) k, state->context);
             llvm::PHINode* phiNode = builder->CreatePHI(llvm::unwrap(ty), 0);
 
-            ll_regfile_set(bb->regfile, (RegisterFacet) k, ll_reg(LL_RT_XMM, i), llvm::wrap(phiNode), false, state->builder);
-            bb->phiVRegs[i].facets[k] = phiNode;
+            ll_regfile_set(regfile, (RegisterFacet) k, ll_reg(LL_RT_XMM, i), llvm::wrap(phiNode), false, state->builder);
+            phiVRegs[i].facets[k] = phiNode;
         }
     }
 
@@ -175,26 +124,9 @@ ll_basic_block_add_phis(LLBasicBlock* bb)
     {
         llvm::PHINode* phiNode = builder->CreatePHI(builder->getInt1Ty(), 0);
 
-        ll_regfile_set_flag(bb->regfile, i, llvm::wrap(phiNode), state->context);
-        bb->phiFlags[i] = phiNode;
+        ll_regfile_set_flag(regfile, i, llvm::wrap(phiNode), state->context);
+        phiFlags[i] = phiNode;
     }
-}
-
-/**
- * Dispose a basic block.
- *
- * \private
- *
- * \author Alexis Engelke
- *
- * \param bb The basic block
- **/
-void
-ll_basic_block_dispose(LLBasicBlock* bb)
-{
-    ll_regfile_dispose(bb->regfile);
-
-    delete bb;
 }
 
 /**
@@ -208,19 +140,18 @@ ll_basic_block_dispose(LLBasicBlock* bb)
  * \param branch The active branch, or NULL
  * \param fallThrough The fall-through branch, or NULL
  **/
-void
-ll_basic_block_add_branches(LLBasicBlock* bb, LLBasicBlock* branch, LLBasicBlock* fallThrough)
+void BasicBlock::AddBranches(BasicBlock* branch, BasicBlock* fallThrough)
 {
     if (branch != NULL)
     {
-        branch->preds.push_back(bb);
-        bb->nextBranch = branch;
+        branch->preds.push_back(this);
+        nextBranch = branch;
     }
 
     if (fallThrough != NULL)
     {
-        fallThrough->preds.push_back(bb);
-        bb->nextFallThrough = fallThrough;
+        fallThrough->preds.push_back(this);
+        nextFallThrough = fallThrough;
     }
 }
 
@@ -243,14 +174,12 @@ ll_basic_block_add_branches(LLBasicBlock* bb, LLBasicBlock* branch, LLBasicBlock
     (instr) == LL_INS_JG \
 )
 
-void
-ll_basic_block_add_inst(LLBasicBlock* bb, LLInstr* instr)
+void BasicBlock::AddInst(LLInstr* instr)
 {
-    LLState* state = bb->state;
-    state->regfile = bb->regfile;
+    state->regfile = regfile;
 
     llvm::IRBuilder<>* builder = llvm::unwrap(state->builder);
-    builder->SetInsertPoint(bb->llvmBB);
+    builder->SetInsertPoint(llvmBB);
 
     // Set new instruction pointer register
     uintptr_t rip = instr->addr + instr->len;
@@ -258,7 +187,7 @@ ll_basic_block_add_inst(LLBasicBlock* bb, LLInstr* instr)
     ll_set_register(ll_reg(LL_RT_IP, 0), FACET_I64, llvm::wrap(ripValue), true, state);
 
     // Add separator for debugging.
-    llvm::Function* intrinsicDoNothing = llvm::Intrinsic::getDeclaration(bb->llvmBB->getModule(), llvm::Intrinsic::donothing, {});
+    llvm::Function* intrinsicDoNothing = llvm::Intrinsic::getDeclaration(llvmBB->getModule(), llvm::Intrinsic::donothing, {});
     builder->CreateCall(intrinsicDoNothing);
 
     switch (instr->type)
@@ -273,7 +202,7 @@ ll_basic_block_add_inst(LLBasicBlock* bb, LLInstr* instr)
             break;
     }
 
-    bb->endType = instr->type;
+    endType = instr->type;
 }
 
 /**
@@ -287,23 +216,21 @@ ll_basic_block_add_inst(LLBasicBlock* bb, LLInstr* instr)
  * \param state The module state
  **/
 void
-ll_basic_block_terminate(LLBasicBlock* bb)
+BasicBlock::Terminate()
 {
-    LLState* state = bb->state;
     llvm::IRBuilder<>* builder = llvm::unwrap(state->builder);
-    builder->SetInsertPoint(bb->llvmBB);
+    builder->SetInsertPoint(llvmBB);
 
-    LLInstrType endType = bb->endType;
     if (instrIsJcc(endType))
     {
-        state->regfile = bb->regfile;
+        state->regfile = regfile;
         llvm::Value* cond = llvm::unwrap(ll_flags_condition(endType, LL_INS_JO, state));
-        builder->CreateCondBr(cond, bb->nextBranch->llvmBB, bb->nextFallThrough->llvmBB);
+        builder->CreateCondBr(cond, nextBranch->llvmBB, nextFallThrough->llvmBB);
     }
     else if (endType == LL_INS_JMP)
-        builder->CreateBr(bb->nextBranch->llvmBB);
+        builder->CreateBr(nextBranch->llvmBB);
     else if (endType != LL_INS_RET && endType != LL_INS_Invalid) // Any other instruction which is not a terminator
-        builder->CreateBr(bb->nextFallThrough->llvmBB);
+        builder->CreateBr(nextFallThrough->llvmBB);
 }
 
 /**
@@ -316,22 +243,20 @@ ll_basic_block_terminate(LLBasicBlock* bb)
  *
  * \param bb The basic block
  **/
-void
-ll_basic_block_fill_phis(LLBasicBlock* bb)
+void BasicBlock::FillPhis()
 {
-    LLState* state = bb->state;
     state->regfile = NULL;
 
-    for (auto pred_it = bb->preds.begin(); pred_it != bb->preds.end(); ++pred_it)
+    for (auto pred_it = preds.begin(); pred_it != preds.end(); ++pred_it)
     {
-        LLBasicBlock* pred = *pred_it;
+        BasicBlock* pred = *pred_it;
 
         for (int j = 0; j < LL_RI_GPMax; j++)
         {
             for (size_t k = 0; k < FACET_COUNT; k++)
             {
                 llvm::Value* value = llvm::unwrap(ll_regfile_get(pred->regfile, (RegisterFacet)k, ll_reg(LL_RT_GP64, j), state->builder));
-                bb->phiGpRegs[j].facets[k]->addIncoming(value, pred->llvmBB);
+                phiGpRegs[j].facets[k]->addIncoming(value, pred->llvmBB);
             }
         }
 
@@ -340,16 +265,62 @@ ll_basic_block_fill_phis(LLBasicBlock* bb)
             for (size_t k = 0; k < FACET_COUNT; k++)
             {
                 llvm::Value* value = llvm::unwrap(ll_regfile_get(pred->regfile, (RegisterFacet)k, ll_reg(LL_RT_XMM, j), state->builder));
-                bb->phiVRegs[j].facets[k]->addIncoming(value, pred->llvmBB);
+                phiVRegs[j].facets[k]->addIncoming(value, pred->llvmBB);
             }
         }
 
         for (int j = 0; j < RFLAG_Max; j++)
         {
             llvm::Value* value = llvm::unwrap(ll_regfile_get_flag(pred->regfile, j));
-            bb->phiFlags[j]->addIncoming(value, pred->llvmBB);
+            phiFlags[j]->addIncoming(value, pred->llvmBB);
         }
     }
+}
+
+} // namespace
+
+
+LLBasicBlock*
+ll_basic_block_new(LLVMBasicBlockRef llvm, LLState* state)
+{
+    return reinterpret_cast<LLBasicBlock*>(new rellume::BasicBlock(llvm::unwrap(llvm), state));
+}
+
+void
+ll_basic_block_dispose(LLBasicBlock* bb)
+{
+    delete reinterpret_cast<rellume::BasicBlock*>(bb);
+}
+void
+ll_basic_block_set_current(LLBasicBlock* bb)
+{
+    reinterpret_cast<rellume::BasicBlock*>(bb)->SetCurrent();
+}
+void
+ll_basic_block_add_phis(LLBasicBlock* bb)
+{
+    reinterpret_cast<rellume::BasicBlock*>(bb)->AddPhis();
+}
+void
+ll_basic_block_terminate(LLBasicBlock* bb)
+{
+    reinterpret_cast<rellume::BasicBlock*>(bb)->Terminate();
+}
+void
+ll_basic_block_fill_phis(LLBasicBlock* bb)
+{
+    reinterpret_cast<rellume::BasicBlock*>(bb)->FillPhis();
+}
+
+void
+ll_basic_block_add_branches(LLBasicBlock* bb, LLBasicBlock* a, LLBasicBlock* b)
+{
+    reinterpret_cast<rellume::BasicBlock*>(bb)->AddBranches(reinterpret_cast<rellume::BasicBlock*>(a), reinterpret_cast<rellume::BasicBlock*>(b));
+}
+void
+ll_basic_block_add_inst(LLBasicBlock* bb, LLInstr* instr)
+{
+    reinterpret_cast<rellume::BasicBlock*>(bb)->AddInst(instr);
 }
 
 /**
