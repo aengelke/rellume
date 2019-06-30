@@ -43,6 +43,7 @@
 #include <llvm/Transforms/Utils/Cloning.h>
 
 #include <rellume/func.h>
+#include <llfunction-internal.h>
 
 #include <llbasicblock-internal.h>
 #include <llcommon-internal.h>
@@ -57,30 +58,19 @@
  * @{
  **/
 
-struct LLFunc {
-    LLState state;
-
-    llvm::Function* llvm;
-    std::vector<LLBasicBlock*> blocks;
-
-    /**
-     * \brief The initial basic block, which is the entry point
-     **/
-    LLBasicBlock* initialBB;
-};
-
-static
-void
-ll_func_create_entry(LLFunc* fn)
+namespace rellume
 {
-    LLState* state = &fn->state;
 
-    llvm::BasicBlock* first_bb = fn->llvm->empty() ? nullptr : &fn->llvm->front();
-    llvm::BasicBlock* llvm_bb = llvm::BasicBlock::Create(*llvm::unwrap(state->context), "", fn->llvm, first_bb);
-    LLBasicBlock* initialBB = ll_basic_block_new(llvm::wrap(llvm_bb), &fn->state);
-    ll_basic_block_set_current(initialBB);
+void Function::CreateEntry()
+{
+    LLState* state = &this->state;
 
-    llvm::Value* param = fn->llvm->arg_begin();
+    llvm::BasicBlock* first_bb = llvm->empty() ? nullptr : &llvm->front();
+    llvm::BasicBlock* llvm_bb = llvm::BasicBlock::Create(*llvm::unwrap(state->context), "", llvm, first_bb);
+    initialBB = new BasicBlock(llvm_bb, state);
+    initialBB->SetCurrent();
+
+    llvm::Value* param = llvm->arg_begin();
     llvm::IRBuilder<>* builder = llvm::unwrap(state->builder);
 
     llvm::Value* regs = builder->CreateLoad(param);
@@ -102,17 +92,12 @@ ll_func_create_entry(LLFunc* fn)
     ll_set_register(ll_reg(LL_RT_GP64, LL_RI_SP), FACET_PTR, sp, true, state);
 
     LLVMSetAlignment(stack, 16);
-
-    fn->initialBB = initialBB;
 }
 
-LLFunc*
-ll_func(LLVMModuleRef mod)
+Function::Function(llvm::Module* mod)
 {
-    LLFunc* fn = new LLFunc();
-
-    LLState* state = &fn->state;
-    state->context = LLVMGetModuleContext(mod);
+    LLState* state = &this->state;
+    state->context = LLVMGetModuleContext(llvm::wrap(mod));
     state->builder = LLVMCreateBuilderInContext(state->context);
 
     llvm::IRBuilder<>* builder = llvm::unwrap(state->builder);
@@ -126,16 +111,14 @@ ll_func(LLVMModuleRef mod)
     llvm::Type* void_type = builder->getVoidTy();
     llvm::FunctionType* fn_type = llvm::FunctionType::get(void_type, {cpu_type_ptr}, false);
 
-    fn->llvm = llvm::Function::Create(fn_type, llvm::GlobalValue::ExternalLinkage, "", llvm::unwrap(mod));
-    fn->initialBB = nullptr;
+    llvm = llvm::Function::Create(fn_type, llvm::GlobalValue::ExternalLinkage, "", mod);
+    initialBB = nullptr;
 
     state->cfg.globalBase = NULL;
     state->cfg.stackSize = 128;
     state->cfg.enableOverflowIntrinsics = false;
     state->cfg.enableFastMath = false;
     state->cfg.prefer_pointer_cmp = false;
-
-    return fn;
 }
 
 /**
@@ -151,10 +134,9 @@ ll_func(LLVMModuleRef mod)
  * \param state The module state
  * \param enable Whether overflow intrinsics shall be used
  **/
-void
-ll_func_enable_overflow_intrinsics(LLFunc* fn, bool enable)
+void Function::EnableOverflowIntrinsics(bool enable)
 {
-    fn->state.cfg.enableOverflowIntrinsics = enable;
+    state.cfg.enableOverflowIntrinsics = enable;
 }
 
 /**
@@ -167,23 +149,20 @@ ll_func_enable_overflow_intrinsics(LLFunc* fn, bool enable)
  * \param state The module state
  * \param enable Whether unsafe floating-point optimizations may be performed
  **/
-void
-ll_func_enable_fast_math(LLFunc* fn, bool enable)
+void Function::EnableFastMath(bool enable)
 {
-    fn->state.cfg.enableFastMath = enable;
+    state.cfg.enableFastMath = enable;
 }
 
-void
-ll_func_set_stack_size(LLFunc* fn, size_t size)
+void Function::SetStackSize(size_t size)
 {
-    fn->state.cfg.stackSize = size;
+    state.cfg.stackSize = size;
 }
 
-void
-ll_func_set_global_base(LLFunc* fn, uintptr_t base, LLVMValueRef value)
+void Function::SetGlobalBase(uintptr_t base, llvm::Value* value)
 {
-    fn->state.cfg.globalOffsetBase = base;
-    fn->state.cfg.globalBase = value;
+    state.cfg.globalOffsetBase = base;
+    state.cfg.globalBase = llvm::wrap(value);
 }
 
 /**
@@ -193,26 +172,17 @@ ll_func_set_global_base(LLFunc* fn, uintptr_t base, LLVMValueRef value)
  *
  * \param fn The function
  **/
-void
-ll_func_dispose(LLFunc* fn)
+Function::~Function()
 {
-    LLVMDisposeBuilder(fn->state.builder);
-
-    for (auto it = fn->blocks.begin(); it != fn->blocks.end(); ++it)
-        ll_basic_block_dispose(*it);
-    if (fn->initialBB != nullptr)
-        ll_basic_block_dispose(fn->initialBB);
-
-    delete fn;
+    LLVMDisposeBuilder(state.builder);
 }
 
-LLBasicBlock*
-ll_func_add_block(LLFunc* fn)
+BasicBlock* Function::AddBlock()
 {
-    llvm::BasicBlock* llvm_bb = llvm::BasicBlock::Create(fn->llvm->getContext(), "", fn->llvm, nullptr);
-    LLBasicBlock* bb = ll_basic_block_new(llvm::wrap(llvm_bb), &fn->state);
-    ll_basic_block_add_phis(bb);
-    fn->blocks.push_back(bb);
+    llvm::BasicBlock* llvm_bb = llvm::BasicBlock::Create(llvm->getContext(), "", llvm, nullptr);
+    BasicBlock* bb = new BasicBlock(llvm_bb, &state);
+    bb->AddPhis();
+    blocks.push_back(bb);
     return bb;
 }
 
@@ -240,31 +210,32 @@ ll_func_optimize(LLVMValueRef llvm_fn)
     LLVMDisposePassManager(pm);
 }
 
-LLVMValueRef
-ll_func_lift(LLFunc* fn)
+llvm::Function* Function::Lift()
 {
-    if (fn->blocks.size() == 0)
+    if (blocks.size() == 0)
         return NULL;
 
-    ll_func_create_entry(fn);
+    CreateEntry();
 
     // The initial basic block falls through to the first lifted block.
-    ll_basic_block_add_branches(fn->initialBB, NULL, fn->blocks[0]);
-    ll_basic_block_terminate(fn->initialBB);
+    initialBB->AddBranches(NULL, blocks[0]);
+    initialBB->Terminate();
 
-    for (auto it = fn->blocks.begin(); it != fn->blocks.end(); ++it)
+    for (auto it = blocks.begin(); it != blocks.end(); ++it)
     {
-        ll_basic_block_terminate(*it);
-        ll_basic_block_fill_phis(*it);
+        (*it)->Terminate();
+        (*it)->FillPhis();
     }
 
-    if (llvm::verifyFunction(*(fn->llvm), &llvm::errs()))
+    if (llvm::verifyFunction(*(llvm), &llvm::errs()))
         return NULL;
 
     // Run some optimization passes to remove most of the bloat
-    ll_func_optimize(llvm::wrap(fn->llvm));
+    ll_func_optimize(llvm::wrap(llvm));
 
-    return llvm::wrap(fn->llvm);
+    return llvm;
+}
+
 }
 
 LLVMValueRef
@@ -358,10 +329,37 @@ ll_func_wrap_sysv(LLVMValueRef llvm_fn, LLVMTypeRef ty, LLVMModuleRef mod)
     if (error)
         return NULL;
 
-    ll_func_optimize(llvm::wrap(new_fn));
+    rellume::ll_func_optimize(llvm::wrap(new_fn));
 
     return llvm::wrap(new_fn);
 }
+
+LLFunc* ll_func(LLVMModuleRef mod) {
+    return reinterpret_cast<LLFunc*>(new rellume::Function(llvm::unwrap(mod)));
+}
+void ll_func_enable_overflow_intrinsics(LLFunc* fn, bool enable) {
+    reinterpret_cast<rellume::Function*>(fn)->EnableOverflowIntrinsics(enable);
+}
+void ll_func_enable_fast_math(LLFunc* fn, bool enable) {
+    reinterpret_cast<rellume::Function*>(fn)->EnableFastMath(enable);
+}
+void ll_func_set_stack_size(LLFunc* fn, size_t size) {
+    reinterpret_cast<rellume::Function*>(fn)->SetStackSize(size);
+}
+void ll_func_set_global_base(LLFunc* fn, uintptr_t base, LLVMValueRef value) {
+    reinterpret_cast<rellume::Function*>(fn)->SetGlobalBase(base, llvm::unwrap(value));
+}
+
+LLBasicBlock* ll_func_add_block(LLFunc* fn) {
+    return reinterpret_cast<LLBasicBlock*>(reinterpret_cast<rellume::Function*>(fn)->AddBlock());
+}
+LLVMValueRef ll_func_lift(LLFunc* fn) {
+    return llvm::wrap(reinterpret_cast<rellume::Function*>(fn)->Lift());
+}
+void ll_func_dispose(LLFunc* fn) {
+    delete reinterpret_cast<rellume::Function*>(fn);
+}
+
 
 /**
  * @}
