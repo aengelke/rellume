@@ -113,38 +113,35 @@ ll_instruction_call(LLInstr* instr, LLState* state)
 #endif
 }
 
-void
-ll_instruction_ret(LLInstr* instr, LLState* state)
+void LLState::InstRet(LLInstr& inst)
 {
-    llvm::IRBuilder<>* builder = llvm::unwrap(state->builder);
-    llvm::Value* param = builder->GetInsertBlock()->getParent()->arg_begin();
-    llvm::Type* cpu_type = llvm::cast<llvm::PointerType>(param->getType())->getElementType();
+    llvm::Value* param = irb.GetInsertBlock()->getParent()->arg_begin();
+    llvm::Type* cpu_type = param->getType()->getPointerElementType();
     llvm::Value* result = llvm::UndefValue::get(cpu_type);
 
-    // Set all registers to undef first.
     for (unsigned i = 0; i < LL_RI_GPMax; i++)
     {
-        LLVMValueRef value = ll_get_register(ll_reg(LL_RT_GP64, i), FACET_I64, state);
-        result = builder->CreateInsertValue(result, llvm::unwrap(value), {1, i});
+        llvm::Value* value = GetReg(ll_reg(LL_RT_GP64, i), FACET_I64);
+        result = irb.CreateInsertValue(result, value, {1, i});
     }
 
     for (unsigned i = 0; i < LL_RI_XMMMax; i++)
     {
-        LLVMValueRef value = ll_get_register(ll_reg(LL_RT_XMM, i), FACET_IVEC, state);
-        result = builder->CreateInsertValue(result, llvm::unwrap(value), {3, i});
+        llvm::Value* value = GetReg(ll_reg(LL_RT_XMM, i), FACET_IVEC);
+        result = irb.CreateInsertValue(result, value, {3, i});
     }
 
     for (unsigned i = 0; i < RFLAG_Max; i++)
     {
-        LLVMValueRef value = ll_get_flag(i, state);
-        result = builder->CreateInsertValue(result, llvm::unwrap(value), {2, i});
+        llvm::Value* value = GetFlag(i);
+        result = irb.CreateInsertValue(result, value, {2, i});
     }
 
-    builder->CreateStore(result, param);
+    irb.CreateStore(result, param);
 
-    builder->CreateRetVoid();
+    irb.CreateRetVoid();
 
-    (void) instr;
+    (void) inst;
 }
 
 /**

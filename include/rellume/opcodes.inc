@@ -21,7 +21,7 @@ DEF_IT(NOP,)
 
 // Defined in llinstruction-callret.c
 DEF_IT(CALL, ll_instruction_call(instr, &state))
-DEF_IT(RET, ll_instruction_ret(instr, &state))
+DEF_IT(RET, state.InstRet(*instr))
 
 // Defined in llinstruction-stack.c
 DEF_IT(PUSH, ll_instruction_stack(instr, &state))

@@ -71,17 +71,18 @@ typedef struct LLConfig LLConfig;
 /**
  * \brief The LLVM state of the back-end.
  **/
-class LLState {
-public:
-    LLState(llvm::LLVMContext& ctx) : context(llvm::wrap(&ctx)), irb(ctx) {
+class LLStateBase {
+protected:
+    LLStateBase(llvm::LLVMContext& ctx) : context(llvm::wrap(&ctx)), irb(ctx) {
         builder = llvm::wrap(&irb);
     }
 
-    LLState(LLState&& rhs);
-    LLState& operator=(LLState&& rhs);
+public:
+    LLStateBase(LLStateBase&& rhs);
+    LLStateBase& operator=(LLStateBase&& rhs);
 
-    LLState(const LLState&) = delete;
-    LLState& operator=(const LLState&) = delete;
+    LLStateBase(const LLStateBase&) = delete;
+    LLStateBase& operator=(const LLStateBase&) = delete;
 
     LLConfig cfg;
 
@@ -114,6 +115,26 @@ public:
     void SetFlag(int flag, llvm::Value* value) {
         ll_regfile_set_flag(regfile, flag, llvm::wrap(value), llvm::wrap(&(irb.getContext())));
     }
+
+    // llvm::Value* OpAddr(const LLInstrOp& op, OperandDataType dataType);
+    // llvm::Value* OpLoad(const LLInstrOp& op, OperandDataType dataType, Alignment alignment);
+    // void OpStore(const LLInstrOp& op, PartialRegisterHandling prh, llvm::Value* value, OperandDataType dataType, Alignment alignment);
+
+    // void FlagCalcZ(llvm::Value* value);
+    // void FlagCalcS(llvm::Value* value);
+    // void FlagCalcP(llvm::Value* value);
+    // void FlagCalcA(llvm::Value* res, llvm::Value* lhs, llvm::Value* rhs);
+    // void FlagCalcCAdd(llvm::Value* res, llvm::Value* lhs, llvm::Value* rhs);
+    // void FlagCalcCSub(llvm::Value* res, llvm::Value* lhs, llvm::Value* rhs);
+    // void FlagCalcOAdd(llvm::Value* res, llvm::Value* lhs, llvm::Value* rhs);
+    // void FlagCalcOSub(llvm::Value* res, llvm::Value* lhs, llvm::Value* rhs);
+};
+
+class LLState : public LLStateBase {
+public:
+    LLState(llvm::LLVMContext& ctx) : LLStateBase(ctx) {}
+
+    void InstRet(LLInstr&);
 };
 
 #define ll_get_register(reg,facet,state) llvm::wrap((state)->GetReg(reg, facet))
