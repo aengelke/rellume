@@ -86,18 +86,12 @@ public:
 
     LLConfig cfg;
 
-    /**
-     * \brief The LLVM Context
-     **/
+    /// DEPRECATED LLVM context, use irb.getContext()
     LLVMContextRef context;
-    /**
-     * \brief The LLVM Builder
-     **/
+    /// DEPRECATED LLVM builder, use irb
     LLVMBuilderRef builder;
 
-    /**
-     * \brief The current register file
-     **/
+    /// Current register file
     LLRegisterFile* regfile;
 
     llvm::IRBuilder<> irb;

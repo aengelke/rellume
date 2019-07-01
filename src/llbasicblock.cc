@@ -80,20 +80,10 @@ BasicBlock::~BasicBlock()
     ll_regfile_dispose(regfile);
 }
 
-void BasicBlock::SetCurrent()
-{
-    state.regfile = regfile;
-
-    llvm::IRBuilder<>* builder = llvm::unwrap(state.builder);
-    builder->SetInsertPoint(llvmBB);
-}
-
 void BasicBlock::AddPhis()
 {
     llvm::IRBuilder<>* builder = llvm::unwrap(state.builder);
-    builder->SetInsertPoint(llvmBB);
-
-    state.regfile = regfile;
+    SetCurrent();
 
     for (int i = 0; i < LL_RI_GPMax; i++)
     {
@@ -175,10 +165,9 @@ void BasicBlock::AddBranches(BasicBlock* branch, BasicBlock* fallThrough)
 
 void BasicBlock::AddInst(LLInstr* instr)
 {
-    state.regfile = regfile;
+    SetCurrent();
 
     llvm::IRBuilder<>* builder = llvm::unwrap(state.builder);
-    builder->SetInsertPoint(llvmBB);
 
     // Set new instruction pointer register
     uintptr_t rip = instr->addr + instr->len;
@@ -217,12 +206,12 @@ void BasicBlock::AddInst(LLInstr* instr)
 void
 BasicBlock::Terminate()
 {
+    SetCurrent();
+
     llvm::IRBuilder<>* builder = llvm::unwrap(state.builder);
-    builder->SetInsertPoint(llvmBB);
 
     if (instrIsJcc(endType))
     {
-        state.regfile = regfile;
         llvm::Value* cond = llvm::unwrap(ll_flags_condition(endType, LL_INS_JO, &state));
         builder->CreateCondBr(cond, nextBranch->llvmBB, nextFallThrough->llvmBB);
     }

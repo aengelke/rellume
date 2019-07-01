@@ -53,7 +53,10 @@ public:
     BasicBlock(const BasicBlock&) = delete;
     BasicBlock& operator=(const BasicBlock&) = delete;
 
-    void SetCurrent();
+    void SetCurrent() {
+        state.regfile = regfile;
+        state.irb.SetInsertPoint(llvmBB);
+    }
     void AddPhis();
     void AddInst(LLInstr* inst);
     void AddBranches(BasicBlock*, BasicBlock*);
