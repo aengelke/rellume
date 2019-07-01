@@ -36,31 +36,33 @@
 extern "C" {
 #endif
 
+#define RELLUME_API __attribute__((visibility("default")))
+
 struct LLBasicBlock;
 
 typedef struct LLBasicBlock LLBasicBlock;
 
-void ll_basic_block_add_inst(LLBasicBlock*, LLInstr*);
-void ll_basic_block_add_branches(LLBasicBlock*, LLBasicBlock*, LLBasicBlock*);
+RELLUME_API void ll_basic_block_add_inst(LLBasicBlock*, LLInstr*);
+RELLUME_API void ll_basic_block_add_branches(LLBasicBlock*, LLBasicBlock*, LLBasicBlock*);
 
 
 struct LLFunc;
 
 typedef struct LLFunc LLFunc;
 
-LLFunc* ll_func(LLVMModuleRef mod);
+RELLUME_API LLFunc* ll_func(LLVMModuleRef mod);
 
-void ll_func_enable_overflow_intrinsics(LLFunc* fn, bool enable);
-void ll_func_enable_fast_math(LLFunc* fn, bool enable);
-void ll_func_set_global_base(LLFunc* fn, uintptr_t base, LLVMValueRef value);
+RELLUME_API void ll_func_enable_overflow_intrinsics(LLFunc* fn, bool enable);
+RELLUME_API void ll_func_enable_fast_math(LLFunc* fn, bool enable);
+RELLUME_API void ll_func_set_global_base(LLFunc* fn, uintptr_t base, LLVMValueRef value);
 
-LLBasicBlock* ll_func_add_block(LLFunc* fn);
-LLVMValueRef ll_func_lift(LLFunc* fn);
-void ll_func_dispose(LLFunc*);
+RELLUME_API LLBasicBlock* ll_func_add_block(LLFunc* fn);
+RELLUME_API LLVMValueRef ll_func_lift(LLFunc* fn);
+RELLUME_API void ll_func_dispose(LLFunc*);
 
-LLVMValueRef ll_func_wrap_sysv(LLVMValueRef llvm_fn, LLVMTypeRef ty, LLVMModuleRef mod, size_t stack_size);
+RELLUME_API LLVMValueRef ll_func_wrap_sysv(LLVMValueRef llvm_fn, LLVMTypeRef ty, LLVMModuleRef mod, size_t stack_size);
 
-int ll_func_decode(LLFunc* func, uintptr_t addr);
+RELLUME_API int ll_func_decode(LLFunc* func, uintptr_t addr);
 
 #ifdef __cplusplus
 }

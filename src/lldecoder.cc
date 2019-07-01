@@ -283,7 +283,6 @@ end_ops:
 #define instrBreaks(instr) (instrIsJcc(instr) || (instr) == LL_INS_RET || \
                         (instr) == LL_INS_JMP || (instr) == LL_INS_CALL)
 
-extern "C"
 int Function::Decode(uintptr_t addr)
 {
     LLInstr inst;

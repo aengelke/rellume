@@ -222,6 +222,7 @@ llvm::Function* Function::Lift()
 }
 
 extern "C"
+__attribute__((visibility("default")))
 LLVMValueRef
 ll_func_wrap_sysv(LLVMValueRef llvm_fn, LLVMTypeRef ty, LLVMModuleRef mod, size_t stack_size)
 {
