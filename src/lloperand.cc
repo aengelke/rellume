@@ -625,65 +625,6 @@ ll_operand_store(OperandDataType dataType, Alignment alignment, LLInstrOp* opera
     }
 }
 
-void
-ll_operand_construct_args(LLVMTypeRef fnType, LLVMValueRef* args, LLState* state)
-{
-    LLReg gpRegisters[6] = {
-        LLReg(LL_RT_GP64, LL_RI_DI),
-        LLReg(LL_RT_GP64, LL_RI_SI),
-        LLReg(LL_RT_GP64, LL_RI_D),
-        LLReg(LL_RT_GP64, LL_RI_C),
-        LLReg(LL_RT_GP64, 8),
-        LLReg(LL_RT_GP64, 9),
-    };
-    int gpRegisterIndex = 0;
-
-    size_t argCount = LLVMCountParamTypes(fnType);
-    LLVMTypeRef argTypes[argCount];
-    LLVMGetParamTypes(fnType, argTypes);
-
-    for (uintptr_t i = 0; i < argCount; i++)
-    {
-        LLVMTypeKind argTypeKind = LLVMGetTypeKind(argTypes[i]);
-
-        switch (argTypeKind)
-        {
-            case LLVMIntegerTypeKind:
-            case LLVMPointerTypeKind:
-                {
-                    if (gpRegisterIndex >= 6)
-                        warn_if_reached();
-
-                    LLVMValueRef reg = ll_get_register(gpRegisters[gpRegisterIndex], FACET_I64, state);
-                    gpRegisterIndex++;
-
-                    if (argTypeKind == LLVMIntegerTypeKind)
-                        args[i] = LLVMBuildTruncOrBitCast(state->builder, reg, argTypes[i], "");
-                    else
-                        args[i] = LLVMBuildIntToPtr(state->builder, reg, argTypes[i], "");
-                }
-                break;
-            case LLVMVoidTypeKind:
-            case LLVMHalfTypeKind:
-            case LLVMFloatTypeKind:
-            case LLVMDoubleTypeKind:
-            case LLVMX86_FP80TypeKind:
-            case LLVMFP128TypeKind:
-            case LLVMPPC_FP128TypeKind:
-            case LLVMLabelTypeKind:
-            case LLVMFunctionTypeKind:
-            case LLVMStructTypeKind:
-            case LLVMArrayTypeKind:
-            case LLVMVectorTypeKind:
-            case LLVMMetadataTypeKind:
-            case LLVMX86_MMXTypeKind:
-            case LLVMTokenTypeKind:
-            default:
-                warn_if_reached();
-        }
-    }
-}
-
 /**
  * @}
  **/
