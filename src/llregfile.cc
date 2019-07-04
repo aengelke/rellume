@@ -136,20 +136,20 @@ ll_register_facet_type(RegisterFacet facet, LLVMContextRef ctx)
 static const char*
 ll_register_name_for_facet(RegisterFacet facet, LLReg reg)
 {
-    if (regIsGP(reg))
+    if (reg.IsGp())
     {
         switch (facet)
         {
-            case FACET_I8: return ll_reg_name(ll_reg(LL_RT_GP8, reg.ri));
+            case FACET_I8: return LLReg(LL_RT_GP8, reg.ri).Name();
             case FACET_I8H:
                 if (reg.rt == LL_RT_GP8Leg)
-                    return ll_reg_name(reg);
+                    return reg.Name();
                 else if (reg.ri < 4)
-                    return ll_reg_name(ll_reg(LL_RT_GP8Leg, reg.ri + LL_RI_AH));
+                    return LLReg(LL_RT_GP8Leg, reg.ri + LL_RI_AH).Name();
                 else
                     return "XXX";
-            case FACET_I16: return ll_reg_name(ll_reg(LL_RT_GP16, reg.ri));
-            case FACET_I32: return ll_reg_name(ll_reg(LL_RT_GP32, reg.ri));
+            case FACET_I16: return LLReg(LL_RT_GP16, reg.ri).Name();
+            case FACET_I32: return LLReg(LL_RT_GP32, reg.ri).Name();
             case FACET_I64:
             case FACET_PTR:
             case FACET_I128:
@@ -173,13 +173,13 @@ ll_register_name_for_facet(RegisterFacet facet, LLReg reg)
             case FACET_V8F32:
             case FACET_V4F64:
     #endif
-                return ll_reg_name(ll_reg(LL_RT_GP64, reg.ri));
+                return LLReg(LL_RT_GP64, reg.ri).Name();
             case FACET_COUNT:
             default:
                 warn_if_reached();
         }
     }
-    else if (regIsV(reg))
+    else if (reg.IsVec())
     {
         switch (facet)
         {
@@ -201,7 +201,7 @@ ll_register_name_for_facet(RegisterFacet facet, LLReg reg)
             case FACET_V4F32:
             case FACET_V1F64:
             case FACET_V2F64:
-                return ll_reg_name(ll_reg(LL_RT_XMM, reg.ri));
+                return LLReg(LL_RT_XMM, reg.ri).Name();
 #if LL_VECTOR_REGISTER_SIZE >= 256
             case FACET_I256:
             case FACET_V32I8:
@@ -210,7 +210,7 @@ ll_register_name_for_facet(RegisterFacet facet, LLReg reg)
             case FACET_V4I64:
             case FACET_V8F32:
             case FACET_V4F64:
-                return ll_reg_name(ll_reg(LL_RT_YMM, reg.ri));
+                return LLReg(LL_RT_YMM, reg.ri).Name();
 #endif
             case FACET_COUNT:
             default:
@@ -218,7 +218,7 @@ ll_register_name_for_facet(RegisterFacet facet, LLReg reg)
         }
     }
 
-    return ll_reg_name(reg);
+    return reg.Name();
 }
 
 LLRegisterFile*
@@ -259,7 +259,7 @@ ll_regfile_get_ptr(LLRegisterFile* regfile, LLReg reg)
         case LL_RT_GP64:
             return &regfile->gpRegisters[reg.ri];
         case LL_RT_GP8Leg:
-            if (ll_reg_high(reg))
+            if (reg.IsGpHigh())
                 return &regfile->gpRegisters[reg.ri - LL_RI_AH];
             return &regfile->gpRegisters[reg.ri];
         case LL_RT_XMM:
@@ -313,7 +313,7 @@ ll_regfile_get(LLRegisterFile* regfile, RegisterFacet facet, LLReg reg, LLVMBuil
     else
         builder->SetInsertPoint(regfile->llvm_block);
 
-    if (regIsGP(reg) || reg.rt == LL_RT_IP)
+    if (reg.IsGp() || reg.rt == LL_RT_IP)
     {
         llvm::Value* native = regFileEntry->facets[FACET_I64];
 
@@ -358,7 +358,7 @@ ll_regfile_get(LLRegisterFile* regfile, RegisterFacet facet, LLReg reg, LLVMBuil
                 value = llvm::UndefValue::get(facetType);
         }
     }
-    else if (regIsV(reg))
+    else if (reg.IsVec())
     {
         int targetBits = 0;
 
@@ -563,7 +563,7 @@ ll_regfile_set(LLRegisterFile* regfile, RegisterFacet facet, LLReg reg, LLVMValu
         for (size_t i = 0; i < FACET_COUNT; i++)
             regFileEntry->facets[i] = NULL;
 
-        if (regIsGP(reg) && facet != FACET_I64)
+        if (reg.IsGp() && facet != FACET_I64)
         {
             if (facet != FACET_PTR)
                 warn_if_reached();
@@ -571,7 +571,7 @@ ll_regfile_set(LLRegisterFile* regfile, RegisterFacet facet, LLReg reg, LLVMValu
             llvm::Type* i64 = builder->getInt64Ty();
             regFileEntry->facets[FACET_I64] = builder->CreatePtrToInt(value, i64);
         }
-        else if (regIsV(reg) && facet != FACET_IVEC)
+        else if (reg.IsVec() && facet != FACET_IVEC)
             warn_if_reached();
     }
 

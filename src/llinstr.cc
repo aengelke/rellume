@@ -40,64 +40,52 @@
  * @{
  **/
 
-LLReg
-ll_reg_gp(size_t size, bool legacy, int index) {
-    switch (size) {
-    case 1: return ll_reg(legacy ? LL_RT_GP8Leg : LL_RT_GP8, index);
-    case 2: return ll_reg(LL_RT_GP16, index);
-    case 4: return ll_reg(LL_RT_GP32, index);
-    case 8: return ll_reg(LL_RT_GP64, index);
-    default: warn_if_reached(); return ll_reg(LL_RT_None, LL_RI_None);
-    }
-}
-
-static const char* names_reg_gp8 =
-    "al\0   cl\0   dl\0   bl\0   spl\0  bpl\0  sil\0  dil\0  "
-    "r8b\0  r9b\0  r10b\0 r11b\0 r12b\0 r13b\0 r14b\0 r15b\0 ";
-static const char* names_reg_gp8leg =
-    "al\0   cl\0   dl\0   bl\0   ah\0   ch\0   dh\0   bh\0   "
-    "r8b\0  r9b\0  r10b\0 r11b\0 r12b\0 r13b\0 r14b\0 r15b\0 ";
-static const char* names_reg_gp16 =
-    "ax\0   cx\0   dx\0   bx\0   sp\0   bp\0   si\0   di\0   "
-    "r8w\0  r9w\0  r10w\0 r11w\0 r12w\0 r13w\0 r14w\0 r15w\0 ";
-static const char* names_reg_gp32 =
-    "eax\0  ecx\0  edx\0  ebx\0  esp\0  ebp\0  esi\0  edi\0  "
-    "r8d\0  r9d\0  r10d\0 r11d\0 r12d\0 r13d\0 r14d\0 r15d\0 ";
-static const char* names_reg_gp64 =
-    "rax\0  rcx\0  rdx\0  rbx\0  rsp\0  rbp\0  rsi\0  rdi\0  "
-    "r8\0   r9\0   r10\0  r11\0  r12\0  r13\0  r14\0  r15\0  ";
-static const char* names_reg_vec128 =
-    "xmm0\0 xmm1\0 xmm2\0 xmm3\0 xmm4\0 xmm5\0 xmm6\0 xmm7\0 "
-    "xmm8\0 xmm9\0 xmm10\0xmm11\0xmm12\0xmm13\0xmm14\0xmm15\0";
-static const char* names_reg_vec256 =
-    "ymm0\0 ymm1\0 ymm2\0 ymm3\0 ymm4\0 ymm5\0 ymm6\0 ymm7\0 "
-    "ymm8\0 ymm9\0 ymm10\0ymm11\0ymm12\0ymm13\0ymm14\0ymm15\0";
-
 const char*
-ll_reg_name(LLReg reg)
+LLReg::Name() const
 {
     int max;
-    const char* table;
+    const char (* table)[6];
 
-    switch (reg.rt) {
-    case LL_RT_GP8:     max = 16; table = names_reg_gp8; break;
-    case LL_RT_GP8Leg:  max = 16; table = names_reg_gp8leg; break;
-    case LL_RT_GP16:    max = 16; table = names_reg_gp16; break;
-    case LL_RT_GP32:    max = 16; table = names_reg_gp32; break;
-    case LL_RT_GP64:    max = 16; table = names_reg_gp64; break;
-    case LL_RT_IP:      max = 1;  table = "rip"; break;
-    case LL_RT_XMM:     max = 16; table = names_reg_vec128; break;
-    case LL_RT_YMM:     max = 16; table = names_reg_vec256; break;
-    default:            max = 1;  table = "(unk)"; break;
+#define TABLE(name, ...) \
+        case name : { \
+            static const char tab[][6] = { __VA_ARGS__ }; \
+            table = tab; max = sizeof(tab) / sizeof(*tab); break; }
+
+    switch (rt) {
+    default: return "(unk)";
+
+    TABLE(LL_RT_GP8,
+        "al","cl","dl","bl","spl","bpl","sil","dil",
+        "r8b","r9b","r10b","r11b","r12b","r13b","r14b","r15b")
+    TABLE(LL_RT_GP8Leg,
+        "al","cl","dl","bl","ah","ch","dh","bh",
+        "r8b","r9b","r10b","r11b","r12b","r13b","r14b","r15b")
+    TABLE(LL_RT_GP16,
+        "ax","cx","dx","bx","sp","bp","si","di",
+        "r8w","r9w","r10w","r11w","r12w","r13w","r14w","r15w")
+    TABLE(LL_RT_GP32,
+        "eax","ecx","edx","ebx","esp","ebp","esi","edi",
+        "r8d","r9d","r10d","r11d","r12d","r13d","r14d","r15d")
+    TABLE(LL_RT_GP64,
+        "rax","rcx","rdx","rbx","rsp","rbp","rsi","rdi",
+        "r8","r9","r10","r11","r12","r13","r14","r15")
+    TABLE(LL_RT_IP, "rip")
+    TABLE(LL_RT_XMM,
+        "xmm0","xmm1","xmm2","xmm3","xmm4","xmm5","xmm6","xmm7",
+        "xmm8","xmm9","xmm10","xmm11","xmm12","xmm13","xmm14","xmm15")
+    TABLE(LL_RT_YMM,
+        "ymm0","ymm1","ymm2","ymm3","ymm4","ymm5","ymm6","ymm7",
+        "ymm8","ymm9","ymm10","ymm11","ymm12","ymm13","ymm14","ymm15")
+
     }
 
-    return reg.ri < max ? table + (reg.ri * 6) : "(inv)";
+    return ri < max ? table[ri] : "(inv)";
 }
 
 size_t
-ll_reg_size(LLReg reg)
+LLReg::Size() const
 {
-    switch (reg.rt) {
+    switch (rt) {
     case LL_RT_GP8:     return 1;
     case LL_RT_GP8Leg:  return 1;
     case LL_RT_GP16:    return 2;

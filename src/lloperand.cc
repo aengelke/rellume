@@ -100,7 +100,7 @@ ll_operand_get_facet(OperandDataType dataType, LLInstrOp* operand)
     {
         case OP_SI:
             if (bits == 8)
-                return ll_reg_high(operand->reg) ? FACET_I8H : FACET_I8;
+                return operand->reg.IsGpHigh() ? FACET_I8H : FACET_I8;
             if (bits == 16) return FACET_I16;
             if (bits == 32) return FACET_I32;
             if (bits == 64) return FACET_I64;
@@ -254,7 +254,7 @@ ll_operand_store_gp(LLVMValueRef value, OperandDataType dataType, LLInstrOp* ope
     else
     {
         uint64_t mask = 0;
-        if (ll_reg_high(operand->reg))
+        if (operand->reg.IsGpHigh())
         {
             mask = 0xff00;
             value64 = LLVMBuildShl(state->builder, value64, LLVMConstInt(i64, 8, false), "");
@@ -629,12 +629,12 @@ void
 ll_operand_construct_args(LLVMTypeRef fnType, LLVMValueRef* args, LLState* state)
 {
     LLReg gpRegisters[6] = {
-        ll_reg(LL_RT_GP64, LL_RI_DI),
-        ll_reg(LL_RT_GP64, LL_RI_SI),
-        ll_reg(LL_RT_GP64, LL_RI_D),
-        ll_reg(LL_RT_GP64, LL_RI_C),
-        ll_reg(LL_RT_GP64, 8),
-        ll_reg(LL_RT_GP64, 9),
+        LLReg(LL_RT_GP64, LL_RI_DI),
+        LLReg(LL_RT_GP64, LL_RI_SI),
+        LLReg(LL_RT_GP64, LL_RI_D),
+        LLReg(LL_RT_GP64, LL_RI_C),
+        LLReg(LL_RT_GP64, 8),
+        LLReg(LL_RT_GP64, 9),
     };
     int gpRegisterIndex = 0;
 

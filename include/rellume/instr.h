@@ -24,6 +24,7 @@
 #ifndef LL_INSTR_H
 #define LL_INSTR_H
 
+#include <stdbool.h>
 #include <stdint.h>
 
 #ifdef __cplusplus
@@ -74,7 +75,40 @@ enum {
 
 typedef enum LLInstrType LLInstrType;
 
-typedef struct { uint16_t rt; uint16_t ri; } LLReg;
+struct LLReg {
+    uint16_t rt;
+    uint16_t ri;
+
+#if defined(__cplusplus) && defined(RELLUME_ENABLE_CPP_HEADER)
+    LLReg() : rt(LL_RT_None), ri(LL_RI_None) {}
+    LLReg(int rt, int ri) : rt(static_cast<uint16_t>(rt)),
+            ri(static_cast<uint16_t>(ri)) {}
+    static LLReg None() { return LLReg{LL_RT_None, LL_RI_None}; }
+    static LLReg Gp(size_t size, uint16_t index, bool legacy = true) {
+        switch (size) {
+            case 1: return LLReg{legacy ? LL_RT_GP8Leg : LL_RT_GP8, index};
+            case 2: return LLReg{LL_RT_GP16, index};
+            case 4: return LLReg{LL_RT_GP32, index};
+            case 8: return LLReg{LL_RT_GP64, index};
+            default: return LLReg{LL_RT_None, LL_RI_None};
+        }
+    }
+    size_t Size() const;
+    const char* Name() const;
+    bool IsGp() const {
+        return rt == LL_RT_GP8Leg || rt == LL_RT_GP8 || rt == LL_RT_GP16 ||
+               rt == LL_RT_GP32 || rt == LL_RT_GP64;
+    }
+    bool IsGpHigh() const {
+        return rt == LL_RT_GP8Leg && ri >= 4 && ri < 8;
+    }
+    bool IsVec() const {
+        return rt == LL_RT_XMM || rt == LL_RT_YMM;
+    }
+#endif
+};
+
+typedef struct LLReg LLReg;
 
 enum {
     LL_OP_NONE = 0,
@@ -91,6 +125,13 @@ struct LLInstrOp {
     int scale;
     int seg;
     int size;
+
+#if defined(__cplusplus) && defined(RELLUME_ENABLE_CPP_HEADER)
+    static LLInstrOp Reg(const LLReg& reg) {
+        int sz = static_cast<int>(reg.Size());
+        return LLInstrOp{0, LL_OP_REG, reg, LLReg::None(), 0, LL_RI_None, sz};
+    }
+#endif
 };
 
 typedef struct LLInstrOp LLInstrOp;

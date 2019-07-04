@@ -52,7 +52,7 @@ ll_instruction_movq(LLInstr* instr, LLState* state)
     OperandDataType type = instr->type == LL_INS_MOVQ ? OP_SI64 : OP_SI32;
     LLVMValueRef operand1 = ll_operand_load(type, ALIGN_MAXIMUM, &instr->ops[1], state);
 
-    if (instr->ops[0].type == LL_OP_REG && regIsV(instr->ops[0].reg))
+    if (instr->ops[0].type == LL_OP_REG && instr->ops[0].reg.IsVec())
         ll_operand_store(type, ALIGN_MAXIMUM, &instr->ops[0], REG_ZERO_UPPER_SSE, operand1, state);
     else
         ll_operand_store(type, ALIGN_MAXIMUM, &instr->ops[0], REG_DEFAULT, operand1, state);

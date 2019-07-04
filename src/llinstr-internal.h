@@ -20,42 +20,7 @@
 #ifndef LL_INSTR_INTERNAL_H
 #define LL_INSTR_INTERNAL_H
 
-#include <stdbool.h>
-#include <stdlib.h>
-#include <stdint.h>
-
 #include <rellume/instr.h>
-
-#ifdef __cplusplus
-extern "C" {
-#endif
-
-#ifdef __cplusplus
-#define ll_reg(t,i) LLReg{ static_cast<uint16_t>(t), static_cast<uint16_t>(i) }
-#else
-#define ll_reg(t,i) ((LLReg) { .rt = t, .ri = i })
-#endif
-LLReg ll_reg_gp(size_t size, bool legacy, int index);
-
-const char* ll_reg_name(LLReg reg);
-
-size_t ll_reg_size(LLReg reg);
-#define ll_reg_high(reg) ((reg).rt == LL_RT_GP8Leg && (reg).ri >= 4 && (reg).ri < 8)
-
-#define regIsGP(r) ((r).rt == LL_RT_GP8Leg || (r).rt == LL_RT_GP8 || (r).rt == LL_RT_GP16 || (r).rt == LL_RT_GP32 || (r).rt == LL_RT_GP64)
-#define regIsV(r) ((r).rt == LL_RT_XMM || (r).rt == LL_RT_YMM)
-
-#ifdef __cplusplus
-#define getRegOp(r) LLInstrOp{0, LL_OP_REG, (r), ll_reg(LL_RT_None, LL_RI_None), 0, LL_RI_None, (int) ll_reg_size(r)}
-#else
-#define getRegOp(r) ((LLInstrOp) { .type = 1, .reg = (r), .val = 0, .ireg = ll_reg(LL_RT_None, LL_RI_None), .scale = 0, .seg = LL_RI_None, .size = ll_reg_size(r) })
-#endif
-
-#define instr2string(instr, ...) "<llinstr>"
-
-#ifdef __cplusplus
-}
-#endif
 
 #endif
 

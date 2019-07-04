@@ -72,10 +72,10 @@ void Function::CreateEntry()
 
     llvm::Value* regs = builder->CreateLoad(param);
     for (unsigned i = 0; i < LL_RI_GPMax; i++)
-        state.SetReg(ll_reg(LL_RT_GP64, i), FACET_I64, builder->CreateExtractValue(regs, {1, i}));
+        state.SetReg(LLReg(LL_RT_GP64, i), FACET_I64, builder->CreateExtractValue(regs, {1, i}));
 
     for (unsigned i = 0; i < LL_RI_XMMMax; i++)
-        state.SetReg(ll_reg(LL_RT_XMM, i), FACET_IVEC, builder->CreateExtractValue(regs, {3, i}));
+        state.SetReg(LLReg(LL_RT_XMM, i), FACET_IVEC, builder->CreateExtractValue(regs, {3, i}));
 
     for (unsigned i = 0; i < RFLAG_Max; i++)
         state.SetFlag(i, builder->CreateExtractValue(regs, {2, i}));
