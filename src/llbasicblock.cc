@@ -56,30 +56,6 @@
 namespace rellume
 {
 
-/**
- * Create a new basic block.
- *
- * \private
- *
- * \author Alexis Engelke
- *
- * \param address The address of the basic block
- * \returns The new basic block
- **/
-BasicBlock::BasicBlock(llvm::BasicBlock* llvm, LLState& state) : state(state)
-{
-    this->llvmBB = llvm;
-    nextBranch = NULL;
-    nextFallThrough = NULL;
-    endType = LL_INS_None;
-    regfile = ll_regfile_new(llvm::wrap(llvmBB));
-}
-
-BasicBlock::~BasicBlock()
-{
-    ll_regfile_dispose(regfile);
-}
-
 void BasicBlock::AddPhis()
 {
     llvm::IRBuilder<>* builder = llvm::unwrap(state.builder);
@@ -87,25 +63,25 @@ void BasicBlock::AddPhis()
 
     for (int i = 0; i < LL_RI_GPMax; i++)
     {
-        for (size_t k = 0; k < FACET_COUNT; k++)
+        for (auto facet : phis_gp[i].facets())
         {
-            LLVMTypeRef ty = ll_register_facet_type((RegisterFacet) k, state.context);
-            llvm::PHINode* phiNode = builder->CreatePHI(llvm::unwrap(ty), 0);
+            llvm::Type* ty = Facet::Type(facet, state.irb.getContext());
+            llvm::PHINode* phiNode = builder->CreatePHI(ty, 0);
 
-            ll_regfile_set(regfile, (RegisterFacet) k, LLReg(LL_RT_GP64, i), llvm::wrap(phiNode), false, state.builder);
-            phiGpRegs[i].facets[k] = phiNode;
+            regfile.SetReg(LLReg(LL_RT_GP64, i), facet, phiNode, false);
+            phis_gp[i].at(facet) = phiNode;
         }
     }
 
     for (int i = 0; i < LL_RI_XMMMax; i++)
     {
-        for (size_t k = 0; k < FACET_COUNT; k++)
+        for (auto facet : phis_sse[i].facets())
         {
-            LLVMTypeRef ty = ll_register_facet_type((RegisterFacet) k, state.context);
-            llvm::PHINode* phiNode = builder->CreatePHI(llvm::unwrap(ty), 0);
+            llvm::Type* ty = Facet::Type(facet, state.irb.getContext());
+            llvm::PHINode* phiNode = builder->CreatePHI(ty, 0);
 
-            ll_regfile_set(regfile, (RegisterFacet) k, LLReg(LL_RT_XMM, i), llvm::wrap(phiNode), false, state.builder);
-            phiVRegs[i].facets[k] = phiNode;
+            regfile.SetReg(LLReg(LL_RT_XMM, i), facet, phiNode, false);
+            phis_sse[i].at(facet) = phiNode;
         }
     }
 
@@ -113,7 +89,7 @@ void BasicBlock::AddPhis()
     {
         llvm::PHINode* phiNode = builder->CreatePHI(builder->getInt1Ty(), 0);
 
-        ll_regfile_set_flag(regfile, i, llvm::wrap(phiNode), state.context);
+        regfile.SetFlag(i, phiNode);
         phiFlags[i] = phiNode;
     }
 }
@@ -172,7 +148,7 @@ void BasicBlock::AddInst(LLInstr* instr)
     // Set new instruction pointer register
     uintptr_t rip = instr->addr + instr->len;
     llvm::Value* ripValue = llvm::ConstantInt::get(builder->getInt64Ty(), rip);
-    ll_regfile_set(regfile, FACET_I64, LLReg(LL_RT_IP, 0), llvm::wrap(ripValue), true, llvm::wrap(builder));
+    regfile.SetReg(LLReg(LL_RT_IP, 0), Facet::I64, ripValue, true);
 
     // Add separator for debugging.
     llvm::Function* intrinsicDoNothing = llvm::Intrinsic::getDeclaration(llvmBB->getModule(), llvm::Intrinsic::donothing, {});
@@ -241,25 +217,27 @@ void BasicBlock::FillPhis()
 
         for (int j = 0; j < LL_RI_GPMax; j++)
         {
-            for (size_t k = 0; k < FACET_COUNT; k++)
+            for (auto facet : phis_gp[j].facets())
             {
-                llvm::Value* value = llvm::unwrap(ll_regfile_get(pred->regfile, (RegisterFacet)k, LLReg(LL_RT_GP64, j), state.builder));
-                phiGpRegs[j].facets[k]->addIncoming(value, pred->llvmBB);
+                auto phi = llvm::cast<llvm::PHINode>(phis_gp[j].at(facet));
+                llvm::Value* value = pred->regfile.GetReg(LLReg(LL_RT_GP64, j), facet);
+                phi->addIncoming(value, pred->llvmBB);
             }
         }
 
         for (int j = 0; j < LL_RI_XMMMax; j++)
         {
-            for (size_t k = 0; k < FACET_COUNT; k++)
+            for (auto facet : phis_sse[j].facets())
             {
-                llvm::Value* value = llvm::unwrap(ll_regfile_get(pred->regfile, (RegisterFacet)k, LLReg(LL_RT_XMM, j), state.builder));
-                phiVRegs[j].facets[k]->addIncoming(value, pred->llvmBB);
+                auto phi = llvm::cast<llvm::PHINode>(phis_sse[j].at(facet));
+                llvm::Value* value = pred->regfile.GetReg(LLReg(LL_RT_XMM, j), facet);
+                phi->addIncoming(value, pred->llvmBB);
             }
         }
 
         for (int j = 0; j < RFLAG_Max; j++)
         {
-            llvm::Value* value = llvm::unwrap(ll_regfile_get_flag(pred->regfile, j));
+            llvm::Value* value = pred->regfile.GetFlag(j);
             phiFlags[j]->addIncoming(value, pred->llvmBB);
         }
     }

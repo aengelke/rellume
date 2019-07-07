@@ -37,59 +37,22 @@
 extern "C" {
 #endif
 
-/**
- * \ingroup LLInstrOp
- * \brief The data type of an operand
- **/
-enum OperandDataType {
-    /**
-     * \brief Single Integer, length chosen appropriately
-     **/
-    OP_SI,
-    /**
-     * \brief Single 32-bit Integer
-     **/
-    OP_SI32,
-    /**
-     * \brief Single 64-bit Integer
-     **/
-    OP_SI64,
-    /**
-     * \brief Vector of 8-bit integers
-     **/
-    OP_VI8,
-    /**
-     * \brief Vector of 32-bit integers
-     **/
-    OP_VI32,
-    /**
-     * \brief Vector of 8-bit integers
-     **/
-    OP_VI64,
-    /**
-     * \brief Single 32-bit Real
-     **/
-    OP_SF32,
-    /**
-     * \brief Single 64-bit Real
-     **/
-    OP_SF64,
-    /**
-     * \brief Vector of floats
-     **/
-    OP_VF32,
-    OP_V1F32,
-    OP_V2F32,
-    OP_V4F32,
-    /**
-     * \brief Vector of doubles
-     **/
-    OP_VF64,
-    OP_V1F64,
-    OP_V2F64,
-};
-
-typedef enum OperandDataType OperandDataType;
+#define OP_SI Facet::I
+#define OP_SI32 Facet::I32
+#define OP_SI64 Facet::I64
+#define OP_VI8 Facet::VI8
+#define OP_VI32 Facet::VI32
+#define OP_VI64 Facet::VI64
+#define OP_SF32 Facet::F32
+#define OP_SF64 Facet::F64
+#define OP_VF32 Facet::VF32
+#define OP_V1F32 Facet::V1F32
+#define OP_V2F32 Facet::V2F32
+#define OP_V4F32 Facet::V4F32
+#define OP_VF64 Facet::VF64
+#define OP_V1F64 Facet::V1F64
+#define OP_V2F64 Facet::V2F64
+#define OperandDataType Facet::Value
 
 /**
  * \ingroup LLInstrOp

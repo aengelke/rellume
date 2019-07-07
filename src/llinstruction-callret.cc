@@ -121,13 +121,13 @@ void LLState::InstRet(LLInstr& inst)
 
     for (unsigned i = 0; i < LL_RI_GPMax; i++)
     {
-        llvm::Value* value = GetReg(LLReg(LL_RT_GP64, i), FACET_I64);
+        llvm::Value* value = GetReg(LLReg(LL_RT_GP64, i), Facet::I64);
         result = irb.CreateInsertValue(result, value, {1, i});
     }
 
     for (unsigned i = 0; i < LL_RI_XMMMax; i++)
     {
-        llvm::Value* value = GetReg(LLReg(LL_RT_XMM, i), FACET_IVEC);
+        llvm::Value* value = GetReg(LLReg(LL_RT_XMM, i), Facet::IVEC);
         result = irb.CreateInsertValue(result, value, {3, i});
     }
 

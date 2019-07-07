@@ -79,7 +79,7 @@ ll_instruction_stack(LLInstr* instr, LLState* state)
     // In case of a leave instruction, we basically pop the new base pointer
     // from RBP and store the new value as stack pointer.
     int spRegIndex = instr->type == LL_INS_LEAVE ? LL_RI_BP : LL_RI_SP;
-    LLVMValueRef spReg = ll_get_register(LLReg(LL_RT_GP64, spRegIndex), FACET_PTR, state);
+    LLVMValueRef spReg = ll_get_register(LLReg(LL_RT_GP64, spRegIndex), Facet::PTR, state);
     LLVMValueRef sp = LLVMBuildPointerCast(state->builder, spReg, pi64, "");
     LLVMValueRef newSp = NULL;
     LLVMValueRef value;
@@ -117,7 +117,7 @@ ll_instruction_stack(LLInstr* instr, LLState* state)
     // Cast back to int for register store
     LLVMValueRef newSpReg = LLVMBuildPointerCast(state->builder, newSp, pi8, "");
 
-    ll_set_register(LLReg(LL_RT_GP64, LL_RI_SP), FACET_PTR, newSpReg, true, state);
+    ll_set_register(LLReg(LL_RT_GP64, LL_RI_SP), Facet::PTR, newSpReg, true, state);
 }
 
 /**

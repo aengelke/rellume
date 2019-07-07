@@ -92,22 +92,22 @@ public:
     LLVMBuilderRef builder;
 
     /// Current register file
-    LLRegisterFile* regfile;
+    RegFile* regfile;
 
     llvm::IRBuilder<> irb;
 
 
-    llvm::Value* GetReg(LLReg reg, RegisterFacet facet) {
-        return llvm::unwrap(ll_regfile_get(regfile, facet, reg, llvm::wrap(&irb)));
+    llvm::Value* GetReg(LLReg reg, Facet::Value facet) {
+        return regfile->GetReg(reg, facet);
     }
-    void SetReg(LLReg reg, RegisterFacet facet, llvm::Value* value, bool clear = true) {
-        ll_regfile_set(regfile, facet, reg, llvm::wrap(value), clear, llvm::wrap(&irb));
+    void SetReg(LLReg reg, Facet::Value facet, llvm::Value* value, bool clear = true) {
+        regfile->SetReg(reg, facet, value, clear);
     }
     llvm::Value* GetFlag(int flag) {
-        return llvm::unwrap(ll_regfile_get_flag(regfile, flag));
+        return regfile->GetFlag(flag);
     }
     void SetFlag(int flag, llvm::Value* value) {
-        ll_regfile_set_flag(regfile, flag, llvm::wrap(value), llvm::wrap(&(irb.getContext())));
+        regfile->SetFlag(flag, value);
     }
 
     // llvm::Value* OpAddr(const LLInstrOp& op, OperandDataType dataType);
@@ -135,8 +135,7 @@ public:
 #define ll_set_register(reg,facet,value,clear,state) (state)->SetReg(reg, facet, llvm::unwrap(value), clear)
 #define ll_get_flag(reg,state) llvm::wrap((state)->GetFlag(reg))
 #define ll_set_flag(reg,value,state) (state)->SetFlag(reg, llvm::unwrap(value))
-#define ll_clear_register(reg,state) ll_regfile_clear(state->regfile,reg,state->context)
-#define ll_get_flag_cache(state) ll_regfile_get_flag_cache(state->regfile)
+#define ll_get_flag_cache(state) (&state->regfile->FlagCache())
 
 #ifdef __cplusplus
 }

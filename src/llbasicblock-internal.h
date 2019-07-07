@@ -44,8 +44,9 @@ namespace rellume
 class BasicBlock
 {
 public:
-    BasicBlock(llvm::BasicBlock* block, LLState& state);
-    ~BasicBlock();
+    BasicBlock(llvm::BasicBlock* llvm, LLState& state) : state(state),
+            nextBranch(nullptr), nextFallThrough(nullptr), llvmBB(llvm),
+            regfile(llvm), endType(LL_INS_None) {}
 
     BasicBlock(BasicBlock&& rhs);
     BasicBlock& operator=(BasicBlock&& rhs);
@@ -54,7 +55,7 @@ public:
     BasicBlock& operator=(const BasicBlock&) = delete;
 
     void SetCurrent() {
-        state.regfile = regfile;
+        state.regfile = &regfile;
         state.irb.SetInsertPoint(llvmBB);
     }
     void AddPhis();
@@ -78,15 +79,12 @@ private:
     llvm::BasicBlock* llvmBB;
 
     /// The register file for the basic block
-    LLRegisterFile* regfile;
+    RegFile regfile;
 
-    struct RegisterPhis {
-        llvm::PHINode* facets[FACET_COUNT];
-    };
     /// The phi nodes for the registers
-    RegisterPhis phiGpRegs[LL_RI_GPMax];
+    Facet::ValueMapGp phis_gp[LL_RI_GPMax];
     /// The phi nodes for the registers
-    RegisterPhis phiVRegs[LL_RI_XMMMax];
+    Facet::ValueMapSse phis_sse[LL_RI_XMMMax];
 
     /// The phi nodes for the flags
     llvm::PHINode* phiFlags[RFLAG_Max];

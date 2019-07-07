@@ -3,7 +3,7 @@ project('libdbrew', ['c', 'cpp'],
             'buildtype=debugoptimized',
             'warning_level=3',
             'c_std=gnu99',
-            'cpp_std=c++11',
+            'cpp_std=c++14',
         ])
 
 if get_option('warning_level').to_int() >= 3

@@ -28,14 +28,11 @@
 #include <stdlib.h>
 #include <stdint.h>
 #include <stdlib.h>
+#include <algorithm>
 #include <llvm-c/Core.h>
 
 #include <llcommon-internal.h>
 #include <llinstr-internal.h>
-
-#ifdef __cplusplus
-extern "C" {
-#endif
 
 /**
  * \ingroup LLRegFile
@@ -93,84 +90,110 @@ struct LLFlagCache {
 
 typedef struct LLFlagCache LLFlagCache;
 
-/**
- * \ingroup LLRegFile
- **/
-enum RegisterFacet {
-    FACET_PTR,
-    FACET_I8,
-    FACET_I8H,
-    FACET_I16,
-    FACET_I32,
-    FACET_I64,
-    FACET_I128,
-    FACET_F32,
-    FACET_F64,
+namespace Facet {
 
-    FACET_V1F32,
-    FACET_V2F32,
-    FACET_V1F64,
+enum Value {
+    I64,
+    I32, I16, I8, I8H, PTR,
 
-    FACET_V16I8,
-    FACET_V8I16,
-    FACET_V4I32,
-    FACET_V2I64,
-    FACET_V4F32,
-    FACET_V2F64,
-
+    I128,
+    V1I8, V2I8, V4I8, V8I8, V16I8,
+    V1I16, V2I16, V4I16, V8I16,
+    V1I32, V2I32, V4I32,
+    V1I64, V2I64,
+    V1F32, V2F32, V4F32,
+    V1F64, V2F64,
+    F32, F64,
 #if LL_VECTOR_REGISTER_SIZE >= 256
-    FACET_I256,
-    FACET_V32I8,
-    FACET_V16I16,
-    FACET_V8I32,
-    FACET_V4I64,
-    FACET_V8F32,
-    FACET_V4F64,
+    I256,
 #endif
 
-    FACET_COUNT,
-};
+    // Pseudo-facets
+    I, VI8, VI16, VI32, VI64, VF32, VF64,
+    MAX,
 
 #if LL_VECTOR_REGISTER_SIZE == 128
-#define FACET_IVEC FACET_I128
-#define FACET_VI8 FACET_V16I8
-#define FACET_VI16 FACET_V8I16
-#define FACET_VI32 FACET_V4I32
-#define FACET_VI64 FACET_V2I64
-#define FACET_VF32 FACET_V4F32
-#define FACET_VF64 FACET_V2F64
+    IVEC = I128,
 #elif LL_VECTOR_REGISTER_SIZE == 256
-#define FACET_IVEC FACET_I256
-#define FACET_VI8 FACET_V32I8
-#define FACET_VI16 FACET_V16I16
-#define FACET_VI32 FACET_V8I32
-#define FACET_VI64 FACET_V4I64
-#define FACET_VF32 FACET_V8F32
-#define FACET_VF64 FACET_V4F64
+    IVEC = I256,
 #endif
+};
 
-typedef enum RegisterFacet RegisterFacet;
+Value Resolve(Value value, size_t bits);
+llvm::Type* Type(Value value, llvm::LLVMContext& ctx);
 
-struct LLRegisterFile;
+template<typename T, int N, int M>
+struct LookupTable {
+    constexpr LookupTable(std::initializer_list<T> il) : f(), b() {
+        int i = 0;
+        for (auto elem : il) {
+            f[i] = elem;
+            b[static_cast<int>(elem)] = 1 + i++;
+        }
+    }
+    T f[N];
+    unsigned b[M];
+};
 
-typedef struct LLRegisterFile LLRegisterFile;
+template<Value... E>
+class ValueMap {
+    static const LookupTable<Value, sizeof...(E), MAX> table;
+    llvm::Value* values[sizeof...(E)];
+public:
+    llvm::Value*& at(Value v) {
+        assert(table.b[static_cast<int>(v)] > 0);
+        return values[table.b[static_cast<int>(v)] - 1];
+    }
+    // This returns a reference to an array of size sizeof...(E).
+    const Value (&facets())[sizeof...(E)] {
+        return table.f;
+    }
+    void clear() {
+        std::fill_n(values, sizeof...(E), nullptr);
+    }
+};
+template<Value... E>
+const LookupTable<Value, sizeof...(E), MAX> ValueMap<E...>::table({E...});
 
+typedef ValueMap<I64, I32, I16, I8, I8H, PTR> ValueMapGp;
+typedef ValueMap<I128,
+    I8, V1I8, V2I8, V4I8, V8I8, V16I8,
+    I16, V1I16, V2I16, V4I16, V8I16,
+    I32, V1I32, V2I32, V4I32,
+    I64, V1I64, V2I64,
+    F32, V1F32, V2F32, V4F32,
+    F64, V1F64, V2F64
+> ValueMapSse;
 
-LLRegisterFile* ll_regfile_new(LLVMBasicBlockRef);
-void ll_regfile_dispose(LLRegisterFile*);
-LLVMValueRef ll_regfile_get(LLRegisterFile*, RegisterFacet, LLReg, LLVMBuilderRef);
-void ll_regfile_clear(LLRegisterFile*, LLReg, LLVMContextRef);
-void ll_regfile_zero(LLRegisterFile*, LLReg, LLVMContextRef);
-void ll_regfile_rename(LLRegisterFile*, LLReg, LLReg);
-void ll_regfile_set(LLRegisterFile*, RegisterFacet, LLReg, LLVMValueRef, bool, LLVMBuilderRef);
-LLVMValueRef ll_regfile_get_flag(LLRegisterFile*, int);
-void ll_regfile_set_flag(LLRegisterFile*, int, LLVMValueRef, LLVMContextRef);
-LLFlagCache* ll_regfile_get_flag_cache(LLRegisterFile*);
-
-LLVMTypeRef ll_register_facet_type(RegisterFacet, LLVMContextRef);
-
-#ifdef __cplusplus
 }
-#endif
+
+class RegFile
+{
+public:
+    RegFile(llvm::BasicBlock* llvm_block) : llvm_block(llvm_block),
+            flag_cache({false, nullptr, nullptr, nullptr}) {}
+
+    llvm::Value* GetReg(LLReg reg, Facet::Value facet);
+    void SetReg(LLReg reg, Facet::Value facet, llvm::Value*, bool clear_facets);
+    void Rename(LLReg reg_dst, LLReg reg_src);
+
+    llvm::Value* GetFlag(int flag);
+    void SetFlag(int flag, llvm::Value*);
+
+    LLFlagCache& FlagCache() {
+        return flag_cache;
+    }
+
+private:
+    llvm::BasicBlock* llvm_block;
+    Facet::ValueMapGp regs_gp[LL_RI_GPMax];
+    Facet::ValueMapSse regs_sse[LL_RI_XMMMax];
+    llvm::Value* reg_ip;
+    llvm::Value* flags[RFLAG_Max];
+
+    LLFlagCache flag_cache;
+};
+
+typedef Facet::Value RegisterFacet;
 
 #endif
