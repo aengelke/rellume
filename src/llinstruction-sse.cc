@@ -46,23 +46,20 @@
  * @{
  **/
 
-void
-ll_instruction_movq(LLInstr* instr, LLState* state)
+void LLState::LiftSseMovq(const LLInstr& inst, Facet::Value type)
 {
-    OperandDataType type = instr->type == LL_INS_MOVQ ? OP_SI64 : OP_SI32;
-    LLVMValueRef operand1 = ll_operand_load(type, ALIGN_MAXIMUM, &instr->ops[1], state);
-
-    if (instr->ops[0].type == LL_OP_REG && instr->ops[0].reg.IsVec())
+    llvm::Value* op1 = OpLoad(inst.ops[1], type);
+    if (inst.ops[0].type == LL_OP_REG && inst.ops[0].reg.IsVec())
     {
-        llvm::Type* el_ty = llvm::unwrap(operand1)->getType();
+        llvm::Type* el_ty = op1->getType();
         llvm::Type* vector_ty = llvm::VectorType::get(el_ty, 128 / el_ty->getPrimitiveSizeInBits());
         llvm::Value* zero = llvm::Constant::getNullValue(vector_ty);
-        llvm::Value* zext = state->irb.CreateInsertElement(zero, llvm::unwrap(operand1), 0ul);
-        state->OpStoreVec(instr->ops[0], zext);
+        llvm::Value* zext = irb.CreateInsertElement(zero, op1, 0ul);
+        OpStoreVec(inst.ops[0], zext);
     }
     else
     {
-        ll_operand_store(type, ALIGN_MAXIMUM, &instr->ops[0], REG_DEFAULT, operand1, state);
+        OpStoreGp(inst.ops[0], op1);
     }
 }
 

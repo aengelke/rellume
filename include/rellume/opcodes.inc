@@ -87,8 +87,8 @@ DEF_IT(SETLE, ll_instruction_setcc(instr, &state))
 DEF_IT(SETG, ll_instruction_setcc(instr, &state))
 
 // Defined in llinstruction-sse.c
-DEF_IT(MOVD, ll_instruction_movq(instr, &state))
-DEF_IT(MOVQ, ll_instruction_movq(instr, &state))
+DEF_IT(MOVD, state.LiftSseMovq(*instr, Facet::I32))
+DEF_IT(MOVQ, state.LiftSseMovq(*instr, Facet::I64))
 DEF_IT(MOVSS, ll_instruction_movs(instr, &state))
 DEF_IT(MOVSD, ll_instruction_movs(instr, &state))
 DEF_IT(MOVUPS, ll_instruction_movp(instr, &state))

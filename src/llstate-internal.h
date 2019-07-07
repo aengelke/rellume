@@ -147,6 +147,9 @@ public:
     LLState(llvm::LLVMContext& ctx) : LLStateBase(ctx) {}
 
     void InstRet(LLInstr&);
+
+    // llinstruction-sse.cc
+    void LiftSseMovq(const LLInstr&, Facet::Value type);
 };
 
 #define ll_get_register(reg,facet,state) llvm::wrap((state)->GetReg(reg, facet))
