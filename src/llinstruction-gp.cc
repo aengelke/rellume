@@ -337,15 +337,14 @@ ll_instruction_lea(LLInstr* instr, LLState* state)
     LLVMTypeRef i8 = LLVMInt8TypeInContext(state->context);
     LLVMTypeRef i64 = LLVMInt64TypeInContext(state->context);
     LLVMTypeRef targetType = LLVMIntTypeInContext(state->context, instr->ops[0].size * 8);
-    LLVMTypeRef pi8 = LLVMPointerType(i8, 0);
 
     if (instr->ops[1].type != LL_OP_MEM)
         warn_if_reached();
     if (instr->ops[0].type != LL_OP_REG)
         warn_if_reached();
 
-    LLVMValueRef result = ll_operand_get_address(OP_SI, &instr->ops[1], state);
-    result = LLVMBuildPointerCast(state->builder, result, pi8, "");
+    // Compute pointer before we overwrite any registers.
+    llvm::Value* res_ptr = state->OpAddr(instr->ops[1], llvm::unwrap(i8));
 
     LLVMValueRef base = LLVMConstInt(i64, instr->ops[1].val, false);
 
@@ -363,7 +362,7 @@ ll_instruction_lea(LLInstr* instr, LLState* state)
     ll_operand_store(OP_SI, ALIGN_MAXIMUM, &instr->ops[0], REG_DEFAULT, base, state);
 
     if (instr->ops[0].reg.rt == LL_RT_GP64)
-        ll_set_register(instr->ops[0].reg, Facet::PTR, result, false, state);
+        state->SetRegFacet(instr->ops[0].reg, Facet::PTR, res_ptr);
 }
 
 void

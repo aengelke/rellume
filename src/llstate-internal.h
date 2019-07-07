@@ -68,6 +68,17 @@ struct LLConfig {
 
 typedef struct LLConfig LLConfig;
 
+enum Alignment {
+    /// Implicit alignment -- MAX for SSE operand, 1 otherwise
+    ALIGN_IMP = -1,
+    /// Maximum alignment, alignment is set to the size of the value
+    ALIGN_MAX = 0,
+    /// No alignment (1 byte)
+    ALIGN_NONE = 1,
+    ALIGN_MAXIMUM = ALIGN_MAX,
+    ALIGN_1 = ALIGN_NONE,
+};
+
 /**
  * \brief The LLVM state of the back-end.
  **/
@@ -100,8 +111,11 @@ public:
     llvm::Value* GetReg(LLReg reg, Facet::Value facet) {
         return regfile->GetReg(reg, facet);
     }
-    void SetReg(LLReg reg, Facet::Value facet, llvm::Value* value, bool clear = true) {
-        regfile->SetReg(reg, facet, value, clear);
+    void SetReg(LLReg reg, Facet::Value facet, llvm::Value* value, bool clear=true) {
+        regfile->SetReg(reg, facet, value, clear); // clear all other facets
+    }
+    void SetRegFacet(LLReg reg, Facet::Value facet, llvm::Value* value) {
+        regfile->SetReg(reg, facet, value, false);
     }
     llvm::Value* GetFlag(int flag) {
         return regfile->GetFlag(flag);
@@ -110,9 +124,13 @@ public:
         regfile->SetFlag(flag, value);
     }
 
-    // llvm::Value* OpAddr(const LLInstrOp& op, OperandDataType dataType);
-    // llvm::Value* OpLoad(const LLInstrOp& op, OperandDataType dataType, Alignment alignment);
-    // void OpStore(const LLInstrOp& op, PartialRegisterHandling prh, llvm::Value* value, OperandDataType dataType, Alignment alignment);
+private:
+    llvm::Value* OpAddrConst(uint64_t addr);
+public:
+    llvm::Value* OpAddr(const LLInstrOp& op, llvm::Type* element_type);
+    llvm::Value* OpLoad(const LLInstrOp& op, Facet::Value dataType, Alignment alignment = ALIGN_NONE);
+    void OpStoreGp(const LLInstrOp& op, llvm::Value* value, Alignment alignment = ALIGN_NONE);
+    void OpStoreVec(const LLInstrOp& op, llvm::Value* value, bool avx = false, Alignment alignment = ALIGN_IMP);
 
     // void FlagCalcZ(llvm::Value* value);
     // void FlagCalcS(llvm::Value* value);

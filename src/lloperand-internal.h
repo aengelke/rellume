@@ -56,35 +56,6 @@ extern "C" {
 
 /**
  * \ingroup LLInstrOp
- * \brief The alignment of an operand
- **/
-enum Alignment {
-    /**
-     * \brief Maximum alignment based on data type size
-     **/
-    ALIGN_MAXIMUM = 0,
-    /**
-     * \brief 1-byte alignment
-     **/
-    ALIGN_1 = 1,
-    /**
-     * \brief 2-byte alignment
-     **/
-    ALIGN_2 = 2,
-    /**
-     * \brief 4-byte alignment
-     **/
-    ALIGN_4 = 4,
-    /**
-     * \brief 8-byte alignment
-     **/
-    ALIGN_8 = 8,
-};
-
-typedef enum Alignment Alignment;
-
-/**
- * \ingroup LLInstrOp
  * \brief The handling when storing a partial register
  **/
 enum PartialRegisterHandling {
@@ -97,10 +68,6 @@ enum PartialRegisterHandling {
      **/
     REG_DEFAULT,
     /**
-     * \brief Zero the unused half of the SSE register.
-     **/
-    REG_ZERO_UPPER_SSE,
-    /**
      * \brief Zero the unused half of the full SSE/AVX register.
      **/
     REG_ZERO_UPPER_AVX,
@@ -112,7 +79,6 @@ enum PartialRegisterHandling {
 
 typedef enum PartialRegisterHandling PartialRegisterHandling;
 
-LLVMValueRef ll_operand_get_address(OperandDataType, LLInstrOp*, LLState*);
 LLVMValueRef ll_operand_load(OperandDataType, Alignment, LLInstrOp*, LLState*);
 void ll_operand_store(OperandDataType, Alignment, LLInstrOp*, PartialRegisterHandling, LLVMValueRef, LLState*);
 

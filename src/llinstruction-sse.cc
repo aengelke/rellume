@@ -53,9 +53,17 @@ ll_instruction_movq(LLInstr* instr, LLState* state)
     LLVMValueRef operand1 = ll_operand_load(type, ALIGN_MAXIMUM, &instr->ops[1], state);
 
     if (instr->ops[0].type == LL_OP_REG && instr->ops[0].reg.IsVec())
-        ll_operand_store(type, ALIGN_MAXIMUM, &instr->ops[0], REG_ZERO_UPPER_SSE, operand1, state);
+    {
+        llvm::Type* el_ty = llvm::unwrap(operand1)->getType();
+        llvm::Type* vector_ty = llvm::VectorType::get(el_ty, 128 / el_ty->getPrimitiveSizeInBits());
+        llvm::Value* zero = llvm::Constant::getNullValue(vector_ty);
+        llvm::Value* zext = state->irb.CreateInsertElement(zero, llvm::unwrap(operand1), 0ul);
+        state->OpStoreVec(instr->ops[0], zext);
+    }
     else
+    {
         ll_operand_store(type, ALIGN_MAXIMUM, &instr->ops[0], REG_DEFAULT, operand1, state);
+    }
 }
 
 void
@@ -65,15 +73,23 @@ ll_instruction_movs(LLInstr* instr, LLState* state)
     LLVMValueRef operand1 = ll_operand_load(type, ALIGN_MAXIMUM, &instr->ops[1], state);
 
     if (instr->ops[1].type == LL_OP_MEM)
-        ll_operand_store(type, ALIGN_MAXIMUM, &instr->ops[0], REG_ZERO_UPPER_SSE, operand1, state);
+    {
+        llvm::Type* el_ty = llvm::unwrap(operand1)->getType();
+        llvm::Type* vector_ty = llvm::VectorType::get(el_ty, 128 / el_ty->getPrimitiveSizeInBits());
+        llvm::Value* zero = llvm::Constant::getNullValue(vector_ty);
+        llvm::Value* zext = state->irb.CreateInsertElement(zero, llvm::unwrap(operand1), 0ul);
+        state->OpStoreVec(instr->ops[0], zext);
+    }
     else
+    {
         ll_operand_store(type, ALIGN_MAXIMUM, &instr->ops[0], REG_KEEP_UPPER, operand1, state);
+    }
 }
 
 void
 ll_instruction_movp(LLInstr* instr, LLState* state)
 {
-    Alignment alignment = instr->type == LL_INS_MOVAPS || instr->type == LL_INS_MOVAPD ? ALIGN_MAXIMUM : ALIGN_8;
+    Alignment alignment = instr->type == LL_INS_MOVAPS || instr->type == LL_INS_MOVAPD ? ALIGN_MAX : ALIGN_NONE;
     OperandDataType type = instr->type == LL_INS_MOVAPS || instr->type == LL_INS_MOVUPS ? OP_VF32 : OP_VF64;
 
     LLVMValueRef operand1 = ll_operand_load(type, alignment, &instr->ops[1], state);
@@ -83,7 +99,7 @@ ll_instruction_movp(LLInstr* instr, LLState* state)
 void
 ll_instruction_movdq(LLInstr* instr, LLState* state)
 {
-    Alignment alignment = instr->type == LL_INS_MOVDQA ? ALIGN_MAXIMUM : ALIGN_8;
+    Alignment alignment = instr->type == LL_INS_MOVDQA ? ALIGN_MAX : ALIGN_NONE;
 
     LLVMValueRef operand1 = ll_operand_load(OP_VI64, alignment, &instr->ops[1], state);
     ll_operand_store(OP_VI64, alignment, &instr->ops[0], REG_KEEP_UPPER, operand1, state);

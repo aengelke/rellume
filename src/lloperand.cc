@@ -42,408 +42,269 @@
  * @{
  **/
 
-/**
- * Store a value in a general purpose register.
- *
- * \private
- *
- * \author Alexis Engelke
- *
- * \param value The value to cast
- * \param dataType The data type
- * \param operand The register operand
- * \param state The module state
- **/
-static void
-ll_operand_store_gp(LLVMValueRef value, Facet::Value dataType, LLInstrOp* operand, LLState* state)
+llvm::Value*
+LLStateBase::OpAddrConst(uint64_t addr)
 {
-    LLVMTypeRef i64 = LLVMInt64TypeInContext(state->context);
-    LLVMTypeRef operandIntType = llvm::wrap(Facet::Type(dataType, state->irb.getContext()));
+    if (addr == 0)
+        return llvm::ConstantPointerNull::get(irb.getInt8PtrTy());
 
-    LLVMValueRef result = NULL;
-
-    value = LLVMBuildSExtOrBitCast(state->builder, value, operandIntType, "");
-    LLVMValueRef value64 = LLVMBuildZExtOrBitCast(state->builder, value, i64, "");
-    if (operand->reg.rt == LL_RT_GP32 || operand->reg.rt == LL_RT_GP64)
-        result = value64;
-    else
+    if (cfg.globalBase != nullptr)
     {
-        uint64_t mask = 0;
-        if (operand->reg.IsGpHigh())
-        {
-            mask = 0xff00;
-            value64 = LLVMBuildShl(state->builder, value64, LLVMConstInt(i64, 8, false), "");
-        }
-        else if (operand->reg.rt == LL_RT_GP8 || operand->reg.rt == LL_RT_GP8Leg)
-            mask = 0xff;
-        else if (operand->reg.rt == LL_RT_GP16)
-            mask = 0xffff;
-        else
-            warn_if_reached();
-
-        LLVMValueRef current = ll_get_register(operand->reg, Facet::I64, state);
-        LLVMValueRef masked = LLVMBuildAnd(state->builder, current, LLVMConstInt(i64, ~mask, false), "");
-        result = LLVMBuildOr(state->builder, masked, value64, "");
+        uintptr_t offset = addr - cfg.globalOffsetBase;
+        return irb.CreateGEP(llvm::unwrap(cfg.globalBase), {irb.getInt64(offset)});
     }
 
-    ll_set_register(operand->reg, Facet::I64, result, true, state);
-    if (operand->reg.rt == LL_RT_GP32)
-        ll_set_register(operand->reg, Facet::I32, value, false, state);
-    if (operand->reg.rt == LL_RT_GP16)
-        ll_set_register(operand->reg, Facet::I16, value, false, state);
-    if (operand->reg.rt == LL_RT_GP8)
-        ll_set_register(operand->reg, Facet::I8, value, false, state);
-    if (operand->reg.rt == LL_RT_GP8Leg)
-        ll_set_register(operand->reg, Facet::I8H, value, false, state);
+    return irb.CreateIntToPtr(irb.getInt64(addr), irb.getInt8PtrTy());
 }
 
-/**
- * Store a value in a vector (SSE/AVX) register.
- *
- * \private
- *
- * \author Alexis Engelke
- *
- * \param value The value to cast
- * \param dataType The data type
- * \param operand The register operand
- * \param zeroHandling Handling of unused upper parts of the register
- * \param state The module state
- **/
-static void
-ll_operand_store_vreg(LLVMValueRef value, OperandDataType dataType, LLInstrOp* operand, PartialRegisterHandling zeroHandling, LLState* state)
+llvm::Value*
+LLStateBase::OpAddr(const LLInstrOp& op, llvm::Type* element_type)
 {
-    LLVMTypeRef i32 = LLVMInt32TypeInContext(state->context);
-    LLVMTypeRef i64 = LLVMInt64TypeInContext(state->context);
-
-    size_t operandWidth = llvm::unwrap(value)->getType()->getPrimitiveSizeInBits();
-    assert(operandWidth == Facet::Type(dataType, state->irb.getContext())->getPrimitiveSizeInBits());
-    LLVMValueRef result = NULL;
-
-    LLVMTypeRef iVec = LLVMIntTypeInContext(state->context, LL_VECTOR_REGISTER_SIZE);
-    LLVMTypeRef i128 = LLVMIntTypeInContext(state->context, 128);
-
-    LLVMValueRef current = ll_get_register(operand->reg, Facet::IVEC, state);
-    if (zeroHandling == REG_ZERO_UPPER_AVX)
+    int addrspace = 0;
+    switch (op.seg)
     {
-        current = LLVMConstNull(iVec);
-    }
-    else if (zeroHandling == REG_ZERO_UPPER_SSE)
-    {
-        // Ehem, we have to construct the mask first.
-        // It is all-ones with the lowest 128-bit being zero.
-        LLVMValueRef mask = LLVMConstNot(LLVMConstZExtOrBitCast(LLVMConstAllOnes(i128), iVec));
-        current = LLVMBuildAnd(state->builder, current, mask, "");
+    case LL_RI_None: addrspace = 0; break;
+    case LL_RI_GS: addrspace = 256; break;
+    case LL_RI_FS: addrspace = 257; break;
+    default: assert(false); return nullptr;
     }
 
-#if LL_VECTOR_REGISTER_SIZE >= 256
-    LLVMValueRef current128 = ll_get_register(operand->reg, Facet::I128, state);
-    if (zeroHandling == REG_ZERO_UPPER_AVX || zeroHandling == REG_ZERO_UPPER_SSE)
-        current128 = LLVMConstNull(i128);
-#endif
+    llvm::Type* scale_type = nullptr;
+    if (op.scale * 8u == element_type->getPrimitiveSizeInBits())
+        scale_type = element_type->getPointerTo(addrspace);
+    else if (op.scale != 0)
+        scale_type = irb.getIntNTy(op.scale*8)->getPointerTo(addrspace);
 
-    LLVMTypeRef valueType = LLVMTypeOf(value);
-    bool valueIsVector = LLVMGetTypeKind(valueType) == LLVMVectorTypeKind;
-
-    int elementCount = valueIsVector ? LLVMGetVectorSize(valueType) : 1;
-    int totalCount = elementCount * LL_VECTOR_REGISTER_SIZE / operandWidth;
-
-    if (valueIsVector)
+    llvm::Value* base;
+    if (op.reg.rt != LL_RT_None)
     {
-        LLVMTypeRef vectorType = LLVMVectorType(LLVMGetElementType(valueType), totalCount);
-
-        if (totalCount == elementCount)
+        base = GetReg(op.reg, Facet::PTR);
+        if (llvm::isa<llvm::Constant>(base))
         {
-            result = value;
+            auto base_addr = llvm::cast<llvm::ConstantInt>(GetReg(op.reg, Facet::I64));
+            base = OpAddrConst(base_addr->getZExtValue() + op.val);
         }
-        else
+        else if (op.val != 0)
         {
-            LLVMValueRef vectorCurrent = LLVMBuildBitCast(state->builder, current, vectorType, "");
-            LLVMValueRef maskElements[totalCount];
-            for (int i = 0; i < totalCount; i++)
-                maskElements[i] = LLVMConstInt(i32, i, false);
-            for (int i = elementCount; i < totalCount; i++)
-                maskElements[i] = LLVMConstInt(i32, elementCount, false);
-            LLVMValueRef mask = LLVMConstVector(maskElements, totalCount);
-            LLVMValueRef enlarged = LLVMBuildShuffleVector(state->builder, value, LLVMConstNull(valueType), mask, "");
+            if (op.scale != 0 && (op.val % op.scale) == 0)
+            {
+                base = irb.CreatePointerCast(base, scale_type);
+                base = irb.CreateGEP(base, {irb.getInt64(op.val/op.scale)});
+            }
+            else
+            {
+                base = irb.CreateGEP(base, {irb.getInt64(op.val)});
+            }
+        }
+    }
+    else
+    {
+        base = OpAddrConst(op.val);
+    }
 
-            for (int i = elementCount; i < totalCount; i++)
-                maskElements[i] = LLVMConstInt(i32, totalCount + i, false);
-            mask = LLVMConstVector(maskElements, totalCount);
-            result = LLVMBuildShuffleVector(state->builder, enlarged, vectorCurrent, mask, "");
+    if (op.scale != 0)
+    {
+        llvm::Value* offset = GetReg(op.ireg, Facet::I64);
+        // TODO: if base is constant null, use mul+inttoptr
+        base = irb.CreatePointerCast(base, scale_type);
+        base = irb.CreateGEP(base, {offset});
+    }
+
+    return irb.CreatePointerCast(base, element_type->getPointerTo(addrspace));
+}
+
+static void
+ll_operand_set_alignment(llvm::Instruction* value, Alignment alignment, bool sse = false)
+{
+    if (alignment == ALIGN_IMP)
+        alignment = sse ? ALIGN_MAX : ALIGN_NONE;
+    if (alignment == ALIGN_NONE)
+        return;
+
+    if (llvm::LoadInst* load = llvm::dyn_cast<llvm::LoadInst>(value))
+        load->setAlignment(load->getPointerOperandType()->getPrimitiveSizeInBits() / 8);
+    else if (llvm::StoreInst* store = llvm::dyn_cast<llvm::StoreInst>(value))
+        store->setAlignment(store->getPointerOperandType()->getPrimitiveSizeInBits() / 8);
+}
+
+llvm::Value*
+LLStateBase::OpLoad(const LLInstrOp& op, Facet::Value facet, Alignment alignment)
+{
+    facet = Facet::Resolve(facet, op.size * 8);
+    if (op.type == LL_OP_IMM)
+    {
+        llvm::Type* type = Facet::Type(facet, irb.getContext());
+        return llvm::ConstantInt::get(type, op.val);
+    }
+    else if (op.type == LL_OP_REG)
+    {
+        if (op.reg.IsGpHigh() && facet == Facet::I8)
+            facet = Facet::I8H;
+        return GetReg(op.reg, facet);
+    }
+    else if (op.type == LL_OP_MEM)
+    {
+        llvm::Type* type = Facet::Type(facet, irb.getContext());
+        llvm::Value* addr = OpAddr(op, type);
+        llvm::LoadInst* result = irb.CreateLoad(type, addr);
+        // FIXME: forward SSE information to increase alignment.
+        ll_operand_set_alignment(result, alignment, false);
+        return result;
+    }
+
+    warn_if_reached();
+    return nullptr;
+}
+
+void
+LLStateBase::OpStoreGp(const LLInstrOp& op, llvm::Value* value, Alignment alignment)
+{
+    if (op.type == LL_OP_MEM)
+    {
+        llvm::Value* addr = OpAddr(op, value->getType());
+        llvm::StoreInst* store = irb.CreateStore(value, addr);
+        ll_operand_set_alignment(store, alignment);
+        return;
+    }
+
+    assert(op.type == LL_OP_REG && "gp-store to non-mem/non-reg");
+
+    value = irb.CreateSExtOrBitCast(value, irb.getIntNTy(op.size * 8));
+    if (op.reg.rt == LL_RT_GP64)
+    {
+        SetReg(op.reg, Facet::I64, value);
+        return;
+    }
+
+    llvm::Value* value64 = irb.CreateZExtOrBitCast(value, irb.getInt64Ty());
+
+    if (op.reg.rt == LL_RT_GP32)
+    {
+        SetReg(op.reg, Facet::I64, value64);
+        SetRegFacet(op.reg, Facet::I32, value);
+        return;
+    }
+
+    uint64_t mask;
+    Facet::Value store_facet;
+    if (op.reg.IsGpHigh())
+    {
+        mask = 0xff00;
+        store_facet = Facet::I8H;
+        value64 = irb.CreateShl(value64, 8);
+    }
+    else if (op.size == 1)
+    {
+        mask = 0xff;
+        store_facet = Facet::I8;
+    }
+    else if (op.size == 2)
+    {
+        mask = 0xffff;
+        store_facet = Facet::I16;
+    }
+    else
+    {
+        warn_if_reached();
+    }
+
+    llvm::Value* masked = irb.CreateAnd(GetReg(op.reg, Facet::I64), ~mask);
+    SetReg(op.reg, Facet::I64, irb.CreateOr(value64, masked));
+    SetRegFacet(op.reg, store_facet, value);
+}
+
+void
+LLStateBase::OpStoreVec(const LLInstrOp& op, llvm::Value* value, bool avx,
+                        Alignment alignment)
+{
+    if (op.type == LL_OP_MEM)
+    {
+        llvm::Value* addr = OpAddr(op, value->getType());
+        llvm::StoreInst* store = irb.CreateStore(value, addr);
+        ll_operand_set_alignment(store, alignment, !avx);
+        return;
+    }
+
+    assert(op.type == LL_OP_REG && "vec-store to non-mem/non-reg");
+
+    size_t operandWidth = value->getType()->getPrimitiveSizeInBits();
+    // assert(operandWidth == Facet::Type(dataType, state->irb.getContext())->getPrimitiveSizeInBits());
+
+    llvm::Type* iVec = irb.getIntNTy(LL_VECTOR_REGISTER_SIZE);
+    llvm::Value* current = irb.getIntN(LL_VECTOR_REGISTER_SIZE, 0);
+    llvm::Value* current128 = irb.getIntN(128, 0);
+    if (!avx)
+    {
+        current = GetReg(op.reg, Facet::IVEC);
+        current128 = GetReg(op.reg, Facet::I128);
+    }
+
+    llvm::Type* value_type = value->getType();
+    if (value_type->isVectorTy())
+    {
+        llvm::Value* full_vec = value;
+        if (operandWidth < LL_VECTOR_REGISTER_SIZE)
+        {
+            unsigned element_count = value_type->getVectorNumElements();
+            unsigned total_count = element_count * LL_VECTOR_REGISTER_SIZE / operandWidth;
+            llvm::Type* element_type = value_type->getVectorElementType();
+            llvm::Type* full_type = llvm::VectorType::get(element_type, total_count);
+            llvm::Value* current_vector = irb.CreateBitCast(current, full_type);
+
+            // First, we enlarge the input vector to the full register length.
+            llvm::SmallVector<uint32_t, 16> mask;
+            for (unsigned i = 0; i < total_count; i++)
+                mask.push_back(i < element_count ? i : element_count);
+            full_vec = irb.CreateShuffleVector(value, llvm::Constant::getNullValue(value_type), mask);
+
+            // Now shuffle the two vectors together
+            for (unsigned i = 0; i < total_count; i++)
+                mask[i] = i + (i < element_count ? 0 : total_count);
+            full_vec = irb.CreateShuffleVector(full_vec, current_vector, mask);
         }
 
-        result = LLVMBuildBitCast(state->builder, result, iVec, "");
-        ll_set_register(operand->reg, Facet::IVEC, result, true, state);
-
+        SetReg(op.reg, Facet::IVEC, irb.CreateBitCast(full_vec, iVec));
 #if LL_VECTOR_REGISTER_SIZE >= 256
         // Induce some common facets via i128 for better SSE support
         if (operandWidth == 128)
         {
-            LLVMValueRef sseReg = LLVMBuildBitCast(state->builder, value, i128, "");
-            ll_set_register(operand->reg, Facet::I128, sseReg, false, state);
+            llvm::Value* sse = irb.CreateBitCast(value, irb.getInt128Ty());
+            SetRegFacet(op.reg, Facet::I128, sse);
         }
 #endif
     }
     else
     {
-        LLVMTypeRef vectorType = LLVMVectorType(valueType, totalCount);
-        LLVMValueRef vectorCurrent = LLVMBuildBitCast(state->builder, current, vectorType, "");
-
-        LLVMValueRef constZero = LLVMConstInt(i64, 0, false);
-        result = LLVMBuildInsertElement(state->builder, vectorCurrent, value, constZero, "");
-        result = LLVMBuildBitCast(state->builder, result, iVec, "");
-
-        ll_set_register(operand->reg, Facet::IVEC, result, true, state);
+        unsigned total_count = LL_VECTOR_REGISTER_SIZE / operandWidth;
+        llvm::Type* full_type = llvm::VectorType::get(value_type, total_count);
+        llvm::Value* full_vector = irb.CreateBitCast(current, full_type);
+        full_vector = irb.CreateInsertElement(full_vector, value, 0ul);
+        SetReg(op.reg, Facet::IVEC, irb.CreateBitCast(full_vector, iVec));
 
 #if LL_VECTOR_REGISTER_SIZE >= 256
         // Induce some common facets via i128 for better SSE support
-        LLVMTypeRef vectorType128 = LLVMVectorType(valueType, 128 / operandWidth);
-        LLVMValueRef vectorCurrent128 = LLVMBuildBitCast(state->builder, current128, vectorType128, "");
-
-        LLVMValueRef sseReg = LLVMBuildInsertElement(state->builder, vectorCurrent128, value, constZero, "");
-        sseReg = LLVMBuildBitCast(state->builder, sseReg, i128, "");
-        ll_set_register(operand->reg, Facet::I128, sseReg, false, state);
+        llvm::Type* sse_type = llvm::VectorType::get(value_type, 128 / operandWidth);
+        llvm::Value* sse_vector = irb.CreateBitCast(current128, sse_type);
+        sse_vector = irb.CreateInsertElement(sse_vector, value, 0ul);
+        llvm::Value* sse = irb.CreateBitCast(sse_vector, irb.getInt128Ty());
+        SetRegFacet(op.reg, Facet::I128, sse);
 #endif
     }
 }
 
-/**
- * Get a pointer to the a known global constant
- *
- * \private
- *
- * \author Alexis Engelke
- *
- * \param constGlobal The constant global address
- * \param state The module state
- * \returns A pointer of the given type which represents the address
- **/
-static LLVMValueRef
-ll_get_const_pointer(uintptr_t ptr, LLState* state)
-{
-    LLVMTypeRef i8 = LLVMInt8TypeInContext(state->context);
-    LLVMTypeRef i64 = LLVMInt64TypeInContext(state->context);
-    LLVMTypeRef pi8 = LLVMPointerType(i8, 0);
-
-    if (ptr == 0)
-        return LLVMConstPointerNull(pi8);
-
-    // if (state->globalOffsetBase == 0)
-    // {
-    //     state->globalOffsetBase = ptr;
-    //     state->globalBase = LLVMAddGlobal(state->module, i8, "__ll_global_base__");
-    //     LLVMAddGlobalMapping(state->engine, state->globalBase, (void*) ptr);
-    // }
-
-    LLVMValueRef pointer;
-    if (state->cfg.globalBase != NULL)
-    {
-        uintptr_t offset = ptr - state->cfg.globalOffsetBase;
-        LLVMValueRef llvmOffset = LLVMConstInt(i64, offset, false);
-        pointer = LLVMBuildGEP(state->builder, state->cfg.globalBase, &llvmOffset, 1, "");
-    }
-    else
-    {
-        LLVMValueRef llvmOffset = LLVMConstInt(i64, ptr, false);
-        pointer = LLVMBuildIntToPtr(state->builder, llvmOffset, pi8, "");
-    }
-
-    return pointer;
-}
-
-/**
- * Get the pointer corresponding to an operand.
- *
- * \private
- *
- * \author Alexis Engelke
- *
- * \param dataType The data type used to create the appropriate pointer type
- * \param operand The operand, must be Ind32 or Ind64
- * \param state The module state
- * \returns The pointer which corresponds to the operand
- **/
-LLVMValueRef
-ll_operand_get_address(OperandDataType dataType, LLInstrOp* operand, LLState* state)
-{
-    LLVMValueRef result;
-    LLVMTypeRef i64 = LLVMInt64TypeInContext(state->context);
-
-    LLVMTypeRef pointerType;
-    int addrspace;
-
-    switch (operand->seg)
-    {
-        case LL_RI_None:
-            addrspace = 0;
-            break;
-        case LL_RI_GS:
-            addrspace = 256;
-            break;
-        case LL_RI_FS:
-            addrspace = 257;
-            break;
-        default:
-            addrspace = 0;
-            warn_if_reached();
-            break;
-    }
-
-    llvm::Type* elementType = Facet::Type(Facet::Resolve(dataType, operand->size*8), state->irb.getContext());
-    pointerType = llvm::wrap(elementType->getPointerTo(addrspace));
-
-    if (operand->reg.rt != LL_RT_None)
-    {
-        result = ll_get_register(operand->reg, Facet::PTR, state);
-
-        if (LLVMIsConstant(result))
-        {
-            result = ll_get_register(operand->reg, Facet::I64, state);
-
-            if (!LLVMIsConstant(result))
-                warn_if_reached();
-
-            uintptr_t constPtr = LLVMConstIntGetZExtValue(result);
-            result = ll_get_const_pointer(constPtr + operand->val, state);
-        }
-        else if (operand->val != 0)
-        {
-            LLVMValueRef offset = LLVMConstInt(i64, operand->val, false);
-
-            if (operand->scale != 0 && (operand->val % operand->scale) == 0)
-            {
-                LLVMTypeRef scaleType = LLVMPointerType(LLVMIntTypeInContext(state->context, operand->scale * 8), 0);
-                result = LLVMBuildPointerCast(state->builder, result, scaleType, "");
-                offset = LLVMConstInt(i64, operand->val / operand->scale, false);
-            }
-
-            result = LLVMBuildGEP(state->builder, result, &offset, 1, "");
-        }
-    }
-    else
-    {
-        result = ll_get_const_pointer(operand->val, state);
-    }
-
-    if (operand->scale != 0)
-    {
-        LLVMValueRef offset = ll_get_register(operand->ireg, Facet::I64, state);
-
-        if (LLVMIsNull(result))
-        {
-            // Fallback to inttoptr if this is definitly not-a-pointer.
-            // Therefore, we don't need to use ll_get_const_pointer.
-            offset = LLVMBuildMul(state->builder, offset, LLVMConstInt(i64, operand->scale, false), "");
-            result = LLVMBuildIntToPtr(state->builder, offset, pointerType, "");
-        }
-        else
-        {
-            LLVMTypeRef scaleType = LLVMPointerType(LLVMIntTypeInContext(state->context, operand->scale * 8), 0);
-
-            if (operand->scale * 8u == elementType->getPrimitiveSizeInBits())
-                scaleType = pointerType;
-
-            result = LLVMBuildPointerCast(state->builder, result, scaleType, "");
-            result = LLVMBuildGEP(state->builder, result, &offset, 1, "");
-        }
-    }
-
-    result = LLVMBuildPointerCast(state->builder, result, pointerType, "");
-
-    return result;
-}
-
-/**
- * Create the value corresponding to an operand.
- *
- * \private
- *
- * \author Alexis Engelke
- *
- * \param dataType The data type used to create the appropriate type
- * \param alignment Additional alignment information
- * \param operand The operand
- * \param state The module state
- * \returns The value which corresponds to the operand
- **/
 LLVMValueRef
 ll_operand_load(OperandDataType dataType, Alignment alignment, LLInstrOp* operand, LLState* state)
 {
-    Facet::Value facet = Facet::Resolve(dataType, operand->size * 8);
-    LLVMValueRef result = NULL;
-
-    if (operand->type == LL_OP_IMM)
-    {
-        llvm::Type* type = Facet::Type(facet, state->irb.getContext());
-        result = LLVMConstInt(llvm::wrap(type), operand->val, false);
-    }
-    else if (operand->type == LL_OP_REG)
-    {
-        if (operand->reg.IsGpHigh() && facet == Facet::I8)
-            facet = Facet::I8H;
-        result = llvm::wrap(state->GetReg(operand->reg, facet));
-    }
-    else if (operand->type == LL_OP_MEM)
-    {
-        LLVMValueRef address = ll_operand_get_address(dataType, operand, state);
-        result = LLVMBuildLoad(state->builder, address, "");
-        int operandWidth = llvm::unwrap(result)->getType()->getPrimitiveSizeInBits();
-        if (alignment == ALIGN_MAXIMUM)
-            LLVMSetAlignment(result, operandWidth / 8);
-        else
-            LLVMSetAlignment(result, alignment);
-    }
-    else
-    {
-        warn_if_reached();
-    }
-
-    return result;
+    return llvm::wrap(state->OpLoad(*operand, dataType, alignment));
 }
 
-/**
- * Store the value in an operand.
- *
- * \private
- *
- * \author Alexis Engelke
- *
- * \param dataType The data type used to create the pointer type, if necessary
- * \param alignment Additional alignment information
- * \param operand The operand
- * \param zeroHandling Handling of unused upper parts of the register
- * \param value The value to store
- * \param state The module state
- **/
 void
 ll_operand_store(OperandDataType dataType, Alignment alignment, LLInstrOp* operand, PartialRegisterHandling zeroHandling, LLVMValueRef value, LLState* state)
 {
-    Facet::Value facet = Facet::Resolve(dataType, operand->size * 8);
-
-    if (operand->type == LL_OP_REG)
-    {
-        if (zeroHandling == REG_DEFAULT)
-            ll_operand_store_gp(value, facet, operand, state);
-        else
-            ll_operand_store_vreg(value, facet, operand, zeroHandling, state);
-    }
-    else if (operand->type == LL_OP_MEM)
-    {
-        LLVMValueRef address = ll_operand_get_address(dataType, operand, state);
-        LLVMValueRef result = LLVMBuildBitCast(state->builder, value, LLVMGetElementType(LLVMTypeOf(address)), "");
-        LLVMValueRef store = LLVMBuildStore(state->builder, result, address);
-
-        int operandWidth = llvm::unwrap(result)->getType()->getPrimitiveSizeInBits();
-        if (alignment == ALIGN_MAXIMUM)
-            LLVMSetAlignment(store, operandWidth / 8);
-        else
-            LLVMSetAlignment(store, alignment);
-    }
+    if (zeroHandling == REG_DEFAULT)
+        state->OpStoreGp(*operand, llvm::unwrap(value), alignment);
     else
-    {
-        warn_if_reached();
-    }
+        state->OpStoreVec(*operand, llvm::unwrap(value), zeroHandling == REG_ZERO_UPPER_AVX, alignment);
 }
 
 /**
