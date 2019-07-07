@@ -62,7 +62,7 @@ void
 ll_instruction_movs(LLInstr* instr, LLState* state)
 {
     OperandDataType type = instr->type == LL_INS_MOVSS ? OP_SF32 : OP_SF64;
-    LLVMValueRef operand1 = ll_operand_load(type, ALIGN_MAXIMUM, &instr->ops[1], state);
+    LLVMValueRef operand1 = ll_operand_load(type, ALIGN_NONE, &instr->ops[1], state);
 
     if (instr->ops[1].type == LL_OP_MEM)
     {
@@ -74,7 +74,7 @@ ll_instruction_movs(LLInstr* instr, LLState* state)
     }
     else
     {
-        ll_operand_store(type, ALIGN_MAXIMUM, &instr->ops[0], REG_KEEP_UPPER, operand1, state);
+        ll_operand_store(type, ALIGN_NONE, &instr->ops[0], REG_KEEP_UPPER, operand1, state);
     }
 }
 

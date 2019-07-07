@@ -121,13 +121,10 @@ ll_operand_set_alignment(llvm::Instruction* value, Alignment alignment, bool sse
 {
     if (alignment == ALIGN_IMP)
         alignment = sse ? ALIGN_MAX : ALIGN_NONE;
-    if (alignment == ALIGN_NONE)
-        return;
-
     if (llvm::LoadInst* load = llvm::dyn_cast<llvm::LoadInst>(value))
-        load->setAlignment(load->getPointerOperandType()->getPrimitiveSizeInBits() / 8);
+        load->setAlignment(alignment == ALIGN_NONE ? 1 : load->getPointerOperandType()->getPrimitiveSizeInBits() / 8);
     else if (llvm::StoreInst* store = llvm::dyn_cast<llvm::StoreInst>(value))
-        store->setAlignment(store->getPointerOperandType()->getPrimitiveSizeInBits() / 8);
+        store->setAlignment(alignment == ALIGN_NONE ? 1 : store->getPointerOperandType()->getPrimitiveSizeInBits() / 8);
 }
 
 llvm::Value*
