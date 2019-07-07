@@ -36,8 +36,6 @@
 extern "C" {
 #endif
 
-LLVMValueRef ll_flags_condition(LLInstrType, LLInstrType, LLState*);
-
 #define ll_flags_set_zf(v,s) (s)->FlagCalcZ(llvm::unwrap(v))
 #define ll_flags_set_sf(v,s) (s)->FlagCalcS(llvm::unwrap(v))
 #define ll_flags_set_pf(v,s) (s)->FlagCalcP(llvm::unwrap(v))

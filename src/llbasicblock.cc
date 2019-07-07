@@ -188,7 +188,7 @@ BasicBlock::Terminate()
 
     if (instrIsJcc(endType))
     {
-        llvm::Value* cond = llvm::unwrap(ll_flags_condition(endType, LL_INS_JO, &state));
+        llvm::Value* cond = state.FlagCond(endType, LL_INS_JO);
         builder->CreateCondBr(cond, nextBranch->llvmBB, nextFallThrough->llvmBB);
     }
     else if (endType == LL_INS_JMP)

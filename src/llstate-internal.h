@@ -151,6 +151,8 @@ public:
     }
     void FlagCalcOAdd(llvm::Value* res, llvm::Value* lhs, llvm::Value* rhs);
     void FlagCalcOSub(llvm::Value* res, llvm::Value* lhs, llvm::Value* rhs);
+
+    llvm::Value* FlagCond(LLInstrType type, LLInstrType base);
 };
 
 class LLState : public LLStateBase {

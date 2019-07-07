@@ -49,86 +49,38 @@
  * @{
  **/
 
-/**
- * Evaluate a condition based on the condition from the instruction type.
- *
- * \private
- *
- * \author Alexis Engelke
- *
- * \param type The instruction type
- * \param base The base instruction type (this is the overflow variant)
- * \param state The module state
- **/
-LLVMValueRef
-ll_flags_condition(LLInstrType type, LLInstrType base, LLState* state)
+llvm::Value*
+LLStateBase::FlagCond(LLInstrType type, LLInstrType base)
 {
+    RegFile::FlagCache& cache = regfile->GetFlagCache();
     int condition = type - base;
-    int conditionType = condition >> 1;
-    bool negate = condition & 1;
-
-    LLVMValueRef result;
-    RegFile::FlagCache& flagCache = state->regfile->GetFlagCache();
-
-    switch (conditionType)
+    if (cache.valid)
     {
-        case 0: // JO / JNO
-            result = ll_get_flag(RFLAG_OF, state);
-            break;
-        case 1: // JC / JNC
-            result = ll_get_flag(RFLAG_CF, state);
-            break;
-        case 2: // JZ / JNZ
-            result = ll_get_flag(RFLAG_ZF, state);
-            break;
-        case 3: // JBE / JA
-            if (flagCache.valid)
-            {
-                result = llvm::wrap(state->irb.CreateICmpULE(flagCache.lhs, flagCache.rhs));
-            }
-            else
-            {
-                result = LLVMBuildOr(state->builder, ll_get_flag(RFLAG_CF, state), ll_get_flag(RFLAG_ZF, state), "");
-            }
-            break;
-        case 4: // JS / JNS
-            result = ll_get_flag(RFLAG_SF, state);
-            break;
-        case 5: // JP / JNP
-            result = ll_get_flag(RFLAG_PF, state);
-            break;
-        case 6: // JL / JGE
-            if (flagCache.valid)
-            {
-                result = llvm::wrap(state->irb.CreateICmpSLT(flagCache.lhs, flagCache.rhs));
-            }
-            else
-            {
-                result = LLVMBuildICmp(state->builder, LLVMIntNE, ll_get_flag(RFLAG_SF, state), ll_get_flag(RFLAG_OF, state), "");
-            }
-            break;
-        case 7: // JLE / JG
-            if (flagCache.valid)
-            {
-                result = llvm::wrap(state->irb.CreateICmpSLE(flagCache.lhs, flagCache.rhs));
-            }
-            else
-            {
-                result = LLVMBuildICmp(state->builder, LLVMIntNE, ll_get_flag(RFLAG_SF, state), ll_get_flag(RFLAG_OF, state), "");
-                result = LLVMBuildOr(state->builder, result, ll_get_flag(RFLAG_ZF, state), "");
-            }
-            break;
-        default:
-            result = NULL;
-            break;
+        switch (condition)
+        {
+        case 6: return irb.CreateICmpULE(cache.lhs, cache.rhs);
+        case 7: return irb.CreateICmpUGT(cache.lhs, cache.rhs);
+        case 12: return irb.CreateICmpSLT(cache.lhs, cache.rhs);
+        case 13: return irb.CreateICmpSGE(cache.lhs, cache.rhs);
+        case 14: return irb.CreateICmpSLE(cache.lhs, cache.rhs);
+        case 15: return irb.CreateICmpSGT(cache.lhs, cache.rhs);
+        }
     }
 
-    if (negate)
+    llvm::Value* result;
+    switch (condition & ~1)
     {
-        result = LLVMBuildNot(state->builder, result, "");
+    case 0: result = GetFlag(RFLAG_OF); break;
+    case 2: result = GetFlag(RFLAG_CF); break;
+    case 4: result = GetFlag(RFLAG_ZF); break;
+    case 6: result = irb.CreateOr(GetFlag(RFLAG_CF), GetFlag(RFLAG_ZF)); break;
+    case 8: result = GetFlag(RFLAG_SF); break;
+    case 10: result = GetFlag(RFLAG_PF); break;
+    case 12: result = irb.CreateICmpNE(GetFlag(RFLAG_SF), GetFlag(RFLAG_OF)); break;
+    case 14: result = irb.CreateOr(GetFlag(RFLAG_ZF), irb.CreateICmpNE(GetFlag(RFLAG_SF), GetFlag(RFLAG_OF))); break;
     }
 
-    return result;
+    return condition & 1 ? irb.CreateNot(result) : result;
 }
 
 void

@@ -388,7 +388,7 @@ ll_instruction_lea(LLInstr* instr, LLState* state)
 void
 ll_instruction_cmov(LLInstr* instr, LLState* state)
 {
-    LLVMValueRef cond = ll_flags_condition(instr->type, LL_INS_CMOVO, state);
+    LLVMValueRef cond = llvm::wrap(state->FlagCond(instr->type, LL_INS_CMOVO));
     LLVMValueRef operand1 = ll_operand_load(OP_SI, ALIGN_MAXIMUM, &instr->ops[1], state);
     LLVMValueRef operand2 = ll_operand_load(OP_SI, ALIGN_MAXIMUM, &instr->ops[0], state);
     LLVMValueRef result = LLVMBuildSelect(state->builder, cond, operand1, operand2, "");
@@ -399,7 +399,7 @@ void
 ll_instruction_setcc(LLInstr* instr, LLState* state)
 {
     LLVMTypeRef i8 = LLVMInt8TypeInContext(state->context);
-    LLVMValueRef cond = ll_flags_condition(instr->type, LL_INS_SETO, state);
+    LLVMValueRef cond = llvm::wrap(state->FlagCond(instr->type, LL_INS_SETO));
     LLVMValueRef result = LLVMBuildZExtOrBitCast(state->builder, cond, i8, "");
     ll_operand_store(OP_SI, ALIGN_MAXIMUM, &instr->ops[0], REG_DEFAULT, result, state);
 }
