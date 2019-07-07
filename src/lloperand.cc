@@ -21,18 +21,21 @@
  * \file
  **/
 
-#include <stdbool.h>
-#include <stdlib.h>
-#include <stdint.h>
-#include <string.h>
+#include <cstdbool>
+#include <cstddef>
+#include <cstdint>
+
+#include <llvm/IR/Constants.h>
+#include <llvm/IR/Instructions.h>
+#include <llvm/IR/IRBuilder.h>
+#include <llvm/IR/Type.h>
+#include <llvm/IR/Value.h>
 #include <llvm-c/Core.h>
 
 #include <lloperand-internal.h>
 
-#include <llbasicblock-internal.h>
 #include <llcommon-internal.h>
 #include <llinstr-internal.h>
-#include <llregfile-internal.h>
 #include <llstate-internal.h>
 
 /**
@@ -290,21 +293,6 @@ LLStateBase::OpStoreVec(const LLInstrOp& op, llvm::Value* value, bool avx,
         SetRegFacet(op.reg, Facet::I128, sse);
 #endif
     }
-}
-
-LLVMValueRef
-ll_operand_load(OperandDataType dataType, Alignment alignment, LLInstrOp* operand, LLState* state)
-{
-    return llvm::wrap(state->OpLoad(*operand, dataType, alignment));
-}
-
-void
-ll_operand_store(OperandDataType dataType, Alignment alignment, LLInstrOp* operand, PartialRegisterHandling zeroHandling, LLVMValueRef value, LLState* state)
-{
-    if (zeroHandling == REG_DEFAULT)
-        state->OpStoreGp(*operand, llvm::unwrap(value), alignment);
-    else
-        state->OpStoreVec(*operand, llvm::unwrap(value), zeroHandling == REG_ZERO_UPPER_AVX, alignment);
 }
 
 /**

@@ -35,10 +35,7 @@
 
 #include <llregfile-internal.h>
 
-#include <llbasicblock-internal.h>
-#include <llflags-internal.h>
 #include <llinstr-internal.h>
-#include <llinstruction-internal.h>
 
 /**
  * \defgroup LLRegFile Register File

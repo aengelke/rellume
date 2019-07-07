@@ -27,15 +27,11 @@
 #include <llvm-c/Core.h>
 
 #include <llinstruction-internal.h>
+#include <llstate-internal.h>
 
-#include <llbasicblock-internal.h>
 #include <llcommon-internal.h>
 #include <llflags-internal.h>
 #include <llinstr-internal.h>
-#include <lloperand-internal.h>
-#include <llregfile-internal.h>
-#include <llstate-internal.h>
-#include <llsupport-internal.h>
 
 /**
  * \defgroup LLInstructionGP General Purpose Instructions

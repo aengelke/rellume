@@ -21,22 +21,17 @@
  * \file
  **/
 
-#include <stdbool.h>
-#include <stdlib.h>
-#include <stdint.h>
-#include <llvm-c/Core.h>
+#include <cstdbool>
+#include <cstdint>
+
 #include <llvm/IR/Instructions.h>
 #include <llvm/IR/IRBuilder.h>
 
 #include <llinstruction-internal.h>
+#include <llstate-internal.h>
 
-#include <llbasicblock-internal.h>
 #include <llcommon-internal.h>
 #include <llinstr-internal.h>
-#include <lloperand-internal.h>
-#include <llregfile-internal.h>
-#include <llstate-internal.h>
-#include <llsupport-internal.h>
 
 /**
  * \defgroup LLInstructionCall Call/Ret Instructions

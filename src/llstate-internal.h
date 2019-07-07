@@ -124,6 +124,7 @@ public:
         regfile->SetFlag(flag, value);
     }
 
+    // Operand handling implemented in lloperand.cc
 private:
     llvm::Value* OpAddrConst(uint64_t addr);
 public:
@@ -152,11 +153,42 @@ public:
     void LiftSseMovq(const LLInstr&, Facet::Value type);
 };
 
+// Legacy API.
+
+#define OP_SI Facet::I
+#define OP_SI32 Facet::I32
+#define OP_SI64 Facet::I64
+#define OP_VI8 Facet::VI8
+#define OP_VI32 Facet::VI32
+#define OP_VI64 Facet::VI64
+#define OP_SF32 Facet::F32
+#define OP_SF64 Facet::F64
+#define OP_VF32 Facet::VF32
+#define OP_V1F32 Facet::V1F32
+#define OP_V2F32 Facet::V2F32
+#define OP_V4F32 Facet::V4F32
+#define OP_VF64 Facet::VF64
+#define OP_V1F64 Facet::V1F64
+#define OP_V2F64 Facet::V2F64
+#define OperandDataType Facet::Value
+
+enum {
+    REG_DEFAULT, REG_ZERO_UPPER_AVX, REG_KEEP_UPPER,
+};
+
 #define ll_get_register(reg,facet,state) llvm::wrap((state)->GetReg(reg, facet))
 #define ll_set_register(reg,facet,value,clear,state) (state)->SetReg(reg, facet, llvm::unwrap(value), clear)
 #define ll_get_flag(reg,state) llvm::wrap((state)->GetFlag(reg))
 #define ll_set_flag(reg,value,state) (state)->SetFlag(reg, llvm::unwrap(value))
 #define ll_get_flag_cache(state) (&state->regfile->FlagCache())
+#define ll_operand_load(facet,align,op,state) llvm::wrap((state)->OpLoad(*(op), facet, align))
+#define ll_operand_store(facet,align,op,prh,val,state) do { \
+            if ((prh) == REG_DEFAULT) \
+                (state)->OpStoreGp(*(op), llvm::unwrap(val), align); \
+            else \
+                (state)->OpStoreVec(*(op), llvm::unwrap(val), prh == REG_ZERO_UPPER_AVX, align); \
+        } while (0)
+
 
 #ifdef __cplusplus
 }

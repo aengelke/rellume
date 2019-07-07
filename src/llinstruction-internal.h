@@ -24,14 +24,13 @@
 #ifndef LL_INSTRUCTION_H
 #define LL_INSTRUCTION_H
 
-#include <stdbool.h>
-#include <stdlib.h>
-#include <stdint.h>
+#include <cstdbool>
+#include <cstdint>
+
 #include <llvm-c/Core.h>
 
 #include <llcommon-internal.h>
 #include <llinstr-internal.h>
-#include <lloperand-internal.h>
 #include <llstate-internal.h>
 
 #ifdef __cplusplus

@@ -24,15 +24,13 @@
 #ifndef LL_FUNCTION_H
 #define LL_FUNCTION_H
 
-#include <stdbool.h>
-#include <stdlib.h>
-#include <stdint.h>
-#include <stdlib.h>
+#include <cstdbool>
+#include <cstdint>
 #include <vector>
 
 #include <llvm/IR/BasicBlock.h>
+#include <llvm/IR/Function.h>
 #include <llvm/IR/Value.h>
-#include <llvm-c/Core.h>
 
 #include <llbasicblock-internal.h>
 #include <llcommon-internal.h>
