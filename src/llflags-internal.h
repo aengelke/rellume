@@ -42,14 +42,10 @@ LLVMValueRef ll_flags_condition(LLInstrType, LLInstrType, LLState*);
 #define ll_flags_set_sf(v,s) (s)->FlagCalcS(llvm::unwrap(v))
 #define ll_flags_set_pf(v,s) (s)->FlagCalcP(llvm::unwrap(v))
 #define ll_flags_set_af(v,l,r,s) (s)->FlagCalcA(llvm::unwrap(v), llvm::unwrap(l), llvm::unwrap(r))
-void ll_flags_set_of_sub(LLVMValueRef, LLVMValueRef, LLVMValueRef, LLState*);
+#define ll_flags_set_of_sub(v,l,r,s) (s)->FlagCalcOSub(llvm::unwrap(v), llvm::unwrap(l), llvm::unwrap(r))
 void ll_flags_set_of_imul(LLVMValueRef, LLVMValueRef, LLVMValueRef, LLState*);
 
-void ll_flags_set_sub(LLVMValueRef, LLVMValueRef, LLVMValueRef, LLState*);
-void ll_flags_set_add(LLVMValueRef, LLVMValueRef, LLVMValueRef, LLState*);
 void ll_flags_set_bit(LLState*, LLVMValueRef, LLVMValueRef, LLVMValueRef);
-void ll_flags_set_inc(LLVMValueRef, LLVMValueRef, LLState*);
-void ll_flags_set_dec(LLVMValueRef, LLVMValueRef, LLState*);
 void ll_flags_set_shl(LLState*, LLVMValueRef, LLVMValueRef, LLVMValueRef);
 void ll_flags_set_shr(LLState*, LLVMValueRef, LLVMValueRef, LLVMValueRef);
 void ll_flags_set_sar(LLState*, LLVMValueRef, LLVMValueRef, LLVMValueRef);

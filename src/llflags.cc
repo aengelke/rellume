@@ -131,121 +131,6 @@ ll_flags_condition(LLInstrType type, LLInstrType base, LLState* state)
     return result;
 }
 
-/**
- * Set the overflow flag for a subtraction.
- *
- * \private
- *
- * \author Alexis Engelke
- *
- * \param result The result of the operation
- * \param lhs The first operand
- * \param rhs The second operand
- * \param state The module state
- **/
-void
-ll_flags_set_of_sub(LLVMValueRef result, LLVMValueRef lhs, LLVMValueRef rhs, LLState* state)
-{
-    LLVMTypeRef intType = LLVMTypeOf(result);
-    LLVMValueRef overflowFlag;
-
-    if (state->cfg.enableOverflowIntrinsics)
-    {
-        LLVMValueRef intrinsicSsubWithOverflow = ll_support_get_intrinsic(state->builder, LL_INTRINSIC_SSUB_WITH_OVERFLOW, &intType, 1);
-        LLVMValueRef args[2] = { lhs, rhs };
-        LLVMValueRef packedData = LLVMBuildCall(state->builder, intrinsicSsubWithOverflow, args, 2, "");
-        overflowFlag = LLVMBuildExtractValue(state->builder, packedData, 1, "");
-    }
-    else
-    {
-        int width = LLVMGetIntTypeWidth(intType);
-
-        LLVMTypeRef i1 = LLVMInt1TypeInContext(state->context);
-        LLVMValueRef xor1 = LLVMBuildXor(state->builder, lhs, result, "");
-        LLVMValueRef xor2 = LLVMBuildXor(state->builder, lhs, rhs, "");
-        LLVMValueRef andv = LLVMBuildAnd(state->builder, xor1, xor2, "");
-        LLVMValueRef overflow = LLVMBuildLShr(state->builder, andv, LLVMConstInt(intType, width - 1, false), "");
-        overflowFlag = LLVMBuildTrunc(state->builder, overflow, i1, "");
-    }
-
-    ll_set_flag(RFLAG_OF, overflowFlag, state);
-}
-
-/**
- * Set the carry flag for a subtraction.
- *
- * \private
- *
- * \author Alexis Engelke
- *
- * \param lhs The first operand
- * \param rhs The second operand
- * \param state The module state
- **/
-static void
-ll_flags_set_cf_sub(LLVMValueRef lhs, LLVMValueRef rhs, LLState* state)
-{
-    ll_set_flag(RFLAG_CF, LLVMBuildICmp(state->builder, LLVMIntULT, lhs, rhs, ""), state);
-}
-
-/**
- * Set the overflow flag for an addition.
- *
- * \private
- *
- * \author Alexis Engelke
- *
- * \param result The result of the operation
- * \param lhs The first operand
- * \param rhs The second operand
- * \param state The module state
- **/
-static void
-ll_flags_set_of_add(LLVMValueRef result, LLVMValueRef lhs, LLVMValueRef rhs, LLState* state)
-{
-    LLVMTypeRef intType = LLVMTypeOf(result);
-    LLVMValueRef overflowFlag;
-
-    if (state->cfg.enableOverflowIntrinsics)
-    {
-        LLVMValueRef intrinsicSaddWithOverflow = ll_support_get_intrinsic(state->builder, LL_INTRINSIC_SADD_WITH_OVERFLOW, &intType, 1);
-        LLVMValueRef args[2] = { lhs, rhs };
-        LLVMValueRef packedData = LLVMBuildCall(state->builder, intrinsicSaddWithOverflow, args, 2, "");
-        overflowFlag = LLVMBuildExtractValue(state->builder, packedData, 1, "");
-    }
-    else
-    {
-        int width = LLVMGetIntTypeWidth(intType);
-
-        LLVMTypeRef i1 = LLVMInt1TypeInContext(state->context);
-        LLVMValueRef xor1 = LLVMBuildXor(state->builder, lhs, result, "");
-        LLVMValueRef xor2 = LLVMBuildXor(state->builder, lhs, rhs, "");
-        LLVMValueRef notv = LLVMBuildNot(state->builder, xor2, "");
-        LLVMValueRef andv = LLVMBuildAnd(state->builder, xor1, notv, "");
-        LLVMValueRef overflow = LLVMBuildLShr(state->builder, andv, LLVMConstInt(intType, width - 1, false), "");
-        overflowFlag = LLVMBuildTrunc(state->builder, overflow, i1, "");
-    }
-
-    ll_set_flag(RFLAG_OF, overflowFlag, state);
-}
-
-/**
- * Set the carry flag for an addition.
- *
- * \private
- *
- * \author Alexis Engelke
- *
- * \param result The result of the operation
- * \param lhs The first operand
- * \param state The module state
- **/
-static void
-ll_flags_set_cf_add(LLVMValueRef result, LLVMValueRef lhs, LLState* state)
-{
-    ll_set_flag(RFLAG_CF, LLVMBuildICmp(state->builder, LLVMIntULT, result, lhs, ""), state);
-}
-
 void
 ll_flags_set_of_imul(LLVMValueRef result, LLVMValueRef lhs, LLVMValueRef rhs, LLState* state)
 {
@@ -310,52 +195,37 @@ LLStateBase::FlagCalcA(llvm::Value* res, llvm::Value* lhs, llvm::Value* rhs)
     SetFlag(RFLAG_AF, irb.CreateICmpNE(masked, llvm::Constant::getNullValue(res->getType())));
 }
 
-/**
- * Set the flags for a subtraction. The flag cache will be valid.
- *
- * \private
- *
- * \author Alexis Engelke
- *
- * \param result The result of the operation
- * \param lhs The first operand
- * \param rhs The second operand
- * \param state The module state
- **/
 void
-ll_flags_set_sub(LLVMValueRef result, LLVMValueRef lhs, LLVMValueRef rhs, LLState* state)
+LLStateBase::FlagCalcOAdd(llvm::Value* res, llvm::Value* lhs, llvm::Value* rhs)
 {
-    ll_flags_set_af(result, lhs, rhs, state);
-    ll_flags_set_zf(result, state);
-    ll_flags_set_sf(result, state);
-    ll_flags_set_cf_sub(lhs, rhs, state);
-    ll_flags_set_of_sub(result, lhs, rhs, state);
-    ll_flags_set_pf(result, state);
-
-    state->regfile->GetFlagCache().update(llvm::unwrap(lhs), llvm::unwrap(rhs));
+    if (cfg.enableOverflowIntrinsics)
+    {
+        llvm::Intrinsic::ID id = llvm::Intrinsic::sadd_with_overflow;
+        llvm::Value* packed = irb.CreateBinaryIntrinsic(id, lhs, rhs);
+        SetFlag(RFLAG_OF, irb.CreateExtractValue(packed, 1));
+    }
+    else
+    {
+        llvm::Value* tmp1 = irb.CreateNot(irb.CreateXor(lhs, rhs));
+        llvm::Value* tmp2 = irb.CreateAnd(tmp1, irb.CreateXor(res, lhs));
+        SetFlag(RFLAG_OF, irb.CreateICmpSLT(tmp2, llvm::Constant::getNullValue(res->getType())));
+    }
 }
 
-/**
- * Set the flags for an addition. The flag cache will be invalidated.
- *
- * \private
- *
- * \author Alexis Engelke
- *
- * \param result The result of the operation
- * \param lhs The first operand
- * \param rhs The second operand
- * \param state The module state
- **/
 void
-ll_flags_set_add(LLVMValueRef result, LLVMValueRef lhs, LLVMValueRef rhs, LLState* state)
+LLStateBase::FlagCalcOSub(llvm::Value* res, llvm::Value* lhs, llvm::Value* rhs)
 {
-    ll_flags_set_af(result, lhs, rhs, state);
-    ll_flags_set_zf(result, state);
-    ll_flags_set_sf(result, state);
-    ll_flags_set_cf_add(result, lhs, state);
-    ll_flags_set_of_add(result, lhs, rhs, state);
-    ll_flags_set_pf(result, state);
+    if (cfg.enableOverflowIntrinsics)
+    {
+        llvm::Intrinsic::ID id = llvm::Intrinsic::ssub_with_overflow;
+        llvm::Value* packed = irb.CreateBinaryIntrinsic(id, lhs, rhs);
+        SetFlag(RFLAG_OF, irb.CreateExtractValue(packed, 1));
+    }
+    else
+    {
+        auto tmp = irb.CreateAnd(irb.CreateXor(lhs, rhs), irb.CreateXor(res, lhs));
+        SetFlag(RFLAG_OF, irb.CreateICmpSLT(tmp, llvm::Constant::getNullValue(res->getType())));
+    }
 }
 
 /**
@@ -383,52 +253,6 @@ ll_flags_set_bit(LLState* state, LLVMValueRef result, LLVMValueRef lhs, LLVMValu
 
     (void) lhs;
     (void) rhs;
-}
-
-/**
- * Set the flags for a increment operation. The flag cache will be invalidated.
- *
- * \private
- *
- * \author Alexis Engelke
- *
- * \param result The result of the operation
- * \param lhs The operand to increment
- * \param state The module state
- **/
-void
-ll_flags_set_inc(LLVMValueRef result, LLVMValueRef lhs, LLState* state)
-{
-    LLVMValueRef rhs = LLVMConstInt(LLVMTypeOf(lhs), 1, false);
-
-    ll_flags_set_af(result, lhs, rhs, state);
-    ll_flags_set_zf(result, state);
-    ll_flags_set_sf(result, state);
-    ll_flags_set_of_add(result, lhs, rhs, state);
-    ll_flags_set_pf(result, state);
-}
-
-/**
- * Set the flags for a decrement operation. The flag cache will be invalidated.
- *
- * \private
- *
- * \author Alexis Engelke
- *
- * \param result The result of the operation
- * \param lhs The operand to decrement
- * \param state The module state
- **/
-void
-ll_flags_set_dec(LLVMValueRef result, LLVMValueRef lhs, LLState* state)
-{
-    LLVMValueRef rhs = LLVMConstInt(LLVMTypeOf(lhs), 1, false);
-
-    ll_flags_set_af(result, lhs, rhs, state);
-    ll_flags_set_zf(result, state);
-    ll_flags_set_sf(result, state);
-    ll_flags_set_of_sub(result, lhs, rhs, state);
-    ll_flags_set_pf(result, state);
 }
 
 void

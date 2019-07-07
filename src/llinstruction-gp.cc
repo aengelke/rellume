@@ -79,7 +79,12 @@ ll_instruction_add(LLInstr* instr, LLState* state)
     else
         ll_operand_store(OP_SI, ALIGN_MAXIMUM, &instr->ops[0], REG_DEFAULT, result, state);
 
-    ll_flags_set_add(result, operand1, operand2, state);
+    state->FlagCalcZ(llvm::unwrap(result));
+    state->FlagCalcS(llvm::unwrap(result));
+    state->FlagCalcP(llvm::unwrap(result));
+    state->FlagCalcA(llvm::unwrap(result), llvm::unwrap(operand1), llvm::unwrap(operand2));
+    state->FlagCalcCAdd(llvm::unwrap(result), llvm::unwrap(operand1), llvm::unwrap(operand2));
+    state->FlagCalcOAdd(llvm::unwrap(result), llvm::unwrap(operand1), llvm::unwrap(operand2));
 }
 
 void
@@ -103,7 +108,13 @@ ll_instruction_sub(LLInstr* instr, LLState* state)
     else
         ll_operand_store(OP_SI, ALIGN_MAXIMUM, &instr->ops[0], REG_DEFAULT, result, state);
 
-    ll_flags_set_sub(result, operand1, operand2, state);
+    state->FlagCalcZ(llvm::unwrap(result));
+    state->FlagCalcS(llvm::unwrap(result));
+    state->FlagCalcP(llvm::unwrap(result));
+    state->FlagCalcA(llvm::unwrap(result), llvm::unwrap(operand1), llvm::unwrap(operand2));
+    state->FlagCalcCSub(llvm::unwrap(result), llvm::unwrap(operand1), llvm::unwrap(operand2));
+    state->FlagCalcOSub(llvm::unwrap(result), llvm::unwrap(operand1), llvm::unwrap(operand2));
+    state->regfile->GetFlagCache().update(llvm::unwrap(operand1), llvm::unwrap(operand2));
 }
 
 void
@@ -115,7 +126,12 @@ ll_instruction_cmp(LLInstr* instr, LLState* state)
 
     LLVMValueRef result = LLVMBuildSub(state->builder, operand1, operand2, "");
 
-    ll_flags_set_sub(result, operand1, operand2, state);
+    state->FlagCalcZ(llvm::unwrap(result));
+    state->FlagCalcS(llvm::unwrap(result));
+    state->FlagCalcP(llvm::unwrap(result));
+    state->FlagCalcA(llvm::unwrap(result), llvm::unwrap(operand1), llvm::unwrap(operand2));
+    state->FlagCalcCSub(llvm::unwrap(result), llvm::unwrap(operand1), llvm::unwrap(operand2));
+    state->FlagCalcOSub(llvm::unwrap(result), llvm::unwrap(operand1), llvm::unwrap(operand2));
 
     if (state->cfg.prefer_pointer_cmp &&
         LLVMGetIntTypeWidth(LLVMTypeOf(operand1)) == 64 &&
@@ -125,6 +141,8 @@ ll_instruction_cmp(LLInstr* instr, LLState* state)
         LLVMValueRef ptr2 = ll_get_register(instr->ops[1].reg, Facet::PTR, state);
         ll_set_flag(RFLAG_ZF, LLVMBuildICmp(state->builder, LLVMIntEQ, ptr1, ptr2, ""), state);
     }
+
+    state->regfile->GetFlagCache().update(llvm::unwrap(operand1), llvm::unwrap(operand2));
 }
 
 void
@@ -185,13 +203,19 @@ ll_instruction_incdec(LLInstr* instr, LLState* state)
     if (instr->type == LL_INS_INC)
     {
         result = LLVMBuildAdd(state->builder, operand1, operand2, "");
-        ll_flags_set_inc(result, operand1, state);
+        state->FlagCalcOAdd(llvm::unwrap(result), llvm::unwrap(operand1), llvm::unwrap(operand2));
     }
     else // LL_INS_DEC
     {
         result = LLVMBuildSub(state->builder, operand1, operand2, "");
-        ll_flags_set_dec(result, operand1, state);
+        state->FlagCalcOSub(llvm::unwrap(result), llvm::unwrap(operand1), llvm::unwrap(operand2));
     }
+
+    // Carry flag is _not_ updated.
+    state->FlagCalcZ(llvm::unwrap(result));
+    state->FlagCalcS(llvm::unwrap(result));
+    state->FlagCalcP(llvm::unwrap(result));
+    state->FlagCalcA(llvm::unwrap(result), llvm::unwrap(operand1), llvm::unwrap(operand2));
 
     ll_operand_store(OP_SI, ALIGN_MAXIMUM, &instr->ops[0], REG_DEFAULT, result, state);
 }

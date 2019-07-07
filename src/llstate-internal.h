@@ -143,10 +143,14 @@ public:
     }
     void FlagCalcP(llvm::Value* value);
     void FlagCalcA(llvm::Value* res, llvm::Value* lhs, llvm::Value* rhs);
-    // void FlagCalcCAdd(llvm::Value* res, llvm::Value* lhs, llvm::Value* rhs);
-    // void FlagCalcCSub(llvm::Value* res, llvm::Value* lhs, llvm::Value* rhs);
-    // void FlagCalcOAdd(llvm::Value* res, llvm::Value* lhs, llvm::Value* rhs);
-    // void FlagCalcOSub(llvm::Value* res, llvm::Value* lhs, llvm::Value* rhs);
+    void FlagCalcCAdd(llvm::Value* res, llvm::Value* lhs, llvm::Value* rhs) {
+        SetFlag(RFLAG_CF, irb.CreateICmpULT(res, lhs));
+    }
+    void FlagCalcCSub(llvm::Value* res, llvm::Value* lhs, llvm::Value* rhs) {
+        SetFlag(RFLAG_CF, irb.CreateICmpULT(lhs, rhs));
+    }
+    void FlagCalcOAdd(llvm::Value* res, llvm::Value* lhs, llvm::Value* rhs);
+    void FlagCalcOSub(llvm::Value* res, llvm::Value* lhs, llvm::Value* rhs);
 };
 
 class LLState : public LLStateBase {
