@@ -133,10 +133,16 @@ public:
     void OpStoreGp(const LLInstrOp& op, llvm::Value* value, Alignment alignment = ALIGN_NONE);
     void OpStoreVec(const LLInstrOp& op, llvm::Value* value, bool avx = false, Alignment alignment = ALIGN_IMP);
 
-    // void FlagCalcZ(llvm::Value* value);
-    // void FlagCalcS(llvm::Value* value);
-    // void FlagCalcP(llvm::Value* value);
-    // void FlagCalcA(llvm::Value* res, llvm::Value* lhs, llvm::Value* rhs);
+    void FlagCalcZ(llvm::Value* value) {
+        auto zero = llvm::Constant::getNullValue(value->getType());
+        SetFlag(RFLAG_ZF, irb.CreateICmpEQ(value, zero));
+    }
+    void FlagCalcS(llvm::Value* value) {
+        auto zero = llvm::Constant::getNullValue(value->getType());
+        SetFlag(RFLAG_SF, irb.CreateICmpSLT(value, zero));
+    }
+    void FlagCalcP(llvm::Value* value);
+    void FlagCalcA(llvm::Value* res, llvm::Value* lhs, llvm::Value* rhs);
     // void FlagCalcCAdd(llvm::Value* res, llvm::Value* lhs, llvm::Value* rhs);
     // void FlagCalcCSub(llvm::Value* res, llvm::Value* lhs, llvm::Value* rhs);
     // void FlagCalcOAdd(llvm::Value* res, llvm::Value* lhs, llvm::Value* rhs);
@@ -180,7 +186,6 @@ enum {
 #define ll_set_register(reg,facet,value,clear,state) (state)->SetReg(reg, facet, llvm::unwrap(value), clear)
 #define ll_get_flag(reg,state) llvm::wrap((state)->GetFlag(reg))
 #define ll_set_flag(reg,value,state) (state)->SetFlag(reg, llvm::unwrap(value))
-#define ll_get_flag_cache(state) (&state->regfile->FlagCache())
 #define ll_operand_load(facet,align,op,state) llvm::wrap((state)->OpLoad(*(op), facet, align))
 #define ll_operand_store(facet,align,op,prh,val,state) do { \
             if ((prh) == REG_DEFAULT) \

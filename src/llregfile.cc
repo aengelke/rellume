@@ -375,6 +375,7 @@ RegFile::SetFlag(int flag, llvm::Value* value)
     }
 
     flags[flag] = value;
+    flag_cache.valid = false;
 }
 
 /**

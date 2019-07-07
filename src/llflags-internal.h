@@ -38,10 +38,10 @@ extern "C" {
 
 LLVMValueRef ll_flags_condition(LLInstrType, LLInstrType, LLState*);
 
-void ll_flags_set_af(LLVMValueRef, LLVMValueRef, LLVMValueRef, LLState*);
-void ll_flags_set_zf(LLVMValueRef, LLState*);
-void ll_flags_set_sf(LLVMValueRef, LLState*);
-void ll_flags_set_pf(LLVMValueRef, LLState*);
+#define ll_flags_set_zf(v,s) (s)->FlagCalcZ(llvm::unwrap(v))
+#define ll_flags_set_sf(v,s) (s)->FlagCalcS(llvm::unwrap(v))
+#define ll_flags_set_pf(v,s) (s)->FlagCalcP(llvm::unwrap(v))
+#define ll_flags_set_af(v,l,r,s) (s)->FlagCalcA(llvm::unwrap(v), llvm::unwrap(l), llvm::unwrap(r))
 void ll_flags_set_of_sub(LLVMValueRef, LLVMValueRef, LLVMValueRef, LLState*);
 void ll_flags_set_of_imul(LLVMValueRef, LLVMValueRef, LLVMValueRef, LLState*);
 

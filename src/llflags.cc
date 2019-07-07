@@ -24,6 +24,12 @@
 #include <stdbool.h>
 #include <stdlib.h>
 #include <stdint.h>
+
+#include <llvm/IR/Intrinsics.h>
+#include <llvm/IR/IRBuilder.h>
+#include <llvm/IR/Module.h>
+#include <llvm/IR/Type.h>
+#include <llvm/IR/Value.h>
 #include <llvm-c/Core.h>
 
 #include <llflags-internal.h>
@@ -62,7 +68,7 @@ ll_flags_condition(LLInstrType type, LLInstrType base, LLState* state)
     bool negate = condition & 1;
 
     LLVMValueRef result;
-    LLFlagCache* flagCache = ll_get_flag_cache(state);
+    RegFile::FlagCache& flagCache = state->regfile->GetFlagCache();
 
     switch (conditionType)
     {
@@ -76,9 +82,9 @@ ll_flags_condition(LLInstrType type, LLInstrType base, LLState* state)
             result = ll_get_flag(RFLAG_ZF, state);
             break;
         case 3: // JBE / JA
-            if (flagCache->valid)
+            if (flagCache.valid)
             {
-                result = LLVMBuildICmp(state->builder, LLVMIntULE, flagCache->operand1, flagCache->operand2, "");
+                result = llvm::wrap(state->irb.CreateICmpULE(flagCache.lhs, flagCache.rhs));
             }
             else
             {
@@ -92,9 +98,9 @@ ll_flags_condition(LLInstrType type, LLInstrType base, LLState* state)
             result = ll_get_flag(RFLAG_PF, state);
             break;
         case 6: // JL / JGE
-            if (flagCache->valid)
+            if (flagCache.valid)
             {
-                result = LLVMBuildICmp(state->builder, LLVMIntSLT, flagCache->operand1, flagCache->operand2, "");
+                result = llvm::wrap(state->irb.CreateICmpSLT(flagCache.lhs, flagCache.rhs));
             }
             else
             {
@@ -102,9 +108,9 @@ ll_flags_condition(LLInstrType type, LLInstrType base, LLState* state)
             }
             break;
         case 7: // JLE / JG
-            if (flagCache->valid)
+            if (flagCache.valid)
             {
-                result = LLVMBuildICmp(state->builder, LLVMIntSLE, flagCache->operand1, flagCache->operand2, "");
+                result = llvm::wrap(state->irb.CreateICmpSLE(flagCache.lhs, flagCache.rhs));
             }
             else
             {
@@ -123,65 +129,6 @@ ll_flags_condition(LLInstrType type, LLInstrType base, LLState* state)
     }
 
     return result;
-}
-
-/*
- * Compute the RFLAGS of a subtraction
- *
- * Credits to https://github.com/trailofbits/mcsema
- */
-
-/**
- * Set the auxiliary flag.
- *
- * \private
- *
- * \author Alexis Engelke
- *
- * \param result The result of the operation
- * \param lhs The first operand
- * \param rhs The second operand
- * \param state The module state
- **/
-void
-ll_flags_set_af(LLVMValueRef result, LLVMValueRef lhs, LLVMValueRef rhs, LLState* state)
-{
-    LLVMValueRef xor1 = LLVMBuildXor(state->builder, lhs, result, "");
-    LLVMValueRef xor2 = LLVMBuildXor(state->builder, xor1, rhs, "");
-    LLVMValueRef and1 = LLVMBuildAnd(state->builder, xor2, LLVMConstInt(LLVMTypeOf(result), 16, false), "");
-    ll_set_flag(RFLAG_AF, LLVMBuildICmp(state->builder, LLVMIntNE, and1, LLVMConstInt(LLVMTypeOf(result), 0, false), ""), state);
-}
-
-/**
- * Set the zero flag.
- *
- * \private
- *
- * \author Alexis Engelke
- *
- * \param result The result of the operation
- * \param state The module state
- **/
-void
-ll_flags_set_zf(LLVMValueRef result, LLState* state)
-{
-    ll_set_flag(RFLAG_ZF, LLVMBuildICmp(state->builder, LLVMIntEQ, result, LLVMConstInt(LLVMTypeOf(result), 0, false), ""), state);
-}
-
-/**
- * Set the sign flag.
- *
- * \private
- *
- * \author Alexis Engelke
- *
- * \param result The result of the operation
- * \param state The module state
- **/
-void
-ll_flags_set_sf(LLVMValueRef result, LLState* state)
-{
-    ll_set_flag(RFLAG_SF, LLVMBuildICmp(state->builder, LLVMIntSLT, result, LLVMConstInt(LLVMTypeOf(result), 0, false), ""), state);
 }
 
 /**
@@ -339,29 +286,28 @@ ll_flags_set_of_imul(LLVMValueRef result, LLVMValueRef lhs, LLVMValueRef rhs, LL
     ll_set_flag(RFLAG_CF, overflowFlag, state);
 }
 
-/**
- * Set the parity flag of a result. This is not really optimized since no one is
- * using this anyway.
- *
- * \private
- *
- * \author Alexis Engelke
- *
- * \param result The result of the operation
- * \param state The module state
- **/
 void
-ll_flags_set_pf(LLVMValueRef result, LLState* state)
+LLStateBase::FlagCalcP(llvm::Value* value)
 {
-    LLVMTypeRef i1 = LLVMInt1TypeInContext(state->context);
-    LLVMTypeRef i8 = LLVMInt8TypeInContext(state->context);
+    llvm::Value* trunc = irb.CreateTruncOrBitCast(value, irb.getInt8Ty());
+#if LL_LLVM_MAJOR >= 8
+    llvm::Value* count = irb.CreateUnaryIntrinsic(llvm::Intrinsic::ctpop, trunc);
+#else
+    llvm::Module* module = irb.GetInsertBlock()->getModule();
+    auto id = llvm::Intrinsic::ctpop;
+    llvm::Function* intrinsic = llvm::Intrinsic::getDeclaration(module, id, {irb.getInt8Ty()});
+    llvm::Value* count = irb.CreateCall(intrinsic, {trunc});
+#endif
+    llvm::Value* bit = irb.CreateTruncOrBitCast(count, irb.getInt1Ty());
+    SetFlag(RFLAG_PF, irb.CreateNot(bit));
+}
 
-    LLVMValueRef intrinsicCtpop8 = ll_support_get_intrinsic(state->builder, LL_INTRINSIC_CTPOP, &i8, 1);
-
-    LLVMValueRef arg = LLVMBuildTruncOrBitCast(state->builder, result, i8, "");
-    LLVMValueRef count = LLVMBuildCall(state->builder, intrinsicCtpop8, &arg, 1, "");
-    LLVMValueRef bit = LLVMBuildTruncOrBitCast(state->builder, count, i1, "");
-    ll_set_flag(RFLAG_PF, LLVMBuildNot(state->builder, bit, ""), state);
+void
+LLStateBase::FlagCalcA(llvm::Value* res, llvm::Value* lhs, llvm::Value* rhs)
+{
+    llvm::Value* tmp = irb.CreateXor(irb.CreateXor(lhs, rhs), res);
+    llvm::Value* masked = irb.CreateAnd(tmp, llvm::ConstantInt::get(res->getType(), 16));
+    SetFlag(RFLAG_AF, irb.CreateICmpNE(masked, llvm::Constant::getNullValue(res->getType())));
 }
 
 /**
@@ -386,11 +332,7 @@ ll_flags_set_sub(LLVMValueRef result, LLVMValueRef lhs, LLVMValueRef rhs, LLStat
     ll_flags_set_of_sub(result, lhs, rhs, state);
     ll_flags_set_pf(result, state);
 
-    LLFlagCache* flagCache = ll_get_flag_cache(state);
-    flagCache->valid = true;
-    flagCache->operand1 = lhs;
-    flagCache->operand2 = rhs;
-    flagCache->result = result;
+    state->regfile->GetFlagCache().update(llvm::unwrap(lhs), llvm::unwrap(rhs));
 }
 
 /**
@@ -414,9 +356,6 @@ ll_flags_set_add(LLVMValueRef result, LLVMValueRef lhs, LLVMValueRef rhs, LLStat
     ll_flags_set_cf_add(result, lhs, state);
     ll_flags_set_of_add(result, lhs, rhs, state);
     ll_flags_set_pf(result, state);
-
-    LLFlagCache* flagCache = ll_get_flag_cache(state);
-    flagCache->valid = false;
 }
 
 /**
@@ -441,9 +380,6 @@ ll_flags_set_bit(LLState* state, LLVMValueRef result, LLVMValueRef lhs, LLVMValu
     ll_flags_set_zf(result, state);
     ll_flags_set_sf(result, state);
     ll_flags_set_pf(result, state);
-
-    LLFlagCache* flagCache = ll_get_flag_cache(state);
-    flagCache->valid = false;
 
     (void) lhs;
     (void) rhs;
@@ -470,9 +406,6 @@ ll_flags_set_inc(LLVMValueRef result, LLVMValueRef lhs, LLState* state)
     ll_flags_set_sf(result, state);
     ll_flags_set_of_add(result, lhs, rhs, state);
     ll_flags_set_pf(result, state);
-
-    LLFlagCache* flagCache = ll_get_flag_cache(state);
-    flagCache->valid = false;
 }
 
 /**
@@ -496,9 +429,6 @@ ll_flags_set_dec(LLVMValueRef result, LLVMValueRef lhs, LLState* state)
     ll_flags_set_sf(result, state);
     ll_flags_set_of_sub(result, lhs, rhs, state);
     ll_flags_set_pf(result, state);
-
-    LLFlagCache* flagCache = ll_get_flag_cache(state);
-    flagCache->valid = false;
 }
 
 void
@@ -560,9 +490,6 @@ ll_flags_invalidate(LLState* state)
     ll_set_flag(RFLAG_SF, LLVMGetUndef(i1), state);
     ll_set_flag(RFLAG_ZF, LLVMGetUndef(i1), state);
     ll_set_flag(RFLAG_PF, LLVMGetUndef(i1), state);
-
-    LLFlagCache* flagCache = ll_get_flag_cache(state);
-    flagCache->valid = false;
 }
 
 /**

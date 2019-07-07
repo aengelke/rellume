@@ -65,31 +65,6 @@ enum {
     RFLAG_Max
 };
 
-/**
- * \ingroup LLRegFile
- * \brief Flag cache storing additional information about the flag register
- **/
-struct LLFlagCache {
-    /**
-     * \brief Whether the information is valid
-     **/
-    bool valid;
-    /**
-     * \brief The first operand of the subtraction
-     **/
-    LLVMValueRef operand1;
-    /**
-     * \brief The second operand of the subtraction
-     **/
-    LLVMValueRef operand2;
-    /**
-     * \brief The result of the subtraction
-     **/
-    LLVMValueRef result;
-};
-
-typedef struct LLFlagCache LLFlagCache;
-
 namespace Facet {
 
 enum Value {
@@ -170,8 +145,19 @@ typedef ValueMap<I128,
 class RegFile
 {
 public:
+    struct FlagCache {
+        bool valid;
+        llvm::Value* lhs;
+        llvm::Value* rhs;
+
+        FlagCache() : valid(false) {}
+        void update(llvm::Value* op1, llvm::Value* op2) {
+            lhs = op1; rhs = op2; valid = true;
+        }
+    };
+
     RegFile(llvm::BasicBlock* llvm_block) : llvm_block(llvm_block),
-            flag_cache({false, nullptr, nullptr, nullptr}) {}
+            flag_cache() {}
 
     llvm::Value* GetReg(LLReg reg, Facet::Value facet);
     void SetReg(LLReg reg, Facet::Value facet, llvm::Value*, bool clear_facets);
@@ -180,7 +166,7 @@ public:
     llvm::Value* GetFlag(int flag);
     void SetFlag(int flag, llvm::Value*);
 
-    LLFlagCache& FlagCache() {
+    RegFile::FlagCache& GetFlagCache() {
         return flag_cache;
     }
 
@@ -191,7 +177,7 @@ private:
     llvm::Value* reg_ip;
     llvm::Value* flags[RFLAG_Max];
 
-    LLFlagCache flag_cache;
+    FlagCache flag_cache;
 };
 
 typedef Facet::Value RegisterFacet;
