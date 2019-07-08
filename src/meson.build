@@ -11,7 +11,6 @@ sources = [
   'llinstruction-stack.cc',
   'lloperand.cc',
   'llregfile.cc',
-  'llsupport.cc',
   'rellume.cc',
 ]
 
