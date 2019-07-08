@@ -92,10 +92,9 @@ ll_flags_set_of_imul(LLVMValueRef result, LLVMValueRef lhs, LLVMValueRef rhs, LL
 
     if (state->cfg.enableOverflowIntrinsics)
     {
-        LLVMValueRef intrinsicSmulWithOverflow = ll_support_get_intrinsic(state->builder, LL_INTRINSIC_SMUL_WITH_OVERFLOW, &intType, 1);
-        LLVMValueRef args[2] = { lhs, rhs };
-        LLVMValueRef packedData = LLVMBuildCall(state->builder, intrinsicSmulWithOverflow, args, 2, "");
-        overflowFlag = LLVMBuildExtractValue(state->builder, packedData, 1, "");
+        llvm::Intrinsic::ID id = llvm::Intrinsic::smul_with_overflow;
+        llvm::Value* packed = state->irb.CreateBinaryIntrinsic(id, llvm::unwrap(lhs), llvm::unwrap(rhs));
+        overflowFlag = llvm::wrap(state->irb.CreateExtractValue(packed, 1));
     }
     else
     {
