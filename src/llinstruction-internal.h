@@ -30,8 +30,8 @@
 #include <llvm-c/Core.h>
 
 #include <llcommon-internal.h>
-#include <llinstr-internal.h>
 #include <llstate-internal.h>
+#include <rellume/instr.h>
 
 #ifdef __cplusplus
 extern "C" {

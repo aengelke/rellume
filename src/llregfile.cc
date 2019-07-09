@@ -35,7 +35,7 @@
 
 #include <llregfile-internal.h>
 
-#include <llinstr-internal.h>
+#include <rellume/instr.h>
 
 /**
  * \defgroup LLRegFile Register File

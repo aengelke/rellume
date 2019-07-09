@@ -41,9 +41,9 @@
 
 #include <llcommon-internal.h>
 #include <llflags-internal.h>
-#include <llinstr-internal.h>
 #include <llinstruction-internal.h>
 #include <llregfile-internal.h>
+#include <rellume/instr.h>
 
 /**
  * \defgroup LLBasicBlock Basic Block

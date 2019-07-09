@@ -29,7 +29,7 @@
 #include <stdint.h>
 #include <llvm-c/Core.h>
 
-#include <llinstr-internal.h>
+#include <rellume/instr.h>
 #include <llstate-internal.h>
 
 #ifdef __cplusplus

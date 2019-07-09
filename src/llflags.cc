@@ -35,9 +35,9 @@
 #include <llflags-internal.h>
 
 #include <llcommon-internal.h>
-#include <llinstr-internal.h>
 #include <llregfile-internal.h>
 #include <llstate-internal.h>
+#include <rellume/instr.h>
 
 /**
  * \defgroup LLFlags Flags

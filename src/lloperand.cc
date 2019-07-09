@@ -32,11 +32,10 @@
 #include <llvm/IR/Value.h>
 #include <llvm-c/Core.h>
 
-#include <lloperand-internal.h>
+#include <llstate-internal.h>
 
 #include <llcommon-internal.h>
-#include <llinstr-internal.h>
-#include <llstate-internal.h>
+#include <rellume/instr.h>
 
 /**
  * \defgroup LLInstrOp LLInstrOp

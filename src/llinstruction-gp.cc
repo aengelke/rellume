@@ -31,7 +31,7 @@
 
 #include <llcommon-internal.h>
 #include <llflags-internal.h>
-#include <llinstr-internal.h>
+#include <rellume/instr.h>
 
 /**
  * \defgroup LLInstructionGP General Purpose Instructions

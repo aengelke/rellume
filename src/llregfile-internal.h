@@ -32,7 +32,7 @@
 #include <llvm-c/Core.h>
 
 #include <llcommon-internal.h>
-#include <llinstr-internal.h>
+#include <rellume/instr.h>
 
 /**
  * \ingroup LLRegFile

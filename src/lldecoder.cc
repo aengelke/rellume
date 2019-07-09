@@ -32,7 +32,7 @@ extern "C" {
 
 #include <rellume/rellume.h>
 
-#include <llinstr-internal.h>
+#include <rellume/instr.h>
 #include <llfunction-internal.h>
 
 namespace rellume

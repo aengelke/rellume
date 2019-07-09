@@ -31,7 +31,7 @@
 #include <llstate-internal.h>
 
 #include <llcommon-internal.h>
-#include <llinstr-internal.h>
+#include <rellume/instr.h>
 
 /**
  * \defgroup LLInstructionCall Call/Ret Instructions
