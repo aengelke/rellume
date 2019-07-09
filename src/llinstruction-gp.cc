@@ -248,85 +248,62 @@ ll_instruction_shift(LLInstr* instr, LLState* state)
     ll_operand_store(OP_SI, ALIGN_MAXIMUM, &instr->ops[0], REG_DEFAULT, result, state);
 }
 
-void
-ll_instruction_mul(LLInstr* instr, LLState* state)
-{
-    LLVMValueRef operand1;
-    LLVMValueRef operand2;
-    LLVMValueRef result = NULL;
-
-    ll_flags_invalidate(state);
-
-    if (instr->operand_count == 1) // This covers LL_INS_MUL as well
-    {
-        LLVMOpcode ext = instr->type == LL_INS_IMUL ? LLVMSExt : LLVMZExt;
-        LLVMOpcode shift = instr->type == LL_INS_IMUL ? LLVMAShr : LLVMLShr;
-        LLVMTypeRef targetHalfType = LLVMIntTypeInContext(state->context, instr->ops[0].size * 8);
-        LLVMTypeRef targetType = LLVMIntTypeInContext(state->context, instr->ops[0].size * 16);
-        LLInstrOp regOp = LLInstrOp::Reg(LLReg::Gp(instr->ops[0].size, LL_RI_A));
-
-        operand1 = ll_operand_load(OP_SI, ALIGN_MAXIMUM, &instr->ops[0], state);
-        operand2 = ll_operand_load(OP_SI, ALIGN_MAXIMUM, &regOp, state);
-
-        LLVMValueRef largeOperand1 = LLVMBuildCast(state->builder, ext, operand1, targetType, "");
-        LLVMValueRef largeOperand2 = LLVMBuildCast(state->builder, ext, operand2, targetType, "");
-
-        result = LLVMBuildMul(state->builder, largeOperand1, largeOperand2, "");
-
-        LLVMValueRef resultA = LLVMBuildTrunc(state->builder, result, targetHalfType, "");
-        LLVMValueRef resultD = LLVMBuildBinOp(state->builder, shift, result, LLVMConstInt(targetType, instr->ops[0].size * 8, false), "");
-        resultD = LLVMBuildTrunc(state->builder, resultD, targetHalfType, "");
-
-        if (instr->ops[0].size == 1)
-        {
-            regOp = LLInstrOp::Reg(LLReg(LL_RT_GP16, LL_RI_A));
-            ll_operand_store(OP_SI, ALIGN_MAXIMUM, &regOp, REG_DEFAULT, result, state);
-        }
-        else
-        {
-            regOp = LLInstrOp::Reg(LLReg::Gp(instr->ops[0].size, LL_RI_A));
-            ll_operand_store(OP_SI, ALIGN_MAXIMUM, &regOp, REG_DEFAULT, resultA, state);
-
-            regOp = LLInstrOp::Reg(LLReg::Gp(instr->ops[0].size, LL_RI_D));
-            ll_operand_store(OP_SI, ALIGN_MAXIMUM, &regOp, REG_DEFAULT, resultD, state);
-        }
-
-        if (instr->type == LL_INS_MUL)
-        {
-            llvm::Value* of = state->irb.CreateIsNotNull(llvm::unwrap(resultD));
-            state->SetFlag(RFLAG_OF, of);
-            state->SetFlag(RFLAG_CF, of);
-        }
-        else // LL_INS_IMUL
-        {
-            ll_flags_set_sf(resultA, state);
-            ll_flags_set_of_imul(result, operand1, operand2, state);
-        }
+void LLState::LiftMul(const LLInstr& inst) {
+    llvm::Value* op1;
+    llvm::Value* op2;
+    if (inst.operand_count == 1) {
+        op1 = OpLoad(inst.ops[0], Facet::I);
+        op2 = OpLoad(LLInstrOp::Reg(LLReg::Gp(inst.ops[0].size, LL_RI_A)), Facet::I);
+    } else {
+        op1 = OpLoad(inst.ops[inst.operand_count - 2], Facet::I);
+        op2 = OpLoad(inst.ops[inst.operand_count - 1], Facet::I);
     }
-    else if (instr->operand_count == 2)
-    {
-        operand1 = ll_operand_load(OP_SI, ALIGN_MAXIMUM, &instr->ops[0], state);
-        operand2 = ll_operand_load(OP_SI, ALIGN_MAXIMUM, &instr->ops[1], state);
-        operand2 = LLVMBuildSExtOrBitCast(state->builder, operand2, LLVMTypeOf(operand1), "");
-        result = LLVMBuildMul(state->builder, operand1, operand2, "");
-        ll_operand_store(OP_SI, ALIGN_MAXIMUM, &instr->ops[0], REG_DEFAULT, result, state);
-        ll_flags_set_sf(result, state);
-        ll_flags_set_of_imul(result, operand1, operand2, state);
+
+    // Perform "normal" multiplication
+    llvm::Value* short_res = irb.CreateMul(op1, op2);
+
+    // Extend operand values and perform extended multiplication
+    auto cast_op = inst.type == LL_INS_IMUL ? llvm::Instruction::SExt
+                                            : llvm::Instruction::ZExt;
+    llvm::Type* double_ty = irb.getIntNTy(inst.ops[0].size*8 * 2);
+    llvm::Value* ext_op1 = irb.CreateCast(cast_op, op1, double_ty);
+    llvm::Value* ext_op2 = irb.CreateCast(cast_op, op2, double_ty);
+    llvm::Value* ext_res = irb.CreateMul(ext_op1, ext_op2);
+
+    if (inst.operand_count == 1) {
+        if (inst.ops[0].size == 1) {
+            OpStoreGp(LLInstrOp::Reg(LLReg(LL_RT_GP16, LL_RI_A)), ext_res);
+        } else {
+            // Don't use short_res to avoid having two multiplications.
+            // TODO: is this concern still valid?
+            llvm::Type* value_ty = irb.getIntNTy(inst.ops[0].size*8);
+            llvm::Value* res_a = irb.CreateTrunc(ext_res, value_ty);
+            llvm::Value* high = irb.CreateLShr(ext_res, inst.ops[0].size*8);
+            llvm::Value* res_d = irb.CreateTrunc(high, value_ty);
+            OpStoreGp(LLInstrOp::Reg(LLReg::Gp(inst.ops[0].size, LL_RI_A)), res_a);
+            OpStoreGp(LLInstrOp::Reg(LLReg::Gp(inst.ops[0].size, LL_RI_D)), res_d);
+        }
+    } else {
+        OpStoreGp(inst.ops[0], short_res);
     }
-    else if (instr->operand_count == 3)
-    {
-        operand1 = ll_operand_load(OP_SI, ALIGN_MAXIMUM, &instr->ops[1], state);
-        operand2 = ll_operand_load(OP_SI, ALIGN_MAXIMUM, &instr->ops[2], state);
-        operand2 = LLVMBuildSExtOrBitCast(state->builder, operand2, LLVMTypeOf(operand1), "");
-        result = LLVMBuildMul(state->builder, operand1, operand2, "");
-        ll_operand_store(OP_SI, ALIGN_MAXIMUM, &instr->ops[0], REG_DEFAULT, result, state);
-        ll_flags_set_sf(result, state);
-        ll_flags_set_of_imul(result, operand1, operand2, state);
+
+    llvm::Value* overflow;
+    if (cfg.enableOverflowIntrinsics) {
+        llvm::Intrinsic::ID id = llvm::Intrinsic::smul_with_overflow;
+        llvm::Value* packed = irb.CreateBinaryIntrinsic(id, op1, op2);
+        overflow = irb.CreateExtractValue(packed, 1);
+    } else {
+        llvm::Value* ext_short_res = irb.CreateCast(cast_op, short_res, double_ty);
+        overflow = irb.CreateICmpNE(ext_res, ext_short_res);
     }
-    else
-    {
-        warn_if_reached();
-    }
+
+    llvm::Value* undef = llvm::UndefValue::get(irb.getInt1Ty());
+    SetFlag(RFLAG_ZF, undef);
+    SetFlag(RFLAG_SF, undef);
+    SetFlag(RFLAG_PF, undef);
+    SetFlag(RFLAG_AF, undef);
+    SetFlag(RFLAG_OF, overflow);
+    SetFlag(RFLAG_CF, overflow);
 }
 
 void

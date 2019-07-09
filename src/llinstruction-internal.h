@@ -42,7 +42,6 @@ void ll_instruction_add(LLInstr*, LLState*);
 void ll_instruction_sub(LLInstr*, LLState*);
 void ll_instruction_incdec(LLInstr*, LLState*);
 void ll_instruction_shift(LLInstr*, LLState*);
-void ll_instruction_mul(LLInstr*, LLState*);
 void ll_instruction_rotate(LLInstr*, LLState*);
 void ll_instruction_cmov(LLInstr*, LLState*);
 void ll_instruction_setcc(LLInstr*, LLState*);

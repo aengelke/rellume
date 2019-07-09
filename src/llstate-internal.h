@@ -165,6 +165,7 @@ public:
     void LiftNeg(const LLInstr&);
     void LiftAndOrXor(const LLInstr& inst, llvm::Instruction::BinaryOps op,
                       bool writeback = true);
+    void LiftMul(const LLInstr&);
     void LiftLea(const LLInstr&);
 
     // llinstruction-sse.cc
