@@ -117,8 +117,8 @@ ll_flags_set_of_imul(LLVMValueRef result, LLVMValueRef lhs, LLVMValueRef rhs, LL
         overflowFlag = LLVMBuildICmp(state->builder, LLVMIntNE, longResult, shortResult, "");
     }
 
-    ll_set_flag(RFLAG_OF, overflowFlag, state);
-    ll_set_flag(RFLAG_CF, overflowFlag, state);
+    state->SetFlag(RFLAG_OF, llvm::unwrap(overflowFlag));
+    state->SetFlag(RFLAG_CF, llvm::unwrap(overflowFlag));
 }
 
 void
@@ -178,41 +178,14 @@ LLStateBase::FlagCalcOSub(llvm::Value* res, llvm::Value* lhs, llvm::Value* rhs)
     }
 }
 
-/**
- * Set the flags for a bitwise operation. The flag cache will be invalidated.
- *
- * \private
- *
- * \author Alexis Engelke
- *
- * \param result The result of the operation
- * \param state The module state
- **/
-void
-ll_flags_set_bit(LLState* state, LLVMValueRef result, LLVMValueRef lhs, LLVMValueRef rhs)
-{
-    LLVMTypeRef i1 = LLVMInt1TypeInContext(state->context);
-
-    ll_set_flag(RFLAG_AF, LLVMGetUndef(i1), state);
-    ll_set_flag(RFLAG_CF, LLVMConstInt(i1, 0, false), state);
-    ll_set_flag(RFLAG_OF, LLVMConstInt(i1, 0, false), state);
-
-    ll_flags_set_zf(result, state);
-    ll_flags_set_sf(result, state);
-    ll_flags_set_pf(result, state);
-
-    (void) lhs;
-    (void) rhs;
-}
-
 void
 ll_flags_set_shl(LLState* state, LLVMValueRef result, LLVMValueRef lhs, LLVMValueRef rhs)
 {
     // TODO
     ll_flags_invalidate(state);
-    ll_flags_set_zf(result, state);
-    ll_flags_set_sf(result, state);
-    ll_flags_set_pf(result, state);
+    state->FlagCalcZ(llvm::unwrap(result));
+    state->FlagCalcS(llvm::unwrap(result));
+    state->FlagCalcP(llvm::unwrap(result));
 
     (void) lhs;
     (void) rhs;
@@ -223,9 +196,9 @@ ll_flags_set_shr(LLState* state, LLVMValueRef result, LLVMValueRef lhs, LLVMValu
 {
     // TODO
     ll_flags_invalidate(state);
-    ll_flags_set_zf(result, state);
-    ll_flags_set_sf(result, state);
-    ll_flags_set_pf(result, state);
+    state->FlagCalcZ(llvm::unwrap(result));
+    state->FlagCalcS(llvm::unwrap(result));
+    state->FlagCalcP(llvm::unwrap(result));
 
     (void) lhs;
     (void) rhs;
@@ -236,9 +209,9 @@ ll_flags_set_sar(LLState* state, LLVMValueRef result, LLVMValueRef lhs, LLVMValu
 {
     // TODO
     ll_flags_invalidate(state);
-    ll_flags_set_zf(result, state);
-    ll_flags_set_sf(result, state);
-    ll_flags_set_pf(result, state);
+    state->FlagCalcZ(llvm::unwrap(result));
+    state->FlagCalcS(llvm::unwrap(result));
+    state->FlagCalcP(llvm::unwrap(result));
 
     (void) lhs;
     (void) rhs;
@@ -256,14 +229,13 @@ ll_flags_set_sar(LLState* state, LLVMValueRef result, LLVMValueRef lhs, LLVMValu
 void
 ll_flags_invalidate(LLState* state)
 {
-    LLVMTypeRef i1 = LLVMInt1TypeInContext(state->context);
-
-    ll_set_flag(RFLAG_AF, LLVMGetUndef(i1), state);
-    ll_set_flag(RFLAG_CF, LLVMGetUndef(i1), state);
-    ll_set_flag(RFLAG_OF, LLVMGetUndef(i1), state);
-    ll_set_flag(RFLAG_SF, LLVMGetUndef(i1), state);
-    ll_set_flag(RFLAG_ZF, LLVMGetUndef(i1), state);
-    ll_set_flag(RFLAG_PF, LLVMGetUndef(i1), state);
+    llvm::Value* undef = llvm::UndefValue::get(state->irb.getInt1Ty());
+    state->SetFlag(RFLAG_AF, undef);
+    state->SetFlag(RFLAG_CF, undef);
+    state->SetFlag(RFLAG_OF, undef);
+    state->SetFlag(RFLAG_SF, undef);
+    state->SetFlag(RFLAG_ZF, undef);
+    state->SetFlag(RFLAG_PF, undef);
 }
 
 /**

@@ -111,8 +111,8 @@ public:
     llvm::Value* GetReg(LLReg reg, Facet::Value facet) {
         return regfile->GetReg(reg, facet);
     }
-    void SetReg(LLReg reg, Facet::Value facet, llvm::Value* value, bool clear=true) {
-        regfile->SetReg(reg, facet, value, clear); // clear all other facets
+    void SetReg(LLReg reg, Facet::Value facet, llvm::Value* value) {
+        regfile->SetReg(reg, facet, value, true); // clear all other facets
     }
     void SetRegFacet(LLReg reg, Facet::Value facet, llvm::Value* value) {
         regfile->SetReg(reg, facet, value, false);
@@ -160,6 +160,12 @@ public:
     LLState(llvm::LLVMContext& ctx) : LLStateBase(ctx) {}
 
     void InstRet(LLInstr&);
+    void LiftCmp(const LLInstr&);
+    void LiftNot(const LLInstr&);
+    void LiftNeg(const LLInstr&);
+    void LiftAndOrXor(const LLInstr& inst, llvm::Instruction::BinaryOps op,
+                      bool writeback = true);
+    void LiftLea(const LLInstr&);
 
     // llinstruction-sse.cc
     void LiftSseMovq(const LLInstr&, Facet::Value type);
@@ -188,10 +194,6 @@ enum {
     REG_DEFAULT, REG_ZERO_UPPER_AVX, REG_KEEP_UPPER,
 };
 
-#define ll_get_register(reg,facet,state) llvm::wrap((state)->GetReg(reg, facet))
-#define ll_set_register(reg,facet,value,clear,state) (state)->SetReg(reg, facet, llvm::unwrap(value), clear)
-#define ll_get_flag(reg,state) llvm::wrap((state)->GetFlag(reg))
-#define ll_set_flag(reg,value,state) (state)->SetFlag(reg, llvm::unwrap(value))
 #define ll_operand_load(facet,align,op,state) llvm::wrap((state)->OpLoad(*(op), facet, align))
 #define ll_operand_store(facet,align,op,prh,val,state) do { \
             if ((prh) == REG_DEFAULT) \

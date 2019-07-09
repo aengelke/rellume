@@ -70,11 +70,11 @@ ll_instruction_add(LLInstr* instr, LLState* state)
 
     if (LLVMGetIntTypeWidth(LLVMTypeOf(operand1)) == 64 && instr->ops[0].type == LL_OP_REG)
     {
-        LLVMValueRef ptr = ll_get_register(instr->ops[0].reg, Facet::PTR, state);
+        LLVMValueRef ptr = llvm::wrap(state->GetReg(instr->ops[0].reg, Facet::PTR));
         LLVMValueRef gep = LLVMBuildGEP(state->builder, ptr, &operand2, 1, "");
 
-        ll_set_register(instr->ops[0].reg, Facet::I64, result, true, state);
-        ll_set_register(instr->ops[0].reg, Facet::PTR, gep, false, state);
+        state->SetReg(instr->ops[0].reg, Facet::I64, llvm::unwrap(result));
+        state->SetRegFacet(instr->ops[0].reg, Facet::PTR, llvm::unwrap(gep));
     }
     else
         ll_operand_store(OP_SI, ALIGN_MAXIMUM, &instr->ops[0], REG_DEFAULT, result, state);
@@ -99,11 +99,11 @@ ll_instruction_sub(LLInstr* instr, LLState* state)
     if (LLVMGetIntTypeWidth(LLVMTypeOf(operand1)) == 64 && instr->ops[0].type == LL_OP_REG)
     {
         LLVMValueRef sub = LLVMBuildNeg(state->builder, operand2, "");
-        LLVMValueRef ptr = ll_get_register(instr->ops[0].reg, Facet::PTR, state);
+        LLVMValueRef ptr = llvm::wrap(state->GetReg(instr->ops[0].reg, Facet::PTR));
         LLVMValueRef gep = LLVMBuildGEP(state->builder, ptr, &sub, 1, "");
 
-        ll_set_register(instr->ops[0].reg, Facet::I64, result, true, state);
-        ll_set_register(instr->ops[0].reg, Facet::PTR, gep, false, state);
+        state->SetReg(instr->ops[0].reg, Facet::I64, llvm::unwrap(result));
+        state->SetRegFacet(instr->ops[0].reg, Facet::PTR, llvm::unwrap(gep));
     }
     else
         ll_operand_store(OP_SI, ALIGN_MAXIMUM, &instr->ops[0], REG_DEFAULT, result, state);
@@ -117,80 +117,58 @@ ll_instruction_sub(LLInstr* instr, LLState* state)
     state->regfile->GetFlagCache().update(llvm::unwrap(operand1), llvm::unwrap(operand2));
 }
 
-void
-ll_instruction_cmp(LLInstr* instr, LLState* state)
-{
-    LLVMValueRef operand1 = ll_operand_load(OP_SI, ALIGN_MAXIMUM, &instr->ops[0], state);
-    LLVMValueRef operand2 = ll_operand_load(OP_SI, ALIGN_MAXIMUM, &instr->ops[1], state);
-    operand2 = LLVMBuildSExtOrBitCast(state->builder, operand2, LLVMTypeOf(operand1), "");
+void LLState::LiftCmp(const LLInstr& inst) {
+    llvm::Value* op1 = OpLoad(inst.ops[0], Facet::I);
+    llvm::Value* op2 = OpLoad(inst.ops[1], Facet::I);
+    llvm::Value* res = irb.CreateSub(op1, op2);
+    FlagCalcZ(res);
+    FlagCalcS(res);
+    FlagCalcP(res);
+    FlagCalcA(res, op1, op2);
+    FlagCalcCSub(res, op1, op2);
+    FlagCalcOSub(res, op1, op2);
 
-    LLVMValueRef result = LLVMBuildSub(state->builder, operand1, operand2, "");
-
-    state->FlagCalcZ(llvm::unwrap(result));
-    state->FlagCalcS(llvm::unwrap(result));
-    state->FlagCalcP(llvm::unwrap(result));
-    state->FlagCalcA(llvm::unwrap(result), llvm::unwrap(operand1), llvm::unwrap(operand2));
-    state->FlagCalcCSub(llvm::unwrap(result), llvm::unwrap(operand1), llvm::unwrap(operand2));
-    state->FlagCalcOSub(llvm::unwrap(result), llvm::unwrap(operand1), llvm::unwrap(operand2));
-
-    if (state->cfg.prefer_pointer_cmp &&
-        LLVMGetIntTypeWidth(LLVMTypeOf(operand1)) == 64 &&
-        instr->ops[0].type == LL_OP_REG &&instr->ops[1].type == LL_OP_REG)
+    if (cfg.prefer_pointer_cmp && op1->getType()->getIntegerBitWidth() == 64 &&
+        inst.ops[0].type == LL_OP_REG && inst.ops[1].type == LL_OP_REG)
     {
-        LLVMValueRef ptr1 = ll_get_register(instr->ops[0].reg, Facet::PTR, state);
-        LLVMValueRef ptr2 = ll_get_register(instr->ops[1].reg, Facet::PTR, state);
-        ll_set_flag(RFLAG_ZF, LLVMBuildICmp(state->builder, LLVMIntEQ, ptr1, ptr2, ""), state);
+        llvm::Value* ptr1 = GetReg(inst.ops[0].reg, Facet::PTR);
+        llvm::Value* ptr2 = GetReg(inst.ops[1].reg, Facet::PTR);
+        SetFlag(RFLAG_ZF, irb.CreateICmpEQ(ptr1, ptr2));
     }
 
-    state->regfile->GetFlagCache().update(llvm::unwrap(operand1), llvm::unwrap(operand2));
+    regfile->GetFlagCache().update(op1, op2);
 }
 
-void
-ll_instruction_logical(LLInstr* instr, LLState* state, LLVMOpcode opcode)
-{
-    LLVMValueRef operand1 = ll_operand_load(OP_SI, ALIGN_MAXIMUM, &instr->ops[0], state);
-    LLVMValueRef operand2 = ll_operand_load(OP_SI, ALIGN_MAXIMUM, &instr->ops[1], state);
-    LLVMValueRef result = LLVMBuildBinOp(state->builder, opcode, operand1, operand2, "");
-    ll_flags_set_bit(state, result, operand1, operand2);
-    ll_operand_store(OP_SI, ALIGN_MAXIMUM, &instr->ops[0], REG_DEFAULT, result, state);
+void LLState::LiftAndOrXor(const LLInstr& inst, llvm::Instruction::BinaryOps op,
+                           bool writeback) {
+    llvm::Value* res = irb.CreateBinOp(op, OpLoad(inst.ops[0], Facet::I),
+                                       OpLoad(inst.ops[1], Facet::I));
+    if (writeback)
+        OpStoreGp(inst.ops[0], res);
+
+    FlagCalcZ(res);
+    FlagCalcS(res);
+    FlagCalcP(res);
+    SetFlag(RFLAG_AF, llvm::UndefValue::get(irb.getInt1Ty()));
+    SetFlag(RFLAG_CF, irb.getFalse());
+    SetFlag(RFLAG_OF, irb.getFalse());
 }
 
-void
-ll_instruction_test(LLInstr* instr, LLState* state)
-{
-    LLVMValueRef operand1 = ll_operand_load(OP_SI, ALIGN_MAXIMUM, &instr->ops[0], state);
-    LLVMValueRef operand2 = ll_operand_load(OP_SI, ALIGN_MAXIMUM, &instr->ops[1], state);
-    operand2 = LLVMBuildSExtOrBitCast(state->builder, operand2, LLVMTypeOf(operand1), "");
-
-    LLVMValueRef result = LLVMBuildAnd(state->builder, operand1, operand2, "");
-
-    ll_flags_set_bit(state, result, NULL, NULL);
+void LLState::LiftNot(const LLInstr& inst) {
+    OpStoreGp(inst.ops[0], irb.CreateNot(OpLoad(inst.ops[0], Facet::I)));
 }
 
-void
-ll_instruction_notneg(LLInstr* instr, LLState* state)
-{
-    LLVMValueRef operand1 = ll_operand_load(OP_SI, ALIGN_MAXIMUM, &instr->ops[0], state);
-    LLVMValueRef result = NULL;
-
-    if (instr->type == LL_INS_NEG)
-    {
-        result = LLVMBuildNeg(state->builder, operand1, "");
-
-        LLVMValueRef zero = LLVMConstNull(LLVMTypeOf(operand1));
-        LLVMValueRef cf = LLVMBuildICmp(state->builder, LLVMIntNE, operand1, zero, "");
-        ll_flags_invalidate(state);
-        ll_set_flag(RFLAG_CF, cf, state);
-        ll_flags_set_pf(result, state);
-        ll_flags_set_zf(result, state);
-        ll_flags_set_sf(result, state);
-        ll_flags_set_af(result, zero, operand1, state);
-        ll_flags_set_of_sub(result, zero, operand1, state);
-    }
-    else // LL_INS_NOT
-        result = LLVMBuildNot(state->builder, operand1, "");
-
-    ll_operand_store(OP_SI, ALIGN_MAXIMUM, &instr->ops[0], REG_DEFAULT, result, state);
+void LLState::LiftNeg(const LLInstr& inst) {
+    llvm::Value* op1 = OpLoad(inst.ops[0], Facet::I);
+    llvm::Value* res = irb.CreateNeg(op1);
+    llvm::Value* zero = llvm::Constant::getNullValue(res->getType());
+    FlagCalcZ(res);
+    FlagCalcS(res);
+    FlagCalcP(res);
+    FlagCalcA(res, zero, op1);
+    FlagCalcCSub(res, zero, op1);
+    FlagCalcOSub(res, zero, op1);
+    OpStoreGp(inst.ops[0], res);
 }
 
 void
@@ -315,9 +293,9 @@ ll_instruction_mul(LLInstr* instr, LLState* state)
 
         if (instr->type == LL_INS_MUL)
         {
-            LLVMValueRef of = LLVMBuildICmp(state->builder, LLVMIntNE, resultD, LLVMConstNull(targetHalfType), "");
-            ll_set_flag(RFLAG_OF, of, state);
-            ll_set_flag(RFLAG_CF, of, state);
+            llvm::Value* of = state->irb.CreateIsNotNull(llvm::unwrap(resultD));
+            state->SetFlag(RFLAG_OF, of);
+            state->SetFlag(RFLAG_CF, of);
         }
         else // LL_INS_IMUL
         {
@@ -352,37 +330,28 @@ ll_instruction_mul(LLInstr* instr, LLState* state)
 }
 
 void
-ll_instruction_lea(LLInstr* instr, LLState* state)
+LLState::LiftLea(const LLInstr& inst)
 {
-    LLVMTypeRef i8 = LLVMInt8TypeInContext(state->context);
-    LLVMTypeRef i64 = LLVMInt64TypeInContext(state->context);
-    LLVMTypeRef targetType = LLVMIntTypeInContext(state->context, instr->ops[0].size * 8);
-
-    if (instr->ops[1].type != LL_OP_MEM)
-        warn_if_reached();
-    if (instr->ops[0].type != LL_OP_REG)
-        warn_if_reached();
+    assert(inst.ops[0].type == LL_OP_REG);
+    assert(inst.ops[1].type == LL_OP_MEM);
 
     // Compute pointer before we overwrite any registers.
-    llvm::Value* res_ptr = state->OpAddr(instr->ops[1], llvm::unwrap(i8));
+    llvm::Value* res_ptr = OpAddr(inst.ops[1], irb.getInt8Ty());
 
-    LLVMValueRef base = LLVMConstInt(i64, instr->ops[1].val, false);
-
-    if (instr->ops[1].reg.rt != LL_RT_None)
-        base = LLVMBuildAdd(state->builder, base, ll_get_register(instr->ops[1].reg, Facet::I64, state), "");
-
-    if (instr->ops[1].scale != 0)
+    // Compute as integer
+    llvm::Value* res = irb.getInt64(inst.ops[1].val);
+    if (inst.ops[1].reg.rt != LL_RT_None)
+        res = irb.CreateAdd(res, GetReg(inst.ops[1].reg, Facet::I64));
+    if (inst.ops[1].scale != 0)
     {
-        LLVMValueRef offset = ll_get_register(instr->ops[1].ireg, Facet::I64, state);
-        offset = LLVMBuildMul(state->builder, offset, LLVMConstInt(i64, instr->ops[1].scale, false), "");
-        base = LLVMBuildAdd(state->builder, base, offset, "");
+        llvm::Value* offset = GetReg(inst.ops[1].ireg, Facet::I64);
+        offset = irb.CreateMul(offset, irb.getInt64(inst.ops[1].scale));
+        res = irb.CreateAdd(res, offset);
     }
 
-    base = LLVMBuildTruncOrBitCast(state->builder, base, targetType, "");
-    ll_operand_store(OP_SI, ALIGN_MAXIMUM, &instr->ops[0], REG_DEFAULT, base, state);
-
-    if (instr->ops[0].reg.rt == LL_RT_GP64)
-        state->SetRegFacet(instr->ops[0].reg, Facet::PTR, res_ptr);
+    OpStoreGp(inst.ops[0], irb.CreateTrunc(res, irb.getIntNTy(inst.ops[0].size*8)));
+    if (inst.ops[0].reg.rt == LL_RT_GP64)
+        SetRegFacet(inst.ops[0].reg, Facet::PTR, res_ptr);
 }
 
 void

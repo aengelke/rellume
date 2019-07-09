@@ -56,7 +56,8 @@ ll_instruction_get_flags(bool fullSized, LLState* state)
         if (flags[i] < 0)
             continue;
 
-        LLVMValueRef flag = LLVMBuildZExt(state->builder, ll_get_flag(flags[i], state), intType, "");
+        LLVMValueRef flag = llvm::wrap(state->GetFlag(flags[i]));
+        flag = LLVMBuildZExt(state->builder, flag, intType, "");
         flag = LLVMBuildShl(state->builder, flag, LLVMConstInt(intType, i, false), "");
         flagRegister = LLVMBuildOr(state->builder, flagRegister, flag, "");
     }
@@ -75,7 +76,7 @@ ll_instruction_stack(LLInstr* instr, LLState* state)
     // In case of a leave instruction, we basically pop the new base pointer
     // from RBP and store the new value as stack pointer.
     int spRegIndex = instr->type == LL_INS_LEAVE ? LL_RI_BP : LL_RI_SP;
-    LLVMValueRef spReg = ll_get_register(LLReg(LL_RT_GP64, spRegIndex), Facet::PTR, state);
+    LLVMValueRef spReg = llvm::wrap(state->GetReg(LLReg(LL_RT_GP64, spRegIndex), Facet::PTR));
     LLVMValueRef sp = LLVMBuildPointerCast(state->builder, spReg, pi64, "");
     LLVMValueRef newSp = NULL;
     LLVMValueRef value;
@@ -113,7 +114,7 @@ ll_instruction_stack(LLInstr* instr, LLState* state)
     // Cast back to int for register store
     LLVMValueRef newSpReg = LLVMBuildPointerCast(state->builder, newSp, pi8, "");
 
-    ll_set_register(LLReg(LL_RT_GP64, LL_RI_SP), Facet::PTR, newSpReg, true, state);
+    state->SetReg(LLReg(LL_RT_GP64, LL_RI_SP), Facet::PTR, llvm::unwrap(newSpReg));
 }
 
 /**
