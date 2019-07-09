@@ -191,7 +191,33 @@ BasicBlock::Terminate()
     }
     else
     {
-        // stub
+        // Pack CPU struct and return
+        llvm::Value* param = llvmBB->getParent()->arg_begin();
+        llvm::Type* cpu_type = param->getType()->getPointerElementType();
+        llvm::Value* result = llvm::UndefValue::get(cpu_type);
+
+        result = builder->CreateInsertValue(result, new_rip, {0});
+
+        for (unsigned i = 0; i < LL_RI_GPMax; i++)
+        {
+            llvm::Value* value = regfile.GetReg(LLReg(LL_RT_GP64, i), Facet::I64);
+            result = builder->CreateInsertValue(result, value, {1, i});
+        }
+
+        for (unsigned i = 0; i < LL_RI_XMMMax; i++)
+        {
+            llvm::Value* value = regfile.GetReg(LLReg(LL_RT_XMM, i), Facet::IVEC);
+            result = builder->CreateInsertValue(result, value, {3, i});
+        }
+
+        for (unsigned i = 0; i < RFLAG_Max; i++)
+        {
+            llvm::Value* value = regfile.GetFlag(i);
+            result = builder->CreateInsertValue(result, value, {2, i});
+        }
+
+        builder->CreateStore(result, param);
+        builder->CreateRetVoid();
     }
 }
 

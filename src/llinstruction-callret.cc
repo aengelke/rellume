@@ -122,35 +122,18 @@ llvm::Value* LLState::LiftJcc(const LLInstr& inst) {
 
 llvm::Value* LLState::LiftRet(const LLInstr& inst)
 {
-    llvm::Value* param = irb.GetInsertBlock()->getParent()->arg_begin();
-    llvm::Type* cpu_type = param->getType()->getPointerElementType();
-    llvm::Value* result = llvm::UndefValue::get(cpu_type);
+    llvm::Value* rsp = GetReg(LLReg(LL_RT_GP64, LL_RI_SP), Facet::PTR);
+    rsp = irb.CreatePointerCast(rsp, irb.getInt64Ty()->getPointerTo());
 
-    for (unsigned i = 0; i < LL_RI_GPMax; i++)
-    {
-        llvm::Value* value = GetReg(LLReg(LL_RT_GP64, i), Facet::I64);
-        result = irb.CreateInsertValue(result, value, {1, i});
-    }
+    llvm::Value* new_rip = irb.CreateLoad(rsp);
 
-    for (unsigned i = 0; i < LL_RI_XMMMax; i++)
-    {
-        llvm::Value* value = GetReg(LLReg(LL_RT_XMM, i), Facet::IVEC);
-        result = irb.CreateInsertValue(result, value, {3, i});
-    }
-
-    for (unsigned i = 0; i < RFLAG_Max; i++)
-    {
-        llvm::Value* value = GetFlag(i);
-        result = irb.CreateInsertValue(result, value, {2, i});
-    }
-
-    irb.CreateStore(result, param);
-
-    irb.CreateRetVoid();
+    llvm::Value* new_rsp = irb.CreateConstGEP1_64(rsp, 1);
+    new_rsp = irb.CreatePointerCast(new_rsp, irb.getInt8PtrTy());
+    SetReg(LLReg(LL_RT_GP64, LL_RI_SP), Facet::PTR, new_rsp);
 
     (void) inst;
 
-    return llvm::UndefValue::get(irb.getInt64Ty());
+    return new_rip;
 }
 
 /**
