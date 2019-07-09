@@ -119,25 +119,6 @@ void BasicBlock::AddBranches(BasicBlock* branch, BasicBlock* fallThrough)
     }
 }
 
-#define instrIsJcc(instr) ( \
-    (instr) == LL_INS_JO || \
-    (instr) == LL_INS_JNO || \
-    (instr) == LL_INS_JC || \
-    (instr) == LL_INS_JNC || \
-    (instr) == LL_INS_JZ || \
-    (instr) == LL_INS_JNZ || \
-    (instr) == LL_INS_JBE || \
-    (instr) == LL_INS_JA || \
-    (instr) == LL_INS_JS || \
-    (instr) == LL_INS_JNS || \
-    (instr) == LL_INS_JP || \
-    (instr) == LL_INS_JNP || \
-    (instr) == LL_INS_JL || \
-    (instr) == LL_INS_JGE || \
-    (instr) == LL_INS_JLE || \
-    (instr) == LL_INS_JG \
-)
-
 void BasicBlock::AddInst(LLInstr* instr)
 {
     SetCurrent();
@@ -153,6 +134,10 @@ void BasicBlock::AddInst(LLInstr* instr)
     llvm::Function* intrinsicDoNothing = llvm::Intrinsic::getDeclaration(llvmBB->getModule(), llvm::Intrinsic::donothing, {});
     builder->CreateCall(intrinsicDoNothing);
 
+    // By default, fall through to next instruction
+    // TODO: no longer require this
+    new_rip = builder->Insert(llvm::SelectInst::Create(builder->getFalse(), ripValue, ripValue));
+
     switch (instr->type)
     {
 #define DEF_IT(opc,handler) case LL_INS_ ## opc : handler; break;
@@ -164,8 +149,6 @@ void BasicBlock::AddInst(LLInstr* instr)
             warn_if_reached();
             break;
     }
-
-    endType = instr->type;
 }
 
 /**
@@ -185,15 +168,31 @@ BasicBlock::Terminate()
 
     llvm::IRBuilder<>* builder = llvm::unwrap(state.builder);
 
-    if (instrIsJcc(endType))
+    if (new_rip == nullptr)
     {
-        llvm::Value* cond = state.FlagCond(endType, LL_INS_JO);
-        builder->CreateCondBr(cond, nextBranch->llvmBB, nextFallThrough->llvmBB);
-    }
-    else if (endType == LL_INS_JMP)
-        builder->CreateBr(nextBranch->llvmBB);
-    else if (endType != LL_INS_RET && endType != LL_INS_Invalid) // Any other instruction which is not a terminator
         builder->CreateBr(nextFallThrough->llvmBB);
+    }
+    else if (auto select = llvm::dyn_cast<llvm::SelectInst>(new_rip))
+    {
+        llvm::Value* cond = select->getCondition();
+        if (llvm::Constant* const_cond = llvm::dyn_cast<llvm::Constant>(cond))
+        {
+            assert(nextBranch || nextFallThrough);
+            if (const_cond->isNullValue())
+                builder->CreateBr(nextFallThrough->llvmBB);
+            else
+                builder->CreateBr(nextBranch->llvmBB);
+        }
+        else if (!llvm::isa<llvm::UndefValue>(cond))
+        {
+            assert(nextBranch && nextFallThrough);
+            builder->CreateCondBr(cond, nextBranch->llvmBB, nextFallThrough->llvmBB);
+        }
+    }
+    else
+    {
+        // stub
+    }
 }
 
 /**

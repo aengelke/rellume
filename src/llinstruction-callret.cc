@@ -108,7 +108,19 @@ ll_instruction_call(LLInstr* instr, LLState* state)
 #endif
 }
 
-void LLState::InstRet(LLInstr& inst)
+llvm::Value* LLState::LiftJmp(const LLInstr& inst) {
+    llvm::Value* taken = OpLoad(inst.ops[0], Facet::I64);
+    // TODO: no longer require this.
+    return irb.Insert(llvm::SelectInst::Create(irb.getTrue(), taken, taken));
+}
+llvm::Value* LLState::LiftJcc(const LLInstr& inst) {
+    llvm::Value* cond = FlagCond(inst.type, LL_INS_JO);
+    llvm::Value* taken = OpLoad(inst.ops[0], Facet::I64);
+    llvm::Value* nottaken = irb.getInt64(inst.addr + inst.len);
+    return irb.Insert(llvm::SelectInst::Create(cond, taken, nottaken));
+}
+
+llvm::Value* LLState::LiftRet(const LLInstr& inst)
 {
     llvm::Value* param = irb.GetInsertBlock()->getParent()->arg_begin();
     llvm::Type* cpu_type = param->getType()->getPointerElementType();
@@ -137,6 +149,8 @@ void LLState::InstRet(LLInstr& inst)
     irb.CreateRetVoid();
 
     (void) inst;
+
+    return llvm::UndefValue::get(irb.getInt64Ty());
 }
 
 /**

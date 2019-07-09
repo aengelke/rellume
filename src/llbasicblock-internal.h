@@ -46,7 +46,7 @@ class BasicBlock
 public:
     BasicBlock(llvm::BasicBlock* llvm, LLState& state) : state(state),
             nextBranch(nullptr), nextFallThrough(nullptr), llvmBB(llvm),
-            regfile(llvm), endType(LL_INS_None) {}
+            regfile(llvm), new_rip(nullptr) {}
 
     BasicBlock(BasicBlock&& rhs);
     BasicBlock& operator=(BasicBlock&& rhs);
@@ -89,7 +89,8 @@ private:
     /// The phi nodes for the flags
     llvm::PHINode* phiFlags[RFLAG_Max];
 
-    LLInstrType endType;
+    /// Address of the next instruction after this block
+    llvm::Value* new_rip;
 };
 
 }

@@ -159,7 +159,9 @@ class LLState : public LLStateBase {
 public:
     LLState(llvm::LLVMContext& ctx) : LLStateBase(ctx) {}
 
-    void InstRet(LLInstr&);
+    llvm::Value* LiftRet(const LLInstr&);
+    llvm::Value* LiftJmp(const LLInstr&);
+    llvm::Value* LiftJcc(const LLInstr&);
     void LiftCmp(const LLInstr&);
     void LiftNot(const LLInstr&);
     void LiftNeg(const LLInstr&);
