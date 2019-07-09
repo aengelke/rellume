@@ -232,18 +232,23 @@ ll_instruction_shift(LLInstr* instr, LLState* state)
     if (instr->type == LL_INS_SHL)
     {
         result = LLVMBuildShl(state->builder, operand1, operand2, "");
-        ll_flags_set_shl(state, result, operand1, operand2);
     }
     else if (instr->type == LL_INS_SHR)
     {
         result = LLVMBuildLShr(state->builder, operand1, operand2, "");
-        ll_flags_set_shr(state, result, operand1, operand2);
     }
     else if (instr->type == LL_INS_SAR)
     {
         result = LLVMBuildAShr(state->builder, operand1, operand2, "");
-        ll_flags_set_sar(state, result, operand1, operand2);
     }
+
+    llvm::Value* undef = llvm::UndefValue::get(state->irb.getInt1Ty());
+    state->FlagCalcZ(llvm::unwrap(result));
+    state->FlagCalcS(llvm::unwrap(result));
+    state->FlagCalcP(llvm::unwrap(result));
+    state->SetFlag(RFLAG_AF, undef);
+    state->SetFlag(RFLAG_OF, undef);
+    state->SetFlag(RFLAG_CF, undef);
 
     ll_operand_store(OP_SI, ALIGN_MAXIMUM, &instr->ops[0], REG_DEFAULT, result, state);
 }
