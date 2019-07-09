@@ -30,7 +30,6 @@
 #include <llstate-internal.h>
 
 #include <llcommon-internal.h>
-#include <llflags-internal.h>
 #include <rellume/instr.h>
 
 /**

@@ -32,11 +32,10 @@
 #include <llvm/IR/Value.h>
 #include <llvm-c/Core.h>
 
-#include <llflags-internal.h>
+#include <llstate-internal.h>
 
 #include <llcommon-internal.h>
 #include <llregfile-internal.h>
-#include <llstate-internal.h>
 #include <rellume/instr.h>
 
 /**
@@ -80,45 +79,6 @@ LLStateBase::FlagCond(LLInstrType type, LLInstrType base)
     }
 
     return condition & 1 ? irb.CreateNot(result) : result;
-}
-
-void
-ll_flags_set_of_imul(LLVMValueRef result, LLVMValueRef lhs, LLVMValueRef rhs, LLState* state)
-{
-    LLVMTypeRef intType = LLVMTypeOf(lhs);
-    LLVMTypeRef intLargeType = LLVMIntTypeInContext(state->context, LLVMGetIntTypeWidth(intType) * 2);
-    LLVMValueRef overflowFlag;
-
-    if (state->cfg.enableOverflowIntrinsics)
-    {
-        llvm::Intrinsic::ID id = llvm::Intrinsic::smul_with_overflow;
-        llvm::Value* packed = state->irb.CreateBinaryIntrinsic(id, llvm::unwrap(lhs), llvm::unwrap(rhs));
-        overflowFlag = llvm::wrap(state->irb.CreateExtractValue(packed, 1));
-    }
-    else
-    {
-        LLVMValueRef longResult;
-        LLVMValueRef shortResult;
-
-        if (LLVMTypeOf(result) != intLargeType)
-        {
-            lhs = LLVMBuildCast(state->builder, LLVMSExt, lhs, intLargeType, "");
-            rhs = LLVMBuildCast(state->builder, LLVMSExt, rhs, intLargeType, "");
-            longResult = LLVMBuildMul(state->builder, lhs, rhs, "");
-            shortResult = result;
-        }
-        else
-        {
-            longResult = result;
-            shortResult = LLVMBuildTrunc(state->builder, result, intType, "");
-        }
-
-        shortResult = LLVMBuildSExt(state->builder, shortResult, intLargeType, "");
-        overflowFlag = LLVMBuildICmp(state->builder, LLVMIntNE, longResult, shortResult, "");
-    }
-
-    state->SetFlag(RFLAG_OF, llvm::unwrap(overflowFlag));
-    state->SetFlag(RFLAG_CF, llvm::unwrap(overflowFlag));
 }
 
 void
@@ -176,66 +136,6 @@ LLStateBase::FlagCalcOSub(llvm::Value* res, llvm::Value* lhs, llvm::Value* rhs)
         auto tmp = irb.CreateAnd(irb.CreateXor(lhs, rhs), irb.CreateXor(res, lhs));
         SetFlag(RFLAG_OF, irb.CreateICmpSLT(tmp, llvm::Constant::getNullValue(res->getType())));
     }
-}
-
-void
-ll_flags_set_shl(LLState* state, LLVMValueRef result, LLVMValueRef lhs, LLVMValueRef rhs)
-{
-    // TODO
-    ll_flags_invalidate(state);
-    state->FlagCalcZ(llvm::unwrap(result));
-    state->FlagCalcS(llvm::unwrap(result));
-    state->FlagCalcP(llvm::unwrap(result));
-
-    (void) lhs;
-    (void) rhs;
-}
-
-void
-ll_flags_set_shr(LLState* state, LLVMValueRef result, LLVMValueRef lhs, LLVMValueRef rhs)
-{
-    // TODO
-    ll_flags_invalidate(state);
-    state->FlagCalcZ(llvm::unwrap(result));
-    state->FlagCalcS(llvm::unwrap(result));
-    state->FlagCalcP(llvm::unwrap(result));
-
-    (void) lhs;
-    (void) rhs;
-}
-
-void
-ll_flags_set_sar(LLState* state, LLVMValueRef result, LLVMValueRef lhs, LLVMValueRef rhs)
-{
-    // TODO
-    ll_flags_invalidate(state);
-    state->FlagCalcZ(llvm::unwrap(result));
-    state->FlagCalcS(llvm::unwrap(result));
-    state->FlagCalcP(llvm::unwrap(result));
-
-    (void) lhs;
-    (void) rhs;
-}
-
-/**
- * Invalidate the flags and the flag cache.
- *
- * \private
- *
- * \author Alexis Engelke
- *
- * \param state The module state
- **/
-void
-ll_flags_invalidate(LLState* state)
-{
-    llvm::Value* undef = llvm::UndefValue::get(state->irb.getInt1Ty());
-    state->SetFlag(RFLAG_AF, undef);
-    state->SetFlag(RFLAG_CF, undef);
-    state->SetFlag(RFLAG_OF, undef);
-    state->SetFlag(RFLAG_SF, undef);
-    state->SetFlag(RFLAG_ZF, undef);
-    state->SetFlag(RFLAG_PF, undef);
 }
 
 /**
