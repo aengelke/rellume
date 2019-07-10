@@ -93,32 +93,6 @@ void BasicBlock::AddPhis()
     }
 }
 
-/**
- * Add branches to the basic block. This also registers them as predecessors.
- *
- * \private
- *
- * \author Alexis Engelke
- *
- * \param bb The basic block
- * \param branch The active branch, or NULL
- * \param fallThrough The fall-through branch, or NULL
- **/
-void BasicBlock::AddBranches(BasicBlock* branch, BasicBlock* fallThrough)
-{
-    if (branch != NULL)
-    {
-        branch->preds.push_back(this);
-        nextBranch = branch;
-    }
-
-    if (fallThrough != NULL)
-    {
-        fallThrough->preds.push_back(this);
-        nextFallThrough = fallThrough;
-    }
-}
-
 void BasicBlock::AddInst(LLInstr* instr)
 {
     SetCurrent();
@@ -135,8 +109,7 @@ void BasicBlock::AddInst(LLInstr* instr)
     builder->CreateCall(intrinsicDoNothing);
 
     // By default, fall through to next instruction
-    // TODO: no longer require this
-    new_rip = builder->Insert(llvm::SelectInst::Create(builder->getFalse(), ripValue, ripValue));
+    new_rip = ripValue;
 
     switch (instr->type)
     {
@@ -149,94 +122,6 @@ void BasicBlock::AddInst(LLInstr* instr)
             warn_if_reached();
             break;
     }
-}
-
-/**
- * Build the LLVM IR.
- *
- * \private
- *
- * \author Alexis Engelke
- *
- * \param bb The basic block
- * \param state The module state
- **/
-void
-BasicBlock::Terminate()
-{
-    SetCurrent();
-
-    llvm::IRBuilder<>* builder = llvm::unwrap(state.builder);
-
-    if (new_rip == nullptr)
-    {
-        builder->CreateBr(nextFallThrough->llvmBB);
-    }
-    else if (auto select = llvm::dyn_cast<llvm::SelectInst>(new_rip))
-    {
-        llvm::Value* cond = select->getCondition();
-        if (llvm::Constant* const_cond = llvm::dyn_cast<llvm::Constant>(cond))
-        {
-            assert(nextBranch || nextFallThrough);
-            if (const_cond->isNullValue())
-                builder->CreateBr(nextFallThrough->llvmBB);
-            else
-                builder->CreateBr(nextBranch->llvmBB);
-        }
-        else if (!llvm::isa<llvm::UndefValue>(cond))
-        {
-            assert(nextBranch && nextFallThrough);
-            builder->CreateCondBr(cond, nextBranch->llvmBB, nextFallThrough->llvmBB);
-        }
-    }
-    else
-    {
-        // Pack CPU struct and return
-        llvm::Value* param = llvmBB->getParent()->arg_begin();
-        llvm::Type* cpu_type = param->getType()->getPointerElementType();
-        llvm::Value* result = llvm::UndefValue::get(cpu_type);
-
-        result = builder->CreateInsertValue(result, new_rip, {0});
-
-        for (unsigned i = 0; i < LL_RI_GPMax; i++)
-        {
-            llvm::Value* value = regfile.GetReg(LLReg(LL_RT_GP64, i), Facet::I64);
-            result = builder->CreateInsertValue(result, value, {1, i});
-        }
-
-        for (unsigned i = 0; i < LL_RI_XMMMax; i++)
-        {
-            llvm::Value* value = regfile.GetReg(LLReg(LL_RT_XMM, i), Facet::IVEC);
-            result = builder->CreateInsertValue(result, value, {3, i});
-        }
-
-        for (unsigned i = 0; i < RFLAG_Max; i++)
-        {
-            llvm::Value* value = regfile.GetFlag(i);
-            result = builder->CreateInsertValue(result, value, {2, i});
-        }
-
-        builder->CreateStore(result, param);
-        builder->CreateRetVoid();
-    }
-}
-
-/**
- * Fill PHI nodes after the IR for all basic blocks of the function is
- * generated.
- *
- * \private
- *
- * \author Alexis Engelke
- *
- * \param bb The basic block
- **/
-void BasicBlock::FillPhis()
-{
-    state.regfile = NULL;
-
-    for (auto pred_it = preds.begin(); pred_it != preds.end(); ++pred_it)
-        AddToPhis(*pred_it);
 }
 
 void BasicBlock::AddToPhis(BasicBlock* pred)

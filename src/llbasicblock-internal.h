@@ -28,7 +28,6 @@
 #include <stdlib.h>
 #include <stdint.h>
 #include <stdlib.h>
-#include <vector>
 
 #include <llvm/IR/BasicBlock.h>
 #include <llvm-c/Core.h>
@@ -45,8 +44,7 @@ class BasicBlock
 {
 public:
     BasicBlock(llvm::BasicBlock* llvm, LLState& state) : state(state),
-            nextBranch(nullptr), nextFallThrough(nullptr), llvmBB(llvm),
-            regfile(llvm), new_rip(nullptr) {}
+            llvmBB(llvm), regfile(llvm), new_rip(nullptr) {}
 
     BasicBlock(BasicBlock&& rhs);
     BasicBlock& operator=(BasicBlock&& rhs);
@@ -60,21 +58,17 @@ public:
     }
     void AddPhis();
     void AddInst(LLInstr* inst);
-    void AddBranches(BasicBlock*, BasicBlock*);
-    void Terminate();
-    void FillPhis();
     void AddToPhis(BasicBlock* pred);
+
+    llvm::Value* NextRip() {
+        return new_rip;
+    }
+    llvm::BasicBlock* Llvm() {
+        return llvmBB;
+    }
 
 private:
     LLState& state;
-
-    /// The branch basic block, or NULL
-    BasicBlock* nextBranch;
-    /// The fall-through basic block, or NULL
-    BasicBlock* nextFallThrough;
-
-    /// Preceding basic blocks
-    std::vector<BasicBlock*> preds;
 
     /// The LLVM basic block
     llvm::BasicBlock* llvmBB;

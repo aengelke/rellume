@@ -110,14 +110,13 @@ ll_instruction_call(LLInstr* instr, LLState* state)
 
 llvm::Value* LLState::LiftJmp(const LLInstr& inst) {
     llvm::Value* taken = OpLoad(inst.ops[0], Facet::I64);
-    // TODO: no longer require this.
-    return irb.Insert(llvm::SelectInst::Create(irb.getTrue(), taken, taken));
+    return taken;
 }
 llvm::Value* LLState::LiftJcc(const LLInstr& inst) {
     llvm::Value* cond = FlagCond(inst.type, LL_INS_JO);
     llvm::Value* taken = OpLoad(inst.ops[0], Facet::I64);
     llvm::Value* nottaken = irb.getInt64(inst.addr + inst.len);
-    return irb.Insert(llvm::SelectInst::Create(cond, taken, nottaken));
+    return irb.CreateSelect(cond, taken, nottaken);
 }
 
 llvm::Value* LLState::LiftRet(const LLInstr& inst)

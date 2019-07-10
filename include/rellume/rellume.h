@@ -43,7 +43,6 @@ struct LLBasicBlock;
 typedef struct LLBasicBlock LLBasicBlock;
 
 RELLUME_API void ll_basic_block_add_inst(LLBasicBlock*, LLInstr*);
-RELLUME_API void ll_basic_block_add_branches(LLBasicBlock*, LLBasicBlock*, LLBasicBlock*);
 
 
 struct LLFunc;

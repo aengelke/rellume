@@ -64,6 +64,7 @@ public:
 
 private:
     void CreateEntry();
+    void CreateExit(llvm::Value* next_rip);
 
     LLState state;
 

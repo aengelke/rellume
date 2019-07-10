@@ -342,26 +342,11 @@ int Function::Decode(uintptr_t addr)
         }
     }
 
-    std::vector<BasicBlock*> block_objs;
-    block_objs.reserve(blocks.size());
     for (auto it = blocks.begin(); it != blocks.end(); it++)
     {
         BasicBlock* block = AddBlock(insts[it->first].addr);
         for (size_t j = it->first; j < it->second; j++)
             block->AddInst(&insts[j]);
-        block_objs.push_back(block);
-    }
-
-    for (size_t j = 0; j < blocks.size(); j++)
-    {
-        LLInstr& inst = insts[blocks[j].second-1];
-        BasicBlock* fallthrough = nullptr;
-        BasicBlock* branch = nullptr;
-        if (inst.type != LL_INS_JMP && inst.type != LL_INS_RET)
-            fallthrough = block_objs[addr_map[inst.addr + inst.len].first];
-        if (instrIsJcc(inst.type) || inst.type == LL_INS_JMP)
-            branch = block_objs[addr_map[inst.ops[0].val].first];
-        block_objs[j]->AddBranches(branch, fallthrough);
     }
 
     return 0;
