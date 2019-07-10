@@ -56,7 +56,7 @@ RELLUME_API void ll_func_enable_overflow_intrinsics(LLFunc* fn, bool enable);
 RELLUME_API void ll_func_enable_fast_math(LLFunc* fn, bool enable);
 RELLUME_API void ll_func_set_global_base(LLFunc* fn, uintptr_t base, LLVMValueRef value);
 
-RELLUME_API LLBasicBlock* ll_func_add_block(LLFunc* fn);
+RELLUME_API LLBasicBlock* ll_func_add_block(LLFunc* fn, uint64_t address);
 RELLUME_API LLVMValueRef ll_func_lift(LLFunc* fn);
 RELLUME_API void ll_func_dispose(LLFunc*);
 

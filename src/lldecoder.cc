@@ -346,7 +346,7 @@ int Function::Decode(uintptr_t addr)
     block_objs.reserve(blocks.size());
     for (auto it = blocks.begin(); it != blocks.end(); it++)
     {
-        BasicBlock* block = AddBlock();
+        BasicBlock* block = AddBlock(insts[it->first].addr);
         for (size_t j = it->first; j < it->second; j++)
             block->AddInst(&insts[j]);
         block_objs.push_back(block);

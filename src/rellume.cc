@@ -52,8 +52,8 @@ void ll_func_set_global_base(LLFunc* fn, uintptr_t base, LLVMValueRef value) {
     reinterpret_cast<rellume::Function*>(fn)->SetGlobalBase(base, llvm::unwrap(value));
 }
 
-LLBasicBlock* ll_func_add_block(LLFunc* fn) {
-    return reinterpret_cast<LLBasicBlock*>(reinterpret_cast<rellume::Function*>(fn)->AddBlock());
+LLBasicBlock* ll_func_add_block(LLFunc* fn, uint64_t address) {
+    return reinterpret_cast<LLBasicBlock*>(reinterpret_cast<rellume::Function*>(fn)->AddBlock(address));
 }
 LLVMValueRef ll_func_lift(LLFunc* fn) {
     return llvm::wrap(reinterpret_cast<rellume::Function*>(fn)->Lift());

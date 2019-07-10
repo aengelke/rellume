@@ -26,6 +26,7 @@
 
 #include <cstdbool>
 #include <cstdint>
+#include <unordered_map>
 #include <vector>
 
 #include <llvm/IR/BasicBlock.h>
@@ -55,7 +56,7 @@ public:
     void EnableOverflowIntrinsics(bool enable);
     void EnableFastMath(bool enable);
     void SetGlobalBase(uintptr_t base, llvm::Value* value);
-    BasicBlock* AddBlock();
+    BasicBlock* AddBlock(uint64_t address);
     llvm::Function* Lift();
 
     // Implemented in lldecoder.cc
@@ -68,6 +69,7 @@ private:
 
     llvm::Function* llvm;
     std::vector<BasicBlock*> blocks;
+    std::unordered_map<uint64_t,BasicBlock*> block_map;
 
     BasicBlock* initialBB;
 };

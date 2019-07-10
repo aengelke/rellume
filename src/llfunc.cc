@@ -26,6 +26,8 @@
 #include <stdint.h>
 #include <string.h>
 #include <vector>
+#include <unordered_map>
+
 #include <llvm-c/Analysis.h>
 #include <llvm-c/Core.h>
 #include <llvm-c/Support.h>
@@ -157,12 +159,13 @@ Function::~Function()
         delete initialBB;
 }
 
-BasicBlock* Function::AddBlock()
+BasicBlock* Function::AddBlock(uint64_t address)
 {
     llvm::BasicBlock* llvm_bb = llvm::BasicBlock::Create(llvm->getContext(), "", llvm, nullptr);
     BasicBlock* bb = new BasicBlock(llvm_bb, state);
     bb->AddPhis();
     blocks.push_back(bb);
+    block_map[address] = bb;
     return bb;
 }
 
