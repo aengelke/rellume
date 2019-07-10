@@ -63,6 +63,7 @@ public:
     void AddBranches(BasicBlock*, BasicBlock*);
     void Terminate();
     void FillPhis();
+    void AddToPhis(BasicBlock* pred);
 
 private:
     LLState& state;
