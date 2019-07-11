@@ -60,6 +60,9 @@ void BasicBlock::AddPhis()
     llvm::IRBuilder<>* builder = llvm::unwrap(state.builder);
     SetCurrent();
 
+    phi_rip = builder->CreatePHI(builder->getInt64Ty(), 0);
+    new_rip = phi_rip;
+
     for (int i = 0; i < LL_RI_GPMax; i++)
     {
         for (auto facet : phis_gp[i].facets())
@@ -126,6 +129,8 @@ void BasicBlock::AddInst(LLInstr* instr)
 
 void BasicBlock::AddToPhis(BasicBlock* pred)
 {
+    phi_rip->addIncoming(pred->new_rip, pred->llvmBB);
+
     for (int j = 0; j < LL_RI_GPMax; j++)
     {
         for (auto facet : phis_gp[j].facets())

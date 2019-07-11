@@ -64,7 +64,8 @@ public:
 
 private:
     void CreateEntry();
-    void CreateExit(llvm::Value* next_rip);
+    BasicBlock* CreateExit();
+    BasicBlock* ResolveAddr(llvm::Value* addr, BasicBlock* def);
 
     LLState state;
 

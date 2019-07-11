@@ -60,7 +60,8 @@ public:
     void AddInst(LLInstr* inst);
     void AddToPhis(BasicBlock* pred);
 
-    llvm::Value* NextRip() {
+    // TODO: offer a better way to set the first RIP for the entry block.
+    llvm::Value*& NextRip() {
         return new_rip;
     }
     llvm::BasicBlock* Llvm() {
@@ -83,6 +84,8 @@ private:
 
     /// The phi nodes for the flags
     llvm::PHINode* phiFlags[RFLAG_Max];
+
+    llvm::PHINode* phi_rip;
 
     /// Address of the next instruction after this block
     llvm::Value* new_rip;
