@@ -58,7 +58,10 @@ public:
     }
     void AddPhis();
     void AddInst(LLInstr* inst);
-    void AddToPhis(BasicBlock* pred);
+    void AddToPhis(BasicBlock* pred) {
+        AddToPhis(pred->llvmBB, &pred->regfile, pred->new_rip);
+    }
+    void AddToPhis(llvm::BasicBlock* pred, RegFile* regfile, llvm::Value*);
 
     // TODO: offer a better way to set the first RIP for the entry block.
     llvm::Value*& NextRip() {

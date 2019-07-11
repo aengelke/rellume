@@ -127,17 +127,17 @@ void BasicBlock::AddInst(LLInstr* instr)
     }
 }
 
-void BasicBlock::AddToPhis(BasicBlock* pred)
+void BasicBlock::AddToPhis(llvm::BasicBlock* pred, RegFile* regfile, llvm::Value* new_rip)
 {
-    phi_rip->addIncoming(pred->new_rip, pred->llvmBB);
+    phi_rip->addIncoming(new_rip, pred);
 
     for (int j = 0; j < LL_RI_GPMax; j++)
     {
         for (auto facet : phis_gp[j].facets())
         {
             auto phi = llvm::cast<llvm::PHINode>(phis_gp[j].at(facet));
-            llvm::Value* value = pred->regfile.GetReg(LLReg(LL_RT_GP64, j), facet);
-            phi->addIncoming(value, pred->llvmBB);
+            llvm::Value* value = regfile->GetReg(LLReg(LL_RT_GP64, j), facet);
+            phi->addIncoming(value, pred);
         }
     }
 
@@ -146,15 +146,15 @@ void BasicBlock::AddToPhis(BasicBlock* pred)
         for (auto facet : phis_sse[j].facets())
         {
             auto phi = llvm::cast<llvm::PHINode>(phis_sse[j].at(facet));
-            llvm::Value* value = pred->regfile.GetReg(LLReg(LL_RT_XMM, j), facet);
-            phi->addIncoming(value, pred->llvmBB);
+            llvm::Value* value = regfile->GetReg(LLReg(LL_RT_XMM, j), facet);
+            phi->addIncoming(value, pred);
         }
     }
 
     for (int j = 0; j < RFLAG_Max; j++)
     {
-        llvm::Value* value = pred->regfile.GetFlag(j);
-        phiFlags[j]->addIncoming(value, pred->llvmBB);
+        llvm::Value* value = regfile->GetFlag(j);
+        phiFlags[j]->addIncoming(value, pred);
     }
 }
 
