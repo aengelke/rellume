@@ -67,8 +67,11 @@ void Function::CreateEntry(BasicBlock* entry_bb)
     RegFile rf(llvm_bb);
 
     llvm::Value* param = llvm->arg_begin();
-
     llvm::Value* regs = irb.CreateLoad(param);
+
+    llvm::Value* next_rip = irb.CreateExtractValue(regs, {0});
+    rf.SetReg(LLReg(LL_RT_IP, 0), Facet::I64, next_rip, true);
+
     for (unsigned i = 0; i < LL_RI_GPMax; i++)
         rf.SetReg(LLReg(LL_RT_GP64, i), Facet::I64, irb.CreateExtractValue(regs, {1, i}), true);
 
@@ -78,10 +81,9 @@ void Function::CreateEntry(BasicBlock* entry_bb)
     for (unsigned i = 0; i < RFLAG_Max; i++)
         rf.SetFlag(i, irb.CreateExtractValue(regs, {2, i}));
 
-    llvm::Value* next_rip = irb.CreateExtractValue(regs, {0});
     irb.CreateBr(entry_bb->Llvm());
 
-    entry_bb->AddToPhis(llvm_bb, &rf, next_rip);
+    entry_bb->AddToPhis(llvm_bb, &rf);
 }
 
 Function::Function(llvm::Module* mod) : state(mod->getContext())
@@ -208,23 +210,24 @@ BasicBlock* Function::CreateExit() {
     llvm::Type* cpu_type = param->getType()->getPointerElementType();
     llvm::Value* result = llvm::UndefValue::get(cpu_type);
 
-    result = state.irb.CreateInsertValue(result, exit_block->NextRip(), {0});
+    llvm::Value* value = state.GetReg(LLReg(LL_RT_IP, 0), Facet::I64);
+    result = state.irb.CreateInsertValue(result, value, {0});
 
     for (unsigned i = 0; i < LL_RI_GPMax; i++)
     {
-        llvm::Value* value = state.GetReg(LLReg(LL_RT_GP64, i), Facet::I64);
+        value = state.GetReg(LLReg(LL_RT_GP64, i), Facet::I64);
         result = state.irb.CreateInsertValue(result, value, {1, i});
     }
 
     for (unsigned i = 0; i < LL_RI_XMMMax; i++)
     {
-        llvm::Value* value = state.GetReg(LLReg(LL_RT_XMM, i), Facet::IVEC);
+        value = state.GetReg(LLReg(LL_RT_XMM, i), Facet::IVEC);
         result = state.irb.CreateInsertValue(result, value, {3, i});
     }
 
     for (unsigned i = 0; i < RFLAG_Max; i++)
     {
-        llvm::Value* value = state.GetFlag(i);
+        value = state.GetFlag(i);
         result = state.irb.CreateInsertValue(result, value, {2, i});
     }
 
@@ -256,7 +259,7 @@ llvm::Function* Function::Lift()
     {
         (*it)->SetCurrent();
 
-        llvm::Value* next_rip = (*it)->NextRip();
+        llvm::Value* next_rip = state.GetReg(LLReg(LL_RT_IP, 0), Facet::I64);
         if (auto select = llvm::dyn_cast<llvm::SelectInst>(next_rip))
         {
             BasicBlock* true_block = ResolveAddr(select->getTrueValue(), exit_block);

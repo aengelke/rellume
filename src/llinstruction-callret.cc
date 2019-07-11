@@ -108,18 +108,18 @@ ll_instruction_call(LLInstr* instr, LLState* state)
 #endif
 }
 
-llvm::Value* LLState::LiftJmp(const LLInstr& inst) {
+void LLState::LiftJmp(const LLInstr& inst) {
     llvm::Value* taken = OpLoad(inst.ops[0], Facet::I64);
-    return taken;
+    SetReg(LLReg(LL_RT_IP, 0), Facet::I64, taken);
 }
-llvm::Value* LLState::LiftJcc(const LLInstr& inst) {
+void LLState::LiftJcc(const LLInstr& inst) {
     llvm::Value* cond = FlagCond(inst.type, LL_INS_JO);
     llvm::Value* taken = OpLoad(inst.ops[0], Facet::I64);
     llvm::Value* nottaken = irb.getInt64(inst.addr + inst.len);
-    return irb.CreateSelect(cond, taken, nottaken);
+    SetReg(LLReg(LL_RT_IP, 0), Facet::I64, irb.CreateSelect(cond, taken, nottaken));
 }
 
-llvm::Value* LLState::LiftRet(const LLInstr& inst)
+void LLState::LiftRet(const LLInstr& inst)
 {
     llvm::Value* rsp = GetReg(LLReg(LL_RT_GP64, LL_RI_SP), Facet::PTR);
     rsp = irb.CreatePointerCast(rsp, irb.getInt64Ty()->getPointerTo());
@@ -132,7 +132,7 @@ llvm::Value* LLState::LiftRet(const LLInstr& inst)
 
     (void) inst;
 
-    return new_rip;
+    SetReg(LLReg(LL_RT_IP, 0), Facet::I64, new_rip);
 }
 
 /**

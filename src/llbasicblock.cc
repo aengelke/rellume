@@ -61,7 +61,7 @@ void BasicBlock::AddPhis()
     SetCurrent();
 
     phi_rip = builder->CreatePHI(builder->getInt64Ty(), 0);
-    new_rip = phi_rip;
+    regfile.SetReg(LLReg(LL_RT_IP, 0), Facet::I64, phi_rip, true);
 
     for (int i = 0; i < LL_RI_GPMax; i++)
     {
@@ -111,9 +111,6 @@ void BasicBlock::AddInst(LLInstr* instr)
     llvm::Function* intrinsicDoNothing = llvm::Intrinsic::getDeclaration(llvmBB->getModule(), llvm::Intrinsic::donothing, {});
     builder->CreateCall(intrinsicDoNothing);
 
-    // By default, fall through to next instruction
-    new_rip = ripValue;
-
     switch (instr->type)
     {
 #define DEF_IT(opc,handler) case LL_INS_ ## opc : handler; break;
@@ -127,9 +124,9 @@ void BasicBlock::AddInst(LLInstr* instr)
     }
 }
 
-void BasicBlock::AddToPhis(llvm::BasicBlock* pred, RegFile* regfile, llvm::Value* new_rip)
+void BasicBlock::AddToPhis(llvm::BasicBlock* pred, RegFile* regfile)
 {
-    phi_rip->addIncoming(new_rip, pred);
+    phi_rip->addIncoming(regfile->GetReg(LLReg(LL_RT_IP, 0), Facet::I64), pred);
 
     for (int j = 0; j < LL_RI_GPMax; j++)
     {

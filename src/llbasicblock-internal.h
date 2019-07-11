@@ -44,7 +44,7 @@ class BasicBlock
 {
 public:
     BasicBlock(llvm::BasicBlock* llvm, LLState& state) : state(state),
-            llvmBB(llvm), regfile(llvm), new_rip(nullptr) {}
+            llvmBB(llvm), regfile(llvm) {}
 
     BasicBlock(BasicBlock&& rhs);
     BasicBlock& operator=(BasicBlock&& rhs);
@@ -59,14 +59,10 @@ public:
     void AddPhis();
     void AddInst(LLInstr* inst);
     void AddToPhis(BasicBlock* pred) {
-        AddToPhis(pred->llvmBB, &pred->regfile, pred->new_rip);
+        AddToPhis(pred->llvmBB, &pred->regfile);
     }
-    void AddToPhis(llvm::BasicBlock* pred, RegFile* regfile, llvm::Value*);
+    void AddToPhis(llvm::BasicBlock* pred, RegFile* regfile);
 
-    // TODO: offer a better way to set the first RIP for the entry block.
-    llvm::Value*& NextRip() {
-        return new_rip;
-    }
     llvm::BasicBlock* Llvm() {
         return llvmBB;
     }
@@ -80,6 +76,10 @@ private:
     /// The register file for the basic block
     RegFile regfile;
 
+    /// PHI node containing the value of RIP, used only for the terminating
+    /// block.
+    llvm::PHINode* phi_rip;
+
     /// The phi nodes for the registers
     Facet::ValueMapGp phis_gp[LL_RI_GPMax];
     /// The phi nodes for the registers
@@ -87,11 +87,6 @@ private:
 
     /// The phi nodes for the flags
     llvm::PHINode* phiFlags[RFLAG_Max];
-
-    llvm::PHINode* phi_rip;
-
-    /// Address of the next instruction after this block
-    llvm::Value* new_rip;
 };
 
 }
