@@ -59,27 +59,29 @@
 namespace rellume
 {
 
-void Function::CreateEntry()
+void Function::CreateEntry(BasicBlock* entry_bb)
 {
     llvm::BasicBlock* first_bb = llvm->empty() ? nullptr : &llvm->front();
     llvm::BasicBlock* llvm_bb = llvm::BasicBlock::Create(state.irb.getContext(), "", llvm, first_bb);
-    initialBB = new BasicBlock(llvm_bb, state);
-    initialBB->SetCurrent();
+    llvm::IRBuilder<> irb(llvm_bb);
+    RegFile rf(llvm_bb);
 
     llvm::Value* param = llvm->arg_begin();
-    llvm::IRBuilder<>* builder = llvm::unwrap(state.builder);
 
-    llvm::Value* regs = builder->CreateLoad(param);
+    llvm::Value* regs = irb.CreateLoad(param);
     for (unsigned i = 0; i < LL_RI_GPMax; i++)
-        state.SetReg(LLReg(LL_RT_GP64, i), Facet::I64, builder->CreateExtractValue(regs, {1, i}));
+        rf.SetReg(LLReg(LL_RT_GP64, i), Facet::I64, irb.CreateExtractValue(regs, {1, i}), true);
 
     for (unsigned i = 0; i < LL_RI_XMMMax; i++)
-        state.SetReg(LLReg(LL_RT_XMM, i), Facet::IVEC, builder->CreateExtractValue(regs, {3, i}));
+        rf.SetReg(LLReg(LL_RT_XMM, i), Facet::IVEC, irb.CreateExtractValue(regs, {3, i}), true);
 
     for (unsigned i = 0; i < RFLAG_Max; i++)
-        state.SetFlag(i, builder->CreateExtractValue(regs, {2, i}));
+        rf.SetFlag(i, irb.CreateExtractValue(regs, {2, i}));
 
-    initialBB->NextRip() = builder->CreateExtractValue(regs, {0});
+    llvm::Value* next_rip = irb.CreateExtractValue(regs, {0});
+    irb.CreateBr(entry_bb->Llvm());
+
+    entry_bb->AddToPhis(llvm_bb, &rf, next_rip);
 }
 
 Function::Function(llvm::Module* mod) : state(mod->getContext())
@@ -247,13 +249,8 @@ llvm::Function* Function::Lift()
     if (blocks.size() == 0)
         return NULL;
 
-    CreateEntry();
+    CreateEntry(blocks[0]);
     BasicBlock* exit_block = CreateExit();
-
-    // The initial basic block falls through to the first lifted block.
-    initialBB->SetCurrent();
-    state.irb.CreateBr(blocks[0]->Llvm());
-    blocks[0]->AddToPhis(initialBB);
 
     for (auto it = blocks.begin(); it != blocks.end(); ++it)
     {

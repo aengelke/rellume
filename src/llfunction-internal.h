@@ -63,7 +63,7 @@ public:
     int Decode(uintptr_t addr);
 
 private:
-    void CreateEntry();
+    void CreateEntry(BasicBlock*);
     BasicBlock* CreateExit();
     BasicBlock* ResolveAddr(llvm::Value* addr, BasicBlock* def);
 
