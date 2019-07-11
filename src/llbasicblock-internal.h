@@ -43,8 +43,7 @@ namespace rellume
 class BasicBlock
 {
 public:
-    BasicBlock(llvm::BasicBlock* llvm, LLState& state) : state(state),
-            llvmBB(llvm), regfile(llvm) {}
+    BasicBlock(llvm::BasicBlock* llvm, LLState& state);
 
     BasicBlock(BasicBlock&& rhs);
     BasicBlock& operator=(BasicBlock&& rhs);

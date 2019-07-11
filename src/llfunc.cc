@@ -169,7 +169,6 @@ BasicBlock* Function::AddBlock(uint64_t address)
 {
     llvm::BasicBlock* llvm_bb = llvm::BasicBlock::Create(llvm->getContext(), "", llvm, nullptr);
     BasicBlock* bb = new BasicBlock(llvm_bb, state);
-    bb->AddPhis();
     blocks.push_back(bb);
     block_map[address] = bb;
     return bb;
@@ -202,7 +201,6 @@ ll_func_optimize(LLVMValueRef llvm_fn)
 BasicBlock* Function::CreateExit() {
     llvm::BasicBlock* llvm_bb = llvm::BasicBlock::Create(state.irb.getContext(), "", llvm, nullptr);
     BasicBlock* exit_block = new BasicBlock(llvm_bb, state);
-    exit_block->AddPhis();
     exit_block->SetCurrent();
 
     // Pack CPU struct and return
