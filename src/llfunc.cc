@@ -83,7 +83,7 @@ void Function::CreateEntry(BasicBlock* entry_bb)
 
     irb.CreateBr(entry_bb->Llvm());
 
-    entry_bb->AddToPhis(llvm_bb, &rf);
+    entry_bb->AddToPhis(llvm_bb, rf);
 }
 
 Function::Function(llvm::Module* mod) : state(mod->getContext())
