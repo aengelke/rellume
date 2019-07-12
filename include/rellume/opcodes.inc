@@ -19,15 +19,12 @@
 
 DEF_IT(NOP,)
 
-// Defined in llinstruction-callret.c
-DEF_IT(CALL, ll_instruction_call(instr, &state))
-
-// Defined in llinstruction-stack.c
-DEF_IT(PUSH, state.LiftPushPushf(*instr))
-DEF_IT(PUSHFQ, state.LiftPushPushf(*instr))
-DEF_IT(POP, state.LiftPopLeaveRet(*instr))
-DEF_IT(LEAVE, state.LiftPopLeaveRet(*instr))
-DEF_IT(RET, state.LiftPopLeaveRet(*instr))
+DEF_IT(PUSH, state.LiftPush(*instr))
+DEF_IT(PUSHFQ, state.LiftPushf(*instr))
+DEF_IT(POP, state.LiftPop(*instr))
+DEF_IT(LEAVE, state.LiftLeave(*instr))
+DEF_IT(CALL, state.LiftCall(*instr))
+DEF_IT(RET, state.LiftRet(*instr))
 
 // Defined in llinstruction-gp.c
 DEF_IT(MOV, state.LiftMovgp(*instr, llvm::Instruction::SExt))

@@ -110,6 +110,7 @@ public:
     void OpStoreGp(const LLInstrOp& op, llvm::Value* value, Alignment alignment = ALIGN_NONE);
     void OpStoreVec(const LLInstrOp& op, llvm::Value* value, bool avx = false, Alignment alignment = ALIGN_IMP);
 
+    // llflags.cc
     void FlagCalcZ(llvm::Value* value) {
         auto zero = llvm::Constant::getNullValue(value->getType());
         SetFlag(RFLAG_ZF, irb.CreateICmpEQ(value, zero));
@@ -130,15 +131,15 @@ public:
     void FlagCalcOSub(llvm::Value* res, llvm::Value* lhs, llvm::Value* rhs);
 
     llvm::Value* FlagCond(LLInstrType type, LLInstrType base);
+
+    // llinstruction-stack.cc
+    void StackPush(llvm::Value* value);
+    llvm::Value* StackPop(const LLReg sp_src_reg = LLReg(LL_RT_GP64, LL_RI_SP));
 };
 
 class LLState : public LLStateBase {
 public:
     LLState(LLConfig& cfg, RegFile& rf, llvm::BasicBlock* bb) : LLStateBase(cfg, rf, bb) {}
-
-    // llinstruction-callret.cc
-    void LiftJmp(const LLInstr&);
-    void LiftJcc(const LLInstr&);
 
     // llinstruction-gp.cc
     void LiftMovgp(const LLInstr&, llvm::Instruction::CastOps cast);
@@ -155,8 +156,36 @@ public:
     void LiftCmovcc(const LLInstr&);
     void LiftSetcc(const LLInstr&);
 
-    void LiftPushPushf(const LLInstr&);
-    void LiftPopLeaveRet(const LLInstr&);
+    void LiftPush(const LLInstr& inst) {
+        StackPush(OpLoad(inst.ops[0], Facet::I));
+    }
+    void LiftPushf(const LLInstr& inst);
+    void LiftPop(const LLInstr& inst) {
+        OpStoreGp(inst.ops[0], StackPop());
+    }
+    void LiftLeave(const LLInstr& inst) {
+        llvm::Value* val = StackPop(LLReg(LL_RT_GP64, LL_RI_BP));
+        OpStoreGp(LLInstrOp::Reg(LLReg(LL_RT_GP64, LL_RI_BP)), val);
+    }
+
+    void LiftJmp(const LLInstr& inst) {
+        SetReg(LLReg(LL_RT_IP, 0), Facet::I64, OpLoad(inst.ops[0], Facet::I64));
+    }
+    void LiftJcc(const LLInstr& inst) {
+        SetReg(LLReg(LL_RT_IP, 0), Facet::I64, irb.CreateSelect(
+            FlagCond(inst.type, LL_INS_JO),
+            OpLoad(inst.ops[0], Facet::I64),
+            GetReg(LLReg(LL_RT_IP, 0), Facet::I64)
+        ));
+    }
+    void LiftCall(const LLInstr& inst) {
+        llvm::Value* new_rip = OpLoad(inst.ops[0], Facet::I);
+        StackPush(GetReg(LLReg(LL_RT_IP, 0), Facet::I64));
+        SetReg(LLReg(LL_RT_IP, 0), Facet::I64, new_rip);
+    }
+    void LiftRet(const LLInstr& inst) {
+        OpStoreGp(LLInstrOp::Reg(LLReg(LL_RT_IP, 0)), StackPop());
+    }
 
     // llinstruction-sse.cc
     void LiftSseMovq(const LLInstr&, Facet::Value type);

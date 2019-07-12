@@ -65,40 +65,29 @@ ll_instruction_get_flags(bool fullSized, LLState* state)
     return flagRegister;
 }
 
-void LLState::LiftPushPushf(const LLInstr& inst) {
-    llvm::Value* op1;
-    if (inst.type == LL_INS_PUSHFQ)
-        op1 = llvm::unwrap(ll_instruction_get_flags(true, this));
-    else
-        op1 = OpLoad(inst.ops[0], Facet::I);
-
+void LLStateBase::StackPush(llvm::Value* value) {
     llvm::Value* rsp = GetReg(LLReg(LL_RT_GP64, LL_RI_SP), Facet::PTR);
-    rsp = irb.CreatePointerCast(rsp, op1->getType()->getPointerTo());
+    rsp = irb.CreatePointerCast(rsp, value->getType()->getPointerTo());
     rsp = irb.CreateConstGEP1_64(rsp, -1);
-    irb.CreateStore(op1, rsp);
+    irb.CreateStore(value, rsp);
 
     rsp = irb.CreatePointerCast(rsp, irb.getInt8PtrTy());
     SetReg(LLReg(LL_RT_GP64, LL_RI_SP), Facet::PTR, rsp);
 }
 
-void LLState::LiftPopLeaveRet(const LLInstr& inst) {
-    LLInstrOp tgt_op;
-    if (inst.type == LL_INS_LEAVE)
-        tgt_op = LLInstrOp::Reg(LLReg(LL_RT_GP64, LL_RI_BP));
-    else if (inst.type == LL_INS_RET)
-        tgt_op = LLInstrOp::Reg(LLReg(LL_RT_IP, 0));
-    else
-        tgt_op = inst.ops[0];
-
-    // A LEAVE is essentially a POP RBP from RBP.
-    LLReg src_reg(LL_RT_GP64, inst.type == LL_INS_LEAVE ? LL_RI_BP : LL_RI_SP);
-    llvm::Value* rsp = GetReg(src_reg, Facet::PTR);
+llvm::Value* LLStateBase::StackPop(const LLReg sp_src_reg) {
+    llvm::Value* rsp = GetReg(sp_src_reg, Facet::PTR);
     rsp = irb.CreatePointerCast(rsp, irb.getInt64Ty()->getPointerTo());
-    OpStoreGp(tgt_op, irb.CreateLoad(rsp));
 
-    rsp = irb.CreateConstGEP1_64(rsp, 1);
-    rsp = irb.CreatePointerCast(rsp, irb.getInt8PtrTy());
-    SetReg(LLReg(LL_RT_GP64, LL_RI_SP), Facet::PTR, rsp);
+    llvm::Value* new_rsp = irb.CreateConstGEP1_64(rsp, 1);
+    new_rsp = irb.CreatePointerCast(new_rsp, irb.getInt8PtrTy());
+    SetReg(LLReg(LL_RT_GP64, LL_RI_SP), Facet::PTR, new_rsp);
+
+    return irb.CreateLoad(rsp);
+}
+
+void LLState::LiftPushf(const LLInstr& inst) {
+    StackPush(llvm::unwrap(ll_instruction_get_flags(true, this)));
 }
 
 /**

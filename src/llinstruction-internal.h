@@ -40,10 +40,6 @@ extern "C" {
 void ll_instruction_shift(LLInstr*, LLState*);
 void ll_instruction_cdqe(LLInstr*, LLState*);
 
-void ll_instruction_call(LLInstr*, LLState*);
-
-void ll_instruction_stack(LLInstr*, LLState*);
-
 void ll_instruction_movq(LLInstr* instr, LLState* state);
 void ll_instruction_movs(LLInstr* instr, LLState* state);
 void ll_instruction_movp(LLInstr* instr, LLState* state);
