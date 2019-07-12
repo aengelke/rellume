@@ -57,17 +57,17 @@ public:
     /// code which relies on the overflow flag again. However, immediate values
     /// are not folded when they are guaranteed to overflow.
     void EnableOverflowIntrinsics(bool enable) {
-        state.cfg.enableOverflowIntrinsics = enable;
+        cfg.enableOverflowIntrinsics = enable;
     }
 
     /// Enable unsafe floating-point optimizations, similar to -ffast-math.
     void EnableFastMath(bool enable) {
-        state.cfg.enableFastMath = enable;
+        cfg.enableFastMath = enable;
     }
 
     void SetGlobalBase(uintptr_t base, llvm::Value* value) {
-        state.cfg.global_base_addr = base;
-        state.cfg.global_base_value = value;
+        cfg.global_base_addr = base;
+        cfg.global_base_value = value;
     }
 
     void AddInst(uint64_t block_addr, const LLInstr& inst);
@@ -81,6 +81,7 @@ private:
     std::unique_ptr<BasicBlock> CreateExit();
     BasicBlock& ResolveAddr(llvm::Value* addr, BasicBlock& def);
 
+    LLConfig cfg;
     LLState state;
 
     llvm::Function* llvm;

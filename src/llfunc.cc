@@ -86,7 +86,7 @@ void Function::CreateEntry(BasicBlock& entry_bb)
     entry_bb.AddToPhis(llvm_bb, rf);
 }
 
-Function::Function(llvm::Module* mod) : state(mod->getContext())
+Function::Function(llvm::Module* mod) : state(cfg, mod->getContext())
 {
     llvm::IRBuilder<>& irb = state.irb;
     llvm::SmallVector<llvm::Type*, 4> cpu_types;
@@ -101,10 +101,10 @@ Function::Function(llvm::Module* mod) : state(mod->getContext())
 
     llvm = llvm::Function::Create(fn_type, llvm::GlobalValue::ExternalLinkage, "", mod);
 
-    state.cfg.global_base_value = nullptr;
-    state.cfg.enableOverflowIntrinsics = false;
-    state.cfg.enableFastMath = false;
-    state.cfg.prefer_pointer_cmp = false;
+    cfg.global_base_value = nullptr;
+    cfg.enableOverflowIntrinsics = false;
+    cfg.enableFastMath = false;
+    cfg.prefer_pointer_cmp = false;
 }
 
 void Function::AddInst(uint64_t block_addr, const LLInstr& inst)

@@ -90,7 +90,7 @@ enum Alignment {
  **/
 class LLStateBase {
 protected:
-    LLStateBase(llvm::LLVMContext& ctx) : irb(ctx) {
+    LLStateBase(LLConfig& cfg, llvm::LLVMContext& ctx) : cfg(cfg), irb(ctx) {
         builder = llvm::wrap(&irb);
     }
 
@@ -101,7 +101,7 @@ public:
     LLStateBase(const LLStateBase&) = delete;
     LLStateBase& operator=(const LLStateBase&) = delete;
 
-    LLConfig cfg;
+    LLConfig& cfg;
 
     /// DEPRECATED LLVM builder, use irb
     LLVMBuilderRef builder;
@@ -161,7 +161,7 @@ public:
 
 class LLState : public LLStateBase {
 public:
-    LLState(llvm::LLVMContext& ctx) : LLStateBase(ctx) {}
+    LLState(LLConfig& cfg, llvm::LLVMContext& ctx) : LLStateBase(cfg, ctx) {}
 
     void LiftRet(const LLInstr&);
     void LiftJmp(const LLInstr&);
