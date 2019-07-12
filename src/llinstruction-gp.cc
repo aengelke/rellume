@@ -317,16 +317,14 @@ LLState::LiftLea(const LLInstr& inst)
         SetRegFacet(inst.ops[0].reg, Facet::PTR, res_ptr);
 }
 
-void LLState::LiftCmovcc(const LLInstr& inst) {
-    llvm::Value* cond = FlagCond(inst.type, LL_INS_CMOVO);
+void LLState::LiftCmovcc(const LLInstr& inst, Condition cond) {
     llvm::Value* op1 = OpLoad(inst.ops[0], Facet::I);
     llvm::Value* op2 = OpLoad(inst.ops[1], Facet::I);
-    OpStoreGp(inst.ops[0], irb.CreateSelect(cond, op2, op1));
+    OpStoreGp(inst.ops[0], irb.CreateSelect(FlagCond(cond), op2, op1));
 }
 
-void LLState::LiftSetcc(const LLInstr& inst) {
-    llvm::Value* cond = FlagCond(inst.type, LL_INS_SETO);
-    OpStoreGp(inst.ops[0], irb.CreateZExt(cond, irb.getInt8Ty()));
+void LLState::LiftSetcc(const LLInstr& inst, Condition cond) {
+    OpStoreGp(inst.ops[0], irb.CreateZExt(FlagCond(cond), irb.getInt8Ty()));
 }
 
 void

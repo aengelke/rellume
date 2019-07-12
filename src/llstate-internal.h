@@ -49,13 +49,10 @@ enum Alignment {
     ALIGN_1 = ALIGN_NONE,
 };
 
-// struct ConditionCode {
-//     enum {
-//         O = 0, NO = 1, C = 2, NC = 3, Z = 4, NZ = 5, BE = 6, A = 7,
-//         S = 8, NS = 9, P = 10, NP = 11, L = 12, GE = 13, LE = 14, G = 15,
-//         AL = 16, /* always */ NV = 17, /* never */, IND = 18, /* indirect */
-//     };
-// };
+enum class Condition {
+    O = 0, NO = 1, C = 2, NC = 3, Z = 4, NZ = 5, BE = 6, A = 7,
+    S = 8, NS = 9, P = 10, NP = 11, L = 12, GE = 13, LE = 14, G = 15,
+};
 
 /**
  * \brief The LLVM state of the back-end.
@@ -130,7 +127,7 @@ public:
     void FlagCalcOAdd(llvm::Value* res, llvm::Value* lhs, llvm::Value* rhs);
     void FlagCalcOSub(llvm::Value* res, llvm::Value* lhs, llvm::Value* rhs);
 
-    llvm::Value* FlagCond(LLInstrType type, LLInstrType base);
+    llvm::Value* FlagCond(Condition cond);
 
     // llinstruction-stack.cc
     void StackPush(llvm::Value* value);
@@ -153,8 +150,8 @@ public:
     void LiftIncDec(const LLInstr&);
     void LiftMul(const LLInstr&);
     void LiftLea(const LLInstr&);
-    void LiftCmovcc(const LLInstr&);
-    void LiftSetcc(const LLInstr&);
+    void LiftCmovcc(const LLInstr& inst, Condition cond);
+    void LiftSetcc(const LLInstr& inst, Condition cond);
 
     void LiftPush(const LLInstr& inst) {
         StackPush(OpLoad(inst.ops[0], Facet::I));
@@ -171,9 +168,8 @@ public:
     void LiftJmp(const LLInstr& inst) {
         SetReg(LLReg(LL_RT_IP, 0), Facet::I64, OpLoad(inst.ops[0], Facet::I64));
     }
-    void LiftJcc(const LLInstr& inst) {
-        SetReg(LLReg(LL_RT_IP, 0), Facet::I64, irb.CreateSelect(
-            FlagCond(inst.type, LL_INS_JO),
+    void LiftJcc(const LLInstr& inst, Condition cond) {
+        SetReg(LLReg(LL_RT_IP, 0), Facet::I64, irb.CreateSelect(FlagCond(cond),
             OpLoad(inst.ops[0], Facet::I64),
             GetReg(LLReg(LL_RT_IP, 0), Facet::I64)
         ));

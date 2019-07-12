@@ -48,37 +48,38 @@
  **/
 
 llvm::Value*
-LLStateBase::FlagCond(LLInstrType type, LLInstrType base)
+LLStateBase::FlagCond(Condition cond)
 {
     RegFile::FlagCache& cache = regfile.GetFlagCache();
-    int condition = type - base;
     if (cache.valid)
     {
-        switch (condition)
+        switch (cond)
         {
-        case 6: return irb.CreateICmpULE(cache.lhs, cache.rhs);
-        case 7: return irb.CreateICmpUGT(cache.lhs, cache.rhs);
-        case 12: return irb.CreateICmpSLT(cache.lhs, cache.rhs);
-        case 13: return irb.CreateICmpSGE(cache.lhs, cache.rhs);
-        case 14: return irb.CreateICmpSLE(cache.lhs, cache.rhs);
-        case 15: return irb.CreateICmpSGT(cache.lhs, cache.rhs);
+        case Condition::BE: return irb.CreateICmpULE(cache.lhs, cache.rhs);
+        case Condition::A:  return irb.CreateICmpUGT(cache.lhs, cache.rhs);
+        case Condition::L:  return irb.CreateICmpSLT(cache.lhs, cache.rhs);
+        case Condition::GE: return irb.CreateICmpSGE(cache.lhs, cache.rhs);
+        case Condition::LE: return irb.CreateICmpSLE(cache.lhs, cache.rhs);
+        case Condition::G:  return irb.CreateICmpSGT(cache.lhs, cache.rhs);
+        default: break;
         }
     }
 
     llvm::Value* result;
-    switch (condition & ~1)
+    switch (static_cast<Condition>(static_cast<int>(cond) & ~1))
     {
-    case 0: result = GetFlag(RFLAG_OF); break;
-    case 2: result = GetFlag(RFLAG_CF); break;
-    case 4: result = GetFlag(RFLAG_ZF); break;
-    case 6: result = irb.CreateOr(GetFlag(RFLAG_CF), GetFlag(RFLAG_ZF)); break;
-    case 8: result = GetFlag(RFLAG_SF); break;
-    case 10: result = GetFlag(RFLAG_PF); break;
-    case 12: result = irb.CreateICmpNE(GetFlag(RFLAG_SF), GetFlag(RFLAG_OF)); break;
-    case 14: result = irb.CreateOr(GetFlag(RFLAG_ZF), irb.CreateICmpNE(GetFlag(RFLAG_SF), GetFlag(RFLAG_OF))); break;
+    case Condition::O:  result = GetFlag(RFLAG_OF); break;
+    case Condition::C:  result = GetFlag(RFLAG_CF); break;
+    case Condition::Z:  result = GetFlag(RFLAG_ZF); break;
+    case Condition::BE: result = irb.CreateOr(GetFlag(RFLAG_CF), GetFlag(RFLAG_ZF)); break;
+    case Condition::S:  result = GetFlag(RFLAG_SF); break;
+    case Condition::P:  result = GetFlag(RFLAG_PF); break;
+    case Condition::L:  result = irb.CreateICmpNE(GetFlag(RFLAG_SF), GetFlag(RFLAG_OF)); break;
+    case Condition::LE: result = irb.CreateOr(GetFlag(RFLAG_ZF), irb.CreateICmpNE(GetFlag(RFLAG_SF), GetFlag(RFLAG_OF))); break;
+    default: assert(0);
     }
 
-    return condition & 1 ? irb.CreateNot(result) : result;
+    return static_cast<int>(cond) & 1 ? irb.CreateNot(result) : result;
 }
 
 void
