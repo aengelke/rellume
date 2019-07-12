@@ -43,7 +43,7 @@ namespace rellume
 class BasicBlock
 {
 public:
-    BasicBlock(llvm::BasicBlock* llvm, LLState& state);
+    BasicBlock(llvm::BasicBlock* llvm);
 
     BasicBlock(BasicBlock&& rhs);
     BasicBlock& operator=(BasicBlock&& rhs);
@@ -51,11 +51,7 @@ public:
     BasicBlock(const BasicBlock&) = delete;
     BasicBlock& operator=(const BasicBlock&) = delete;
 
-    void SetCurrent() {
-        state.regfile = &regfile;
-        state.irb.SetInsertPoint(llvmBB);
-    }
-    void AddInst(LLInstr* inst);
+    void AddInst(LLInstr* inst, LLConfig& cfg);
     void AddToPhis(BasicBlock& pred) {
         AddToPhis(pred.llvmBB, pred.regfile);
     }
@@ -66,14 +62,14 @@ public:
     }
 
 private:
-    LLState& state;
-
     /// The LLVM basic block
     llvm::BasicBlock* llvmBB;
 
+public:
     /// The register file for the basic block
     RegFile regfile;
 
+private:
     /// PHI node containing the value of RIP, used only for the terminating
     /// block.
     llvm::PHINode* phi_rip;

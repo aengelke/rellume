@@ -82,7 +82,6 @@ private:
     BasicBlock& ResolveAddr(llvm::Value* addr, BasicBlock& def);
 
     LLConfig cfg;
-    LLState state;
 
     llvm::Function* llvm;
     uint64_t entry_addr;

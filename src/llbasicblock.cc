@@ -55,8 +55,7 @@
 namespace rellume
 {
 
-BasicBlock::BasicBlock(llvm::BasicBlock* llvm, LLState& state) : state(state),
-        llvmBB(llvm), regfile(llvm) {
+BasicBlock::BasicBlock(llvm::BasicBlock* llvm) : llvmBB(llvm), regfile(llvm) {
     llvm::IRBuilder<> irb(llvm);
 
     phi_rip = irb.CreatePHI(irb.getInt64Ty(), 0);
@@ -95,9 +94,9 @@ BasicBlock::BasicBlock(llvm::BasicBlock* llvm, LLState& state) : state(state),
     }
 }
 
-void BasicBlock::AddInst(LLInstr* instr)
+void BasicBlock::AddInst(LLInstr* instr, LLConfig& cfg)
 {
-    SetCurrent();
+    LLState state(cfg, regfile, llvmBB);
 
     // Set new instruction pointer register
     llvm::Value* ripValue = state.irb.getInt64(instr->addr + instr->len);

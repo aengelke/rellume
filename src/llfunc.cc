@@ -62,7 +62,7 @@ namespace rellume
 void Function::CreateEntry(BasicBlock& entry_bb)
 {
     llvm::BasicBlock* first_bb = llvm->empty() ? nullptr : &llvm->front();
-    llvm::BasicBlock* llvm_bb = llvm::BasicBlock::Create(state.irb.getContext(), "", llvm, first_bb);
+    llvm::BasicBlock* llvm_bb = llvm::BasicBlock::Create(llvm->getContext(), "", llvm, first_bb);
     llvm::IRBuilder<> irb(llvm_bb);
     RegFile rf(llvm_bb);
 
@@ -86,9 +86,9 @@ void Function::CreateEntry(BasicBlock& entry_bb)
     entry_bb.AddToPhis(llvm_bb, rf);
 }
 
-Function::Function(llvm::Module* mod) : state(cfg, mod->getContext())
+Function::Function(llvm::Module* mod)
 {
-    llvm::IRBuilder<>& irb = state.irb;
+    llvm::IRBuilder<> irb(mod->getContext());
     llvm::SmallVector<llvm::Type*, 4> cpu_types;
     cpu_types.push_back(irb.getInt64Ty()); // instruction pointer
     cpu_types.push_back(llvm::ArrayType::get(irb.getInt64Ty(), 16));
@@ -116,10 +116,10 @@ void Function::AddInst(uint64_t block_addr, const LLInstr& inst)
 
         llvm::BasicBlock* llvm_bb = llvm::BasicBlock::Create(llvm->getContext(),
                                                              "", llvm, nullptr);
-        block_map[block_addr] = std::make_unique<BasicBlock>(llvm_bb, state);
+        block_map[block_addr] = std::make_unique<BasicBlock>(llvm_bb);
     }
 
-    block_map[block_addr]->AddInst(const_cast<LLInstr*>(&inst));
+    block_map[block_addr]->AddInst(const_cast<LLInstr*>(&inst), cfg);
 }
 
 static
@@ -147,9 +147,9 @@ ll_func_optimize(LLVMValueRef llvm_fn)
 }
 
 std::unique_ptr<BasicBlock> Function::CreateExit() {
-    llvm::BasicBlock* llvm_bb = llvm::BasicBlock::Create(state.irb.getContext(), "", llvm, nullptr);
-    auto exit_block = std::make_unique<BasicBlock>(llvm_bb, state);
-    exit_block->SetCurrent();
+    llvm::BasicBlock* llvm_bb = llvm::BasicBlock::Create(llvm->getContext(), "", llvm, nullptr);
+    auto exit_block = std::make_unique<BasicBlock>(llvm_bb);
+    LLState state(cfg, exit_block->regfile, exit_block->Llvm());
 
     // Pack CPU struct and return
     llvm::Value* param = llvm->arg_begin();
@@ -203,7 +203,7 @@ llvm::Function* Function::Lift()
 
     for (auto it = block_map.begin(); it != block_map.end(); ++it)
     {
-        it->second->SetCurrent();
+        LLState state(cfg, it->second->regfile, it->second->Llvm());
 
         llvm::Value* next_rip = state.GetReg(LLReg(LL_RT_IP, 0), Facet::I64);
         if (auto select = llvm::dyn_cast<llvm::SelectInst>(next_rip))
