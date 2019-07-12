@@ -145,6 +145,13 @@ struct LLInstr {
 
     uintptr_t addr;
     int len;
+
+#if defined(__cplusplus) && defined(RELLUME_ENABLE_CPP_HEADER)
+    static LLInstr Invalid(uintptr_t addr) {
+        return LLInstr{LL_INS_Invalid, 0, 0, 0, {}, addr, 1};
+    }
+    static LLInstr Decode(uint8_t* buf, size_t buf_size, uintptr_t addr);
+#endif
 };
 
 typedef struct LLInstr LLInstr;
