@@ -169,7 +169,7 @@ LLStateBase::OpStoreGp(const LLInstrOp& op, llvm::Value* value, Alignment alignm
     assert(op.type == LL_OP_REG && "gp-store to non-mem/non-reg");
 
     value = irb.CreateSExtOrBitCast(value, irb.getIntNTy(op.size * 8));
-    if (op.reg.rt == LL_RT_GP64)
+    if (op.reg.rt == LL_RT_GP64 || op.reg.rt == LL_RT_IP)
     {
         SetReg(op.reg, Facet::I64, value);
         return;

@@ -136,16 +136,27 @@ class LLState : public LLStateBase {
 public:
     LLState(LLConfig& cfg, RegFile& rf, llvm::BasicBlock* bb) : LLStateBase(cfg, rf, bb) {}
 
-    void LiftRet(const LLInstr&);
+    // llinstruction-callret.cc
     void LiftJmp(const LLInstr&);
     void LiftJcc(const LLInstr&);
+
+    // llinstruction-gp.cc
+    void LiftMovgp(const LLInstr&, llvm::Instruction::CastOps cast);
+    void LiftAdd(const LLInstr&);
+    void LiftSub(const LLInstr&);
     void LiftCmp(const LLInstr&);
-    void LiftNot(const LLInstr&);
-    void LiftNeg(const LLInstr&);
     void LiftAndOrXor(const LLInstr& inst, llvm::Instruction::BinaryOps op,
                       bool writeback = true);
+    void LiftNot(const LLInstr&);
+    void LiftNeg(const LLInstr&);
+    void LiftIncDec(const LLInstr&);
     void LiftMul(const LLInstr&);
     void LiftLea(const LLInstr&);
+    void LiftCmovcc(const LLInstr&);
+    void LiftSetcc(const LLInstr&);
+
+    void LiftPushPushf(const LLInstr&);
+    void LiftPopLeaveRet(const LLInstr&);
 
     // llinstruction-sse.cc
     void LiftSseMovq(const LLInstr&, Facet::Value type);

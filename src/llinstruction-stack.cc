@@ -65,56 +65,40 @@ ll_instruction_get_flags(bool fullSized, LLState* state)
     return flagRegister;
 }
 
-void
-ll_instruction_stack(LLInstr* instr, LLState* state)
-{
-    LLVMTypeRef i8 = llvm::wrap(state->irb.getInt8Ty());
-    LLVMTypeRef i64 = llvm::wrap(state->irb.getInt64Ty());
-    LLVMTypeRef pi8 = LLVMPointerType(i8, 0);
-    LLVMTypeRef pi64 = LLVMPointerType(i64, 0);
-
-    // In case of a leave instruction, we basically pop the new base pointer
-    // from RBP and store the new value as stack pointer.
-    int spRegIndex = instr->type == LL_INS_LEAVE ? LL_RI_BP : LL_RI_SP;
-    LLVMValueRef spReg = llvm::wrap(state->GetReg(LLReg(LL_RT_GP64, spRegIndex), Facet::PTR));
-    LLVMValueRef sp = LLVMBuildPointerCast(state->builder, spReg, pi64, "");
-    LLVMValueRef newSp = NULL;
-    LLVMValueRef value;
-
-    if (instr->type == LL_INS_PUSH || instr->type == LL_INS_PUSHFQ)
-    {
-        // Decrement Stack Pointer via a GEP instruction
-        LLVMValueRef constSub = LLVMConstInt(i64, -1, false);
-        newSp = LLVMBuildGEP(state->builder, sp, &constSub, 1, "");
-
-        if (instr->type == LL_INS_PUSH)
-            value = ll_operand_load(OP_SI, ALIGN_MAXIMUM, &instr->ops[0], state);
-        else
-            value = ll_instruction_get_flags(true, state);
-
-        value = LLVMBuildSExtOrBitCast(state->builder, value, i64, "");
-        LLVMBuildStore(state->builder, value, newSp);
-    }
-    else if (instr->type == LL_INS_POP || instr->type == LL_INS_LEAVE)
-    {
-        LLInstrOp operand = instr->type == LL_INS_LEAVE
-            ? LLInstrOp::Reg(LLReg(LL_RT_GP64, LL_RI_BP))
-            : instr->ops[0];
-
-        value = LLVMBuildLoad(state->builder, sp, "");
-        ll_operand_store(OP_SI, ALIGN_MAXIMUM, &operand, REG_DEFAULT, value, state);
-
-        // Advance Stack pointer via a GEP
-        LLVMValueRef constAdd = LLVMConstInt(i64, 1, false);
-        newSp = LLVMBuildGEP(state->builder, sp, &constAdd, 1, "");
-    }
+void LLState::LiftPushPushf(const LLInstr& inst) {
+    llvm::Value* op1;
+    if (inst.type == LL_INS_PUSHFQ)
+        op1 = llvm::unwrap(ll_instruction_get_flags(true, this));
     else
-        warn_if_reached();
+        op1 = OpLoad(inst.ops[0], Facet::I);
 
-    // Cast back to int for register store
-    LLVMValueRef newSpReg = LLVMBuildPointerCast(state->builder, newSp, pi8, "");
+    llvm::Value* rsp = GetReg(LLReg(LL_RT_GP64, LL_RI_SP), Facet::PTR);
+    rsp = irb.CreatePointerCast(rsp, op1->getType()->getPointerTo());
+    rsp = irb.CreateConstGEP1_64(rsp, -1);
+    irb.CreateStore(op1, rsp);
 
-    state->SetReg(LLReg(LL_RT_GP64, LL_RI_SP), Facet::PTR, llvm::unwrap(newSpReg));
+    rsp = irb.CreatePointerCast(rsp, irb.getInt8PtrTy());
+    SetReg(LLReg(LL_RT_GP64, LL_RI_SP), Facet::PTR, rsp);
+}
+
+void LLState::LiftPopLeaveRet(const LLInstr& inst) {
+    LLInstrOp tgt_op;
+    if (inst.type == LL_INS_LEAVE)
+        tgt_op = LLInstrOp::Reg(LLReg(LL_RT_GP64, LL_RI_BP));
+    else if (inst.type == LL_INS_RET)
+        tgt_op = LLInstrOp::Reg(LLReg(LL_RT_IP, 0));
+    else
+        tgt_op = inst.ops[0];
+
+    // A LEAVE is essentially a POP RBP from RBP.
+    LLReg src_reg(LL_RT_GP64, inst.type == LL_INS_LEAVE ? LL_RI_BP : LL_RI_SP);
+    llvm::Value* rsp = GetReg(src_reg, Facet::PTR);
+    rsp = irb.CreatePointerCast(rsp, irb.getInt64Ty()->getPointerTo());
+    OpStoreGp(tgt_op, irb.CreateLoad(rsp));
+
+    rsp = irb.CreateConstGEP1_64(rsp, 1);
+    rsp = irb.CreatePointerCast(rsp, irb.getInt8PtrTy());
+    SetReg(LLReg(LL_RT_GP64, LL_RI_SP), Facet::PTR, rsp);
 }
 
 /**
