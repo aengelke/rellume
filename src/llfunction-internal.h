@@ -52,9 +52,24 @@ public:
     Function(const Function&) = delete;
     Function& operator=(const Function&) = delete;
 
-    void EnableOverflowIntrinsics(bool enable);
-    void EnableFastMath(bool enable);
-    void SetGlobalBase(uintptr_t base, llvm::Value* value);
+    /// Enable the usage of overflow intrinsics instead of bitwise operations
+    /// when setting the overflow flag. For dynamic values this leads to better
+    /// code which relies on the overflow flag again. However, immediate values
+    /// are not folded when they are guaranteed to overflow.
+    void EnableOverflowIntrinsics(bool enable) {
+        state.cfg.enableOverflowIntrinsics = enable;
+    }
+
+    /// Enable unsafe floating-point optimizations, similar to -ffast-math.
+    void EnableFastMath(bool enable) {
+        state.cfg.enableFastMath = enable;
+    }
+
+    void SetGlobalBase(uintptr_t base, llvm::Value* value) {
+        state.cfg.global_base_addr = base;
+        state.cfg.global_base_value = value;
+    }
+
     BasicBlock* AddBlock(uint64_t address);
     llvm::Function* Lift();
 

@@ -39,8 +39,6 @@ extern "C" {
 #endif
 
 struct LLConfig {
-    size_t stackSize;
-
     /**
      * \brief Whether overflow intrinsics should be used.
      **/
@@ -58,12 +56,12 @@ struct LLConfig {
     /**
      * \brief The global offset base
      **/
-    uintptr_t globalOffsetBase;
+    uintptr_t global_base_addr;
     /**
      * \brief The global variable used to access constant memory regions. Points
      * to globalOffsetBase.
      **/
-    LLVMValueRef globalBase;
+    llvm::Value* global_base_value;
 };
 
 typedef struct LLConfig LLConfig;

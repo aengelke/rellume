@@ -99,16 +99,13 @@ void BasicBlock::AddInst(LLInstr* instr)
 {
     SetCurrent();
 
-    llvm::IRBuilder<>* builder = llvm::unwrap(state.builder);
-
     // Set new instruction pointer register
-    uintptr_t rip = instr->addr + instr->len;
-    llvm::Value* ripValue = llvm::ConstantInt::get(builder->getInt64Ty(), rip);
+    llvm::Value* ripValue = state.irb.getInt64(instr->addr + instr->len);
     regfile.SetReg(LLReg(LL_RT_IP, 0), Facet::I64, ripValue, true);
 
     // Add separator for debugging.
     llvm::Function* intrinsicDoNothing = llvm::Intrinsic::getDeclaration(llvmBB->getModule(), llvm::Intrinsic::donothing, {});
-    builder->CreateCall(intrinsicDoNothing);
+    state.irb.CreateCall(intrinsicDoNothing);
 
     switch (instr->type)
     {

@@ -50,10 +50,10 @@ LLStateBase::OpAddrConst(uint64_t addr)
     if (addr == 0)
         return llvm::ConstantPointerNull::get(irb.getInt8PtrTy());
 
-    if (cfg.globalBase != nullptr)
+    if (cfg.global_base_value != nullptr)
     {
-        uintptr_t offset = addr - cfg.globalOffsetBase;
-        return irb.CreateGEP(llvm::unwrap(cfg.globalBase), {irb.getInt64(offset)});
+        uintptr_t offset = addr - cfg.global_base_addr;
+        return irb.CreateGEP(cfg.global_base_value, {irb.getInt64(offset)});
     }
 
     return irb.CreateIntToPtr(irb.getInt64(addr), irb.getInt8PtrTy());
