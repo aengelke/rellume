@@ -125,7 +125,7 @@ ll_instruction_movlp(LLInstr* instr, LLState* state)
 void
 ll_instruction_movhps(LLInstr* instr, LLState* state)
 {
-    LLVMTypeRef i32 = LLVMInt32TypeInContext(state->context);
+    LLVMTypeRef i32 = llvm::wrap(state->irb.getInt32Ty());
 
     if (instr->ops[0].type == LL_OP_REG)
     {
@@ -173,7 +173,7 @@ ll_instruction_movhps(LLInstr* instr, LLState* state)
 void
 ll_instruction_movhpd(LLInstr* instr, LLState* state)
 {
-    LLVMTypeRef i32 = LLVMInt32TypeInContext(state->context);
+    LLVMTypeRef i32 = llvm::wrap(state->irb.getInt32Ty());
 
     if (instr->ops[0].type == LL_OP_REG)
     {

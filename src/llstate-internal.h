@@ -77,12 +77,20 @@ enum Alignment {
     ALIGN_1 = ALIGN_NONE,
 };
 
+// struct ConditionCode {
+//     enum {
+//         O = 0, NO = 1, C = 2, NC = 3, Z = 4, NZ = 5, BE = 6, A = 7,
+//         S = 8, NS = 9, P = 10, NP = 11, L = 12, GE = 13, LE = 14, G = 15,
+//         AL = 16, /* always */ NV = 17, /* never */, IND = 18, /* indirect */
+//     };
+// };
+
 /**
  * \brief The LLVM state of the back-end.
  **/
 class LLStateBase {
 protected:
-    LLStateBase(llvm::LLVMContext& ctx) : context(llvm::wrap(&ctx)), irb(ctx) {
+    LLStateBase(llvm::LLVMContext& ctx) : irb(ctx) {
         builder = llvm::wrap(&irb);
     }
 
@@ -95,8 +103,6 @@ public:
 
     LLConfig cfg;
 
-    /// DEPRECATED LLVM context, use irb.getContext()
-    LLVMContextRef context;
     /// DEPRECATED LLVM builder, use irb
     LLVMBuilderRef builder;
 

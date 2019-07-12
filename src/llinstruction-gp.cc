@@ -46,7 +46,7 @@ ll_instruction_movgp(LLInstr* instr, LLState* state)
         state->regfile->Rename(instr->ops[0].reg, instr->ops[1].reg);
     else
     {
-        LLVMTypeRef targetType = LLVMIntTypeInContext(state->context, instr->ops[0].size * 8);
+        LLVMTypeRef targetType = llvm::wrap(state->irb.getIntNTy(instr->ops[0].size * 8));
         LLVMValueRef operand1 = ll_operand_load(OP_SI, ALIGN_MAXIMUM, &instr->ops[1], state);
 
         if (instr->type == LL_INS_MOVZX)
@@ -348,7 +348,7 @@ ll_instruction_cmov(LLInstr* instr, LLState* state)
 void
 ll_instruction_setcc(LLInstr* instr, LLState* state)
 {
-    LLVMTypeRef i8 = LLVMInt8TypeInContext(state->context);
+    LLVMTypeRef i8 = llvm::wrap(state->irb.getInt8Ty());
     LLVMValueRef cond = llvm::wrap(state->FlagCond(instr->type, LL_INS_SETO));
     LLVMValueRef result = LLVMBuildZExtOrBitCast(state->builder, cond, i8, "");
     ll_operand_store(OP_SI, ALIGN_MAXIMUM, &instr->ops[0], REG_DEFAULT, result, state);

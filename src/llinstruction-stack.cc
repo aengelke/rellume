@@ -49,7 +49,7 @@ ll_instruction_get_flags(bool fullSized, LLState* state)
               -1,       -1,       -1,       -1,
     };
 
-    LLVMTypeRef intType = LLVMIntTypeInContext(state->context, fullSized ? 64 : 16);
+    LLVMTypeRef intType = llvm::wrap(state->irb.getIntNTy(fullSized ? 64 : 16));
     LLVMValueRef flagRegister = LLVMConstNull(intType);
     for (size_t i = 0; i < sizeof(flags) / sizeof(flags[0]); i++)
     {
@@ -68,8 +68,8 @@ ll_instruction_get_flags(bool fullSized, LLState* state)
 void
 ll_instruction_stack(LLInstr* instr, LLState* state)
 {
-    LLVMTypeRef i8 = LLVMInt8TypeInContext(state->context);
-    LLVMTypeRef i64 = LLVMInt64TypeInContext(state->context);
+    LLVMTypeRef i8 = llvm::wrap(state->irb.getInt8Ty());
+    LLVMTypeRef i64 = llvm::wrap(state->irb.getInt64Ty());
     LLVMTypeRef pi8 = LLVMPointerType(i8, 0);
     LLVMTypeRef pi64 = LLVMPointerType(i64, 0);
 
