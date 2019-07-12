@@ -45,7 +45,6 @@ class Function
 {
 public:
     Function(llvm::Module* mod);
-    ~Function();
 
     Function(Function&& rhs);
     Function& operator=(Function&& rhs);
@@ -63,15 +62,15 @@ public:
     int Decode(uintptr_t addr);
 
 private:
-    void CreateEntry(BasicBlock*);
-    BasicBlock* CreateExit();
-    BasicBlock* ResolveAddr(llvm::Value* addr, BasicBlock* def);
+    void CreateEntry(BasicBlock&);
+    std::unique_ptr<BasicBlock> CreateExit();
+    BasicBlock& ResolveAddr(llvm::Value* addr, BasicBlock& def);
 
     LLState state;
 
     llvm::Function* llvm;
     uint64_t entry_addr;
-    std::unordered_map<uint64_t,BasicBlock*> block_map;
+    std::unordered_map<uint64_t,std::unique_ptr<BasicBlock>> block_map;
 };
 
 }

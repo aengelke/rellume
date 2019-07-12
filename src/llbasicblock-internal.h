@@ -56,8 +56,8 @@ public:
         state.irb.SetInsertPoint(llvmBB);
     }
     void AddInst(LLInstr* inst);
-    void AddToPhis(BasicBlock* pred) {
-        AddToPhis(pred->llvmBB, pred->regfile);
+    void AddToPhis(BasicBlock& pred) {
+        AddToPhis(pred.llvmBB, pred.regfile);
     }
     void AddToPhis(llvm::BasicBlock* pred, RegFile& pred_rf);
 

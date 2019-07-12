@@ -59,7 +59,7 @@
 namespace rellume
 {
 
-void Function::CreateEntry(BasicBlock* entry_bb)
+void Function::CreateEntry(BasicBlock& entry_bb)
 {
     llvm::BasicBlock* first_bb = llvm->empty() ? nullptr : &llvm->front();
     llvm::BasicBlock* llvm_bb = llvm::BasicBlock::Create(state.irb.getContext(), "", llvm, first_bb);
@@ -81,9 +81,9 @@ void Function::CreateEntry(BasicBlock* entry_bb)
     for (unsigned i = 0; i < RFLAG_Max; i++)
         rf.SetFlag(i, irb.CreateExtractValue(regs, {2, i}));
 
-    irb.CreateBr(entry_bb->Llvm());
+    irb.CreateBr(entry_bb.Llvm());
 
-    entry_bb->AddToPhis(llvm_bb, rf);
+    entry_bb.AddToPhis(llvm_bb, rf);
 }
 
 Function::Function(llvm::Module* mod) : state(mod->getContext())
@@ -149,28 +149,14 @@ void Function::SetGlobalBase(uintptr_t base, llvm::Value* value)
     state.cfg.globalBase = llvm::wrap(value);
 }
 
-/**
- * Dispose a function.
- *
- * \author Alexis Engelke
- *
- * \param fn The function
- **/
-Function::~Function()
-{
-    for (auto it = block_map.begin(); it != block_map.end(); ++it)
-        delete it->second;
-}
-
 BasicBlock* Function::AddBlock(uint64_t address)
 {
     if (block_map.size() == 0)
         entry_addr = address;
 
     llvm::BasicBlock* llvm_bb = llvm::BasicBlock::Create(llvm->getContext(), "", llvm, nullptr);
-    BasicBlock* bb = new BasicBlock(llvm_bb, state);
-    block_map[address] = bb;
-    return bb;
+    block_map[address] = std::make_unique<BasicBlock>(llvm_bb, state);
+    return block_map[address].get();
 }
 
 static
@@ -197,9 +183,9 @@ ll_func_optimize(LLVMValueRef llvm_fn)
     LLVMDisposePassManager(pm);
 }
 
-BasicBlock* Function::CreateExit() {
+std::unique_ptr<BasicBlock> Function::CreateExit() {
     llvm::BasicBlock* llvm_bb = llvm::BasicBlock::Create(state.irb.getContext(), "", llvm, nullptr);
-    BasicBlock* exit_block = new BasicBlock(llvm_bb, state);
+    auto exit_block = std::make_unique<BasicBlock>(llvm_bb, state);
     exit_block->SetCurrent();
 
     // Pack CPU struct and return
@@ -234,12 +220,12 @@ BasicBlock* Function::CreateExit() {
     return exit_block;
 }
 
-BasicBlock* Function::ResolveAddr(llvm::Value* addr, BasicBlock* def) {
+BasicBlock& Function::ResolveAddr(llvm::Value* addr, BasicBlock& def) {
     if (auto const_addr = llvm::dyn_cast<llvm::ConstantInt>(addr))
     {
         auto block_it = block_map.find(const_addr->getZExtValue());
         if (block_it != block_map.end())
-            return block_it->second;
+            return *(block_it->second);
     }
     return def;
 }
@@ -249,8 +235,8 @@ llvm::Function* Function::Lift()
     if (block_map.size() == 0)
         return NULL;
 
-    CreateEntry(block_map[entry_addr]);
-    BasicBlock* exit_block = CreateExit();
+    CreateEntry(*block_map[entry_addr]);
+    std::unique_ptr<BasicBlock> exit_block = CreateExit();
 
     for (auto it = block_map.begin(); it != block_map.end(); ++it)
     {
@@ -259,32 +245,30 @@ llvm::Function* Function::Lift()
         llvm::Value* next_rip = state.GetReg(LLReg(LL_RT_IP, 0), Facet::I64);
         if (auto select = llvm::dyn_cast<llvm::SelectInst>(next_rip))
         {
-            BasicBlock* true_block = ResolveAddr(select->getTrueValue(), exit_block);
-            BasicBlock* false_block = ResolveAddr(select->getFalseValue(), exit_block);
+            BasicBlock& true_block = ResolveAddr(select->getTrueValue(), *exit_block);
+            BasicBlock& false_block = ResolveAddr(select->getFalseValue(), *exit_block);
 
             // In case both blocks are the same create a single branch only.
-            if (true_block != false_block)
+            if (std::addressof(true_block) != std::addressof(false_block))
             {
                 state.irb.CreateCondBr(select->getCondition(),
-                                       true_block->Llvm(), false_block->Llvm());
-                true_block->AddToPhis(it->second);
-                false_block->AddToPhis(it->second);
+                                       true_block.Llvm(), false_block.Llvm());
+                true_block.AddToPhis(*(it->second));
+                false_block.AddToPhis(*(it->second));
             }
             else
             {
-                state.irb.CreateBr(true_block->Llvm());
-                true_block->AddToPhis(it->second);
+                state.irb.CreateBr(true_block.Llvm());
+                true_block.AddToPhis(*(it->second));
             }
         }
         else
         {
-            BasicBlock* next_block = ResolveAddr(next_rip, exit_block);
-            state.irb.CreateBr(next_block->Llvm());
-            next_block->AddToPhis(it->second);
+            BasicBlock& next_block = ResolveAddr(next_rip, *exit_block);
+            state.irb.CreateBr(next_block.Llvm());
+            next_block.AddToPhis(*(it->second));
         }
     }
-
-    delete exit_block;
 
     if (llvm::verifyFunction(*(llvm), &llvm::errs()))
         return NULL;
