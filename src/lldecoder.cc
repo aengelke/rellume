@@ -117,9 +117,9 @@ int Function::Decode(uintptr_t addr)
 
     for (auto it = blocks.begin(); it != blocks.end(); it++)
     {
-        BasicBlock* block = AddBlock(insts[it->first].addr);
+        uint64_t block_addr = insts[it->first].addr;
         for (size_t j = it->first; j < it->second; j++)
-            block->AddInst(&insts[j]);
+            AddInst(block_addr, insts[j]);
     }
 
     return 0;

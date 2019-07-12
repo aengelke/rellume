@@ -70,7 +70,7 @@ public:
         state.cfg.global_base_value = value;
     }
 
-    BasicBlock* AddBlock(uint64_t address);
+    void AddInst(uint64_t block_addr, const LLInstr& inst);
     llvm::Function* Lift();
 
     // Implemented in lldecoder.cc

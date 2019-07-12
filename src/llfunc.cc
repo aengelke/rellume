@@ -107,14 +107,19 @@ Function::Function(llvm::Module* mod) : state(mod->getContext())
     state.cfg.prefer_pointer_cmp = false;
 }
 
-BasicBlock* Function::AddBlock(uint64_t address)
+void Function::AddInst(uint64_t block_addr, const LLInstr& inst)
 {
-    if (block_map.size() == 0)
-        entry_addr = address;
+    auto block_it = block_map.find(block_addr);
+    if (block_it == block_map.end()) {
+        if (block_map.size() == 0)
+            entry_addr = block_addr;
 
-    llvm::BasicBlock* llvm_bb = llvm::BasicBlock::Create(llvm->getContext(), "", llvm, nullptr);
-    block_map[address] = std::make_unique<BasicBlock>(llvm_bb, state);
-    return block_map[address].get();
+        llvm::BasicBlock* llvm_bb = llvm::BasicBlock::Create(llvm->getContext(),
+                                                             "", llvm, nullptr);
+        block_map[block_addr] = std::make_unique<BasicBlock>(llvm_bb, state);
+    }
+
+    block_map[block_addr]->AddInst(const_cast<LLInstr*>(&inst));
 }
 
 static

@@ -38,12 +38,6 @@ extern "C" {
 
 #define RELLUME_API __attribute__((visibility("default")))
 
-struct LLBasicBlock;
-
-typedef struct LLBasicBlock LLBasicBlock;
-
-RELLUME_API void ll_basic_block_add_inst(LLBasicBlock*, LLInstr*);
-
 
 struct LLFunc;
 
@@ -55,7 +49,7 @@ RELLUME_API void ll_func_enable_overflow_intrinsics(LLFunc* fn, bool enable);
 RELLUME_API void ll_func_enable_fast_math(LLFunc* fn, bool enable);
 RELLUME_API void ll_func_set_global_base(LLFunc* fn, uintptr_t base, LLVMValueRef value);
 
-RELLUME_API LLBasicBlock* ll_func_add_block(LLFunc* fn, uint64_t address);
+RELLUME_API void ll_func_add_inst(LLFunc* fn, uint64_t block_addr, LLInstr* instr);
 RELLUME_API LLVMValueRef ll_func_lift(LLFunc* fn);
 RELLUME_API void ll_func_dispose(LLFunc*);
 

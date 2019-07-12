@@ -32,10 +32,6 @@
 #include <llfunction-internal.h>
 
 
-void ll_basic_block_add_inst(LLBasicBlock* bb, LLInstr* instr) {
-    reinterpret_cast<rellume::BasicBlock*>(bb)->AddInst(instr);
-}
-
 LLFunc* ll_func(LLVMModuleRef mod) {
     return reinterpret_cast<LLFunc*>(new rellume::Function(llvm::unwrap(mod)));
 }
@@ -49,8 +45,8 @@ void ll_func_set_global_base(LLFunc* fn, uintptr_t base, LLVMValueRef value) {
     reinterpret_cast<rellume::Function*>(fn)->SetGlobalBase(base, llvm::unwrap(value));
 }
 
-LLBasicBlock* ll_func_add_block(LLFunc* fn, uint64_t address) {
-    return reinterpret_cast<LLBasicBlock*>(reinterpret_cast<rellume::Function*>(fn)->AddBlock(address));
+void ll_func_add_inst(LLFunc* fn, uint64_t block_addr, LLInstr* instr) {
+    return reinterpret_cast<rellume::Function*>(fn)->AddInst(block_addr, *instr);
 }
 LLVMValueRef ll_func_lift(LLFunc* fn) {
     return llvm::wrap(reinterpret_cast<rellume::Function*>(fn)->Lift());
