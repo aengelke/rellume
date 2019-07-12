@@ -72,8 +72,6 @@ private:
     llvm::Function* llvm;
     uint64_t entry_addr;
     std::unordered_map<uint64_t,BasicBlock*> block_map;
-
-    BasicBlock* initialBB;
 };
 
 }

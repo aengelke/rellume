@@ -102,7 +102,6 @@ Function::Function(llvm::Module* mod) : state(mod->getContext())
     llvm::FunctionType* fn_type = llvm::FunctionType::get(void_type, {cpu_type_ptr}, false);
 
     llvm = llvm::Function::Create(fn_type, llvm::GlobalValue::ExternalLinkage, "", mod);
-    initialBB = nullptr;
 
     state->cfg.globalBase = NULL;
     state->cfg.stackSize = 128;
@@ -161,8 +160,6 @@ Function::~Function()
 {
     for (auto it = block_map.begin(); it != block_map.end(); ++it)
         delete it->second;
-    if (initialBB != nullptr)
-        delete initialBB;
 }
 
 BasicBlock* Function::AddBlock(uint64_t address)
