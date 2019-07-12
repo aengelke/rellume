@@ -159,17 +159,19 @@ void Function::SetGlobalBase(uintptr_t base, llvm::Value* value)
  **/
 Function::~Function()
 {
-    for (auto it = blocks.begin(); it != blocks.end(); ++it)
-        delete *it;
+    for (auto it = block_map.begin(); it != block_map.end(); ++it)
+        delete it->second;
     if (initialBB != nullptr)
         delete initialBB;
 }
 
 BasicBlock* Function::AddBlock(uint64_t address)
 {
+    if (block_map.size() == 0)
+        entry_addr = address;
+
     llvm::BasicBlock* llvm_bb = llvm::BasicBlock::Create(llvm->getContext(), "", llvm, nullptr);
     BasicBlock* bb = new BasicBlock(llvm_bb, state);
-    blocks.push_back(bb);
     block_map[address] = bb;
     return bb;
 }
@@ -247,15 +249,15 @@ BasicBlock* Function::ResolveAddr(llvm::Value* addr, BasicBlock* def) {
 
 llvm::Function* Function::Lift()
 {
-    if (blocks.size() == 0)
+    if (block_map.size() == 0)
         return NULL;
 
-    CreateEntry(blocks[0]);
+    CreateEntry(block_map[entry_addr]);
     BasicBlock* exit_block = CreateExit();
 
-    for (auto it = blocks.begin(); it != blocks.end(); ++it)
+    for (auto it = block_map.begin(); it != block_map.end(); ++it)
     {
-        (*it)->SetCurrent();
+        it->second->SetCurrent();
 
         llvm::Value* next_rip = state.GetReg(LLReg(LL_RT_IP, 0), Facet::I64);
         if (auto select = llvm::dyn_cast<llvm::SelectInst>(next_rip))
@@ -268,20 +270,20 @@ llvm::Function* Function::Lift()
             {
                 state.irb.CreateCondBr(select->getCondition(),
                                        true_block->Llvm(), false_block->Llvm());
-                true_block->AddToPhis(*it);
-                false_block->AddToPhis(*it);
+                true_block->AddToPhis(it->second);
+                false_block->AddToPhis(it->second);
             }
             else
             {
                 state.irb.CreateBr(true_block->Llvm());
-                true_block->AddToPhis(*it);
+                true_block->AddToPhis(it->second);
             }
         }
         else
         {
             BasicBlock* next_block = ResolveAddr(next_rip, exit_block);
             state.irb.CreateBr(next_block->Llvm());
-            next_block->AddToPhis(*it);
+            next_block->AddToPhis(it->second);
         }
     }
 
