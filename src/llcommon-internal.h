@@ -28,8 +28,7 @@
 #include <stdlib.h>
 #include <stdint.h>
 #include <stdio.h>
-#include <llvm-c/Core.h>
-#include <llvm-c/ExecutionEngine.h>
+#include <llvm/IR/Value.h>
 
 #ifdef __cplusplus
 extern "C" {
@@ -45,6 +44,34 @@ extern "C" {
  * \brief The size of a vector
  **/
 #define LL_VECTOR_REGISTER_SIZE 128
+
+struct LLConfig {
+    /**
+     * \brief Whether overflow intrinsics should be used.
+     **/
+    bool enableOverflowIntrinsics;
+    /**
+     * \brief Whether unsafe floating-point optimizations may be applied.
+     * Corresponds to -ffast-math.
+     **/
+    bool enableFastMath;
+
+    /// Whether to use pointer for 64-bit reg-reg compares instead of using
+    /// ptrtoint.
+    bool prefer_pointer_cmp;
+
+    /**
+     * \brief The global offset base
+     **/
+    uintptr_t global_base_addr;
+    /**
+     * \brief The global variable used to access constant memory regions. Points
+     * to globalOffsetBase.
+     **/
+    llvm::Value* global_base_value;
+};
+
+typedef struct LLConfig LLConfig;
 
 #ifdef __cplusplus
 }

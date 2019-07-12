@@ -33,13 +33,15 @@
 #include <llvm/IR/Function.h>
 #include <llvm/IR/Value.h>
 
-#include <llbasicblock-internal.h>
+#include <rellume/instr.h>
+
 #include <llcommon-internal.h>
-#include <llstate-internal.h>
 
 
 namespace rellume
 {
+
+class BasicBlock;
 
 class Function
 {

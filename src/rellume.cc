@@ -24,6 +24,8 @@
 #include <stdbool.h>
 #include <stdlib.h>
 #include <stdint.h>
+#include <llvm/IR/Module.h>
+#include <llvm/IR/Value.h>
 #include <llvm-c/Core.h>
 
 #include <rellume/rellume.h>

@@ -43,7 +43,7 @@ void
 ll_instruction_movgp(LLInstr* instr, LLState* state)
 {
     if (instr->ops[0].type == LL_OP_REG && instr->ops[1].type == LL_OP_REG && instr->ops[0].size == 8 && instr->ops[1].size == 8)
-        state->regfile->Rename(instr->ops[0].reg, instr->ops[1].reg);
+        state->regfile.Rename(instr->ops[0].reg, instr->ops[1].reg);
     else
     {
         LLVMTypeRef targetType = llvm::wrap(state->irb.getIntNTy(instr->ops[0].size * 8));
@@ -113,7 +113,7 @@ ll_instruction_sub(LLInstr* instr, LLState* state)
     state->FlagCalcA(llvm::unwrap(result), llvm::unwrap(operand1), llvm::unwrap(operand2));
     state->FlagCalcCSub(llvm::unwrap(result), llvm::unwrap(operand1), llvm::unwrap(operand2));
     state->FlagCalcOSub(llvm::unwrap(result), llvm::unwrap(operand1), llvm::unwrap(operand2));
-    state->regfile->GetFlagCache().update(llvm::unwrap(operand1), llvm::unwrap(operand2));
+    state->regfile.GetFlagCache().update(llvm::unwrap(operand1), llvm::unwrap(operand2));
 }
 
 void LLState::LiftCmp(const LLInstr& inst) {
@@ -135,7 +135,7 @@ void LLState::LiftCmp(const LLInstr& inst) {
         SetFlag(RFLAG_ZF, irb.CreateICmpEQ(ptr1, ptr2));
     }
 
-    regfile->GetFlagCache().update(op1, op2);
+    regfile.GetFlagCache().update(op1, op2);
 }
 
 void LLState::LiftAndOrXor(const LLInstr& inst, llvm::Instruction::BinaryOps op,

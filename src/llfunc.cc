@@ -48,6 +48,7 @@
 
 #include <llbasicblock-internal.h>
 #include <llcommon-internal.h>
+#include <llstate-internal.h>
 
 /**
  * \defgroup LLFunc Func2

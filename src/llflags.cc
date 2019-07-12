@@ -50,7 +50,7 @@
 llvm::Value*
 LLStateBase::FlagCond(LLInstrType type, LLInstrType base)
 {
-    RegFile::FlagCache& cache = regfile->GetFlagCache();
+    RegFile::FlagCache& cache = regfile.GetFlagCache();
     int condition = type - base;
     if (cache.valid)
     {

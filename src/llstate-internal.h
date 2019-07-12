@@ -38,34 +38,6 @@
 extern "C" {
 #endif
 
-struct LLConfig {
-    /**
-     * \brief Whether overflow intrinsics should be used.
-     **/
-    bool enableOverflowIntrinsics;
-    /**
-     * \brief Whether unsafe floating-point optimizations may be applied.
-     * Corresponds to -ffast-math.
-     **/
-    bool enableFastMath;
-
-    /// Whether to use pointer for 64-bit reg-reg compares instead of using
-    /// ptrtoint.
-    bool prefer_pointer_cmp;
-
-    /**
-     * \brief The global offset base
-     **/
-    uintptr_t global_base_addr;
-    /**
-     * \brief The global variable used to access constant memory regions. Points
-     * to globalOffsetBase.
-     **/
-    llvm::Value* global_base_value;
-};
-
-typedef struct LLConfig LLConfig;
-
 enum Alignment {
     /// Implicit alignment -- MAX for SSE operand, 1 otherwise
     ALIGN_IMP = -1,
@@ -91,7 +63,7 @@ enum Alignment {
 class LLStateBase {
 protected:
     LLStateBase(LLConfig& cfg, RegFile& rf, llvm::BasicBlock* bb) : cfg(cfg),
-            regfile(&rf), irb(bb) {
+            regfile(rf), irb(bb) {
         builder = llvm::wrap(&irb);
     }
 
@@ -108,25 +80,25 @@ public:
     LLVMBuilderRef builder;
 
     /// Current register file
-    RegFile* regfile;
+    RegFile& regfile;
 
     llvm::IRBuilder<> irb;
 
 
     llvm::Value* GetReg(LLReg reg, Facet::Value facet) {
-        return regfile->GetReg(reg, facet);
+        return regfile.GetReg(reg, facet);
     }
     void SetReg(LLReg reg, Facet::Value facet, llvm::Value* value) {
-        regfile->SetReg(reg, facet, value, true); // clear all other facets
+        regfile.SetReg(reg, facet, value, true); // clear all other facets
     }
     void SetRegFacet(LLReg reg, Facet::Value facet, llvm::Value* value) {
-        regfile->SetReg(reg, facet, value, false);
+        regfile.SetReg(reg, facet, value, false);
     }
     llvm::Value* GetFlag(int flag) {
-        return regfile->GetFlag(flag);
+        return regfile.GetFlag(flag);
     }
     void SetFlag(int flag, llvm::Value* value) {
-        regfile->SetFlag(flag, value);
+        regfile.SetFlag(flag, value);
     }
 
     // Operand handling implemented in lloperand.cc
