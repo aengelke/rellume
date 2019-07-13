@@ -82,6 +82,20 @@ LLStateBase::FlagCond(Condition cond)
     return static_cast<int>(cond) & 1 ? irb.CreateNot(result) : result;
 }
 
+llvm::Value* LLStateBase::FlagAsReg(unsigned size) {
+    llvm::Value* res = irb.getInt64(0x202); // IF
+    llvm::Type* ty = res->getType();
+    static const std::pair<int, unsigned> flags[] = {
+        {RFLAG_CF, 0}, {RFLAG_PF, 2}, {RFLAG_AF, 4}, {RFLAG_ZF, 6},
+        {RFLAG_SF, 7}, {RFLAG_OF, 11},
+    };
+    for (auto& kv : flags) {
+        llvm::Value* ext_bit = irb.CreateZExt(GetFlag(kv.first), ty);
+        res = irb.CreateOr(res, irb.CreateShl(ext_bit, kv.second));
+    }
+    return irb.CreateTruncOrBitCast(res, irb.getIntNTy(size));
+}
+
 void
 LLStateBase::FlagCalcP(llvm::Value* value)
 {

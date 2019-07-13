@@ -126,6 +126,7 @@ public:
     void FlagCalcOSub(llvm::Value* res, llvm::Value* lhs, llvm::Value* rhs);
 
     llvm::Value* FlagCond(Condition cond);
+    llvm::Value* FlagAsReg(unsigned size);
 
     // llinstruction-stack.cc
     void StackPush(llvm::Value* value);
@@ -154,7 +155,9 @@ public:
     void LiftPush(const LLInstr& inst) {
         StackPush(OpLoad(inst.ops[0], Facet::I));
     }
-    void LiftPushf(const LLInstr& inst);
+    void LiftPushf(const LLInstr& inst) {
+        StackPush(FlagAsReg(inst.operand_size * 8));
+    }
     void LiftPop(const LLInstr& inst) {
         OpStoreGp(inst.ops[0], StackPop());
     }

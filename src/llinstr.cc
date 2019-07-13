@@ -129,6 +129,7 @@ LLInstr LLInstr::Decode(uint8_t* buf, size_t buf_size, uint64_t addr)
     llinst.addr = addr;
     llinst.len = FD_SIZE(&fdi);
 
+    llinst.operand_size = FD_OPSIZE(&fdi);
     llinst.operand_count = 0;
     for (int i = 0; i < 3; i++)
     {

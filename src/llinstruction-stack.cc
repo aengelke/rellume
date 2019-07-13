@@ -39,32 +39,6 @@
  * @{
  **/
 
-static LLVMValueRef
-ll_instruction_get_flags(bool fullSized, LLState* state)
-{
-    static const int flags[] = {
-        RFLAG_CF,       -1, RFLAG_PF,       -1,
-        RFLAG_AF,       -1, RFLAG_ZF, RFLAG_SF,
-              -1,       -1,       -1, RFLAG_OF,
-              -1,       -1,       -1,       -1,
-    };
-
-    LLVMTypeRef intType = llvm::wrap(state->irb.getIntNTy(fullSized ? 64 : 16));
-    LLVMValueRef flagRegister = LLVMConstNull(intType);
-    for (size_t i = 0; i < sizeof(flags) / sizeof(flags[0]); i++)
-    {
-        if (flags[i] < 0)
-            continue;
-
-        LLVMValueRef flag = llvm::wrap(state->GetFlag(flags[i]));
-        flag = LLVMBuildZExt(state->builder, flag, intType, "");
-        flag = LLVMBuildShl(state->builder, flag, LLVMConstInt(intType, i, false), "");
-        flagRegister = LLVMBuildOr(state->builder, flagRegister, flag, "");
-    }
-
-    return flagRegister;
-}
-
 void LLStateBase::StackPush(llvm::Value* value) {
     llvm::Value* rsp = GetReg(LLReg(LL_RT_GP64, LL_RI_SP), Facet::PTR);
     rsp = irb.CreatePointerCast(rsp, value->getType()->getPointerTo());
@@ -84,10 +58,6 @@ llvm::Value* LLStateBase::StackPop(const LLReg sp_src_reg) {
     SetReg(LLReg(LL_RT_GP64, LL_RI_SP), Facet::PTR, new_rsp);
 
     return irb.CreateLoad(rsp);
-}
-
-void LLState::LiftPushf(const LLInstr& inst) {
-    StackPush(llvm::unwrap(ll_instruction_get_flags(true, this)));
 }
 
 /**
