@@ -21,22 +21,16 @@
  * \file
  **/
 
-#include <stdbool.h>
-#include <stdlib.h>
-#include <stdint.h>
+#include "llstate-internal.h"
 
+#include "llregfile-internal.h"
+#include "rellume/instr.h"
 #include <llvm/IR/Intrinsics.h>
 #include <llvm/IR/IRBuilder.h>
 #include <llvm/IR/Module.h>
 #include <llvm/IR/Type.h>
 #include <llvm/IR/Value.h>
-#include <llvm-c/Core.h>
 
-#include <llstate-internal.h>
-
-#include <llcommon-internal.h>
-#include <llregfile-internal.h>
-#include <rellume/instr.h>
 
 /**
  * \defgroup LLFlags Flags

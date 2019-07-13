@@ -24,13 +24,9 @@
 #ifndef LL_BASIC_BLOCK_H
 #define LL_BASIC_BLOCK_H
 
-#include <cstdbool>
-#include <cstdint>
-
+#include "config.h"
+#include "llregfile-internal.h"
 #include <llvm/IR/BasicBlock.h>
-
-#include <llcommon-internal.h>
-#include <llregfile-internal.h>
 
 
 namespace rellume

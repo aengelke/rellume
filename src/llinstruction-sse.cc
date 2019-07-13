@@ -23,7 +23,7 @@
 
 #include "llstate-internal.h"
 
-#include "llcommon-internal.h"
+#include "facet.h"
 #include "rellume/instr.h"
 #include <llvm/IR/IRBuilder.h>
 #include <llvm/IR/Value.h>

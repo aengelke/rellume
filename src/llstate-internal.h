@@ -24,7 +24,8 @@
 #ifndef LL_STATE_H
 #define LL_STATE_H
 
-#include "llcommon-internal.h"
+#include "config.h"
+#include "facet.h"
 #include "llregfile-internal.h"
 #include "rellume/instr.h"
 #include <llvm/IR/BasicBlock.h>

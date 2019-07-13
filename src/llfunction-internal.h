@@ -24,7 +24,7 @@
 #ifndef LL_FUNCTION_H
 #define LL_FUNCTION_H
 
-#include "llcommon-internal.h"
+#include "config.h"
 #include "rellume/instr.h"
 #include <llvm/IR/Function.h>
 #include <llvm/IR/Value.h>

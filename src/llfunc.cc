@@ -21,13 +21,11 @@
  * \file
  **/
 
-#include <stdbool.h>
-#include <stdlib.h>
-#include <stdint.h>
-#include <string.h>
-#include <vector>
-#include <unordered_map>
+#include "llfunction-internal.h"
 
+#include "config.h"
+#include "llbasicblock-internal.h"
+#include "llstate-internal.h"
 #include <llvm-c/Analysis.h>
 #include <llvm-c/Core.h>
 #include <llvm-c/Support.h>
@@ -43,12 +41,11 @@
 #include <llvm/IR/Type.h>
 #include <llvm/IR/Verifier.h>
 #include <llvm/Transforms/Utils/Cloning.h>
+#include <cassert>
+#include <cstdint>
+#include <vector>
+#include <unordered_map>
 
-#include <llfunction-internal.h>
-
-#include <llbasicblock-internal.h>
-#include <llcommon-internal.h>
-#include <llstate-internal.h>
 
 /**
  * \defgroup LLFunc Func2

@@ -25,7 +25,6 @@
 #define LL_REGFILE_H
 
 #include "facet.h"
-#include "llcommon-internal.h"
 #include "rellume/instr.h"
 
 #include <llvm/IR/BasicBlock.h>

@@ -21,8 +21,8 @@
  * \file
  **/
 
-#ifndef LL_COMMON_H
-#define LL_COMMON_H
+#ifndef RELLUME_CONFIG_H
+#define RELLUME_CONFIG_H
 
 #include <cstdbool>
 #include <cstdint>
