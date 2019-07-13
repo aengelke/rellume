@@ -42,6 +42,8 @@
  * @{
  **/
 
+namespace rellume {
+
 llvm::Value*
 LLStateBase::OpAddrConst(uint64_t addr)
 {
@@ -311,6 +313,8 @@ llvm::Value* LLStateBase::StackPop(const LLReg sp_src_reg) {
 
     return irb.CreateLoad(rsp);
 }
+
+} // namespace
 
 /**
  * @}

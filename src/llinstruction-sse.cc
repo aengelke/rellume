@@ -37,6 +37,8 @@
  * @{
  **/
 
+namespace rellume {
+
 void LLState::LiftSseMovq(const LLInstr& inst, Facet type)
 {
     llvm::Value* op1 = OpLoad(inst.ops[1], type);
@@ -180,6 +182,8 @@ void LLState::LiftSseInsertps(const LLInstr& inst) {
 
     OpStoreVec(inst.ops[0], dst);
 }
+
+} // namespace
 
 /**
  * @}

@@ -36,10 +36,10 @@
  * \defgroup LLFlags Flags
  * \brief Computation of X86 flags
  *
- * Ported from https://github.com/trailofbits/mcsema .
- *
  * @{
  **/
+
+namespace rellume {
 
 llvm::Value*
 LLStateBase::FlagCond(Condition cond)
@@ -146,6 +146,8 @@ LLStateBase::FlagCalcOSub(llvm::Value* res, llvm::Value* lhs, llvm::Value* rhs)
         SetFlag(RFLAG_OF, irb.CreateICmpSLT(tmp, llvm::Constant::getNullValue(res->getType())));
     }
 }
+
+} // namespace
 
 /**
  * @}

@@ -27,6 +27,8 @@
 #include <cassert>
 
 
+namespace rellume {
+
 Facet Facet::Resolve(unsigned bits)
 {
     switch (*this)
@@ -120,3 +122,5 @@ llvm::Type* Facet::Type(llvm::LLVMContext& ctx)
 
     return nullptr;
 }
+
+} // namespace

@@ -27,9 +27,12 @@
 #include <cstdbool>
 #include <cstdint>
 
+
 namespace llvm {
 class Value;
 }
+
+namespace rellume {
 
 struct LLConfig {
     /**
@@ -58,5 +61,7 @@ struct LLConfig {
 };
 
 typedef struct LLConfig LLConfig;
+
+} // namespace
 
 #endif

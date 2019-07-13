@@ -29,8 +29,7 @@
 #include <llvm/IR/BasicBlock.h>
 
 
-namespace rellume
-{
+namespace rellume {
 
 class BasicBlock
 {

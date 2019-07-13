@@ -32,8 +32,7 @@
 #include <unordered_map>
 
 
-namespace rellume
-{
+namespace rellume {
 
 class BasicBlock;
 

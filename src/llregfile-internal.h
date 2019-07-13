@@ -34,6 +34,8 @@
 #include <algorithm>
 
 
+namespace rellume {
+
 /**
  * \ingroup LLRegFile
  **/
@@ -148,5 +150,7 @@ private:
 
     FlagCache flag_cache;
 };
+
+} // namespace
 
 #endif

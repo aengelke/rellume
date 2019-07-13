@@ -28,6 +28,8 @@
 #include <cstddef>
 
 
+namespace rellume {
+
 /**
  * \brief The size of a vector
  **/
@@ -72,5 +74,7 @@ public:
 private:
     Value value;
 };
+
+} // namespace
 
 #endif

@@ -31,8 +31,7 @@
 #include <rellume/instr.h>
 #include <llfunction-internal.h>
 
-namespace rellume
-{
+namespace rellume {
 
 #define instrIsJcc(instr) ( \
     (instr) == LL_INS_JO || \

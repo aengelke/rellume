@@ -24,6 +24,7 @@
 #include "llstate-internal.h"
 
 #include "facet.h"
+#include "llregfile-internal.h"
 #include "rellume/instr.h"
 #include <llvm/IR/Instruction.h>
 #include <llvm/IR/IRBuilder.h>
@@ -36,6 +37,8 @@
  *
  * @{
  **/
+
+namespace rellume {
 
 void LLState::LiftMovgp(const LLInstr& inst, llvm::Instruction::CastOps cast) {
     // If the instruction moves the whole register, keep all facets.
@@ -303,6 +306,8 @@ void LLState::LiftCdqe(const LLInstr& inst) {
 
     OpStoreGp(dst_op, irb.CreateSExt(OpLoad(src_op, Facet::I), dst_ty));
 }
+
+} // namespace
 
 /**
  * @}

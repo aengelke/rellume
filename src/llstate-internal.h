@@ -33,6 +33,8 @@
 #include <llvm/IR/IRBuilder.h>
 
 
+namespace rellume {
+
 enum Alignment {
     /// Implicit alignment -- MAX for SSE operand, 1 otherwise
     ALIGN_IMP = -1,
@@ -196,5 +198,7 @@ public:
     void LiftSseShufps(const LLInstr&);
     void LiftSseInsertps(const LLInstr&);
 };
+
+} // namespace
 
 #endif

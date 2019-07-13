@@ -54,8 +54,7 @@
  * @{
  **/
 
-namespace rellume
-{
+namespace rellume {
 
 void Function::CreateEntry(BasicBlock& entry_bb)
 {

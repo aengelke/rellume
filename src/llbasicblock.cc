@@ -46,8 +46,7 @@
  * @{
  **/
 
-namespace rellume
-{
+namespace rellume {
 
 BasicBlock::BasicBlock(llvm::BasicBlock* llvm) : llvmBB(llvm), regfile(llvm) {
     llvm::IRBuilder<> irb(llvm);
