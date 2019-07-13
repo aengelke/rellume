@@ -32,10 +32,6 @@
 #include <llvm/IR/IRBuilder.h>
 
 
-#ifdef __cplusplus
-extern "C" {
-#endif
-
 enum Alignment {
     /// Implicit alignment -- MAX for SSE operand, 1 otherwise
     ALIGN_IMP = -1,
@@ -65,8 +61,6 @@ protected:
             fmf.setFast();
             irb.setFastMathFlags(fmf);
         }
-
-        builder = llvm::wrap(&irb);
     }
 
 public:
@@ -77,9 +71,6 @@ public:
     LLStateBase& operator=(const LLStateBase&) = delete;
 
     LLConfig& cfg;
-
-    /// DEPRECATED LLVM builder, use irb
-    LLVMBuilderRef builder;
 
     /// Current register file
     RegFile& regfile;
@@ -229,18 +220,5 @@ public:
 enum {
     REG_DEFAULT, REG_ZERO_UPPER_AVX, REG_KEEP_UPPER,
 };
-
-#define ll_operand_load(facet,align,op,state) llvm::wrap((state)->OpLoad(*(op), facet, align))
-#define ll_operand_store(facet,align,op,prh,val,state) do { \
-            if ((prh) == REG_DEFAULT) \
-                (state)->OpStoreGp(*(op), llvm::unwrap(val), align); \
-            else \
-                (state)->OpStoreVec(*(op), llvm::unwrap(val), prh == REG_ZERO_UPPER_AVX, align); \
-        } while (0)
-
-
-#ifdef __cplusplus
-}
-#endif
 
 #endif
