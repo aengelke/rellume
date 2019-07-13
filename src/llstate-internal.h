@@ -102,6 +102,8 @@ public:
     llvm::Value* OpLoad(const LLInstrOp& op, Facet::Value dataType, Alignment alignment = ALIGN_NONE);
     void OpStoreGp(const LLInstrOp& op, llvm::Value* value, Alignment alignment = ALIGN_NONE);
     void OpStoreVec(const LLInstrOp& op, llvm::Value* value, bool avx = false, Alignment alignment = ALIGN_IMP);
+    void StackPush(llvm::Value* value);
+    llvm::Value* StackPop(const LLReg sp_src_reg = LLReg(LL_RT_GP64, LL_RI_SP));
 
     // llflags.cc
     void FlagCalcZ(llvm::Value* value) {
@@ -125,10 +127,6 @@ public:
 
     llvm::Value* FlagCond(Condition cond);
     llvm::Value* FlagAsReg(unsigned size);
-
-    // llinstruction-stack.cc
-    void StackPush(llvm::Value* value);
-    llvm::Value* StackPop(const LLReg sp_src_reg = LLReg(LL_RT_GP64, LL_RI_SP));
 };
 
 class LLState : public LLStateBase {

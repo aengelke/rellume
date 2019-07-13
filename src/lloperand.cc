@@ -289,6 +289,27 @@ LLStateBase::OpStoreVec(const LLInstrOp& op, llvm::Value* value, bool avx,
     }
 }
 
+void LLStateBase::StackPush(llvm::Value* value) {
+    llvm::Value* rsp = GetReg(LLReg(LL_RT_GP64, LL_RI_SP), Facet::PTR);
+    rsp = irb.CreatePointerCast(rsp, value->getType()->getPointerTo());
+    rsp = irb.CreateConstGEP1_64(rsp, -1);
+    irb.CreateStore(value, rsp);
+
+    rsp = irb.CreatePointerCast(rsp, irb.getInt8PtrTy());
+    SetReg(LLReg(LL_RT_GP64, LL_RI_SP), Facet::PTR, rsp);
+}
+
+llvm::Value* LLStateBase::StackPop(const LLReg sp_src_reg) {
+    llvm::Value* rsp = GetReg(sp_src_reg, Facet::PTR);
+    rsp = irb.CreatePointerCast(rsp, irb.getInt64Ty()->getPointerTo());
+
+    llvm::Value* new_rsp = irb.CreateConstGEP1_64(rsp, 1);
+    new_rsp = irb.CreatePointerCast(new_rsp, irb.getInt8PtrTy());
+    SetReg(LLReg(LL_RT_GP64, LL_RI_SP), Facet::PTR, new_rsp);
+
+    return irb.CreateLoad(rsp);
+}
+
 /**
  * @}
  **/

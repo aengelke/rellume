@@ -7,7 +7,6 @@ sources = [
   'llinstr.cc',
   'llinstruction-gp.cc',
   'llinstruction-sse.cc',
-  'llinstruction-stack.cc',
   'lloperand.cc',
   'llregfile.cc',
   'rellume.cc',
