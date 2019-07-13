@@ -292,7 +292,9 @@ ll_func_wrap_sysv(LLVMValueRef llvm_fn, LLVMTypeRef ty, LLVMModuleRef mod, size_
             fpRegOffset++;
         }
         else
-            warn_if_reached();
+        {
+            assert(false);
+        }
     }
 
     llvm::Value* stack_sz_val = irb.getInt64(stack_size);
@@ -333,7 +335,7 @@ ll_func_wrap_sysv(LLVMValueRef llvm_fn, LLVMTypeRef ty, LLVMModuleRef mod, size_
             irb.CreateRet(ret);
             break;
         default:
-            warn_if_reached();
+            assert(false);
             break;
     }
 

@@ -193,7 +193,7 @@ RegFile::GetReg(LLReg reg, Facet facet)
         return res;
     }
 
-    warn_if_reached();
+    assert(0);
 
     return nullptr;
 }
@@ -209,7 +209,7 @@ RegFile::Rename(LLReg reg_dst, LLReg reg_src)
     }
     else
     {
-        warn_if_reached();
+        assert(0);
     }
 }
 
@@ -261,7 +261,7 @@ RegFile::SetReg(LLReg reg, Facet facet, llvm::Value* value, bool clearOthers)
     }
     else
     {
-        warn_if_reached();
+        assert(0);
     }
 }
 

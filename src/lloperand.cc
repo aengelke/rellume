@@ -149,7 +149,7 @@ LLStateBase::OpLoad(const LLInstrOp& op, Facet facet, Alignment alignment)
         return result;
     }
 
-    warn_if_reached();
+    assert(false);
     return nullptr;
 }
 
@@ -202,7 +202,7 @@ LLStateBase::OpStoreGp(const LLInstrOp& op, llvm::Value* value, Alignment alignm
     }
     else
     {
-        warn_if_reached();
+        assert(false);
     }
 
     llvm::Value* masked = irb.CreateAnd(GetReg(op.reg, Facet::I64), ~mask);

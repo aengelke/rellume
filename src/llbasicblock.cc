@@ -111,7 +111,7 @@ void BasicBlock::AddInst(LLInstr* instr, LLConfig& cfg)
 
         default:
             printf("Could not handle instruction at %#zx\n", instr->addr);
-            warn_if_reached();
+            assert(0);
             break;
     }
 }
