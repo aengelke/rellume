@@ -89,7 +89,7 @@ BasicBlock::BasicBlock(llvm::BasicBlock* llvm) : llvmBB(llvm), regfile(llvm) {
 
 void BasicBlock::AddInst(LLInstr* instr, LLConfig& cfg)
 {
-    LLState state(cfg, regfile, llvmBB);
+    Lifter state(cfg, regfile, llvmBB);
 
     // Set new instruction pointer register
     llvm::Value* ripValue = state.irb.getInt64(instr->addr + instr->len);

@@ -40,7 +40,7 @@
 
 namespace rellume {
 
-void LLState::LiftMovgp(const LLInstr& inst, llvm::Instruction::CastOps cast) {
+void Lifter::LiftMovgp(const LLInstr& inst, llvm::Instruction::CastOps cast) {
     // If the instruction moves the whole register, keep all facets.
     // TODO: implement this for all register-register moves.
     if (inst.ops[0].type == LL_OP_REG && inst.ops[0].size == 8 &&
@@ -54,7 +54,7 @@ void LLState::LiftMovgp(const LLInstr& inst, llvm::Instruction::CastOps cast) {
     OpStoreGp(inst.ops[0], irb.CreateCast(cast, val, tgt_ty));
 }
 
-void LLState::LiftAdd(const LLInstr& inst) {
+void Lifter::LiftAdd(const LLInstr& inst) {
     llvm::Value* op1 = OpLoad(inst.ops[0], Facet::I);
     llvm::Value* op2 = OpLoad(inst.ops[1], Facet::I);
     llvm::Value* res = irb.CreateAdd(op1, op2);
@@ -79,7 +79,7 @@ void LLState::LiftAdd(const LLInstr& inst) {
     FlagCalcOAdd(res, op1, op2);
 }
 
-void LLState::LiftSub(const LLInstr& inst) {
+void Lifter::LiftSub(const LLInstr& inst) {
     llvm::Value* op1 = OpLoad(inst.ops[0], Facet::I);
     llvm::Value* op2 = OpLoad(inst.ops[1], Facet::I);
     llvm::Value* res = irb.CreateSub(op1, op2);
@@ -106,7 +106,7 @@ void LLState::LiftSub(const LLInstr& inst) {
     regfile.GetFlagCache().update(op1, op2);
 }
 
-void LLState::LiftCmp(const LLInstr& inst) {
+void Lifter::LiftCmp(const LLInstr& inst) {
     llvm::Value* op1 = OpLoad(inst.ops[0], Facet::I);
     llvm::Value* op2 = OpLoad(inst.ops[1], Facet::I);
     llvm::Value* res = irb.CreateSub(op1, op2);
@@ -128,7 +128,7 @@ void LLState::LiftCmp(const LLInstr& inst) {
     regfile.GetFlagCache().update(op1, op2);
 }
 
-void LLState::LiftAndOrXor(const LLInstr& inst, llvm::Instruction::BinaryOps op,
+void Lifter::LiftAndOrXor(const LLInstr& inst, llvm::Instruction::BinaryOps op,
                            bool writeback) {
     llvm::Value* res = irb.CreateBinOp(op, OpLoad(inst.ops[0], Facet::I),
                                        OpLoad(inst.ops[1], Facet::I));
@@ -143,11 +143,11 @@ void LLState::LiftAndOrXor(const LLInstr& inst, llvm::Instruction::BinaryOps op,
     SetFlag(RFLAG_OF, irb.getFalse());
 }
 
-void LLState::LiftNot(const LLInstr& inst) {
+void Lifter::LiftNot(const LLInstr& inst) {
     OpStoreGp(inst.ops[0], irb.CreateNot(OpLoad(inst.ops[0], Facet::I)));
 }
 
-void LLState::LiftNeg(const LLInstr& inst) {
+void Lifter::LiftNeg(const LLInstr& inst) {
     llvm::Value* op1 = OpLoad(inst.ops[0], Facet::I);
     llvm::Value* res = irb.CreateNeg(op1);
     llvm::Value* zero = llvm::Constant::getNullValue(res->getType());
@@ -160,7 +160,7 @@ void LLState::LiftNeg(const LLInstr& inst) {
     OpStoreGp(inst.ops[0], res);
 }
 
-void LLState::LiftIncDec(const LLInstr& inst) {
+void Lifter::LiftIncDec(const LLInstr& inst) {
     llvm::Value* op1 = OpLoad(inst.ops[0], Facet::I);
     llvm::Value* op2 = irb.getIntN(inst.ops[0].size*8, 1);
     llvm::Value* res = nullptr;
@@ -180,7 +180,7 @@ void LLState::LiftIncDec(const LLInstr& inst) {
     OpStoreGp(inst.ops[0], res);
 }
 
-void LLState::LiftShift(const LLInstr& inst, llvm::Instruction::BinaryOps op) {
+void Lifter::LiftShift(const LLInstr& inst, llvm::Instruction::BinaryOps op) {
     llvm::Value* src = OpLoad(inst.ops[0], Facet::I);
     llvm::Value* shift;
     if (inst.operand_count == 1) {
@@ -206,7 +206,7 @@ void LLState::LiftShift(const LLInstr& inst, llvm::Instruction::BinaryOps op) {
     SetFlag(RFLAG_CF, undef);
 }
 
-void LLState::LiftMul(const LLInstr& inst) {
+void Lifter::LiftMul(const LLInstr& inst) {
     llvm::Value* op1;
     llvm::Value* op2;
     if (inst.operand_count == 1) {
@@ -265,7 +265,7 @@ void LLState::LiftMul(const LLInstr& inst) {
 }
 
 void
-LLState::LiftLea(const LLInstr& inst)
+Lifter::LiftLea(const LLInstr& inst)
 {
     assert(inst.ops[0].type == LL_OP_REG);
     assert(inst.ops[1].type == LL_OP_MEM);
@@ -289,17 +289,17 @@ LLState::LiftLea(const LLInstr& inst)
         SetRegFacet(inst.ops[0].reg, Facet::PTR, res_ptr);
 }
 
-void LLState::LiftCmovcc(const LLInstr& inst, Condition cond) {
+void Lifter::LiftCmovcc(const LLInstr& inst, Condition cond) {
     llvm::Value* op1 = OpLoad(inst.ops[0], Facet::I);
     llvm::Value* op2 = OpLoad(inst.ops[1], Facet::I);
     OpStoreGp(inst.ops[0], irb.CreateSelect(FlagCond(cond), op2, op1));
 }
 
-void LLState::LiftSetcc(const LLInstr& inst, Condition cond) {
+void Lifter::LiftSetcc(const LLInstr& inst, Condition cond) {
     OpStoreGp(inst.ops[0], irb.CreateZExt(FlagCond(cond), irb.getInt8Ty()));
 }
 
-void LLState::LiftCdqe(const LLInstr& inst) {
+void Lifter::LiftCdqe(const LLInstr& inst) {
     LLInstrOp src_op = LLInstrOp::Reg(LLReg::Gp(inst.operand_size/2, LL_RI_A));
     LLInstrOp dst_op = LLInstrOp::Reg(LLReg::Gp(inst.operand_size, LL_RI_A));
     llvm::Type* dst_ty = irb.getIntNTy(inst.operand_size * 8);

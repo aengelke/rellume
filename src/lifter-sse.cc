@@ -39,7 +39,7 @@
 
 namespace rellume {
 
-void LLState::LiftSseMovq(const LLInstr& inst, Facet type)
+void Lifter::LiftSseMovq(const LLInstr& inst, Facet type)
 {
     llvm::Value* op1 = OpLoad(inst.ops[1], type);
     if (inst.ops[0].type == LL_OP_REG && inst.ops[0].reg.IsVec()) {
@@ -53,7 +53,7 @@ void LLState::LiftSseMovq(const LLInstr& inst, Facet type)
     }
 }
 
-void LLState::LiftSseMovScalar(const LLInstr& inst, Facet facet) {
+void Lifter::LiftSseMovScalar(const LLInstr& inst, Facet facet) {
     llvm::Value* src = OpLoad(inst.ops[1], facet);
     if (inst.ops[1].type == LL_OP_MEM) {
         llvm::Type* el_ty = src->getType();
@@ -66,12 +66,12 @@ void LLState::LiftSseMovScalar(const LLInstr& inst, Facet facet) {
     }
 }
 
-void LLState::LiftSseMovdq(const LLInstr& inst, Facet facet,
+void Lifter::LiftSseMovdq(const LLInstr& inst, Facet facet,
                            Alignment alignment) {
     OpStoreVec(inst.ops[0], OpLoad(inst.ops[1], facet, alignment), alignment);
 }
 
-void LLState::LiftSseMovlp(const LLInstr& inst) {
+void Lifter::LiftSseMovlp(const LLInstr& inst) {
     if (inst.ops[0].type == LL_OP_REG && inst.ops[1].type == LL_OP_REG) {
         // move high 64-bit from src to low 64-bit from dst
         assert(inst.type == LL_INS_MOVLPS); // the official mnemonic is MOVHLPS.
@@ -85,7 +85,7 @@ void LLState::LiftSseMovlp(const LLInstr& inst) {
     }
 }
 
-void LLState::LiftSseMovhps(const LLInstr& inst) {
+void Lifter::LiftSseMovhps(const LLInstr& inst) {
     if (inst.ops[0].type == LL_OP_MEM) {
         // move high 64-bit from src to (low) 64-bit from dst (in memory)
         llvm::Value* op2 = OpLoad(inst.ops[1], Facet::V4F32);
@@ -107,7 +107,7 @@ void LLState::LiftSseMovhps(const LLInstr& inst) {
     }
 }
 
-void LLState::LiftSseMovhpd(const LLInstr& inst) {
+void Lifter::LiftSseMovhpd(const LLInstr& inst) {
     if (inst.ops[0].type == LL_OP_MEM) {
         // move high 64-bit from src to (low) 64-bit from dst (in memory)
         llvm::Value* op2 = OpLoad(inst.ops[1], Facet::V2F64);
@@ -120,14 +120,14 @@ void LLState::LiftSseMovhpd(const LLInstr& inst) {
     }
 }
 
-void LLState::LiftSseBinOp(const LLInstr& inst, llvm::Instruction::BinaryOps op,
+void Lifter::LiftSseBinOp(const LLInstr& inst, llvm::Instruction::BinaryOps op,
                            Facet op_type) {
     llvm::Value* op1 = OpLoad(inst.ops[0], op_type, ALIGN_IMP);
     llvm::Value* op2 = OpLoad(inst.ops[1], op_type, ALIGN_IMP);
     OpStoreVec(inst.ops[0], irb.CreateBinOp(op, op1, op2), ALIGN_IMP);
 }
 
-void LLState::LiftSseUnpck(const LLInstr& inst, Facet op_type) {
+void Lifter::LiftSseUnpck(const LLInstr& inst, Facet op_type) {
     llvm::Value* op1 = OpLoad(inst.ops[0], op_type);
     // We always fetch 128 bits, as per SDM.
     llvm::Value* op2 = OpLoad(inst.ops[1], op_type, ALIGN_MAX);
@@ -145,7 +145,7 @@ void LLState::LiftSseUnpck(const LLInstr& inst, Facet op_type) {
     OpStoreVec(inst.ops[0], res);
 }
 
-void LLState::LiftSseShufps(const LLInstr& inst) {
+void Lifter::LiftSseShufps(const LLInstr& inst) {
     uint32_t mask[4];
     for (int i = 0; i < 4; i++)
         mask[i] = (i < 2 ? 0 : 4) + ((inst.ops[2].val >> 2*i) & 3);
@@ -155,7 +155,7 @@ void LLState::LiftSseShufps(const LLInstr& inst) {
     OpStoreVec(inst.ops[0], res);
 }
 
-void LLState::LiftSseInsertps(const LLInstr& inst) {
+void Lifter::LiftSseInsertps(const LLInstr& inst) {
     int count_s = (inst.ops[2].val >> 6) & 3;
     int count_d = (inst.ops[2].val >> 4) & 3;
     int zmask = inst.ops[2].val & 0xf;

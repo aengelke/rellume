@@ -148,7 +148,7 @@ ll_func_optimize(LLVMValueRef llvm_fn)
 std::unique_ptr<BasicBlock> Function::CreateExit() {
     llvm::BasicBlock* llvm_bb = llvm::BasicBlock::Create(llvm->getContext(), "", llvm, nullptr);
     auto exit_block = std::make_unique<BasicBlock>(llvm_bb);
-    LLState state(cfg, exit_block->regfile, exit_block->Llvm());
+    Lifter state(cfg, exit_block->regfile, exit_block->Llvm());
 
     // Pack CPU struct and return
     llvm::Value* param = llvm->arg_begin();
@@ -202,7 +202,7 @@ llvm::Function* Function::Lift()
 
     for (auto it = block_map.begin(); it != block_map.end(); ++it)
     {
-        LLState state(cfg, it->second->regfile, it->second->Llvm());
+        Lifter state(cfg, it->second->regfile, it->second->Llvm());
 
         llvm::Value* next_rip = state.GetReg(LLReg(LL_RT_IP, 0), Facet::I64);
         if (auto select = llvm::dyn_cast<llvm::SelectInst>(next_rip))

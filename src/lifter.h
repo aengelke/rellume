@@ -21,8 +21,8 @@
  * \file
  **/
 
-#ifndef LL_STATE_H
-#define LL_STATE_H
+#ifndef RELLUME_LIFTER_H
+#define RELLUME_LIFTER_H
 
 #include "config.h"
 #include "facet.h"
@@ -132,9 +132,9 @@ public:
     llvm::Value* FlagAsReg(unsigned size);
 };
 
-class LLState : public LifterBase {
+class Lifter : public LifterBase {
 public:
-    LLState(LLConfig& cfg, RegFile& rf, llvm::BasicBlock* bb) : LifterBase(cfg, rf, bb) {}
+    Lifter(LLConfig& cfg, RegFile& rf, llvm::BasicBlock* bb) : LifterBase(cfg, rf, bb) {}
 
     // llinstruction-gp.cc
     void LiftMovgp(const LLInstr&, llvm::Instruction::CastOps cast);
