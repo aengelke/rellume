@@ -42,7 +42,7 @@
 namespace rellume {
 
 llvm::Value*
-LLStateBase::FlagCond(Condition cond)
+LifterBase::FlagCond(Condition cond)
 {
     RegFile::FlagCache& cache = regfile.GetFlagCache();
     if (cache.valid)
@@ -76,7 +76,7 @@ LLStateBase::FlagCond(Condition cond)
     return static_cast<int>(cond) & 1 ? irb.CreateNot(result) : result;
 }
 
-llvm::Value* LLStateBase::FlagAsReg(unsigned size) {
+llvm::Value* LifterBase::FlagAsReg(unsigned size) {
     llvm::Value* res = irb.getInt64(0x202); // IF
     llvm::Type* ty = res->getType();
     static const std::pair<int, unsigned> flags[] = {
@@ -91,7 +91,7 @@ llvm::Value* LLStateBase::FlagAsReg(unsigned size) {
 }
 
 void
-LLStateBase::FlagCalcP(llvm::Value* value)
+LifterBase::FlagCalcP(llvm::Value* value)
 {
     llvm::Value* trunc = irb.CreateTruncOrBitCast(value, irb.getInt8Ty());
 #if LL_LLVM_MAJOR >= 8
@@ -107,7 +107,7 @@ LLStateBase::FlagCalcP(llvm::Value* value)
 }
 
 void
-LLStateBase::FlagCalcA(llvm::Value* res, llvm::Value* lhs, llvm::Value* rhs)
+LifterBase::FlagCalcA(llvm::Value* res, llvm::Value* lhs, llvm::Value* rhs)
 {
     llvm::Value* tmp = irb.CreateXor(irb.CreateXor(lhs, rhs), res);
     llvm::Value* masked = irb.CreateAnd(tmp, llvm::ConstantInt::get(res->getType(), 16));
@@ -115,7 +115,7 @@ LLStateBase::FlagCalcA(llvm::Value* res, llvm::Value* lhs, llvm::Value* rhs)
 }
 
 void
-LLStateBase::FlagCalcOAdd(llvm::Value* res, llvm::Value* lhs, llvm::Value* rhs)
+LifterBase::FlagCalcOAdd(llvm::Value* res, llvm::Value* lhs, llvm::Value* rhs)
 {
     if (cfg.enableOverflowIntrinsics)
     {
@@ -132,7 +132,7 @@ LLStateBase::FlagCalcOAdd(llvm::Value* res, llvm::Value* lhs, llvm::Value* rhs)
 }
 
 void
-LLStateBase::FlagCalcOSub(llvm::Value* res, llvm::Value* lhs, llvm::Value* rhs)
+LifterBase::FlagCalcOSub(llvm::Value* res, llvm::Value* lhs, llvm::Value* rhs)
 {
     if (cfg.enableOverflowIntrinsics)
     {

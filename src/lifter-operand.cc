@@ -45,7 +45,7 @@
 namespace rellume {
 
 llvm::Value*
-LLStateBase::OpAddrConst(uint64_t addr)
+LifterBase::OpAddrConst(uint64_t addr)
 {
     if (addr == 0)
         return llvm::ConstantPointerNull::get(irb.getInt8PtrTy());
@@ -60,7 +60,7 @@ LLStateBase::OpAddrConst(uint64_t addr)
 }
 
 llvm::Value*
-LLStateBase::OpAddr(const LLInstrOp& op, llvm::Type* element_type)
+LifterBase::OpAddr(const LLInstrOp& op, llvm::Type* element_type)
 {
     int addrspace = 0;
     switch (op.seg)
@@ -127,7 +127,7 @@ ll_operand_set_alignment(llvm::Instruction* value, Alignment alignment, bool sse
 }
 
 llvm::Value*
-LLStateBase::OpLoad(const LLInstrOp& op, Facet facet, Alignment alignment)
+LifterBase::OpLoad(const LLInstrOp& op, Facet facet, Alignment alignment)
 {
     facet = facet.Resolve(op.size * 8);
     if (op.type == LL_OP_IMM)
@@ -156,7 +156,7 @@ LLStateBase::OpLoad(const LLInstrOp& op, Facet facet, Alignment alignment)
 }
 
 void
-LLStateBase::OpStoreGp(const LLInstrOp& op, llvm::Value* value, Alignment alignment)
+LifterBase::OpStoreGp(const LLInstrOp& op, llvm::Value* value, Alignment alignment)
 {
     if (op.type == LL_OP_MEM)
     {
@@ -215,7 +215,7 @@ LLStateBase::OpStoreGp(const LLInstrOp& op, llvm::Value* value, Alignment alignm
 }
 
 void
-LLStateBase::OpStoreVec(const LLInstrOp& op, llvm::Value* value, bool avx,
+LifterBase::OpStoreVec(const LLInstrOp& op, llvm::Value* value, bool avx,
                         Alignment alignment)
 {
     if (op.type == LL_OP_MEM)
@@ -293,7 +293,7 @@ LLStateBase::OpStoreVec(const LLInstrOp& op, llvm::Value* value, bool avx,
     }
 }
 
-void LLStateBase::StackPush(llvm::Value* value) {
+void LifterBase::StackPush(llvm::Value* value) {
     llvm::Value* rsp = GetReg(LLReg(LL_RT_GP64, LL_RI_SP), Facet::PTR);
     rsp = irb.CreatePointerCast(rsp, value->getType()->getPointerTo());
     rsp = irb.CreateConstGEP1_64(rsp, -1);
@@ -303,7 +303,7 @@ void LLStateBase::StackPush(llvm::Value* value) {
     SetReg(LLReg(LL_RT_GP64, LL_RI_SP), Facet::PTR, rsp);
 }
 
-llvm::Value* LLStateBase::StackPop(const LLReg sp_src_reg) {
+llvm::Value* LifterBase::StackPop(const LLReg sp_src_reg) {
     llvm::Value* rsp = GetReg(sp_src_reg, Facet::PTR);
     rsp = irb.CreatePointerCast(rsp, irb.getInt64Ty()->getPointerTo());
 

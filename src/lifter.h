@@ -54,9 +54,9 @@ enum class Condition {
 /**
  * \brief The LLVM state of the back-end.
  **/
-class LLStateBase {
+class LifterBase {
 protected:
-    LLStateBase(LLConfig& cfg, RegFile& rf, llvm::BasicBlock* bb) : cfg(cfg),
+    LifterBase(LLConfig& cfg, RegFile& rf, llvm::BasicBlock* bb) : cfg(cfg),
             regfile(rf), irb(bb) {
         // Set fast-math flags. Newer LLVM supports FastMathFlags::getFast().
         if (cfg.enableFastMath) {
@@ -67,11 +67,11 @@ protected:
     }
 
 public:
-    LLStateBase(LLStateBase&& rhs);
-    LLStateBase& operator=(LLStateBase&& rhs);
+    LifterBase(LifterBase&& rhs);
+    LifterBase& operator=(LifterBase&& rhs);
 
-    LLStateBase(const LLStateBase&) = delete;
-    LLStateBase& operator=(const LLStateBase&) = delete;
+    LifterBase(const LifterBase&) = delete;
+    LifterBase& operator=(const LifterBase&) = delete;
 
     LLConfig& cfg;
 
@@ -132,9 +132,9 @@ public:
     llvm::Value* FlagAsReg(unsigned size);
 };
 
-class LLState : public LLStateBase {
+class LLState : public LifterBase {
 public:
-    LLState(LLConfig& cfg, RegFile& rf, llvm::BasicBlock* bb) : LLStateBase(cfg, rf, bb) {}
+    LLState(LLConfig& cfg, RegFile& rf, llvm::BasicBlock* bb) : LifterBase(cfg, rf, bb) {}
 
     // llinstruction-gp.cc
     void LiftMovgp(const LLInstr&, llvm::Instruction::CastOps cast);
