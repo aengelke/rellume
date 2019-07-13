@@ -27,4 +27,5 @@ librellume_lib = library('rellume', sources,
                          dependencies: [libllvm, fadec],
                          c_args: rellume_flags,
                          cpp_args: rellume_flags,
+                         cpp_pch: 'pch/llvm.h',
                          install: true)

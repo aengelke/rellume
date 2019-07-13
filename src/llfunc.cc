@@ -108,6 +108,8 @@ Function::Function(llvm::Module* mod)
     cfg.prefer_pointer_cmp = false;
 }
 
+Function::~Function() = default;
+
 void Function::AddInst(uint64_t block_addr, const LLInstr& inst)
 {
     auto block_it = block_map.find(block_addr);

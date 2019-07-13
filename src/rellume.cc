@@ -21,17 +21,14 @@
  * \file
  **/
 
-#include <stdbool.h>
-#include <stdlib.h>
-#include <stdint.h>
+#include "rellume/rellume.h"
+
+#include "llfunction-internal.h"
 #include <llvm/IR/Module.h>
 #include <llvm/IR/Value.h>
 #include <llvm-c/Core.h>
-
-#include <rellume/rellume.h>
-
-#include <llbasicblock-internal.h>
-#include <llfunction-internal.h>
+#include <cstdbool>
+#include <cstdint>
 
 
 LLFunc* ll_func(LLVMModuleRef mod) {

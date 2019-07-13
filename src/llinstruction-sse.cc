@@ -21,18 +21,16 @@
  * \file
  **/
 
-#include <cstdbool>
-#include <cstdint>
+#include "llinstruction-internal.h"
+#include "llstate-internal.h"
+
+#include "llcommon-internal.h"
+#include "rellume/instr.h"
+#include <llvm/IR/IRBuilder.h>
+#include <llvm/IR/Value.h>
 #include <llvm-c/Core.h>
 
-#include <llvm/IR/Instructions.h>
-#include <llvm/IR/IRBuilder.h>
 
-#include <llinstruction-internal.h>
-#include <llstate-internal.h>
-
-#include <llcommon-internal.h>
-#include <rellume/instr.h>
 
 /**
  * \defgroup LLInstructionSSE SSE Instructions

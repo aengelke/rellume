@@ -21,16 +21,16 @@
  * \file
  **/
 
-#include <stdbool.h>
-#include <stdlib.h>
-#include <stdint.h>
+#include "llinstruction-internal.h"
+#include "llstate-internal.h"
+
+#include "llcommon-internal.h"
+#include "rellume/instr.h"
+#include <llvm/IR/Instruction.h>
+#include <llvm/IR/IRBuilder.h>
+#include <llvm/IR/Value.h>
 #include <llvm-c/Core.h>
 
-#include <llinstruction-internal.h>
-#include <llstate-internal.h>
-
-#include <llcommon-internal.h>
-#include <rellume/instr.h>
 
 /**
  * \defgroup LLInstructionGP General Purpose Instructions

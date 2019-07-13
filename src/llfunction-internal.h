@@ -24,18 +24,12 @@
 #ifndef LL_FUNCTION_H
 #define LL_FUNCTION_H
 
-#include <cstdbool>
-#include <cstdint>
-#include <unordered_map>
-#include <vector>
-
-#include <llvm/IR/BasicBlock.h>
+#include "llcommon-internal.h"
+#include "rellume/instr.h"
 #include <llvm/IR/Function.h>
 #include <llvm/IR/Value.h>
-
-#include <rellume/instr.h>
-
-#include <llcommon-internal.h>
+#include <cstdint>
+#include <unordered_map>
 
 
 namespace rellume
@@ -47,6 +41,7 @@ class Function
 {
 public:
     Function(llvm::Module* mod);
+    ~Function();
 
     Function(Function&& rhs);
     Function& operator=(Function&& rhs);

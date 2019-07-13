@@ -21,18 +21,15 @@
  * \file
  **/
 
-#include <stdbool.h>
-#include <stdlib.h>
-#include <stdint.h>
-#include <string.h>
+#include "rellume/instr.h"
 
+#include "llcommon-internal.h"
 extern "C" {
 #include <fadec.h>
 }
-
-#include <rellume/instr.h>
-
-#include <llcommon-internal.h>
+#include <cstdint>
+#include <cstdio>
+#include <cstring>
 
 
 /**
@@ -118,7 +115,7 @@ convert_reg(int size, int idx, int type)
         return LLReg{ LL_RT_SEG, (uint16_t) idx };
 
     printf("Unknown reg convert %d/%d\n", type, size);
-    abort();
+    return LLReg{ LL_RT_None, LL_RI_None };
 }
 
 LLInstr LLInstr::Decode(uint8_t* buf, size_t buf_size, uint64_t addr)

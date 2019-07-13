@@ -25,7 +25,7 @@
 #define RELLUME_RELLUME_H
 
 #include <stdbool.h>
-#include <stdlib.h>
+#include <stddef.h>
 #include <stdint.h>
 
 #include <llvm-c/Core.h>

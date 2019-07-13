@@ -24,15 +24,15 @@
 #ifndef LL_REGFILE_H
 #define LL_REGFILE_H
 
-#include <stdbool.h>
-#include <stdlib.h>
-#include <stdint.h>
-#include <stdlib.h>
-#include <algorithm>
-#include <llvm-c/Core.h>
+#include "llcommon-internal.h"
+#include "rellume/instr.h"
 
-#include <llcommon-internal.h>
-#include <rellume/instr.h>
+#include <llvm/IR/BasicBlock.h>
+#include <llvm/IR/Value.h>
+#include <cstdbool>
+#include <cstdint>
+#include <algorithm>
+
 
 /**
  * \ingroup LLRegFile

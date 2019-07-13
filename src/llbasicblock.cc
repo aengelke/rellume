@@ -33,9 +33,7 @@
 #include <llvm/IR/Instructions.h>
 #include <llvm/IR/Intrinsics.h>
 #include <llvm/IR/IRBuilder.h>
-#include <llvm/IR/LLVMContext.h>
 #include <llvm/IR/Metadata.h>
-#include <llvm-c/Core.h>
 
 #include <llbasicblock-internal.h>
 

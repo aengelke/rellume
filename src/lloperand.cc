@@ -21,21 +21,19 @@
  * \file
  **/
 
-#include <cstdbool>
-#include <cstddef>
-#include <cstdint>
+#include "llstate-internal.h"
 
+#include "llcommon-internal.h"
+#include "rellume/instr.h"
 #include <llvm/IR/Constants.h>
 #include <llvm/IR/Instructions.h>
 #include <llvm/IR/IRBuilder.h>
 #include <llvm/IR/Type.h>
 #include <llvm/IR/Value.h>
 #include <llvm-c/Core.h>
+#include <cstddef>
+#include <cstdint>
 
-#include <llstate-internal.h>
-
-#include <llcommon-internal.h>
-#include <rellume/instr.h>
 
 /**
  * \defgroup LLInstrOp LLInstrOp

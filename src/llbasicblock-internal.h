@@ -24,13 +24,10 @@
 #ifndef LL_BASIC_BLOCK_H
 #define LL_BASIC_BLOCK_H
 
-#include <stdbool.h>
-#include <stdlib.h>
-#include <stdint.h>
-#include <stdlib.h>
+#include <cstdbool>
+#include <cstdint>
 
 #include <llvm/IR/BasicBlock.h>
-#include <llvm-c/Core.h>
 
 #include <llcommon-internal.h>
 #include <llregfile-internal.h>

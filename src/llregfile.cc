@@ -21,21 +21,19 @@
  * \file
  **/
 
-#include <stdbool.h>
-#include <stdlib.h>
-#include <stdint.h>
-#include <string.h>
-#include <algorithm>
+#include "llregfile-internal.h"
 
+#include "rellume/instr.h"
 #include <llvm/IR/BasicBlock.h>
 #include <llvm/IR/Constants.h>
 #include <llvm/IR/Instructions.h>
 #include <llvm/IR/IRBuilder.h>
 #include <llvm-c/Core.h>
+#include <cassert>
+#include <cstdint>
+#include <cstring>
 
-#include <llregfile-internal.h>
 
-#include <rellume/instr.h>
 
 /**
  * \defgroup LLRegFile Register File

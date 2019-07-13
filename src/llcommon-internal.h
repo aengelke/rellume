@@ -24,16 +24,12 @@
 #ifndef LL_COMMON_H
 #define LL_COMMON_H
 
-#include <stdbool.h>
-#include <stdlib.h>
-#include <stdint.h>
-#include <stdio.h>
-#include <llvm/IR/Value.h>
+#include <cstdbool>
+#include <cstdint>
 
-#ifdef __cplusplus
-extern "C" {
-#endif
-
+namespace llvm {
+class Value;
+}
 
 /**
  * \brief Emit a warning and jump into a debugger
@@ -72,9 +68,5 @@ struct LLConfig {
 };
 
 typedef struct LLConfig LLConfig;
-
-#ifdef __cplusplus
-}
-#endif
 
 #endif

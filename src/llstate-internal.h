@@ -24,15 +24,13 @@
 #ifndef LL_STATE_H
 #define LL_STATE_H
 
-#include <stdbool.h>
-#include <stdlib.h>
-#include <stdint.h>
-#include <stdio.h>
+#include "llcommon-internal.h"
+#include "llregfile-internal.h"
+#include "rellume/instr.h"
+#include <llvm/IR/BasicBlock.h>
+#include <llvm/IR/Instruction.h>
 #include <llvm/IR/IRBuilder.h>
-#include <llvm-c/Core.h>
-#include <llvm-c/ExecutionEngine.h>
 
-#include <llregfile-internal.h>
 
 #ifdef __cplusplus
 extern "C" {
