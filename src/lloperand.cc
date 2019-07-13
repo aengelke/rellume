@@ -165,15 +165,17 @@ LLStateBase::OpStoreGp(const LLInstrOp& op, llvm::Value* value, Alignment alignm
     }
 
     assert(op.type == LL_OP_REG && "gp-store to non-mem/non-reg");
+    assert(op.reg.IsGp() || op.reg.rt == LL_RT_IP);
+    assert(op.size == op.reg.Size());
+    assert(value->getType() == irb.getIntNTy(op.size * 8));
 
-    value = irb.CreateSExtOrBitCast(value, irb.getIntNTy(op.size * 8));
     if (op.reg.rt == LL_RT_GP64 || op.reg.rt == LL_RT_IP)
     {
         SetReg(op.reg, Facet::I64, value);
         return;
     }
 
-    llvm::Value* value64 = irb.CreateZExtOrBitCast(value, irb.getInt64Ty());
+    llvm::Value* value64 = irb.CreateZExt(value, irb.getInt64Ty());
 
     if (op.reg.rt == LL_RT_GP32)
     {
