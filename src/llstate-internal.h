@@ -196,27 +196,4 @@ public:
     void LiftSseInsertps(const LLInstr&);
 };
 
-// Legacy API.
-
-#define OP_SI Facet::I
-#define OP_SI32 Facet::I32
-#define OP_SI64 Facet::I64
-#define OP_VI8 Facet::VI8
-#define OP_VI32 Facet::VI32
-#define OP_VI64 Facet::VI64
-#define OP_SF32 Facet::F32
-#define OP_SF64 Facet::F64
-#define OP_VF32 Facet::VF32
-#define OP_V1F32 Facet::V1F32
-#define OP_V2F32 Facet::V2F32
-#define OP_V4F32 Facet::V4F32
-#define OP_VF64 Facet::VF64
-#define OP_V1F64 Facet::V1F64
-#define OP_V2F64 Facet::V2F64
-#define OperandDataType Facet::Value
-
-enum {
-    REG_DEFAULT, REG_ZERO_UPPER_AVX, REG_KEEP_UPPER,
-};
-
 #endif

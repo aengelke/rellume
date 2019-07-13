@@ -24,6 +24,7 @@
 #ifndef LL_REGFILE_H
 #define LL_REGFILE_H
 
+#include "facet.h"
 #include "llcommon-internal.h"
 #include "rellume/instr.h"
 
@@ -63,46 +64,6 @@ enum {
      **/
     RFLAG_AF,
     RFLAG_Max
-};
-
-class Facet {
-public:
-    enum Value {
-        I64,
-        I32, I16, I8, I8H, PTR,
-
-        I128,
-        V1I8, V2I8, V4I8, V8I8, V16I8,
-        V1I16, V2I16, V4I16, V8I16,
-        V1I32, V2I32, V4I32,
-        V1I64, V2I64,
-        V1F32, V2F32, V4F32,
-        V1F64, V2F64,
-        F32, F64,
-#if LL_VECTOR_REGISTER_SIZE >= 256
-        I256,
-#endif
-
-        // Pseudo-facets
-        I, VI8, VI16, VI32, VI64, VF32, VF64,
-        MAX,
-
-#if LL_VECTOR_REGISTER_SIZE == 128
-        IVEC = I128,
-#elif LL_VECTOR_REGISTER_SIZE == 256
-        IVEC = I256,
-#endif
-    };
-
-    llvm::Type* Type(llvm::LLVMContext& ctx);
-    Facet Resolve(size_t bits);
-
-    Facet() = default;
-    constexpr Facet(Value value) : value(value) {}
-    operator Value() const { return value; }
-    explicit operator bool() = delete;
-private:
-    Value value;
 };
 
 template<Facet::Value... E>

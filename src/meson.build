@@ -1,5 +1,6 @@
 
 sources = [
+  'facet.cc',
   'llbasicblock.cc',
   'lldecoder.cc',
   'llflags.cc',

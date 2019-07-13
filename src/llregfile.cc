@@ -23,6 +23,7 @@
 
 #include "llregfile-internal.h"
 
+#include "facet.h"
 #include "rellume/instr.h"
 #include <llvm/IR/BasicBlock.h>
 #include <llvm/IR/Constants.h>
@@ -41,97 +42,6 @@
  *
  * @{
  **/
-
-Facet Facet::Resolve(size_t bits)
-{
-    switch (*this)
-    {
-    case Facet::I:
-        if (bits == 8) return Facet::I8;
-        if (bits == 16) return Facet::I16;
-        if (bits == 32) return Facet::I32;
-        if (bits == 64) return Facet::I64;
-        assert(false && "invalid bits for integer facet");
-        break;
-    case Facet::VI8:
-        if (bits == 8) return Facet::V1I8;
-        if (bits == 16) return Facet::V2I8;
-        if (bits == 32) return Facet::V4I8;
-        if (bits == 64) return Facet::V8I8;
-        if (bits == 128) return Facet::V16I8;
-        assert(false && "invalid bits for integer facet");
-        break;
-    case Facet::VI16:
-        if (bits == 16) return Facet::V1I16;
-        if (bits == 32) return Facet::V2I16;
-        if (bits == 64) return Facet::V4I16;
-        if (bits == 128) return Facet::V8I16;
-        assert(false && "invalid bits for integer facet");
-        break;
-    case Facet::VI32:
-        if (bits == 32) return Facet::V1I32;
-        if (bits == 64) return Facet::V2I32;
-        if (bits == 128) return Facet::V4I32;
-        assert(false && "invalid bits for integer facet");
-        break;
-    case Facet::VI64:
-        if (bits == 64) return Facet::V1I64;
-        if (bits == 128) return Facet::V2I64;
-        assert(false && "invalid bits for integer facet");
-        break;
-    case Facet::VF32:
-        if (bits == 32) return Facet::V1F32;
-        if (bits == 64) return Facet::V2F32;
-        if (bits == 128) return Facet::V4F32;
-        assert(false && "invalid bits for integer facet");
-        break;
-    case Facet::VF64:
-        if (bits == 64) return Facet::V1F64;
-        if (bits == 128) return Facet::V2F64;
-        assert(false && "invalid bits for integer facet");
-        break;
-    default:
-        return *this;
-    }
-}
-
-llvm::Type* Facet::Type(llvm::LLVMContext& ctx)
-{
-    switch (*this)
-    {
-    case Facet::I64: return llvm::Type::getInt64Ty(ctx);
-    case Facet::I32: return llvm::Type::getInt32Ty(ctx);
-    case Facet::I16: return llvm::Type::getInt16Ty(ctx);
-    case Facet::I8: return llvm::Type::getInt8Ty(ctx);
-    case Facet::I8H: return llvm::Type::getInt8Ty(ctx);
-    case Facet::PTR: return llvm::Type::getInt8PtrTy(ctx);
-    case Facet::I128: return llvm::Type::getInt128Ty(ctx);
-    case Facet::F32: return llvm::Type::getFloatTy(ctx);
-    case Facet::F64: return llvm::Type::getDoubleTy(ctx);
-    case Facet::V1I8: return llvm::VectorType::get(llvm::Type::getInt8Ty(ctx), 1);
-    case Facet::V2I8: return llvm::VectorType::get(llvm::Type::getInt8Ty(ctx), 2);
-    case Facet::V4I8: return llvm::VectorType::get(llvm::Type::getInt8Ty(ctx), 4);
-    case Facet::V8I8: return llvm::VectorType::get(llvm::Type::getInt8Ty(ctx), 8);
-    case Facet::V16I8: return llvm::VectorType::get(llvm::Type::getInt8Ty(ctx), 16);
-    case Facet::V1I16: return llvm::VectorType::get(llvm::Type::getInt16Ty(ctx), 1);
-    case Facet::V2I16: return llvm::VectorType::get(llvm::Type::getInt16Ty(ctx), 2);
-    case Facet::V4I16: return llvm::VectorType::get(llvm::Type::getInt16Ty(ctx), 4);
-    case Facet::V8I16: return llvm::VectorType::get(llvm::Type::getInt16Ty(ctx), 8);
-    case Facet::V1I32: return llvm::VectorType::get(llvm::Type::getInt32Ty(ctx), 1);
-    case Facet::V2I32: return llvm::VectorType::get(llvm::Type::getInt32Ty(ctx), 2);
-    case Facet::V4I32: return llvm::VectorType::get(llvm::Type::getInt32Ty(ctx), 4);
-    case Facet::V1I64: return llvm::VectorType::get(llvm::Type::getInt64Ty(ctx), 1);
-    case Facet::V2I64: return llvm::VectorType::get(llvm::Type::getInt64Ty(ctx), 2);
-    case Facet::V1F32: return llvm::VectorType::get(llvm::Type::getFloatTy(ctx), 1);
-    case Facet::V2F32: return llvm::VectorType::get(llvm::Type::getFloatTy(ctx), 2);
-    case Facet::V4F32: return llvm::VectorType::get(llvm::Type::getFloatTy(ctx), 4);
-    case Facet::V1F64: return llvm::VectorType::get(llvm::Type::getDoubleTy(ctx), 1);
-    case Facet::V2F64: return llvm::VectorType::get(llvm::Type::getDoubleTy(ctx), 2);
-    default: warn_if_reached();
-    }
-
-    return nullptr;
-}
 
 llvm::Value*
 RegFile::GetReg(LLReg reg, Facet facet)
