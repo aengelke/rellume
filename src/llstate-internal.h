@@ -78,13 +78,13 @@ public:
     llvm::IRBuilder<> irb;
 
 
-    llvm::Value* GetReg(LLReg reg, Facet::Value facet) {
+    llvm::Value* GetReg(LLReg reg, Facet facet) {
         return regfile.GetReg(reg, facet);
     }
-    void SetReg(LLReg reg, Facet::Value facet, llvm::Value* value) {
+    void SetReg(LLReg reg, Facet facet, llvm::Value* value) {
         regfile.SetReg(reg, facet, value, true); // clear all other facets
     }
-    void SetRegFacet(LLReg reg, Facet::Value facet, llvm::Value* value) {
+    void SetRegFacet(LLReg reg, Facet facet, llvm::Value* value) {
         regfile.SetReg(reg, facet, value, false);
     }
     llvm::Value* GetFlag(int flag) {
@@ -99,7 +99,7 @@ private:
     llvm::Value* OpAddrConst(uint64_t addr);
 public:
     llvm::Value* OpAddr(const LLInstrOp& op, llvm::Type* element_type);
-    llvm::Value* OpLoad(const LLInstrOp& op, Facet::Value dataType, Alignment alignment = ALIGN_NONE);
+    llvm::Value* OpLoad(const LLInstrOp& op, Facet dataType, Alignment alignment = ALIGN_NONE);
     void OpStoreGp(const LLInstrOp& op, llvm::Value* value, Alignment alignment = ALIGN_NONE);
     void OpStoreVec(const LLInstrOp& op, llvm::Value* value, bool avx = false, Alignment alignment = ALIGN_IMP);
     void StackPush(llvm::Value* value);
@@ -183,15 +183,15 @@ public:
     }
 
     // llinstruction-sse.cc
-    void LiftSseMovq(const LLInstr&, Facet::Value type);
+    void LiftSseMovq(const LLInstr&, Facet type);
     void LiftSseBinOp(const LLInstr&, llvm::Instruction::BinaryOps op,
-                      Facet::Value type);
-    void LiftSseMovScalar(const LLInstr&, Facet::Value);
-    void LiftSseMovdq(const LLInstr&, Facet::Value, Alignment);
+                      Facet type);
+    void LiftSseMovScalar(const LLInstr&, Facet);
+    void LiftSseMovdq(const LLInstr&, Facet, Alignment);
     void LiftSseMovlp(const LLInstr&);
     void LiftSseMovhps(const LLInstr&);
     void LiftSseMovhpd(const LLInstr&);
-    void LiftSseUnpck(const LLInstr&, Facet::Value type);
+    void LiftSseUnpck(const LLInstr&, Facet type);
     void LiftSseShufps(const LLInstr&);
     void LiftSseInsertps(const LLInstr&);
 };

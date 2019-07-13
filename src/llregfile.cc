@@ -42,9 +42,9 @@
  * @{
  **/
 
-Facet::Value Facet::Resolve(Facet::Value facet, size_t bits)
+Facet Facet::Resolve(size_t bits)
 {
-    switch (facet)
+    switch (*this)
     {
     case Facet::I:
         if (bits == 8) return Facet::I8;
@@ -91,13 +91,13 @@ Facet::Value Facet::Resolve(Facet::Value facet, size_t bits)
         assert(false && "invalid bits for integer facet");
         break;
     default:
-        return facet;
+        return *this;
     }
 }
 
-llvm::Type* Facet::Type(Facet::Value facet, llvm::LLVMContext& ctx)
+llvm::Type* Facet::Type(llvm::LLVMContext& ctx)
 {
-    switch (facet)
+    switch (*this)
     {
     case Facet::I64: return llvm::Type::getInt64Ty(ctx);
     case Facet::I32: return llvm::Type::getInt32Ty(ctx);
@@ -134,7 +134,7 @@ llvm::Type* Facet::Type(Facet::Value facet, llvm::LLVMContext& ctx)
 }
 
 llvm::Value*
-RegFile::GetReg(LLReg reg, Facet::Value facet)
+RegFile::GetReg(LLReg reg, Facet facet)
 {
     llvm::LLVMContext& ctx = llvm_block->getContext();
 
@@ -145,7 +145,7 @@ RegFile::GetReg(LLReg reg, Facet::Value facet)
     else
         builder.SetInsertPoint(llvm_block);
 
-    llvm::Type* facetType = Facet::Type(facet, ctx);
+    llvm::Type* facetType = facet.Type(ctx);
 
     if (reg.IsGp())
     {
@@ -304,7 +304,7 @@ RegFile::Rename(LLReg reg_dst, LLReg reg_src)
 }
 
 void
-RegFile::SetReg(LLReg reg, Facet::Value facet, llvm::Value* value, bool clearOthers)
+RegFile::SetReg(LLReg reg, Facet facet, llvm::Value* value, bool clearOthers)
 {
     llvm::LLVMContext& ctx = llvm_block->getContext();
     llvm::IRBuilder<> builder(ctx);
@@ -318,7 +318,7 @@ RegFile::SetReg(LLReg reg, Facet::Value facet, llvm::Value* value, bool clearOth
         llvm::cast<llvm::Instruction>(value)->setMetadata(buffer, md);
     }
 
-    assert(value->getType() == Facet::Type(facet, ctx));
+    assert(value->getType() == facet.Type(ctx));
 
     if (reg.IsGp())
     {

@@ -125,12 +125,12 @@ ll_operand_set_alignment(llvm::Instruction* value, Alignment alignment, bool sse
 }
 
 llvm::Value*
-LLStateBase::OpLoad(const LLInstrOp& op, Facet::Value facet, Alignment alignment)
+LLStateBase::OpLoad(const LLInstrOp& op, Facet facet, Alignment alignment)
 {
-    facet = Facet::Resolve(facet, op.size * 8);
+    facet = facet.Resolve(op.size * 8);
     if (op.type == LL_OP_IMM)
     {
-        llvm::Type* type = Facet::Type(facet, irb.getContext());
+        llvm::Type* type = facet.Type(irb.getContext());
         return llvm::ConstantInt::get(type, op.val);
     }
     else if (op.type == LL_OP_REG)
@@ -141,7 +141,7 @@ LLStateBase::OpLoad(const LLInstrOp& op, Facet::Value facet, Alignment alignment
     }
     else if (op.type == LL_OP_MEM)
     {
-        llvm::Type* type = Facet::Type(facet, irb.getContext());
+        llvm::Type* type = facet.Type(irb.getContext());
         llvm::Value* addr = OpAddr(op, type);
         llvm::LoadInst* result = irb.CreateLoad(type, addr);
         // FIXME: forward SSE information to increase alignment.
@@ -183,7 +183,7 @@ LLStateBase::OpStoreGp(const LLInstrOp& op, llvm::Value* value, Alignment alignm
     }
 
     uint64_t mask;
-    Facet::Value store_facet;
+    Facet store_facet;
     if (op.reg.IsGpHigh())
     {
         mask = 0xff00;

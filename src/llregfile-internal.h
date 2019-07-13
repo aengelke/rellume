@@ -94,8 +94,8 @@ public:
 #endif
     };
 
-    static Value Resolve(Value value, size_t bits);
-    static llvm::Type* Type(Value value, llvm::LLVMContext& ctx);
+    llvm::Type* Type(llvm::LLVMContext& ctx);
+    Facet Resolve(size_t bits);
 
     Facet() = default;
     constexpr Facet(Value value) : value(value) {}
@@ -168,8 +168,8 @@ public:
     RegFile(llvm::BasicBlock* llvm_block) : llvm_block(llvm_block),
             flag_cache() {}
 
-    llvm::Value* GetReg(LLReg reg, Facet::Value facet);
-    void SetReg(LLReg reg, Facet::Value facet, llvm::Value*, bool clear_facets);
+    llvm::Value* GetReg(LLReg reg, Facet facet);
+    void SetReg(LLReg reg, Facet facet, llvm::Value*, bool clear_facets);
     void Rename(LLReg reg_dst, LLReg reg_src);
 
     llvm::Value* GetFlag(int flag);
@@ -188,7 +188,5 @@ private:
 
     FlagCache flag_cache;
 };
-
-typedef Facet::Value RegisterFacet;
 
 #endif

@@ -37,7 +37,7 @@
  * @{
  **/
 
-void LLState::LiftSseMovq(const LLInstr& inst, Facet::Value type)
+void LLState::LiftSseMovq(const LLInstr& inst, Facet type)
 {
     llvm::Value* op1 = OpLoad(inst.ops[1], type);
     if (inst.ops[0].type == LL_OP_REG && inst.ops[0].reg.IsVec()) {
@@ -51,7 +51,7 @@ void LLState::LiftSseMovq(const LLInstr& inst, Facet::Value type)
     }
 }
 
-void LLState::LiftSseMovScalar(const LLInstr& inst, Facet::Value facet) {
+void LLState::LiftSseMovScalar(const LLInstr& inst, Facet facet) {
     llvm::Value* src = OpLoad(inst.ops[1], facet);
     if (inst.ops[1].type == LL_OP_MEM) {
         llvm::Type* el_ty = src->getType();
@@ -64,7 +64,7 @@ void LLState::LiftSseMovScalar(const LLInstr& inst, Facet::Value facet) {
     }
 }
 
-void LLState::LiftSseMovdq(const LLInstr& inst, Facet::Value facet,
+void LLState::LiftSseMovdq(const LLInstr& inst, Facet facet,
                            Alignment alignment) {
     OpStoreVec(inst.ops[0], OpLoad(inst.ops[1], facet, alignment), alignment);
 }
@@ -119,13 +119,13 @@ void LLState::LiftSseMovhpd(const LLInstr& inst) {
 }
 
 void LLState::LiftSseBinOp(const LLInstr& inst, llvm::Instruction::BinaryOps op,
-                           Facet::Value op_type) {
+                           Facet op_type) {
     llvm::Value* op1 = OpLoad(inst.ops[0], op_type, ALIGN_IMP);
     llvm::Value* op2 = OpLoad(inst.ops[1], op_type, ALIGN_IMP);
     OpStoreVec(inst.ops[0], irb.CreateBinOp(op, op1, op2), ALIGN_IMP);
 }
 
-void LLState::LiftSseUnpck(const LLInstr& inst, Facet::Value op_type) {
+void LLState::LiftSseUnpck(const LLInstr& inst, Facet op_type) {
     llvm::Value* op1 = OpLoad(inst.ops[0], op_type);
     // We always fetch 128 bits, as per SDM.
     llvm::Value* op2 = OpLoad(inst.ops[1], op_type, ALIGN_MAX);
