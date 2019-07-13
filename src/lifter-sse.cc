@@ -21,7 +21,7 @@
  * \file
  **/
 
-#include "llstate-internal.h"
+#include "lifter.h"
 
 #include "facet.h"
 #include "rellume/instr.h"

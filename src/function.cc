@@ -21,11 +21,11 @@
  * \file
  **/
 
-#include "llfunction-internal.h"
+#include "function.h"
 
+#include "basicblock.h"
 #include "config.h"
-#include "llbasicblock-internal.h"
-#include "llstate-internal.h"
+#include "lifter.h"
 #include <llvm-c/Analysis.h>
 #include <llvm-c/Core.h>
 #include <llvm-c/Support.h>

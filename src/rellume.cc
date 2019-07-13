@@ -23,7 +23,7 @@
 
 #include "rellume/rellume.h"
 
-#include "llfunction-internal.h"
+#include "function.h"
 #include <llvm/IR/Module.h>
 #include <llvm/IR/Value.h>
 #include <llvm-c/Core.h>

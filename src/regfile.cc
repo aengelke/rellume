@@ -21,7 +21,7 @@
  * \file
  **/
 
-#include "llregfile-internal.h"
+#include "regfile.h"
 
 #include "facet.h"
 #include "rellume/instr.h"

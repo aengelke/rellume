@@ -25,7 +25,7 @@
 #define LL_BASIC_BLOCK_H
 
 #include "config.h"
-#include "llregfile-internal.h"
+#include "regfile.h"
 #include <llvm/IR/BasicBlock.h>
 
 

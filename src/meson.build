@@ -1,15 +1,15 @@
 
 sources = [
+  'basicblock.cc',
   'facet.cc',
-  'llbasicblock.cc',
+  'instr.cc',
+  'function.cc',
   'lldecoder.cc',
-  'llflags.cc',
-  'llfunc.cc',
-  'llinstr.cc',
-  'llinstruction-gp.cc',
-  'llinstruction-sse.cc',
-  'lloperand.cc',
-  'llregfile.cc',
+  'lifter-flags.cc',
+  'lifter-gp.cc',
+  'lifter-sse.cc',
+  'lifter-operand.cc',
+  'regfile.cc',
   'rellume.cc',
 ]
 

@@ -26,7 +26,7 @@
 
 #include "config.h"
 #include "facet.h"
-#include "llregfile-internal.h"
+#include "regfile.h"
 #include "rellume/instr.h"
 #include <llvm/IR/BasicBlock.h>
 #include <llvm/IR/Instruction.h>

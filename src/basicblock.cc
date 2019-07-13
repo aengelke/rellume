@@ -21,12 +21,12 @@
  * \file
  **/
 
-#include "llbasicblock-internal.h"
+#include "basicblock.h"
 
 #include "config.h"
 #include "facet.h"
-#include "llregfile-internal.h"
-#include "llstate-internal.h"
+#include "lifter.h"
+#include "regfile.h"
 #include "rellume/instr.h"
 #include <llvm/IR/BasicBlock.h>
 #include <llvm/IR/Constants.h>

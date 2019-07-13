@@ -21,9 +21,9 @@
  * \file
  **/
 
-#include "llstate-internal.h"
+#include "lifter.h"
 
-#include "llregfile-internal.h"
+#include "regfile.h"
 #include "rellume/instr.h"
 #include <llvm/IR/Intrinsics.h>
 #include <llvm/IR/IRBuilder.h>

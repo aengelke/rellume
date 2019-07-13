@@ -29,7 +29,7 @@
 #include <rellume/rellume.h>
 
 #include <rellume/instr.h>
-#include <llfunction-internal.h>
+#include <function.h>
 
 namespace rellume {
 

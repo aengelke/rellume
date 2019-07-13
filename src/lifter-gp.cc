@@ -21,10 +21,10 @@
  * \file
  **/
 
-#include "llstate-internal.h"
+#include "lifter.h"
 
 #include "facet.h"
-#include "llregfile-internal.h"
+#include "regfile.h"
 #include "rellume/instr.h"
 #include <llvm/IR/Instruction.h>
 #include <llvm/IR/IRBuilder.h>
