@@ -118,7 +118,7 @@ void Function::AddInst(uint64_t block_addr, const LLInstr& inst)
         block_map[block_addr] = std::make_unique<BasicBlock>(llvm_bb);
     }
 
-    block_map[block_addr]->AddInst(const_cast<LLInstr*>(&inst), cfg);
+    block_map[block_addr]->AddInst(inst, cfg);
 }
 
 static

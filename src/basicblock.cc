@@ -87,26 +87,26 @@ BasicBlock::BasicBlock(llvm::BasicBlock* llvm) : llvmBB(llvm), regfile(llvm) {
     }
 }
 
-void BasicBlock::AddInst(LLInstr* instr, LLConfig& cfg)
+void BasicBlock::AddInst(const LLInstr& inst, LLConfig& cfg)
 {
     Lifter state(cfg, regfile, llvmBB);
 
     // Set new instruction pointer register
-    llvm::Value* ripValue = state.irb.getInt64(instr->addr + instr->len);
+    llvm::Value* ripValue = state.irb.getInt64(inst.addr + inst.len);
     regfile.SetReg(LLReg(LL_RT_IP, 0), Facet::I64, ripValue, true);
 
     // Add separator for debugging.
     llvm::Function* intrinsicDoNothing = llvm::Intrinsic::getDeclaration(llvmBB->getModule(), llvm::Intrinsic::donothing, {});
     state.irb.CreateCall(intrinsicDoNothing);
 
-    switch (instr->type)
+    switch (inst.type)
     {
 #define DEF_IT(opc,handler) case LL_INS_ ## opc : handler; break;
 #include "rellume/opcodes.inc"
 #undef DEF_IT
 
         default:
-            printf("Could not handle instruction at %#zx\n", instr->addr);
+            printf("Could not handle instruction at %#zx\n", inst.addr);
             assert(0);
             break;
     }

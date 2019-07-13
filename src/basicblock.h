@@ -42,7 +42,7 @@ public:
     BasicBlock(const BasicBlock&) = delete;
     BasicBlock& operator=(const BasicBlock&) = delete;
 
-    void AddInst(LLInstr* inst, LLConfig& cfg);
+    void AddInst(const LLInstr& inst, LLConfig& cfg);
     void AddToPhis(BasicBlock& pred) {
         AddToPhis(pred.llvmBB, pred.regfile);
     }
