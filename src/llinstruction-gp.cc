@@ -21,7 +21,6 @@
  * \file
  **/
 
-#include "llinstruction-internal.h"
 #include "llstate-internal.h"
 
 #include "llcommon-internal.h"
@@ -29,7 +28,6 @@
 #include <llvm/IR/Instruction.h>
 #include <llvm/IR/IRBuilder.h>
 #include <llvm/IR/Value.h>
-#include <llvm-c/Core.h>
 
 
 /**
@@ -179,59 +177,30 @@ void LLState::LiftIncDec(const LLInstr& inst) {
     OpStoreGp(inst.ops[0], res);
 }
 
-void
-ll_instruction_shift(LLInstr* instr, LLState* state)
-{
-    LLVMValueRef operand1 = ll_operand_load(OP_SI, ALIGN_MAXIMUM, &instr->ops[0], state);
-    LLVMValueRef operand2;
-    LLVMValueRef result = NULL;
-
-    if (instr->operand_count == 1)
-    {
-        // DBrew decodes shifts with a implicit shift of 1 with only one operand
-        operand2 = LLVMConstInt(LLVMTypeOf(operand1), 1, false);
-    }
-    else
-    {
-        operand2 = ll_operand_load(OP_SI, ALIGN_MAXIMUM, &instr->ops[1], state);
-        // In x86, the second operand is always one byte, but in LLVM it must
-        // have the same type as the first operand.
-        operand2 = LLVMBuildZExtOrBitCast(state->builder, operand2, LLVMTypeOf(operand1), "");
-
-        // x86 also masks the shift operands, depending on operand size. Note
-        // that for 8/16-bit operands the mask is 0x1f as well.
-        uint64_t mask_value = 0x3f;
-        if (LLVMGetIntTypeWidth(LLVMTypeOf(operand1)) != 64)
-        {
-            mask_value = 0x1f;
-        }
-
-        LLVMValueRef mask = LLVMConstInt(LLVMTypeOf(operand1), mask_value, false);
-        operand2 = LLVMBuildAnd(state->builder, operand2, mask, "");
+void LLState::LiftShift(const LLInstr& inst, llvm::Instruction::BinaryOps op) {
+    llvm::Value* src = OpLoad(inst.ops[0], Facet::I);
+    llvm::Value* shift;
+    if (inst.operand_count == 1) {
+        shift = llvm::ConstantInt::get(src->getType(), 1);
+    } else {
+        unsigned mask = inst.ops[0].size == 8 ? 0x3f : 0x1f;
+        shift = irb.CreateZExt(OpLoad(inst.ops[1], Facet::I), src->getType());
+        // TODO: support small shifts with amount > len
+        // LLVM sets the result to poison if this occurs.
+        shift = irb.CreateAnd(shift, mask);
     }
 
-    if (instr->type == LL_INS_SHL)
-    {
-        result = LLVMBuildShl(state->builder, operand1, operand2, "");
-    }
-    else if (instr->type == LL_INS_SHR)
-    {
-        result = LLVMBuildLShr(state->builder, operand1, operand2, "");
-    }
-    else if (instr->type == LL_INS_SAR)
-    {
-        result = LLVMBuildAShr(state->builder, operand1, operand2, "");
-    }
+    llvm::Value* res = irb.CreateBinOp(op, src, shift);
+    OpStoreGp(inst.ops[0], res);
 
-    llvm::Value* undef = llvm::UndefValue::get(state->irb.getInt1Ty());
-    state->FlagCalcZ(llvm::unwrap(result));
-    state->FlagCalcS(llvm::unwrap(result));
-    state->FlagCalcP(llvm::unwrap(result));
-    state->SetFlag(RFLAG_AF, undef);
-    state->SetFlag(RFLAG_OF, undef);
-    state->SetFlag(RFLAG_CF, undef);
-
-    ll_operand_store(OP_SI, ALIGN_MAXIMUM, &instr->ops[0], REG_DEFAULT, result, state);
+    llvm::Value* undef = llvm::UndefValue::get(irb.getInt1Ty());
+    FlagCalcZ(res);
+    FlagCalcS(res);
+    FlagCalcP(res);
+    // TODO: calculate flags correctly
+    SetFlag(RFLAG_AF, undef);
+    SetFlag(RFLAG_OF, undef);
+    SetFlag(RFLAG_CF, undef);
 }
 
 void LLState::LiftMul(const LLInstr& inst) {
@@ -327,16 +296,12 @@ void LLState::LiftSetcc(const LLInstr& inst, Condition cond) {
     OpStoreGp(inst.ops[0], irb.CreateZExt(FlagCond(cond), irb.getInt8Ty()));
 }
 
-void
-ll_instruction_cdqe(LLInstr* instr, LLState* state)
-{
-    LLInstrOp srcOp = LLInstrOp::Reg(LLReg(LL_RT_GP32, LL_RI_A));
-    LLInstrOp dstOp = LLInstrOp::Reg(LLReg(LL_RT_GP64, LL_RI_A));
+void LLState::LiftCdqe(const LLInstr& inst) {
+    LLInstrOp src_op = LLInstrOp::Reg(LLReg::Gp(inst.operand_size/2, LL_RI_A));
+    LLInstrOp dst_op = LLInstrOp::Reg(LLReg::Gp(inst.operand_size, LL_RI_A));
+    llvm::Type* dst_ty = irb.getIntNTy(inst.operand_size * 8);
 
-    LLVMValueRef operand1 = ll_operand_load(OP_SI, ALIGN_MAXIMUM, &srcOp, state);
-    ll_operand_store(OP_SI, ALIGN_MAXIMUM, &dstOp, REG_DEFAULT, operand1, state);
-
-    (void) instr;
+    OpStoreGp(dst_op, irb.CreateSExt(OpLoad(src_op, Facet::I), dst_ty));
 }
 
 /**

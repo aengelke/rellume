@@ -59,6 +59,13 @@ class LLStateBase {
 protected:
     LLStateBase(LLConfig& cfg, RegFile& rf, llvm::BasicBlock* bb) : cfg(cfg),
             regfile(rf), irb(bb) {
+        // Set fast-math flags. Newer LLVM supports FastMathFlags::getFast().
+        if (cfg.enableFastMath) {
+            llvm::FastMathFlags fmf;
+            fmf.setFast();
+            irb.setFastMathFlags(fmf);
+        }
+
         builder = llvm::wrap(&irb);
     }
 
@@ -147,10 +154,12 @@ public:
     void LiftNot(const LLInstr&);
     void LiftNeg(const LLInstr&);
     void LiftIncDec(const LLInstr&);
+    void LiftShift(const LLInstr&, llvm::Instruction::BinaryOps);
     void LiftMul(const LLInstr&);
     void LiftLea(const LLInstr&);
     void LiftCmovcc(const LLInstr& inst, Condition cond);
     void LiftSetcc(const LLInstr& inst, Condition cond);
+    void LiftCdqe(const LLInstr& inst);
 
     void LiftPush(const LLInstr& inst) {
         StackPush(OpLoad(inst.ops[0], Facet::I));
@@ -186,6 +195,16 @@ public:
 
     // llinstruction-sse.cc
     void LiftSseMovq(const LLInstr&, Facet::Value type);
+    void LiftSseBinOp(const LLInstr&, llvm::Instruction::BinaryOps op,
+                      Facet::Value type);
+    void LiftSseMovScalar(const LLInstr&, Facet::Value);
+    void LiftSseMovdq(const LLInstr&, Facet::Value, Alignment);
+    void LiftSseMovlp(const LLInstr&);
+    void LiftSseMovhps(const LLInstr&);
+    void LiftSseMovhpd(const LLInstr&);
+    void LiftSseUnpck(const LLInstr&, Facet::Value type);
+    void LiftSseShufps(const LLInstr&);
+    void LiftSseInsertps(const LLInstr&);
 };
 
 // Legacy API.

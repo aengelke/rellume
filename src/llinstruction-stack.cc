@@ -21,16 +21,13 @@
  * \file
  **/
 
-#include <stdbool.h>
-#include <stdlib.h>
-#include <stdint.h>
-#include <llvm-c/Core.h>
+#include "llstate-internal.h"
 
-#include <llinstruction-internal.h>
-#include <llstate-internal.h>
+#include "llcommon-internal.h"
+#include "rellume/instr.h"
+#include <llvm/IR/IRBuilder.h>
+#include <llvm/IR/Value.h>
 
-#include <llcommon-internal.h>
-#include <rellume/instr.h>
 
 /**
  * \defgroup LLInstructionStack Push/Pop/Leave Instructions

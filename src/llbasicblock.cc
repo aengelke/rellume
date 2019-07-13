@@ -38,7 +38,6 @@
 #include <llbasicblock-internal.h>
 
 #include <llcommon-internal.h>
-#include <llinstruction-internal.h>
 #include <llregfile-internal.h>
 #include <llstate-internal.h>
 #include <rellume/instr.h>
