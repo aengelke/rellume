@@ -220,21 +220,17 @@ RegFile::Rename(LLReg reg_dst, LLReg reg_src)
 void
 RegFile::SetReg(LLReg reg, Facet facet, llvm::Value* value, bool clearOthers)
 {
-    llvm::LLVMContext& ctx = llvm_block->getContext();
-    llvm::IRBuilder<> builder(ctx);
-    builder.SetInsertPoint(llvm_block);
-
 #ifdef RELLUME_ANNOTATE_METADATA
     if (llvm::isa<llvm::Instruction>(value))
     {
         char buffer[20];
         snprintf(buffer, sizeof(buffer), "asm.reg.%s", reg.Name());
-        llvm::MDNode* md = llvm::MDNode::get(ctx, {});
+        llvm::MDNode* md = llvm::MDNode::get(llvm_block->getContext(), {});
         llvm::cast<llvm::Instruction>(value)->setMetadata(buffer, md);
     }
 #endif
 
-    assert(value->getType() == facet.Type(ctx));
+    assert(value->getType() == facet.Type(llvm_block->getContext()));
 
     if (reg.IsGp())
     {
@@ -244,18 +240,17 @@ RegFile::SetReg(LLReg reg, Facet facet, llvm::Value* value, bool clearOthers)
             assert(facet == Facet::I64 || facet == Facet::PTR);
             entry.clear();
             if (facet == Facet::PTR)
+            {
+                llvm::IRBuilder<> builder(llvm_block);
                 entry[Facet::I64] = builder.CreatePtrToInt(value, builder.getInt64Ty());
+            }
         }
         entry[facet] = value;
     }
     else if (reg.rt == LL_RT_IP)
     {
-        if (facet == Facet::I64)
-            reg_ip = value;
-        else if (facet == Facet::PTR)
-            reg_ip = builder.CreatePtrToInt(value, builder.getInt64Ty());
-        else
-            assert(false && "invalid facet for ip-reg");
+        assert(facet == Facet::I64 && "invalid facet for ip-reg");
+        reg_ip = value;
     }
     else if (reg.IsVec())
     {
