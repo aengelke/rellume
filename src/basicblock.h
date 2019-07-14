@@ -66,9 +66,9 @@ private:
     llvm::PHINode* phi_rip;
 
     /// The phi nodes for the registers
-    ValueMapGp phis_gp[LL_RI_GPMax];
+    ValueMapGp<llvm::PHINode*> phis_gp[LL_RI_GPMax];
     /// The phi nodes for the registers
-    ValueMapSse phis_sse[LL_RI_XMMMax];
+    ValueMapSse<llvm::PHINode*> phis_sse[LL_RI_XMMMax];
 
     /// The phi nodes for the flags
     llvm::PHINode* phiFlags[RFLAG_Max];

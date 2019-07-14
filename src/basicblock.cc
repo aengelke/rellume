@@ -120,9 +120,8 @@ void BasicBlock::AddToPhis(llvm::BasicBlock* pred, RegFile& pred_rf)
     {
         for (Facet facet : phis_gp[j].facets())
         {
-            auto phi = llvm::cast<llvm::PHINode>(phis_gp[j][facet]);
             llvm::Value* value = pred_rf.GetReg(LLReg(LL_RT_GP64, j), facet);
-            phi->addIncoming(value, pred);
+            phis_gp[j][facet]->addIncoming(value, pred);
         }
     }
 
@@ -130,9 +129,8 @@ void BasicBlock::AddToPhis(llvm::BasicBlock* pred, RegFile& pred_rf)
     {
         for (Facet facet : phis_sse[j].facets())
         {
-            auto phi = llvm::cast<llvm::PHINode>(phis_sse[j][facet]);
             llvm::Value* value = pred_rf.GetReg(LLReg(LL_RT_XMM, j), facet);
-            phi->addIncoming(value, pred);
+            phis_sse[j][facet]->addIncoming(value, pred);
         }
     }
 

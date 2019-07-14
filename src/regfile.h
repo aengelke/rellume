@@ -67,7 +67,7 @@ enum {
     RFLAG_Max
 };
 
-template<Facet::Value... E>
+template<typename R, Facet::Value... E>
 class ValueMap {
     template<typename T, int N, int M>
     struct LookupTable {
@@ -83,17 +83,17 @@ class ValueMap {
     };
 
     static const LookupTable<Facet::Value, sizeof...(E), Facet::MAX> table;
-    llvm::Value* values[sizeof...(E)];
+    R values[sizeof...(E)];
 public:
     bool has(Facet v) const {
         return table.b[static_cast<int>(v)] > 0;
     }
-    llvm::Value* at(Facet v) {
+    R at(Facet v) {
         if (has(v))
             return (*this)[v];
-        return nullptr;
+        return R{};
     }
-    llvm::Value*& operator[](Facet v) {
+    R& operator[](Facet v) {
         assert(has(v));
         return values[table.b[static_cast<int>(v)] - 1];
     }
@@ -102,14 +102,17 @@ public:
         return table.f;
     }
     void clear() {
-        std::fill_n(values, sizeof...(E), nullptr);
+        std::fill_n(values, sizeof...(E), R{});
     }
 };
-template<Facet::Value... E>
-const typename ValueMap<E...>::template LookupTable<Facet::Value, sizeof...(E), Facet::MAX> ValueMap<E...>::table({E...});
+template<typename R, Facet::Value... E>
+const typename ValueMap<R, E...>::template LookupTable<Facet::Value, sizeof...(E), Facet::MAX> ValueMap<R, E...>::table({E...});
 
-typedef ValueMap<Facet::I64, Facet::I32, Facet::I16, Facet::I8, Facet::I8H, Facet::PTR> ValueMapGp;
-typedef ValueMap<Facet::I128,
+template<typename R>
+using ValueMapGp = ValueMap<R, Facet::I64, Facet::I32, Facet::I16, Facet::I8, Facet::I8H, Facet::PTR>;
+
+template<typename R>
+using ValueMapSse = ValueMap<R, Facet::I128,
 #if LL_VECTOR_REGISTER_SIZE >= 256
     Facet::I256,
 #endif
@@ -119,7 +122,7 @@ typedef ValueMap<Facet::I128,
     Facet::I64, Facet::V2I64,
     Facet::F32, Facet::V4F32,
     Facet::F64, Facet::V2F64
-> ValueMapSse;
+>;
 
 class RegFile
 {
@@ -151,8 +154,8 @@ public:
 
 private:
     llvm::BasicBlock* llvm_block;
-    ValueMapGp regs_gp[LL_RI_GPMax];
-    ValueMapSse regs_sse[LL_RI_XMMMax];
+    ValueMapGp<llvm::Value*> regs_gp[LL_RI_GPMax];
+    ValueMapSse<llvm::Value*> regs_sse[LL_RI_XMMMax];
     llvm::Value* reg_ip;
     llvm::Value* flags[RFLAG_Max];
 
