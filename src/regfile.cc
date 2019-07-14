@@ -224,6 +224,7 @@ RegFile::SetReg(LLReg reg, Facet facet, llvm::Value* value, bool clearOthers)
     llvm::IRBuilder<> builder(ctx);
     builder.SetInsertPoint(llvm_block);
 
+#ifdef RELLUME_ANNOTATE_METADATA
     if (llvm::isa<llvm::Instruction>(value))
     {
         char buffer[20];
@@ -231,6 +232,7 @@ RegFile::SetReg(LLReg reg, Facet facet, llvm::Value* value, bool clearOthers)
         llvm::MDNode* md = llvm::MDNode::get(ctx, {});
         llvm::cast<llvm::Instruction>(value)->setMetadata(buffer, md);
     }
+#endif
 
     assert(value->getType() == facet.Type(ctx));
 
@@ -278,6 +280,7 @@ RegFile::GetFlag(int flag)
 void
 RegFile::SetFlag(int flag, llvm::Value* value)
 {
+#ifdef RELLUME_ANNOTATE_METADATA
     if (llvm::isa<llvm::Instruction>(value))
     {
         char buffer[20];
@@ -285,6 +288,7 @@ RegFile::SetFlag(int flag, llvm::Value* value)
         llvm::MDNode* md = llvm::MDNode::get(llvm_block->getContext(), {});
         llvm::cast<llvm::Instruction>(value)->setMetadata(buffer, md);
     }
+#endif
 
     flags[flag] = value;
     flag_cache.valid = false;
