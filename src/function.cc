@@ -102,6 +102,7 @@ Function::Function(llvm::Module* mod)
     cfg.enableOverflowIntrinsics = false;
     cfg.enableFastMath = false;
     cfg.prefer_pointer_cmp = false;
+    cfg.verify_ir = false;
 }
 
 Function::~Function() = default;
@@ -232,7 +233,7 @@ llvm::Function* Function::Lift()
         }
     }
 
-    if (llvm::verifyFunction(*(llvm), &llvm::errs()))
+    if (cfg.verify_ir && llvm::verifyFunction(*(llvm), &llvm::errs()))
         return NULL;
 
     // Run some optimization passes to remove most of the bloat

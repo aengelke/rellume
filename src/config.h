@@ -49,6 +49,9 @@ struct LLConfig {
     /// ptrtoint.
     bool prefer_pointer_cmp;
 
+    /// Whether to verify the IR after lifting.
+    bool verify_ir;
+
     /**
      * \brief The global offset base
      **/
