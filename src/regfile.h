@@ -113,12 +113,12 @@ typedef ValueMap<Facet::I128,
 #if LL_VECTOR_REGISTER_SIZE >= 256
     Facet::I256,
 #endif
-    Facet::I8, Facet::V1I8, Facet::V2I8, Facet::V4I8, Facet::V8I8, Facet::V16I8,
-    Facet::I16, Facet::V1I16, Facet::V2I16, Facet::V4I16, Facet::V8I16,
-    Facet::I32, Facet::V1I32, Facet::V2I32, Facet::V4I32,
-    Facet::I64, Facet::V1I64, Facet::V2I64,
-    Facet::F32, Facet::V1F32, Facet::V2F32, Facet::V4F32,
-    Facet::F64, Facet::V1F64, Facet::V2F64
+    Facet::I8, Facet::V16I8,
+    Facet::I16, Facet::V8I16,
+    Facet::I32, Facet::V4I32,
+    Facet::I64, Facet::V2I64,
+    Facet::F32, Facet::V4F32,
+    Facet::F64, Facet::V2F64
 > ValueMapSse;
 
 class RegFile
