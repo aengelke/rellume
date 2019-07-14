@@ -153,6 +153,8 @@ public:
     }
 
 private:
+    llvm::Value** AccessRegFacet(LLReg reg, Facet facet);
+
     llvm::BasicBlock* llvm_block;
     ValueMapGp<llvm::Value*> regs_gp[LL_RI_GPMax];
     ValueMapSse<llvm::Value*> regs_sse[LL_RI_XMMMax];
