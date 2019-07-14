@@ -45,8 +45,26 @@
 
 namespace rellume {
 
-llvm::Value** RegFile::AccessRegFacet(LLReg reg, Facet facet) {
-    llvm::Value** entry = nullptr;
+void RegFile::EnablePhiCreation(PhiCreatedCbType phi_created_cb) {
+    this->phi_created_cb = phi_created_cb;
+
+    // Set create_phi to true for all registers.
+    for (unsigned i = 0; i < LL_RI_GPMax; i++) {
+        regs_gp[i].clear();
+        for (Facet facet : regs_gp[i].facets())
+            regs_gp[i][facet].first = true;
+    }
+    for (unsigned i = 0; i < LL_RI_XMMMax; i++) {
+        regs_sse[i].clear();
+        for (Facet facet : regs_sse[i].facets())
+           regs_sse[i][facet].first = true;
+    }
+    reg_ip.first = true;
+}
+
+llvm::Value** RegFile::AccessRegFacet(LLReg reg, Facet facet,
+                                      bool suppress_phis) {
+    Entry* entry = nullptr;
     if (reg.IsGp())
     {
         auto& map_entry = regs_gp[reg.ri - (reg.IsGpHigh() ? LL_RI_AH : 0)];
@@ -65,7 +83,25 @@ llvm::Value** RegFile::AccessRegFacet(LLReg reg, Facet facet) {
             entry = &map_entry[facet];
     }
 
-    return entry;
+    if (entry == nullptr)
+        return nullptr;
+
+    if (suppress_phis)
+        entry->first = false;
+
+    if (entry->first) {
+        assert(entry->second == nullptr && "corrupt regfile entry: phi set");
+        assert(phi_created_cb && "cannot create phi without callback");
+
+        llvm::IRBuilder<> irb(llvm_block, llvm_block->begin());
+        llvm::PHINode* phi = irb.CreatePHI(facet.Type(irb.getContext()), 4);
+        entry->first = false;
+        entry->second = phi;
+
+        phi_created_cb(reg, facet, phi);
+    }
+
+    return &entry->second;
 }
 
 llvm::Value*
@@ -224,21 +260,6 @@ RegFile::GetReg(LLReg reg, Facet facet)
 }
 
 void
-RegFile::Rename(LLReg reg_dst, LLReg reg_src)
-{
-    // TODO: copy smaller facets for partial registers only.
-    if (reg_dst.IsGp())
-    {
-        assert(reg_dst.IsGp());
-        regs_gp[reg_dst.ri] = regs_gp[reg_src.ri];
-    }
-    else
-    {
-        assert(0);
-    }
-}
-
-void
 RegFile::SetReg(LLReg reg, Facet facet, llvm::Value* value, bool clearOthers)
 {
 #ifdef RELLUME_ANNOTATE_METADATA
@@ -253,17 +274,14 @@ RegFile::SetReg(LLReg reg, Facet facet, llvm::Value* value, bool clearOthers)
 
     assert(value->getType() == facet.Type(llvm_block->getContext()));
 
-    llvm::Value** facet_entry = AccessRegFacet(reg, facet);
-    assert(facet_entry && "attempt to store invalid facet");
-
     if (clearOthers) {
         if (reg.IsGp()) {
             assert(facet == Facet::I64 || facet == Facet::PTR);
-            auto& entry = regs_gp[reg.ri - (reg.IsGpHigh() ? LL_RI_AH : 0)];
-            entry.clear();
+            regs_gp[reg.ri - (reg.IsGpHigh() ? LL_RI_AH : 0)].clear();
             if (facet == Facet::PTR) {
-                llvm::IRBuilder<> builder(llvm_block);
-                entry[Facet::I64] = builder.CreatePtrToInt(value, builder.getInt64Ty());
+                llvm::IRBuilder<> irb(llvm_block);
+                llvm::Value* intval = irb.CreatePtrToInt(value, irb.getInt64Ty());
+                *AccessRegFacet(reg, Facet::I64, true) = intval;
             }
         } else if (reg.IsVec()) {
             assert(facet == Facet::IVEC);
@@ -271,6 +289,8 @@ RegFile::SetReg(LLReg reg, Facet facet, llvm::Value* value, bool clearOthers)
         }
     }
 
+    llvm::Value** facet_entry = AccessRegFacet(reg, facet, true);
+    assert(facet_entry && "attempt to store invalid facet");
     *facet_entry = value;
 }
 

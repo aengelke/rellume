@@ -32,6 +32,7 @@
 #include <cstdbool>
 #include <cstdint>
 #include <algorithm>
+#include <functional>
 
 
 namespace rellume {
@@ -139,11 +140,19 @@ public:
     };
 
     RegFile(llvm::BasicBlock* llvm_block) : llvm_block(llvm_block),
-            flag_cache() {}
+            regs_gp(), regs_sse(), reg_ip(), flags(), flag_cache() {}
+
+    RegFile(RegFile&& rhs);
+    RegFile& operator=(RegFile&& rhs);
+
+    RegFile(const RegFile&) = delete;
+    RegFile& operator=(const RegFile&) = delete;
+
+    using PhiCreatedCbType = std::function<void(LLReg,Facet,llvm::PHINode*)>;
+    void EnablePhiCreation(PhiCreatedCbType phi_created_cb);
 
     llvm::Value* GetReg(LLReg reg, Facet facet);
     void SetReg(LLReg reg, Facet facet, llvm::Value*, bool clear_facets);
-    void Rename(LLReg reg_dst, LLReg reg_src);
 
     llvm::Value* GetFlag(int flag);
     void SetFlag(int flag, llvm::Value*);
@@ -153,12 +162,20 @@ public:
     }
 
 private:
-    llvm::Value** AccessRegFacet(LLReg reg, Facet facet);
+    // tuples of (create_phi, value) -- if value is nullptr and create_phi is
+    // set, create a phi in the basic block for that facet and call a callback.
+    using Entry = std::pair<bool,llvm::Value*>;
 
     llvm::BasicBlock* llvm_block;
-    ValueMapGp<llvm::Value*> regs_gp[LL_RI_GPMax];
-    ValueMapSse<llvm::Value*> regs_sse[LL_RI_XMMMax];
-    llvm::Value* reg_ip;
+    ValueMapGp<Entry> regs_gp[LL_RI_GPMax];
+    ValueMapSse<Entry> regs_sse[LL_RI_XMMMax];
+    Entry reg_ip;
+
+    llvm::Value** AccessRegFacet(LLReg reg, Facet facet,
+                                 bool suppress_phis = false);
+    PhiCreatedCbType phi_created_cb;
+
+    // Flags
     llvm::Value* flags[RFLAG_Max];
 
     FlagCache flag_cache;

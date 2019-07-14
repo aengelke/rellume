@@ -64,7 +64,8 @@ void Function::CreateEntry(BasicBlock& entry_bb)
     llvm::BasicBlock* first_bb = llvm->empty() ? nullptr : &llvm->front();
     llvm::BasicBlock* llvm_bb = llvm::BasicBlock::Create(llvm->getContext(), "", llvm, first_bb);
     llvm::IRBuilder<> irb(llvm_bb);
-    RegFile rf(llvm_bb);
+    // FIXME: no longer leak memory
+    RegFile& rf = *(new RegFile(llvm_bb));
 
     llvm::Value* param = llvm->arg_begin();
     llvm::Value* regs = irb.CreateLoad(param);
@@ -210,6 +211,18 @@ llvm::Function* Function::Lift()
             state.irb.CreateBr(next_block.Llvm());
             next_block.AddToPhis(*(it->second));
         }
+    }
+
+    // Walk over blocks as long as phi nodes could have been added. We stop when
+    // alls phis are filled.
+    // TODO: improve walk ordering and efficiency (e.g. by adding predecessors
+    // to the set of remaining blocks when something changed)
+    bool changed = true;
+    while (changed) {
+        changed = false;
+        for (auto& item : block_map)
+            changed |= item.second->FillPhis();
+        changed |= exit_block->FillPhis();
     }
 
     if (cfg.verify_ir && llvm::verifyFunction(*(llvm), &llvm::errs()))

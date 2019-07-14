@@ -41,13 +41,8 @@
 namespace rellume {
 
 void Lifter::LiftMovgp(const LLInstr& inst, llvm::Instruction::CastOps cast) {
-    // If the instruction moves the whole register, keep all facets.
+    // TODO: if the instruction moves the whole register, keep all facets.
     // TODO: implement this for all register-register moves.
-    if (inst.ops[0].type == LL_OP_REG && inst.ops[0].size == 8 &&
-            inst.ops[1].type == LL_OP_REG && inst.ops[1].size == 8) {
-        regfile.Rename(inst.ops[0].reg, inst.ops[1].reg);
-        return;
-    }
 
     llvm::Value* val = OpLoad(inst.ops[1], Facet::I);
     llvm::Type* tgt_ty = irb.getIntNTy(inst.ops[0].size*8);

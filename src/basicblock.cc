@@ -51,32 +51,9 @@ namespace rellume {
 BasicBlock::BasicBlock(llvm::BasicBlock* llvm) : llvmBB(llvm), regfile(llvm) {
     llvm::IRBuilder<> irb(llvm);
 
-    phi_rip = irb.CreatePHI(irb.getInt64Ty(), 4);
-    regfile.SetReg(LLReg(LL_RT_IP, 0), Facet::I64, phi_rip, true);
-
-    for (int i = 0; i < LL_RI_GPMax; i++)
-    {
-        for (Facet facet : phis_gp[i].facets())
-        {
-            llvm::Type* ty = facet.Type(irb.getContext());
-            llvm::PHINode* phiNode = irb.CreatePHI(ty, 4);
-
-            regfile.SetReg(LLReg(LL_RT_GP64, i), facet, phiNode, false);
-            phis_gp[i][facet] = phiNode;
-        }
-    }
-
-    for (int i = 0; i < LL_RI_XMMMax; i++)
-    {
-        for (Facet facet : phis_sse[i].facets())
-        {
-            llvm::Type* ty = facet.Type(irb.getContext());
-            llvm::PHINode* phiNode = irb.CreatePHI(ty, 4);
-
-            regfile.SetReg(LLReg(LL_RT_XMM, i), facet, phiNode, false);
-            phis_sse[i][facet] = phiNode;
-        }
-    }
+    regfile.EnablePhiCreation([&](LLReg reg, Facet facet, llvm::PHINode* phi) {
+        empty_phis.push_back(std::make_tuple(reg, facet, phi));
+    });
 
     for (int i = 0; i < RFLAG_Max; i++)
     {
@@ -112,38 +89,33 @@ void BasicBlock::AddInst(const LLInstr& inst, LLConfig& cfg)
     }
 }
 
+bool BasicBlock::FillPhis() {
+    if (empty_phis.empty())
+        return false;
+
+    for (auto& item : empty_phis) {
+        LLReg reg = std::get<0>(item);
+        Facet facet = std::get<1>(item);
+        llvm::PHINode* phi = std::get<2>(item);
+        for (auto& pred : predecessors) {
+            llvm::Value* value = pred.second.GetReg(reg, facet);
+            phi->addIncoming(value, pred.first);
+        }
+    }
+    empty_phis.clear();
+
+    return true;
+}
+
 void BasicBlock::AddToPhis(llvm::BasicBlock* pred, RegFile& pred_rf)
 {
-    phi_rip->addIncoming(pred_rf.GetReg(LLReg(LL_RT_IP, 0), Facet::I64), pred);
-
-    for (int j = 0; j < LL_RI_GPMax; j++)
-    {
-        for (Facet facet : phis_gp[j].facets())
-        {
-            llvm::Value* value = pred_rf.GetReg(LLReg(LL_RT_GP64, j), facet);
-            phis_gp[j][facet]->addIncoming(value, pred);
-        }
-    }
-
-    for (int j = 0; j < LL_RI_XMMMax; j++)
-    {
-        for (Facet facet : phis_sse[j].facets())
-        {
-            llvm::Value* value = pred_rf.GetReg(LLReg(LL_RT_XMM, j), facet);
-            phis_sse[j][facet]->addIncoming(value, pred);
-        }
-    }
+    predecessors.push_back(std::pair<llvm::BasicBlock*, RegFile&>(pred, pred_rf));
 
     for (int j = 0; j < RFLAG_Max; j++)
-    {
-        llvm::Value* value = pred_rf.GetFlag(j);
-        phiFlags[j]->addIncoming(value, pred);
-    }
+        phiFlags[j]->addIncoming(pred_rf.GetFlag(j), pred);
 }
 
 } // namespace
-
-
 
 /**
  * @}

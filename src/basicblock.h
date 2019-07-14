@@ -25,8 +25,12 @@
 #define LL_BASIC_BLOCK_H
 
 #include "config.h"
+#include "facet.h"
 #include "regfile.h"
+#include "rellume/instr.h"
 #include <llvm/IR/BasicBlock.h>
+#include <tuple>
+#include <vector>
 
 
 namespace rellume {
@@ -47,6 +51,7 @@ public:
         AddToPhis(pred.llvmBB, pred.regfile);
     }
     void AddToPhis(llvm::BasicBlock* pred, RegFile& pred_rf);
+    bool FillPhis();
 
     llvm::BasicBlock* Llvm() {
         return llvmBB;
@@ -61,14 +66,8 @@ public:
     RegFile regfile;
 
 private:
-    /// PHI node containing the value of RIP, used only for the terminating
-    /// block.
-    llvm::PHINode* phi_rip;
-
-    /// The phi nodes for the registers
-    ValueMapGp<llvm::PHINode*> phis_gp[LL_RI_GPMax];
-    /// The phi nodes for the registers
-    ValueMapSse<llvm::PHINode*> phis_sse[LL_RI_XMMMax];
+    std::vector<std::pair<llvm::BasicBlock*, RegFile&>> predecessors;
+    std::vector<std::tuple<LLReg, Facet, llvm::PHINode*>> empty_phis;
 
     /// The phi nodes for the flags
     llvm::PHINode* phiFlags[RFLAG_Max];
