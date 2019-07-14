@@ -125,6 +125,9 @@ using ValueMapSse = ValueMap<R, Facet::I128,
     Facet::F64, Facet::V2F64
 >;
 
+template<typename R>
+using ValueMapFlags = ValueMap<R, Facet::ZF, Facet::SF, Facet::PF, Facet::CF, Facet::OF, Facet::AF>;
+
 class RegFile
 {
 public:
@@ -170,13 +173,11 @@ private:
     ValueMapGp<Entry> regs_gp[LL_RI_GPMax];
     ValueMapSse<Entry> regs_sse[LL_RI_XMMMax];
     Entry reg_ip;
+    ValueMapFlags<Entry> flags;
 
     llvm::Value** AccessRegFacet(LLReg reg, Facet facet,
                                  bool suppress_phis = false);
     PhiCreatedCbType phi_created_cb;
-
-    // Flags
-    llvm::Value* flags[RFLAG_Max];
 
     FlagCache flag_cache;
 };

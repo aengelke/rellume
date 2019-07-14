@@ -117,6 +117,12 @@ llvm::Type* Facet::Type(llvm::LLVMContext& ctx)
     case Facet::V4F32: return llvm::VectorType::get(llvm::Type::getFloatTy(ctx), 4);
     case Facet::V1F64: return llvm::VectorType::get(llvm::Type::getDoubleTy(ctx), 1);
     case Facet::V2F64: return llvm::VectorType::get(llvm::Type::getDoubleTy(ctx), 2);
+    case Facet::ZF:
+    case Facet::SF:
+    case Facet::PF:
+    case Facet::CF:
+    case Facet::OF:
+    case Facet::AF: return llvm::Type::getInt1Ty(ctx);
     default: assert(0);
     }
 

@@ -59,6 +59,8 @@ void RegFile::EnablePhiCreation(PhiCreatedCbType phi_created_cb) {
         for (Facet facet : regs_sse[i].facets())
            regs_sse[i][facet].first = true;
     }
+    for (Facet facet : flags.facets())
+       flags[facet].first = true;
     reg_ip.first = true;
 }
 
@@ -75,6 +77,11 @@ llvm::Value** RegFile::AccessRegFacet(LLReg reg, Facet facet,
     {
         if (facet == Facet::I64)
             entry = &reg_ip;
+    }
+    else if (reg.rt == LL_RT_EFLAGS)
+    {
+        if (flags.has(facet))
+            entry = &flags[facet];
     }
     else if (reg.IsVec())
     {
@@ -294,10 +301,23 @@ RegFile::SetReg(LLReg reg, Facet facet, llvm::Value* value, bool clearOthers)
     *facet_entry = value;
 }
 
+static Facet regfile_flag_to_facet(int flag) {
+    switch(flag) {
+    case RFLAG_ZF: return Facet::ZF;
+    case RFLAG_SF: return Facet::SF;
+    case RFLAG_PF: return Facet::PF;
+    case RFLAG_CF: return Facet::CF;
+    case RFLAG_OF: return Facet::OF;
+    case RFLAG_AF: return Facet::AF;
+    default: return Facet::MAX;
+    }
+}
+
 llvm::Value*
 RegFile::GetFlag(int flag)
 {
-    return flags[flag];
+    Facet facet = regfile_flag_to_facet(flag);
+    return *AccessRegFacet(LLReg(LL_RT_EFLAGS, 0), facet);
 }
 
 void
@@ -313,7 +333,8 @@ RegFile::SetFlag(int flag, llvm::Value* value)
     }
 #endif
 
-    flags[flag] = value;
+    Facet facet = regfile_flag_to_facet(flag);
+    *AccessRegFacet(LLReg(LL_RT_EFLAGS, 0), facet, true) = value;
     flag_cache.valid = false;
 }
 

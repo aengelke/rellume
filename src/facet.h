@@ -53,6 +53,9 @@ public:
         I256,
 #endif
 
+        // Flags
+        ZF, SF, PF, CF, OF, AF,
+
         // Pseudo-facets
         I, VI8, VI16, VI32, VI64, VF32, VF64,
         MAX,

@@ -56,6 +56,7 @@ enum {
     LL_RT_YMM,
     LL_RT_ZMM,
     LL_RT_SEG,
+    LL_RT_EFLAGS,
     LL_RT_Max
 };
 
