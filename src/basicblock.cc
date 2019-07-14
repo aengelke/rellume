@@ -51,7 +51,7 @@ namespace rellume {
 BasicBlock::BasicBlock(llvm::BasicBlock* llvm) : llvmBB(llvm), regfile(llvm) {
     llvm::IRBuilder<> irb(llvm);
 
-    phi_rip = irb.CreatePHI(irb.getInt64Ty(), 0);
+    phi_rip = irb.CreatePHI(irb.getInt64Ty(), 4);
     regfile.SetReg(LLReg(LL_RT_IP, 0), Facet::I64, phi_rip, true);
 
     for (int i = 0; i < LL_RI_GPMax; i++)
@@ -59,7 +59,7 @@ BasicBlock::BasicBlock(llvm::BasicBlock* llvm) : llvmBB(llvm), regfile(llvm) {
         for (Facet facet : phis_gp[i].facets())
         {
             llvm::Type* ty = facet.Type(irb.getContext());
-            llvm::PHINode* phiNode = irb.CreatePHI(ty, 0);
+            llvm::PHINode* phiNode = irb.CreatePHI(ty, 4);
 
             regfile.SetReg(LLReg(LL_RT_GP64, i), facet, phiNode, false);
             phis_gp[i][facet] = phiNode;
@@ -71,7 +71,7 @@ BasicBlock::BasicBlock(llvm::BasicBlock* llvm) : llvmBB(llvm), regfile(llvm) {
         for (Facet facet : phis_sse[i].facets())
         {
             llvm::Type* ty = facet.Type(irb.getContext());
-            llvm::PHINode* phiNode = irb.CreatePHI(ty, 0);
+            llvm::PHINode* phiNode = irb.CreatePHI(ty, 4);
 
             regfile.SetReg(LLReg(LL_RT_XMM, i), facet, phiNode, false);
             phis_sse[i][facet] = phiNode;
@@ -80,7 +80,7 @@ BasicBlock::BasicBlock(llvm::BasicBlock* llvm) : llvmBB(llvm), regfile(llvm) {
 
     for (int i = 0; i < RFLAG_Max; i++)
     {
-        llvm::PHINode* phiNode = irb.CreatePHI(irb.getInt1Ty(), 0);
+        llvm::PHINode* phiNode = irb.CreatePHI(irb.getInt1Ty(), 4);
 
         regfile.SetFlag(i, phiNode);
         phiFlags[i] = phiNode;
