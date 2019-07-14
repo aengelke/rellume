@@ -68,9 +68,6 @@ public:
 private:
     std::vector<std::pair<llvm::BasicBlock*, RegFile&>> predecessors;
     std::vector<std::tuple<LLReg, Facet, llvm::PHINode*>> empty_phis;
-
-    /// The phi nodes for the flags
-    llvm::PHINode* phiFlags[RFLAG_Max];
 };
 
 }

@@ -49,19 +49,9 @@
 namespace rellume {
 
 BasicBlock::BasicBlock(llvm::BasicBlock* llvm) : llvmBB(llvm), regfile(llvm) {
-    llvm::IRBuilder<> irb(llvm);
-
     regfile.EnablePhiCreation([&](LLReg reg, Facet facet, llvm::PHINode* phi) {
         empty_phis.push_back(std::make_tuple(reg, facet, phi));
     });
-
-    for (int i = 0; i < RFLAG_Max; i++)
-    {
-        llvm::PHINode* phiNode = irb.CreatePHI(irb.getInt1Ty(), 4);
-
-        regfile.SetFlag(i, phiNode);
-        phiFlags[i] = phiNode;
-    }
 }
 
 void BasicBlock::AddInst(const LLInstr& inst, LLConfig& cfg)
@@ -110,9 +100,6 @@ bool BasicBlock::FillPhis() {
 void BasicBlock::AddToPhis(llvm::BasicBlock* pred, RegFile& pred_rf)
 {
     predecessors.push_back(std::pair<llvm::BasicBlock*, RegFile&>(pred, pred_rf));
-
-    for (int j = 0; j < RFLAG_Max; j++)
-        phiFlags[j]->addIncoming(pred_rf.GetFlag(j), pred);
 }
 
 } // namespace
