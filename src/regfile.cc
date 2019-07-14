@@ -62,8 +62,8 @@ RegFile::GetReg(LLReg reg, Facet facet)
     if (reg.IsGp())
     {
         auto& entry = regs_gp[reg.ri - (reg.IsGpHigh() ? LL_RI_AH : 0)];
-        llvm::Value* res = entry.at(facet);
-        if (res != nullptr)
+        llvm::Value* res;
+        if ((res = entry.at(facet)))
             return res;
 
         llvm::Value* native = entry.at(Facet::I64);
@@ -88,7 +88,8 @@ RegFile::GetReg(LLReg reg, Facet facet)
             break;
         }
 
-        entry.at(facet) = res;
+        if (entry.has(facet))
+            entry[facet] = res;
         return res;
     }
     else if (reg.rt == LL_RT_IP)
@@ -104,8 +105,8 @@ RegFile::GetReg(LLReg reg, Facet facet)
     {
         assert(reg.IsVec());
         auto& entry = regs_sse[reg.ri];
-        auto& res = entry.at(facet);
-        if (res != nullptr)
+        llvm::Value* res;
+        if ((res = entry.at(facet)))
             return res;
 
         llvm::Value* native = entry.at(Facet::IVEC);
@@ -191,7 +192,8 @@ RegFile::GetReg(LLReg reg, Facet facet)
             break;
         }
 
-        entry.at(facet) = res;
+        if (entry.has(facet))
+            entry[facet] = res;
         return res;
     }
 
@@ -240,9 +242,9 @@ RegFile::SetReg(LLReg reg, Facet facet, llvm::Value* value, bool clearOthers)
             assert(facet == Facet::I64 || facet == Facet::PTR);
             entry.clear();
             if (facet == Facet::PTR)
-                entry.at(Facet::I64) = builder.CreatePtrToInt(value, builder.getInt64Ty());
+                entry[Facet::I64] = builder.CreatePtrToInt(value, builder.getInt64Ty());
         }
-        entry.at(facet) = value;
+        entry[facet] = value;
     }
     else if (reg.rt == LL_RT_IP)
     {
@@ -259,7 +261,7 @@ RegFile::SetReg(LLReg reg, Facet facet, llvm::Value* value, bool clearOthers)
         assert(!clearOthers || facet == Facet::IVEC);
         if (clearOthers)
             entry.clear();
-        entry.at(facet) = value;
+        entry[facet] = value;
     }
     else
     {

@@ -62,7 +62,7 @@ BasicBlock::BasicBlock(llvm::BasicBlock* llvm) : llvmBB(llvm), regfile(llvm) {
             llvm::PHINode* phiNode = irb.CreatePHI(ty, 0);
 
             regfile.SetReg(LLReg(LL_RT_GP64, i), facet, phiNode, false);
-            phis_gp[i].at(facet) = phiNode;
+            phis_gp[i][facet] = phiNode;
         }
     }
 
@@ -74,7 +74,7 @@ BasicBlock::BasicBlock(llvm::BasicBlock* llvm) : llvmBB(llvm), regfile(llvm) {
             llvm::PHINode* phiNode = irb.CreatePHI(ty, 0);
 
             regfile.SetReg(LLReg(LL_RT_XMM, i), facet, phiNode, false);
-            phis_sse[i].at(facet) = phiNode;
+            phis_sse[i][facet] = phiNode;
         }
     }
 
@@ -120,7 +120,7 @@ void BasicBlock::AddToPhis(llvm::BasicBlock* pred, RegFile& pred_rf)
     {
         for (Facet facet : phis_gp[j].facets())
         {
-            auto phi = llvm::cast<llvm::PHINode>(phis_gp[j].at(facet));
+            auto phi = llvm::cast<llvm::PHINode>(phis_gp[j][facet]);
             llvm::Value* value = pred_rf.GetReg(LLReg(LL_RT_GP64, j), facet);
             phi->addIncoming(value, pred);
         }
@@ -130,7 +130,7 @@ void BasicBlock::AddToPhis(llvm::BasicBlock* pred, RegFile& pred_rf)
     {
         for (Facet facet : phis_sse[j].facets())
         {
-            auto phi = llvm::cast<llvm::PHINode>(phis_sse[j].at(facet));
+            auto phi = llvm::cast<llvm::PHINode>(phis_sse[j][facet]);
             llvm::Value* value = pred_rf.GetReg(LLReg(LL_RT_XMM, j), facet);
             phi->addIncoming(value, pred);
         }

@@ -85,8 +85,16 @@ class ValueMap {
     static const LookupTable<Facet::Value, sizeof...(E), Facet::MAX> table;
     llvm::Value* values[sizeof...(E)];
 public:
-    llvm::Value*& at(Facet v) {
-        assert(table.b[static_cast<int>(v)] > 0);
+    bool has(Facet v) const {
+        return table.b[static_cast<int>(v)] > 0;
+    }
+    llvm::Value* at(Facet v) {
+        if (has(v))
+            return (*this)[v];
+        return nullptr;
+    }
+    llvm::Value*& operator[](Facet v) {
+        assert(has(v));
         return values[table.b[static_cast<int>(v)] - 1];
     }
     // This returns a reference to an array of size sizeof...(E).
