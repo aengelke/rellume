@@ -38,8 +38,11 @@
 #include <llvm/IR/Function.h>
 #include <llvm/IR/GlobalValue.h>
 #include <llvm/IR/IRBuilder.h>
+#include <llvm/IR/LegacyPassManager.h>
 #include <llvm/IR/Type.h>
 #include <llvm/IR/Verifier.h>
+#include <llvm/Transforms/InstCombine/InstCombine.h>
+#include <llvm/Transforms/Scalar.h>
 #include <llvm/Transforms/Utils/Cloning.h>
 #include <cassert>
 #include <cstdint>
@@ -120,30 +123,6 @@ void Function::AddInst(uint64_t block_addr, const LLInstr& inst)
     }
 
     block_map[block_addr]->AddInst(inst, cfg);
-}
-
-static
-void
-ll_func_optimize(LLVMValueRef llvm_fn)
-{
-    LLVMPassManagerRef pm = LLVMCreateFunctionPassManagerForModule(LLVMGetGlobalParent(llvm_fn));
-    LLVMInitializeFunctionPassManager(pm);
-
-    // Fold some common subexpressions
-    LLVMAddEarlyCSEPass(pm);
-    // Replace aggregates (i.e. cpu type struct) with scalars
-    LLVMAddScalarReplAggregatesPass(pm);
-    // Combine instructions to simplify code
-    LLVMAddInstructionCombiningPass(pm);
-    // Aggressive DCE to remove phi cycles, etc.
-    LLVMAddAggressiveDCEPass(pm);
-    // Simplify CFG, removes some redundant function exists and empty blocks
-    LLVMAddCFGSimplificationPass(pm);
-
-    LLVMRunFunctionPassManager(pm, llvm_fn);
-
-    LLVMFinalizeFunctionPassManager(pm);
-    LLVMDisposePassManager(pm);
 }
 
 std::unique_ptr<BasicBlock> Function::CreateExit() {
@@ -237,7 +216,18 @@ llvm::Function* Function::Lift()
         return NULL;
 
     // Run some optimization passes to remove most of the bloat
-    ll_func_optimize(llvm::wrap(llvm));
+    llvm::legacy::FunctionPassManager pm(llvm->getParent());
+    pm.doInitialization();
+
+    // Aggressive DCE to remove phi cycles, etc.
+    pm.add(llvm::createAggressiveDCEPass());
+    // Fold some common subexpressions
+    pm.add(llvm::createEarlyCSEPass());
+    // Combine instructions to simplify code, but avoid expensive transforms
+    pm.add(llvm::createInstructionCombiningPass(false));
+
+    pm.run(*llvm);
+    pm.doFinalization();
 
     return llvm;
 }
@@ -342,7 +332,16 @@ ll_func_wrap_sysv(LLVMValueRef llvm_fn, LLVMTypeRef ty, LLVMModuleRef mod, size_
     if (llvm::verifyFunction(*new_fn, &llvm::errs()))
         return NULL;
 
-    rellume::ll_func_optimize(llvm::wrap(new_fn));
+    llvm::legacy::FunctionPassManager pm(new_fn->getParent());
+    pm.doInitialization();
+
+    // instrcombine will get rid of the CPU type struct
+    pm.add(llvm::createInstructionCombiningPass(false));
+    // Simplify CFG, removes some redundant function exists and empty blocks
+    pm.add(llvm::createCFGSimplificationPass());
+
+    pm.run(*new_fn);
+    pm.doFinalization();
 
     return llvm::wrap(new_fn);
 }
