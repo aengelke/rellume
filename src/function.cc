@@ -59,7 +59,7 @@
 
 namespace rellume {
 
-std::unique_ptr<BasicBlock> Function::CreateEntry(BasicBlock& entry_bb)
+std::unique_ptr<BasicBlock> Function::CreateEntry()
 {
     llvm::BasicBlock* first_bb = llvm->empty() ? nullptr : &llvm->front();
     llvm::BasicBlock* llvm_bb = llvm::BasicBlock::Create(llvm->getContext(), "", llvm, first_bb);
@@ -79,9 +79,6 @@ std::unique_ptr<BasicBlock> Function::CreateEntry(BasicBlock& entry_bb)
 
     for (unsigned i = 0; i < RFLAG_Max; i++)
         state.SetFlag(i, state.irb.CreateExtractValue(regs, {2, i}));
-
-    state.irb.CreateBr(entry_bb.Llvm());
-    entry_bb.AddToPhis(*entry_block);
 
     return entry_block;
 }
@@ -182,38 +179,19 @@ llvm::Function* Function::Lift()
     // other blocks may still have references to them. This means:
     //
     //    AFTER Lift() HAS BEEN CALLED, DO NOT TOUCH ANY BASIC BLOCK!
-    std::unique_ptr<BasicBlock> entry_block = CreateEntry(*block_map[entry_addr]);
+    std::unique_ptr<BasicBlock> entry_block = CreateEntry();
     std::unique_ptr<BasicBlock> exit_block = CreateExit();
 
-    for (auto it = block_map.begin(); it != block_map.end(); ++it)
-    {
-        Lifter state(cfg, it->second->regfile, it->second->Llvm());
+    entry_block->BranchTo(*block_map[entry_addr]);
 
-        llvm::Value* next_rip = state.GetReg(LLReg(LL_RT_IP, 0), Facet::I64);
-        if (auto select = llvm::dyn_cast<llvm::SelectInst>(next_rip))
-        {
-            BasicBlock& true_block = ResolveAddr(select->getTrueValue(), *exit_block);
-            BasicBlock& false_block = ResolveAddr(select->getFalseValue(), *exit_block);
-
-            // In case both blocks are the same create a single branch only.
-            if (std::addressof(true_block) != std::addressof(false_block))
-            {
-                state.irb.CreateCondBr(select->getCondition(),
-                                       true_block.Llvm(), false_block.Llvm());
-                true_block.AddToPhis(*(it->second));
-                false_block.AddToPhis(*(it->second));
-            }
-            else
-            {
-                state.irb.CreateBr(true_block.Llvm());
-                true_block.AddToPhis(*(it->second));
-            }
-        }
-        else
-        {
-            BasicBlock& next_block = ResolveAddr(next_rip, *exit_block);
-            state.irb.CreateBr(next_block.Llvm());
-            next_block.AddToPhis(*(it->second));
+    for (auto it = block_map.begin(); it != block_map.end(); ++it) {
+        llvm::Value* next_rip = it->second->regfile.GetReg(LLReg(LL_RT_IP, 0), Facet::I64);
+        if (auto select = llvm::dyn_cast<llvm::SelectInst>(next_rip)) {
+            it->second->BranchTo(select->getCondition(),
+                                 ResolveAddr(select->getTrueValue(), *exit_block),
+                                 ResolveAddr(select->getFalseValue(), *exit_block));
+        } else {
+            it->second->BranchTo(ResolveAddr(next_rip, *exit_block));
         }
     }
 

@@ -47,10 +47,8 @@ public:
     BasicBlock& operator=(const BasicBlock&) = delete;
 
     void AddInst(const LLInstr& inst, LLConfig& cfg);
-    void AddToPhis(BasicBlock& pred) {
-        AddToPhis(pred.llvmBB, pred.regfile);
-    }
-    void AddToPhis(llvm::BasicBlock* pred, RegFile& pred_rf);
+    void BranchTo(BasicBlock& next);
+    void BranchTo(llvm::Value* cond, BasicBlock& then, BasicBlock& other);
     bool FillPhis();
 
     llvm::BasicBlock* Llvm() {
@@ -66,7 +64,7 @@ public:
     RegFile regfile;
 
 private:
-    std::vector<std::pair<llvm::BasicBlock*, RegFile&>> predecessors;
+    std::vector<BasicBlock*> predecessors;
     std::vector<std::tuple<LLReg, Facet, llvm::PHINode*>> empty_phis;
 };
 

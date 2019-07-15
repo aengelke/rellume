@@ -73,7 +73,7 @@ public:
     int Decode(uintptr_t addr);
 
 private:
-    std::unique_ptr<BasicBlock> CreateEntry(BasicBlock&);
+    std::unique_ptr<BasicBlock> CreateEntry();
     std::unique_ptr<BasicBlock> CreateExit();
     BasicBlock& ResolveAddr(llvm::Value* addr, BasicBlock& def);
 

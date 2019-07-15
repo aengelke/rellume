@@ -79,6 +79,26 @@ void BasicBlock::AddInst(const LLInstr& inst, LLConfig& cfg)
     }
 }
 
+void BasicBlock::BranchTo(BasicBlock& next) {
+    llvm::IRBuilder<> irb(llvmBB);
+    irb.CreateBr(next.llvmBB);
+    next.predecessors.push_back(this);
+}
+
+void BasicBlock::BranchTo(llvm::Value* cond, BasicBlock& then,
+                             BasicBlock& other) {
+    // In case both blocks are the same create a single branch only.
+    if (std::addressof(then) == std::addressof(other)) {
+        BranchTo(then);
+        return;
+    }
+
+    llvm::IRBuilder<> irb(llvmBB);
+    irb.CreateCondBr(cond, then.llvmBB, other.llvmBB);
+    then.predecessors.push_back(this);
+    other.predecessors.push_back(this);
+}
+
 bool BasicBlock::FillPhis() {
     if (empty_phis.empty())
         return false;
@@ -87,19 +107,14 @@ bool BasicBlock::FillPhis() {
         LLReg reg = std::get<0>(item);
         Facet facet = std::get<1>(item);
         llvm::PHINode* phi = std::get<2>(item);
-        for (auto& pred : predecessors) {
-            llvm::Value* value = pred.second.GetReg(reg, facet);
-            phi->addIncoming(value, pred.first);
+        for (BasicBlock* pred : predecessors) {
+            llvm::Value* value = pred->regfile.GetReg(reg, facet);
+            phi->addIncoming(value, pred->llvmBB);
         }
     }
     empty_phis.clear();
 
     return true;
-}
-
-void BasicBlock::AddToPhis(llvm::BasicBlock* pred, RegFile& pred_rf)
-{
-    predecessors.push_back(std::pair<llvm::BasicBlock*, RegFile&>(pred, pred_rf));
 }
 
 } // namespace
