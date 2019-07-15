@@ -59,32 +59,31 @@
 
 namespace rellume {
 
-void Function::CreateEntry(BasicBlock& entry_bb)
+std::unique_ptr<BasicBlock> Function::CreateEntry(BasicBlock& entry_bb)
 {
     llvm::BasicBlock* first_bb = llvm->empty() ? nullptr : &llvm->front();
     llvm::BasicBlock* llvm_bb = llvm::BasicBlock::Create(llvm->getContext(), "", llvm, first_bb);
-    llvm::IRBuilder<> irb(llvm_bb);
-    // FIXME: no longer leak memory
-    RegFile& rf = *(new RegFile(llvm_bb));
+    auto entry_block = std::make_unique<BasicBlock>(llvm_bb);
+    Lifter state(cfg, entry_block->regfile, entry_block->Llvm());
 
     llvm::Value* param = llvm->arg_begin();
-    llvm::Value* regs = irb.CreateLoad(param);
+    llvm::Value* regs = state.irb.CreateLoad(param);
 
-    llvm::Value* next_rip = irb.CreateExtractValue(regs, {0});
-    rf.SetReg(LLReg(LL_RT_IP, 0), Facet::I64, next_rip, true);
+    state.SetReg(LLReg(LL_RT_IP, 0), Facet::I64, state.irb.CreateExtractValue(regs, {0}));
 
     for (unsigned i = 0; i < LL_RI_GPMax; i++)
-        rf.SetReg(LLReg(LL_RT_GP64, i), Facet::I64, irb.CreateExtractValue(regs, {1, i}), true);
+        state.SetReg(LLReg(LL_RT_GP64, i), Facet::I64, state.irb.CreateExtractValue(regs, {1, i}));
 
     for (unsigned i = 0; i < LL_RI_XMMMax; i++)
-        rf.SetReg(LLReg(LL_RT_XMM, i), Facet::IVEC, irb.CreateExtractValue(regs, {3, i}), true);
+        state.SetReg(LLReg(LL_RT_XMM, i), Facet::IVEC, state.irb.CreateExtractValue(regs, {3, i}));
 
     for (unsigned i = 0; i < RFLAG_Max; i++)
-        rf.SetFlag(i, irb.CreateExtractValue(regs, {2, i}));
+        state.SetFlag(i, state.irb.CreateExtractValue(regs, {2, i}));
 
-    irb.CreateBr(entry_bb.Llvm());
+    state.irb.CreateBr(entry_bb.Llvm());
+    entry_bb.AddToPhis(*entry_block);
 
-    entry_bb.AddToPhis(llvm_bb, rf);
+    return entry_block;
 }
 
 Function::Function(llvm::Module* mod)
@@ -178,7 +177,7 @@ llvm::Function* Function::Lift()
     if (block_map.size() == 0)
         return NULL;
 
-    CreateEntry(*block_map[entry_addr]);
+    std::unique_ptr<BasicBlock> entry_block = CreateEntry(*block_map[entry_addr]);
     std::unique_ptr<BasicBlock> exit_block = CreateExit();
 
     for (auto it = block_map.begin(); it != block_map.end(); ++it)
