@@ -177,6 +177,11 @@ llvm::Function* Function::Lift()
     if (block_map.size() == 0)
         return NULL;
 
+    // !!! DANGER !!!
+    // The entry and exit blocks go out of scope when this function returns, but
+    // other blocks may still have references to them. This means:
+    //
+    //    AFTER Lift() HAS BEEN CALLED, DO NOT TOUCH ANY BASIC BLOCK!
     std::unique_ptr<BasicBlock> entry_block = CreateEntry(*block_map[entry_addr]);
     std::unique_ptr<BasicBlock> exit_block = CreateExit();
 
