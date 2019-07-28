@@ -44,4 +44,5 @@ librellume = declare_dependency(include_directories: rellume_inc,
                                 link_with: librellume_lib,
                                 dependencies: [libllvm])
 
+subdir('tests')
 subdir('examples')

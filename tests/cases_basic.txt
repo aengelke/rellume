@@ -1,0 +1,5 @@
+# inc eax
+m1000000=ffc0cc rip=q:0x1000000 rax=q:0xfadc9e84ffffffff => rip=q:0x1000002 rax=q:0 zf=01 of=00 pf=01 sf=00 af=01
+m1000000=ffc0cc rip=q:0x1000000 rax=q:0xd15121fd00000000 => rip=q:0x1000002 rax=q:1 zf=00 of=00 pf=00 sf=00 af=00
+m1000000=ffc0cc rip=q:0x1000000 rax=q:0x3203f8527fffffff => rip=q:0x1000002 rax=q:0x80000000 zf=00 of=01 pf=01 sf=01 af=01
+m1000000=ffc0cc rip=q:0x1000000 rax=q:0xf4bb552780000000 => rip=q:0x1000002 rax=q:0x80000001 zf=00 of=00 pf=00 sf=01 af=00
