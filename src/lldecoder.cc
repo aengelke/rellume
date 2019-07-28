@@ -80,8 +80,10 @@ int Function::Decode(uintptr_t addr)
         while (cur_addr_entry == addr_map.end())
         {
             inst = LLInstr::Decode(reinterpret_cast<uint8_t*>(cur_addr), 15, cur_addr);
+            // If we reach an invalid instruction or an instruction we can't
+            // decode, stop.
             if (inst.type == LL_INS_Invalid)
-                return 1;
+                break;
 
             addr_map[cur_addr] = std::make_pair(blocks.size(), insts.size());
             insts.push_back(inst);
