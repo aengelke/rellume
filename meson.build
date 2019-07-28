@@ -1,4 +1,4 @@
-project('libdbrew', ['c', 'cpp'],
+project('rellume', ['c', 'cpp'],
         default_options: [
             'buildtype=debugoptimized',
             'warning_level=3',
