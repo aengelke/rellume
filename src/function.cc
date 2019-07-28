@@ -43,6 +43,7 @@
 #include <llvm/IR/Verifier.h>
 #include <llvm/Transforms/InstCombine/InstCombine.h>
 #include <llvm/Transforms/Scalar.h>
+#include <llvm/Transforms/Utils.h>
 #include <llvm/Transforms/Utils/Cloning.h>
 #include <cassert>
 #include <cstdint>
@@ -59,6 +60,13 @@
 
 namespace rellume {
 
+static llvm::Value* GepHelper(llvm::IRBuilder<>& irb, llvm::Value* base, llvm::ArrayRef<unsigned> idxs) {
+    llvm::SmallVector<llvm::Value*, 4> consts;
+    for (auto& idx : idxs)
+        consts.push_back(irb.getInt32(idx));
+    return irb.CreateGEP(base, consts);
+}
+
 std::unique_ptr<BasicBlock> Function::CreateEntry()
 {
     llvm::BasicBlock* first_bb = llvm->empty() ? nullptr : &llvm->front();
@@ -67,18 +75,24 @@ std::unique_ptr<BasicBlock> Function::CreateEntry()
     Lifter state(cfg, entry_block->regfile, entry_block->Llvm());
 
     llvm::Value* param = llvm->arg_begin();
-    llvm::Value* regs = state.irb.CreateLoad(param);
 
-    state.SetReg(LLReg(LL_RT_IP, 0), Facet::I64, state.irb.CreateExtractValue(regs, {0}));
+    llvm::Value* gep = GepHelper(state.irb, param, {0, 0});
+    state.SetReg(LLReg(LL_RT_IP, 0), Facet::I64, state.irb.CreateLoad(gep));
 
-    for (unsigned i = 0; i < LL_RI_GPMax; i++)
-        state.SetReg(LLReg(LL_RT_GP64, i), Facet::I64, state.irb.CreateExtractValue(regs, {1, i}));
+    for (unsigned i = 0; i < LL_RI_GPMax; i++) {
+        llvm::Value* gep = GepHelper(state.irb, param, {0, 1, i});
+        state.SetReg(LLReg(LL_RT_GP64, i), Facet::I64, state.irb.CreateLoad(gep));
+    }
 
-    for (unsigned i = 0; i < LL_RI_XMMMax; i++)
-        state.SetReg(LLReg(LL_RT_XMM, i), Facet::IVEC, state.irb.CreateExtractValue(regs, {3, i}));
+    for (unsigned i = 0; i < RFLAG_Max; i++) {
+        llvm::Value* gep = GepHelper(state.irb, param, {0, 2, i});
+        state.SetFlag(i, state.irb.CreateLoad(gep));
+    }
 
-    for (unsigned i = 0; i < RFLAG_Max; i++)
-        state.SetFlag(i, state.irb.CreateExtractValue(regs, {2, i}));
+    for (unsigned i = 0; i < LL_RI_XMMMax; i++) {
+        llvm::Value* gep = GepHelper(state.irb, param, {0, 3, i});
+        state.SetReg(LLReg(LL_RT_XMM, i), Facet::IVEC, state.irb.CreateLoad(gep));
+    }
 
     return entry_block;
 }
@@ -129,31 +143,25 @@ std::unique_ptr<BasicBlock> Function::CreateExit() {
 
     // Pack CPU struct and return
     llvm::Value* param = llvm->arg_begin();
-    llvm::Type* cpu_type = param->getType()->getPointerElementType();
-    llvm::Value* result = llvm::UndefValue::get(cpu_type);
 
-    llvm::Value* value = state.GetReg(LLReg(LL_RT_IP, 0), Facet::I64);
-    result = state.irb.CreateInsertValue(result, value, {0});
+    llvm::Value* gep = GepHelper(state.irb, param, {0, 0});
+    state.irb.CreateStore(state.GetReg(LLReg(LL_RT_IP, 0), Facet::I64), gep);
 
-    for (unsigned i = 0; i < LL_RI_GPMax; i++)
-    {
-        value = state.GetReg(LLReg(LL_RT_GP64, i), Facet::I64);
-        result = state.irb.CreateInsertValue(result, value, {1, i});
+    for (unsigned i = 0; i < LL_RI_GPMax; i++) {
+        llvm::Value* gep = GepHelper(state.irb, param, {0, 1, i});
+        state.irb.CreateStore(state.GetReg(LLReg(LL_RT_GP64, i), Facet::I64), gep);
     }
 
-    for (unsigned i = 0; i < LL_RI_XMMMax; i++)
-    {
-        value = state.GetReg(LLReg(LL_RT_XMM, i), Facet::IVEC);
-        result = state.irb.CreateInsertValue(result, value, {3, i});
+    for (unsigned i = 0; i < RFLAG_Max; i++) {
+        llvm::Value* gep = GepHelper(state.irb, param, {0, 2, i});
+        state.irb.CreateStore(state.GetFlag(i), gep);
     }
 
-    for (unsigned i = 0; i < RFLAG_Max; i++)
-    {
-        value = state.GetFlag(i);
-        result = state.irb.CreateInsertValue(result, value, {2, i});
+    for (unsigned i = 0; i < LL_RI_XMMMax; i++) {
+        llvm::Value* gep = GepHelper(state.irb, param, {0, 3, i});
+        state.irb.CreateStore(state.GetReg(LLReg(LL_RT_XMM, i), Facet::IVEC), gep);
     }
 
-    state.irb.CreateStore(result, param);
     state.irb.CreateRetVoid();
 
     return exit_block;
@@ -216,8 +224,8 @@ llvm::Function* Function::Lift()
 
     // Aggressive DCE to remove phi cycles, etc.
     pm.add(llvm::createAggressiveDCEPass());
-    // Fold some common subexpressions
-    pm.add(llvm::createEarlyCSEPass());
+    // Fold some common subexpressions with MemorySSA to remove obsolete stores
+    pm.add(llvm::createEarlyCSEPass(true));
     // Combine instructions to simplify code, but avoid expensive transforms
     pm.add(llvm::createInstructionCombiningPass(false));
 
@@ -244,7 +252,8 @@ ll_func_wrap_sysv(LLVMValueRef llvm_fn, LLVMTypeRef ty, LLVMModuleRef mod, size_
 
     llvm::FunctionType* cpu_call_type = orig_fn->getFunctionType();
     llvm::Type* cpu_type = cpu_call_type->getParamType(0)->getPointerElementType();
-    llvm::Value* cpu_arg = llvm::UndefValue::get(cpu_type);
+
+    llvm::Value* alloca = irb.CreateAlloca(cpu_type, int{0});
 
     unsigned gp_regs[6] = { 7, 6, 2, 1, 8, 9 };
     unsigned gpRegOffset = 0;
@@ -255,13 +264,13 @@ ll_func_wrap_sysv(LLVMValueRef llvm_fn, LLVMTypeRef ty, LLVMModuleRef mod, size_
 
         if (type_kind == llvm::Type::TypeID::IntegerTyID)
         {
-            cpu_arg = irb.CreateInsertValue(cpu_arg, arg, {1, gp_regs[gpRegOffset]});
+            irb.CreateStore(arg, rellume::GepHelper(irb, alloca, {0, 1, gp_regs[gpRegOffset]}));
             gpRegOffset++;
         }
         else if (type_kind == llvm::Type::TypeID::PointerTyID)
         {
             llvm::Value* intval = irb.CreatePtrToInt(arg, irb.getInt64Ty());
-            cpu_arg = irb.CreateInsertValue(cpu_arg, intval, {1, gp_regs[gpRegOffset]});
+            irb.CreateStore(intval, rellume::GepHelper(irb, alloca, {0, 1, gp_regs[gpRegOffset]}));
             gpRegOffset++;
         }
         else if (type_kind == llvm::Type::TypeID::FloatTyID || type_kind == llvm::Type::TypeID::DoubleTyID)
@@ -270,7 +279,7 @@ ll_func_wrap_sysv(LLVMValueRef llvm_fn, LLVMTypeRef ty, LLVMModuleRef mod, size_
             llvm::Type* vec_type = irb.getIntNTy(LL_VECTOR_REGISTER_SIZE);
             llvm::Value* intval = irb.CreateBitCast(arg, int_type);
             llvm::Value* ext = irb.CreateZExt(intval, vec_type);
-            cpu_arg = irb.CreateInsertValue(cpu_arg, ext, {3, fpRegOffset});
+            irb.CreateStore(ext, rellume::GepHelper(irb, alloca, {0, 3, fpRegOffset}));
             fpRegOffset++;
         }
         else
@@ -284,12 +293,9 @@ ll_func_wrap_sysv(LLVMValueRef llvm_fn, LLVMTypeRef ty, LLVMModuleRef mod, size_
     stack->setAlignment(16);
     llvm::Value* sp_ptr = irb.CreateGEP(stack, {stack_sz_val});
     llvm::Value* sp = irb.CreatePtrToInt(sp_ptr, irb.getInt64Ty());
-    cpu_arg = irb.CreateInsertValue(cpu_arg, sp, {1, 4});
+    irb.CreateStore(sp, rellume::GepHelper(irb, alloca, {0, 1, 4}));
 
-    llvm::Value* alloca = irb.CreateAlloca(cpu_type, int{0});
-    irb.CreateStore(cpu_arg, alloca);
     llvm::CallInst* call = irb.CreateCall(cpu_call_type, orig_fn, {alloca});
-    cpu_arg = irb.CreateLoad(cpu_type, alloca);
 
     llvm::Type* ret_type = new_fn->getReturnType();
     switch (ret_type->getTypeID())
@@ -300,18 +306,18 @@ ll_func_wrap_sysv(LLVMValueRef llvm_fn, LLVMTypeRef ty, LLVMModuleRef mod, size_
             irb.CreateRetVoid();
             break;
         case llvm::Type::TypeID::IntegerTyID:
-            ret = irb.CreateExtractValue(cpu_arg, {1, 0});
+            ret = irb.CreateLoad(rellume::GepHelper(irb, alloca, {0, 1, 0}));
             ret = irb.CreateTruncOrBitCast(ret, ret_type);
             irb.CreateRet(ret);
             break;
         case llvm::Type::TypeID::PointerTyID:
-            ret = irb.CreateExtractValue(cpu_arg, {1, 0});
+            ret = irb.CreateLoad(rellume::GepHelper(irb, alloca, {0, 1, 0}));
             ret = irb.CreateIntToPtr(ret, ret_type);
             irb.CreateRet(ret);
             break;
         case llvm::Type::TypeID::FloatTyID:
         case llvm::Type::TypeID::DoubleTyID:
-            ret = irb.CreateExtractValue(cpu_arg, {3, 0});
+            ret = irb.CreateLoad(rellume::GepHelper(irb, alloca, {0, 3, 0}));
             ret = irb.CreateTrunc(ret, irb.getIntNTy(ret_type->getPrimitiveSizeInBits()));
             ret = irb.CreateBitCast(ret, ret_type);
             irb.CreateRet(ret);
@@ -330,7 +336,9 @@ ll_func_wrap_sysv(LLVMValueRef llvm_fn, LLVMTypeRef ty, LLVMModuleRef mod, size_
     llvm::legacy::FunctionPassManager pm(new_fn->getParent());
     pm.doInitialization();
 
-    // instrcombine will get rid of the CPU type struct
+    // replace CPU struct with scalars
+    pm.add(llvm::createSROAPass());
+    // instrcombine will get rid of lots of bloat from the CPU struct
     pm.add(llvm::createInstructionCombiningPass(false));
     // Simplify CFG, removes some redundant function exists and empty blocks
     pm.add(llvm::createCFGSimplificationPass());
