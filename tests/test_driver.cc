@@ -191,17 +191,27 @@ class TestCase {
 
         std::string error;
 
+        llvm::TargetOptions options;
+        options.EnableFastISel = true;
+
         llvm::EngineBuilder builder(std::move(mod));
-        builder.setEngineKind(llvm::EngineKind::JIT);
+        // There are two options: "Interpreter" and "JIT". Because we execute
+        // the code once only, the interpreter is usually faster (even compared
+        // to the -O0 JIT configuration).
+        builder.setEngineKind(llvm::EngineKind::Interpreter);
         builder.setErrorStr(&error);
+        builder.setOptLevel(llvm::CodeGenOpt::None);
+        builder.setTargetOptions(options);
 
-        llvm::SmallVector<std::string, 1> MAttrs;
-        llvm::Triple triple = llvm::Triple(llvm::sys::getProcessTriple());
-        llvm::TargetMachine* target = builder.selectTarget(triple, "x86-64", llvm::sys::getHostCPUName(), MAttrs);
-
-        if (llvm::ExecutionEngine* engine = builder.create(target)) {
-            auto fn_ptr = reinterpret_cast<void(*)(CPU*)>(engine->getFunctionAddress(fn->getName()));
-            fn_ptr(&state);
+        if (llvm::ExecutionEngine* engine = builder.create()) {
+            // If we have a JIT compiler, get address of compiled code.
+            // Otherwise try to run the function using the interpreter.
+            if (auto raw_ptr = engine->getFunctionAddress(fn->getName())) {
+                auto fn_ptr = reinterpret_cast<void(*)(CPU*)>(raw_ptr);
+                fn_ptr(&state);
+            } else {
+                engine->runFunction(fn, {llvm::PTOGV(&state)});
+            }
             delete engine;
         } else {
             diagnostic << "# error creating engine: " << error << std::endl;
