@@ -146,7 +146,7 @@ RegFile::GetReg(LLReg reg, Facet facet)
             break;
         case Facet::I8H:
             res = builder.CreateLShr(native, builder.getInt64(8));
-            res = builder.CreateTrunc(native, builder.getInt8Ty());
+            res = builder.CreateTrunc(res, builder.getInt8Ty());
             break;
         case Facet::PTR:
             res = builder.CreateIntToPtr(native, facetType);
