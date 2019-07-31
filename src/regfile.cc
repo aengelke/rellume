@@ -133,7 +133,7 @@ RegFile::GetReg(LLReg reg, Facet facet)
 
     if (reg.IsGp())
     {
-        llvm::Value* res;
+        llvm::Value* res = nullptr;
         llvm::Value* native = *AccessRegFacet(reg, Facet::I64);
         assert(native && "native gp-reg facet is null");
         switch (facet)
@@ -172,7 +172,7 @@ RegFile::GetReg(LLReg reg, Facet facet)
     }
     else if (reg.IsVec())
     {
-        llvm::Value* res;
+        llvm::Value* res = nullptr;
         llvm::Value* native = *AccessRegFacet(reg, Facet::IVEC);
         assert(native && "native sse-reg facet is null");
         switch (facet)
