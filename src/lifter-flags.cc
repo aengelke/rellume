@@ -44,22 +44,7 @@ namespace rellume {
 llvm::Value*
 LifterBase::FlagCond(Condition cond)
 {
-    RegFile::FlagCache& cache = regfile.GetFlagCache();
-    if (cache.valid)
-    {
-        switch (cond)
-        {
-        case Condition::BE: return irb.CreateICmpULE(cache.lhs, cache.rhs);
-        case Condition::A:  return irb.CreateICmpUGT(cache.lhs, cache.rhs);
-        case Condition::L:  return irb.CreateICmpSLT(cache.lhs, cache.rhs);
-        case Condition::GE: return irb.CreateICmpSGE(cache.lhs, cache.rhs);
-        case Condition::LE: return irb.CreateICmpSLE(cache.lhs, cache.rhs);
-        case Condition::G:  return irb.CreateICmpSGT(cache.lhs, cache.rhs);
-        default: break;
-        }
-    }
-
-    llvm::Value* result;
+    llvm::Value* result = nullptr;
     switch (static_cast<Condition>(static_cast<int>(cond) & ~1))
     {
     case Condition::O:  result = GetFlag(RFLAG_OF); break;
