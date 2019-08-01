@@ -131,19 +131,8 @@ using ValueMapFlags = ValueMap<R, Facet::ZF, Facet::SF, Facet::PF, Facet::CF, Fa
 class RegFile
 {
 public:
-    struct FlagCache {
-        bool valid;
-        llvm::Value* lhs;
-        llvm::Value* rhs;
-
-        FlagCache() : valid(false) {}
-        void update(llvm::Value* op1, llvm::Value* op2) {
-            lhs = op1; rhs = op2; valid = true;
-        }
-    };
-
     RegFile(llvm::BasicBlock* llvm_block) : llvm_block(llvm_block),
-            regs_gp(), regs_sse(), reg_ip(), flags(), flag_cache() {}
+            regs_gp(), regs_sse(), reg_ip(), flags() {}
 
     RegFile(RegFile&& rhs);
     RegFile& operator=(RegFile&& rhs);
@@ -160,10 +149,6 @@ public:
     llvm::Value* GetFlag(int flag);
     void SetFlag(int flag, llvm::Value*);
 
-    RegFile::FlagCache& GetFlagCache() {
-        return flag_cache;
-    }
-
 private:
     // tuples of (create_phi, value) -- if value is nullptr and create_phi is
     // set, create a phi in the basic block for that facet and call a callback.
@@ -178,8 +163,6 @@ private:
     llvm::Value** AccessRegFacet(LLReg reg, Facet facet,
                                  bool suppress_phis = false);
     PhiCreatedCbType phi_created_cb;
-
-    FlagCache flag_cache;
 };
 
 } // namespace

@@ -335,7 +335,6 @@ RegFile::SetFlag(int flag, llvm::Value* value)
 
     Facet facet = regfile_flag_to_facet(flag);
     *AccessRegFacet(LLReg(LL_RT_EFLAGS, 0), facet, true) = value;
-    flag_cache.valid = false;
 }
 
 } // namespace

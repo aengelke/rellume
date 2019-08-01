@@ -98,7 +98,6 @@ void Lifter::LiftSub(const LLInstr& inst) {
     FlagCalcA(res, op1, op2);
     FlagCalcCSub(res, op1, op2);
     FlagCalcOSub(res, op1, op2);
-    regfile.GetFlagCache().update(op1, op2);
 }
 
 void Lifter::LiftCmp(const LLInstr& inst) {
@@ -119,8 +118,6 @@ void Lifter::LiftCmp(const LLInstr& inst) {
         llvm::Value* ptr2 = GetReg(inst.ops[1].reg, Facet::PTR);
         SetFlag(RFLAG_ZF, irb.CreateICmpEQ(ptr1, ptr2));
     }
-
-    regfile.GetFlagCache().update(op1, op2);
 }
 
 void Lifter::LiftAndOrXor(const LLInstr& inst, llvm::Instruction::BinaryOps op,
