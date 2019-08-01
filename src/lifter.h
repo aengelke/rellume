@@ -61,7 +61,11 @@ protected:
         // Set fast-math flags. Newer LLVM supports FastMathFlags::getFast().
         if (cfg.enableFastMath) {
             llvm::FastMathFlags fmf;
+#if LL_LLVM_MAJOR >= 7
             fmf.setFast();
+#else
+            fmf.setUnsafeAlgebra();
+#endif
             irb.setFastMathFlags(fmf);
         }
     }

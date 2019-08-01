@@ -33,6 +33,7 @@ endif
 add_project_arguments(['-Wno-unused-parameter'], language: 'cpp')
 
 libllvm = dependency('llvm', version: ['>=5', '<9'])
+add_project_arguments(['-DLL_LLVM_MAJOR='+libllvm.version().split('.')[0]], language: 'cpp')
 
 fadec_subproject = subproject('fadec', default_options: ['archmode=only64'])
 fadec = fadec_subproject.get_variable('fadec')

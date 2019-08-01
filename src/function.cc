@@ -43,10 +43,10 @@
 #include <llvm/IR/Verifier.h>
 #include <llvm/Transforms/InstCombine/InstCombine.h>
 #include <llvm/Transforms/Scalar.h>
-#include <llvm/Transforms/Utils.h>
 #include <llvm/Transforms/Utils/Cloning.h>
 #include <cassert>
 #include <cstdint>
+#include <memory>
 #include <vector>
 #include <unordered_map>
 
