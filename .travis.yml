@@ -1,0 +1,90 @@
+language: cpp
+dist: xenial
+
+addons:
+  apt:
+    sources: &default_srcs
+      - ubuntu-toolchain-r-test
+    packages: &default_pkgs
+      - libglib2.0-dev
+      - python3-pip
+      - python3-setuptools
+      # - libstdc++6-4.9-dbg
+      - ninja-build
+
+matrix:
+  include:
+    - compiler: gcc
+      env:
+        - COMPILERC=gcc-7
+        - COMPILERCXX=g++-7
+        - LLVM_CONFIG=llvm-config-6.0
+      addons:
+        apt:
+          sources:
+            - *default_srcs
+            - llvm-toolchain-xenial-6.0
+          packages:
+            - *default_pkgs
+            - llvm-6.0-dev
+            - gcc-7
+            - g++-7
+    - compiler: gcc
+      env:
+        - COMPILERC=gcc-7
+        - COMPILERCXX=g++-7
+        - LLVM_CONFIG=llvm-config-7.0
+      addons:
+        apt:
+          sources:
+            - *default_srcs
+            - llvm-toolchain-xenial-7
+          packages:
+            - *default_pkgs
+            - llvm-7-dev
+            - gcc-7
+            - g++-7
+    - compiler: gcc
+      env:
+        - COMPILERC=gcc-7
+        - COMPILERCXX=g++-7
+        - LLVM_CONFIG=llvm-config-8.0
+      addons:
+        apt:
+          sources:
+            - *default_srcs
+            - llvm-toolchain-xenial-8
+          packages:
+            - *default_pkgs
+            - llvm-8-dev
+            - gcc-7
+            - g++-7
+    - compiler: clang
+      env:
+        - COMPILERC=clang-5.0
+        - COMPILERCXX=clang++-5.0
+        - LLVM_CONFIG=llvm-config-7.0
+      addons:
+        apt:
+          sources:
+            - *default_srcs
+            - llvm-toolchain-xenial-7
+          packages:
+            - *default_pkgs
+            - llvm-7-dev
+            - clang-5.0
+
+install:
+  # The meson included in the Xenial repositories is too old (0.29).
+  - pip3 install meson
+  # Hack to work around different versions of LLVM being installed and meson
+  # always choosing the newest one, regardless of our specifications.
+  - ln -s /usr/bin/$LLVM_CONFIG $HOME/.local/bin/llvm-config
+  - export CC=$COMPILERC
+  - export CXX=$COMPILERCXX
+
+script:
+  - mkdir build
+  - meson build
+  - ninja -v -C build
+  - meson test -v -C build
