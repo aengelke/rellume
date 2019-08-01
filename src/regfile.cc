@@ -45,23 +45,24 @@
 
 namespace rellume {
 
-void RegFile::EnablePhiCreation(PhiCreatedCbType phi_created_cb) {
+void RegFile::ClearAll(PhiCreatedCbType phi_created_cb) {
     this->phi_created_cb = phi_created_cb;
+    bool enable_phis = phi_created_cb != nullptr;
 
     // Set create_phi to true for all registers.
     for (unsigned i = 0; i < LL_RI_GPMax; i++) {
         regs_gp[i].clear();
         for (Facet facet : regs_gp[i].facets())
-            regs_gp[i][facet].first = true;
+            regs_gp[i][facet].first = enable_phis;
     }
     for (unsigned i = 0; i < LL_RI_XMMMax; i++) {
         regs_sse[i].clear();
         for (Facet facet : regs_sse[i].facets())
-           regs_sse[i][facet].first = true;
+           regs_sse[i][facet].first = enable_phis;
     }
     for (Facet facet : flags.facets())
-       flags[facet].first = true;
-    reg_ip.first = true;
+        flags[facet].first = enable_phis;
+    reg_ip.first = enable_phis;
 }
 
 llvm::Value** RegFile::AccessRegFacet(LLReg reg, Facet facet,

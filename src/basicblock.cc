@@ -49,7 +49,9 @@
 namespace rellume {
 
 BasicBlock::BasicBlock(llvm::BasicBlock* llvm) : llvmBB(llvm), regfile(llvm) {
-    regfile.EnablePhiCreation([&](LLReg reg, Facet facet, llvm::PHINode* phi) {
+    // Calling this function with a callback indicates that the regfile can
+    // create a PHI node if a reg+facet combination is not yet set.
+    regfile.ClearAll([&](LLReg reg, Facet facet, llvm::PHINode* phi) {
         empty_phis.push_back(std::make_tuple(reg, facet, phi));
     });
 }

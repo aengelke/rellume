@@ -141,7 +141,7 @@ public:
     RegFile& operator=(const RegFile&) = delete;
 
     using PhiCreatedCbType = std::function<void(LLReg,Facet,llvm::PHINode*)>;
-    void EnablePhiCreation(PhiCreatedCbType phi_created_cb);
+    void ClearAll(PhiCreatedCbType phi_created_cb = nullptr);
 
     llvm::Value* GetReg(LLReg reg, Facet facet);
     void SetReg(LLReg reg, Facet facet, llvm::Value*, bool clear_facets);
