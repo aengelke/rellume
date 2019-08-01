@@ -31,6 +31,7 @@
 #include <llvm/IR/BasicBlock.h>
 #include <llvm/IR/Instruction.h>
 #include <llvm/IR/IRBuilder.h>
+#include <llvm/IR/Operator.h>
 
 
 namespace rellume {
@@ -61,7 +62,7 @@ protected:
         // Set fast-math flags. Newer LLVM supports FastMathFlags::getFast().
         if (cfg.enableFastMath) {
             llvm::FastMathFlags fmf;
-#if LL_LLVM_MAJOR >= 7
+#if LL_LLVM_MAJOR >= 6
             fmf.setFast();
 #else
             fmf.setUnsafeAlgebra();
