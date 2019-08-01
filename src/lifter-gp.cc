@@ -92,7 +92,7 @@ void Lifter::LiftSub(const LLInstr& inst) {
         OpStoreGp(inst.ops[0], res);
     }
 
-    FlagCalcZ(res);
+    SetFlag(RFLAG_ZF, irb.CreateICmpEQ(op1, op2));
     FlagCalcS(res);
     FlagCalcP(res);
     FlagCalcA(res, op1, op2);
@@ -105,7 +105,7 @@ void Lifter::LiftCmp(const LLInstr& inst) {
     llvm::Value* op1 = OpLoad(inst.ops[0], Facet::I);
     llvm::Value* op2 = OpLoad(inst.ops[1], Facet::I);
     llvm::Value* res = irb.CreateSub(op1, op2);
-    FlagCalcZ(res);
+    SetFlag(RFLAG_ZF, irb.CreateICmpEQ(op1, op2));
     FlagCalcS(res);
     FlagCalcP(res);
     FlagCalcA(res, op1, op2);
