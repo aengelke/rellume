@@ -16,10 +16,14 @@
 #include <memory>
 #include <sstream>
 #include <sys/mman.h>
+#include <unistd.h>
 #include <unordered_map>
 #include <unordered_set>
 #include <vector>
 
+
+static bool opt_verbose = false;
+static bool opt_jit = false;
 
 struct HexBuffer {
     uint8_t* buf;
@@ -191,7 +195,8 @@ class TestCase {
         }
 
         fn->setName("test_function");
-        // fn->print(llvm::errs());
+        if (opt_verbose)
+            fn->print(llvm::errs());
 
         std::string error;
 
@@ -202,7 +207,10 @@ class TestCase {
         // There are two options: "Interpreter" and "JIT". Because we execute
         // the code once only, the interpreter is usually faster (even compared
         // to the -O0 JIT configuration).
-        builder.setEngineKind(llvm::EngineKind::Interpreter);
+        if (opt_jit)
+            builder.setEngineKind(llvm::EngineKind::JIT);
+        else
+            builder.setEngineKind(llvm::EngineKind::Interpreter);
         builder.setErrorStr(&error);
         builder.setOptLevel(llvm::CodeGenOpt::None);
         builder.setTargetOptions(options);
@@ -274,15 +282,25 @@ public:
 };
 
 int main(int argc, char** argv) {
-    if (argc != 2) {
-        std::cerr << "usage: " << argv[0] << " casefile" << std::endl;
-        return 1;
+    int opt;
+    while ((opt = getopt(argc, argv, "vj")) != -1) {
+        switch (opt) {
+        case 'v': opt_verbose = true; break;
+        case 'j': opt_jit = true; break;
+        default:
+usage:
+            std::cerr << "usage: " << argv[0] << " [-v] [-j] casefile" << std::endl;
+            return 1;
+        }
     }
+
+    if (optind >= argc)
+        goto usage;
 
     llvm::InitializeNativeTarget();
     llvm::InitializeNativeTargetAsmPrinter();
 
-    std::ifstream casefile(argv[1]);
+    std::ifstream casefile(argv[optind]);
     if (casefile.fail()) {
         std::cerr << "error opening casefile" << std::endl;
         return 1;
