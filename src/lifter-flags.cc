@@ -142,8 +142,10 @@ LifterBase::FlagCalcOSub(llvm::Value* res, llvm::Value* lhs, llvm::Value* rhs)
     }
     else
     {
-        auto tmp = irb.CreateAnd(irb.CreateXor(lhs, rhs), irb.CreateXor(res, lhs));
-        SetFlag(RFLAG_OF, irb.CreateICmpSLT(tmp, llvm::Constant::getNullValue(res->getType())));
+        auto zero = llvm::Constant::getNullValue(res->getType());
+        llvm::Value* sf = irb.CreateICmpSLT(res, zero);
+        llvm::Value* lt = irb.CreateICmpSLT(lhs, rhs);
+        SetFlag(RFLAG_OF, irb.CreateICmpNE(sf, lt));
     }
 }
 
