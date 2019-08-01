@@ -124,7 +124,8 @@ void Lifter::LiftSseBinOp(const LLInstr& inst, llvm::Instruction::BinaryOps op,
                            Facet op_type) {
     llvm::Value* op1 = OpLoad(inst.ops[0], op_type, ALIGN_IMP);
     llvm::Value* op2 = OpLoad(inst.ops[1], op_type, ALIGN_IMP);
-    OpStoreVec(inst.ops[0], irb.CreateBinOp(op, op1, op2), ALIGN_IMP);
+    OpStoreVec(inst.ops[0], irb.CreateBinOp(op, op1, op2), /*avx=*/false,
+               ALIGN_IMP);
 }
 
 void Lifter::LiftSseUnpck(const LLInstr& inst, Facet op_type) {
