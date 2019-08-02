@@ -82,8 +82,8 @@ struct LLReg {
     uint16_t ri;
 
 #if defined(__cplusplus) && defined(RELLUME_ENABLE_CPP_HEADER)
-    LLReg() : rt(LL_RT_None), ri(LL_RI_None) {}
-    LLReg(int rt, int ri) : rt(static_cast<uint16_t>(rt)),
+    constexpr LLReg() : rt(LL_RT_None), ri(LL_RI_None) {}
+    constexpr LLReg(int rt, int ri) : rt(static_cast<uint16_t>(rt)),
             ri(static_cast<uint16_t>(ri)) {}
     static LLReg None() { return LLReg{LL_RT_None, LL_RI_None}; }
     static LLReg Gp(size_t size, uint16_t index, bool legacy = true) {

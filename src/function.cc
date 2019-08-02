@@ -72,27 +72,8 @@ std::unique_ptr<BasicBlock> Function::CreateEntry()
     llvm::BasicBlock* first_bb = llvm->empty() ? nullptr : &llvm->front();
     llvm::BasicBlock* llvm_bb = llvm::BasicBlock::Create(llvm->getContext(), "", llvm, first_bb);
     auto entry_block = std::make_unique<BasicBlock>(llvm_bb);
-    Lifter state(cfg, entry_block->regfile, entry_block->Llvm());
 
-    llvm::Value* param = llvm->arg_begin();
-
-    llvm::Value* gep = GepHelper(state.irb, param, {0, 0});
-    state.SetReg(LLReg(LL_RT_IP, 0), Facet::I64, state.irb.CreateLoad(gep));
-
-    for (unsigned i = 0; i < LL_RI_GPMax; i++) {
-        llvm::Value* gep = GepHelper(state.irb, param, {0, 1, i});
-        state.SetReg(LLReg(LL_RT_GP64, i), Facet::I64, state.irb.CreateLoad(gep));
-    }
-
-    for (unsigned i = 0; i < RFLAG_Max; i++) {
-        llvm::Value* gep = GepHelper(state.irb, param, {0, 2, i});
-        state.SetFlag(i, state.irb.CreateLoad(gep));
-    }
-
-    for (unsigned i = 0; i < LL_RI_XMMMax; i++) {
-        llvm::Value* gep = GepHelper(state.irb, param, {0, 3, i});
-        state.SetReg(LLReg(LL_RT_XMM, i), Facet::IVEC, state.irb.CreateLoad(gep));
-    }
+    entry_block->regfile.UpdateAllFromMem(llvm->arg_begin());
 
     return entry_block;
 }
@@ -139,30 +120,12 @@ void Function::AddInst(uint64_t block_addr, const LLInstr& inst)
 std::unique_ptr<BasicBlock> Function::CreateExit() {
     llvm::BasicBlock* llvm_bb = llvm::BasicBlock::Create(llvm->getContext(), "", llvm, nullptr);
     auto exit_block = std::make_unique<BasicBlock>(llvm_bb);
-    Lifter state(cfg, exit_block->regfile, exit_block->Llvm());
 
     // Pack CPU struct and return
-    llvm::Value* param = llvm->arg_begin();
+    exit_block->regfile.UpdateAllInMem(llvm->arg_begin());
 
-    llvm::Value* gep = GepHelper(state.irb, param, {0, 0});
-    state.irb.CreateStore(state.GetReg(LLReg(LL_RT_IP, 0), Facet::I64), gep);
-
-    for (unsigned i = 0; i < LL_RI_GPMax; i++) {
-        llvm::Value* gep = GepHelper(state.irb, param, {0, 1, i});
-        state.irb.CreateStore(state.GetReg(LLReg(LL_RT_GP64, i), Facet::I64), gep);
-    }
-
-    for (unsigned i = 0; i < RFLAG_Max; i++) {
-        llvm::Value* gep = GepHelper(state.irb, param, {0, 2, i});
-        state.irb.CreateStore(state.GetFlag(i), gep);
-    }
-
-    for (unsigned i = 0; i < LL_RI_XMMMax; i++) {
-        llvm::Value* gep = GepHelper(state.irb, param, {0, 3, i});
-        state.irb.CreateStore(state.GetReg(LLReg(LL_RT_XMM, i), Facet::IVEC), gep);
-    }
-
-    state.irb.CreateRetVoid();
+    llvm::IRBuilder<> irb(exit_block->Llvm());
+    irb.CreateRetVoid();
 
     return exit_block;
 }

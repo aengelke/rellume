@@ -33,6 +33,7 @@
 #include <cassert>
 #include <cstdint>
 #include <cstring>
+#include <tuple>
 
 
 
@@ -110,6 +111,43 @@ llvm::Value** RegFile::AccessRegFacet(LLReg reg, Facet facet,
     }
 
     return &entry->second;
+}
+
+void RegFile::UpdateAll(llvm::Value* buf_ptr, bool store_mem) {
+    static constexpr std::tuple<size_t, LLReg, Facet> entries[] = {
+#define RELLUME_PARAM_REG(off,sz,reg,facet,name) std::make_tuple(off,reg,facet),
+#include <rellume/regs.inc>
+#undef RELLUME_PARAM_REG
+    };
+
+    assert(llvm_block->getTerminator() == nullptr && "update terminated block");
+    llvm::IRBuilder<> irb(llvm_block);
+
+    // TODO: demand this as precondition, add assertion
+    buf_ptr = irb.CreatePointerCast(buf_ptr, irb.getInt8PtrTy());
+
+    // Clear all register facets and disable automatic phi creation.
+    if (!store_mem)
+        ClearAll(nullptr);
+
+    size_t offset;
+    LLReg reg;
+    Facet facet;
+    for (auto& entry : entries) {
+        std::tie(offset, reg, facet) = entry;
+        llvm::Type* ptr_ty = facet.Type(irb.getContext())->getPointerTo();
+        llvm::Value* ptr = irb.CreateConstGEP1_64(buf_ptr, offset);
+        ptr = irb.CreatePointerCast(ptr, ptr_ty);
+        llvm::Value** facet_entry = AccessRegFacet(reg, facet,
+                                                   /*nophi=*/!store_mem);
+
+        assert(facet_entry);
+
+        if (store_mem) // store to mem, basically GetReg
+            irb.CreateStore(*facet_entry, ptr);
+        else // load from mem, basically SetReg
+            *facet_entry = irb.CreateLoad(ptr);
+    }
 }
 
 llvm::Value*

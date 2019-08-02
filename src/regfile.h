@@ -149,6 +149,13 @@ public:
     llvm::Value* GetFlag(int flag);
     void SetFlag(int flag, llvm::Value*);
 
+    void UpdateAllFromMem(llvm::Value* buf_ptr) {
+        UpdateAll(buf_ptr, false);
+    }
+    void UpdateAllInMem(llvm::Value* buf_ptr) {
+        UpdateAll(buf_ptr, true);
+    }
+
 private:
     // tuples of (create_phi, value) -- if value is nullptr and create_phi is
     // set, create a phi in the basic block for that facet and call a callback.
@@ -163,6 +170,8 @@ private:
     llvm::Value** AccessRegFacet(LLReg reg, Facet facet,
                                  bool suppress_phis = false);
     PhiCreatedCbType phi_created_cb;
+
+    void UpdateAll(llvm::Value*, bool);
 };
 
 } // namespace
