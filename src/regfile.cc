@@ -47,70 +47,57 @@
 namespace rellume {
 
 void RegFile::ClearAll(PhiCreatedCbType phi_created_cb) {
-    this->phi_created_cb = phi_created_cb;
-    bool enable_phis = phi_created_cb != nullptr;
+    auto make_phi_creator = [&](const LLReg reg, const Facet facet) {
+        std::function<llvm::Value*()> res = nullptr;
+        if (phi_created_cb)
+            res = [phi_created_cb, this, reg, facet]() {
+                llvm::IRBuilder<> irb(llvm_block, llvm_block->begin());
+                llvm::PHINode* phi = irb.CreatePHI(facet.Type(irb.getContext()), 4);
+                phi_created_cb(reg, facet, phi);
+                return phi;
+            };
+        return res;
+    };
 
     // Set create_phi to true for all registers.
     for (unsigned i = 0; i < LL_RI_GPMax; i++) {
-        regs_gp[i].clear();
         for (Facet facet : regs_gp[i].facets())
-            regs_gp[i][facet].first = enable_phis;
+            regs_gp[i][facet] = make_phi_creator(LLReg(LL_RT_GP64, i), facet);
     }
     for (unsigned i = 0; i < LL_RI_XMMMax; i++) {
-        regs_sse[i].clear();
         for (Facet facet : regs_sse[i].facets())
-           regs_sse[i][facet].first = enable_phis;
+            regs_sse[i][facet] = make_phi_creator(LLReg(LL_RT_XMM, i), facet);
     }
     for (Facet facet : flags.facets())
-        flags[facet].first = enable_phis;
-    reg_ip.first = enable_phis;
+        flags[facet] = make_phi_creator(LLReg(LL_RT_EFLAGS, 0), facet);
+    reg_ip = make_phi_creator(LLReg(LL_RT_IP, 0), Facet::I64);
 }
 
-llvm::Value** RegFile::AccessRegFacet(LLReg reg, Facet facet,
-                                      bool suppress_phis) {
-    Entry* entry = nullptr;
+RegFile::Entry* RegFile::AccessRegFacet(LLReg reg, Facet facet) {
     if (reg.IsGp())
     {
         auto& map_entry = regs_gp[reg.ri - (reg.IsGpHigh() ? LL_RI_AH : 0)];
         if (map_entry.has(facet))
-            entry = &map_entry[facet];
+            return &map_entry[facet];
     }
     else if (reg.rt == LL_RT_IP)
     {
         if (facet == Facet::I64)
-            entry = &reg_ip;
+            return &reg_ip;
     }
     else if (reg.rt == LL_RT_EFLAGS)
     {
         if (flags.has(facet))
-            entry = &flags[facet];
+            return &flags[facet];
     }
     else if (reg.IsVec())
     {
         auto& map_entry = regs_sse[reg.ri];
         if (map_entry.has(facet))
-            entry = &map_entry[facet];
+            return &map_entry[facet];
     }
 
-    if (entry == nullptr)
-        return nullptr;
-
-    if (suppress_phis)
-        entry->first = false;
-
-    if (entry->first) {
-        assert(entry->second == nullptr && "corrupt regfile entry: phi set");
-        assert(phi_created_cb && "cannot create phi without callback");
-
-        llvm::IRBuilder<> irb(llvm_block, llvm_block->begin());
-        llvm::PHINode* phi = irb.CreatePHI(facet.Type(irb.getContext()), 4);
-        entry->first = false;
-        entry->second = phi;
-
-        phi_created_cb(reg, facet, phi);
-    }
-
-    return &entry->second;
+    return nullptr;
 }
 
 void RegFile::UpdateAll(llvm::Value* buf_ptr, bool store_mem) {
@@ -135,13 +122,12 @@ void RegFile::UpdateAll(llvm::Value* buf_ptr, bool store_mem) {
         llvm::Type* ptr_ty = facet.Type(irb.getContext())->getPointerTo();
         llvm::Value* ptr = irb.CreateConstGEP1_64(buf_ptr, offset);
         ptr = irb.CreatePointerCast(ptr, ptr_ty);
-        llvm::Value** facet_entry = AccessRegFacet(reg, facet,
-                                                   /*nophi=*/!store_mem);
+        Entry* facet_entry = AccessRegFacet(reg, facet);
 
-        assert(facet_entry);
+        assert(facet_entry != nullptr && "required facet doesn't exist");
 
         if (store_mem) // store to mem, basically GetReg
-            irb.CreateStore(*facet_entry, ptr);
+            irb.CreateStore(facet_entry->get(), ptr);
         else // load from mem, basically SetReg
             *facet_entry = irb.CreateLoad(ptr);
     }
@@ -150,11 +136,12 @@ void RegFile::UpdateAll(llvm::Value* buf_ptr, bool store_mem) {
 llvm::Value*
 RegFile::GetReg(LLReg reg, Facet facet)
 {
-    llvm::Value** facet_entry = AccessRegFacet(reg, facet);
+    Entry* facet_entry = AccessRegFacet(reg, facet);
     // If we store the selected facet in our register file and the facet is
     // valid, return it immediately.
-    if (facet_entry != nullptr && *facet_entry != nullptr)
-        return *facet_entry;
+    if (facet_entry)
+        if (llvm::Value* res = facet_entry->get())
+            return res;
 
     llvm::LLVMContext& ctx = llvm_block->getContext();
 
@@ -170,7 +157,7 @@ RegFile::GetReg(LLReg reg, Facet facet)
     if (reg.IsGp())
     {
         llvm::Value* res = nullptr;
-        llvm::Value* native = *AccessRegFacet(reg, Facet::I64);
+        llvm::Value* native = AccessRegFacet(reg, Facet::I64)->get();
         assert(native && "native gp-reg facet is null");
         switch (facet)
         {
@@ -198,7 +185,7 @@ RegFile::GetReg(LLReg reg, Facet facet)
     }
     else if (reg.rt == LL_RT_IP)
     {
-        llvm::Value* native = *AccessRegFacet(reg, Facet::I64);
+        llvm::Value* native = AccessRegFacet(reg, Facet::I64)->get();
         if (facet == Facet::I64)
             return native;
         else if (facet == Facet::PTR)
@@ -209,7 +196,7 @@ RegFile::GetReg(LLReg reg, Facet facet)
     else if (reg.IsVec())
     {
         llvm::Value* res = nullptr;
-        llvm::Value* native = *AccessRegFacet(reg, Facet::IVEC);
+        llvm::Value* native = AccessRegFacet(reg, Facet::IVEC)->get();
         assert(native && "native sse-reg facet is null");
         switch (facet)
         {
@@ -265,8 +252,9 @@ RegFile::GetReg(LLReg reg, Facet facet)
 
             // Prefer 128-bit SSE facet over full vector register.
             if (targetBits <= 128)
-                if (llvm::Value** entry_128 = AccessRegFacet(reg, Facet::I128))
-                    native = *entry_128;
+                if (Entry* entry_128 = AccessRegFacet(reg, Facet::I128))
+                    if (llvm::Value* value_128 = entry_128->get())
+                        native = value_128;
             int nativeBits = native->getType()->getPrimitiveSizeInBits();
 
             int targetCnt = facetType->getVectorNumElements();
@@ -324,7 +312,7 @@ RegFile::SetReg(LLReg reg, Facet facet, llvm::Value* value, bool clearOthers)
             if (facet == Facet::PTR) {
                 llvm::IRBuilder<> irb(llvm_block);
                 llvm::Value* intval = irb.CreatePtrToInt(value, irb.getInt64Ty());
-                *AccessRegFacet(reg, Facet::I64, true) = intval;
+                *AccessRegFacet(reg, Facet::I64) = intval;
             }
         } else if (reg.IsVec()) {
             assert(facet == Facet::IVEC);
@@ -332,7 +320,7 @@ RegFile::SetReg(LLReg reg, Facet facet, llvm::Value* value, bool clearOthers)
         }
     }
 
-    llvm::Value** facet_entry = AccessRegFacet(reg, facet, true);
+    Entry* facet_entry = AccessRegFacet(reg, facet);
     assert(facet_entry && "attempt to store invalid facet");
     *facet_entry = value;
 }
@@ -353,7 +341,7 @@ llvm::Value*
 RegFile::GetFlag(int flag)
 {
     Facet facet = regfile_flag_to_facet(flag);
-    return *AccessRegFacet(LLReg(LL_RT_EFLAGS, 0), facet);
+    return AccessRegFacet(LLReg(LL_RT_EFLAGS, 0), facet)->get();
 }
 
 void
@@ -370,7 +358,7 @@ RegFile::SetFlag(int flag, llvm::Value* value)
 #endif
 
     Facet facet = regfile_flag_to_facet(flag);
-    *AccessRegFacet(LLReg(LL_RT_EFLAGS, 0), facet, true) = value;
+    *AccessRegFacet(LLReg(LL_RT_EFLAGS, 0), facet) = value;
 }
 
 } // namespace

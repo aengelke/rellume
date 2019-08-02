@@ -157,9 +157,29 @@ public:
     }
 
 private:
-    // tuples of (create_phi, value) -- if value is nullptr and create_phi is
-    // set, create a phi in the basic block for that facet and call a callback.
-    using Entry = std::pair<bool,llvm::Value*>;
+    class Entry {
+        using Generator = std::function<llvm::Value*()>;
+
+        // If value is nullptr, then the generator (unless that is null as well)
+        // is used to get the actual value.
+        llvm::Value* value;
+        Generator generator;
+
+    public:
+        Entry() : value(nullptr), generator(nullptr) {}
+        Entry(llvm::Value* value) : value(value), generator(nullptr) {}
+        Entry(Generator generator) : value(nullptr), generator(generator) {}
+
+        explicit operator llvm::Value*() {
+            if (value == nullptr && generator) {
+                value = generator();
+                assert(value != nullptr && "generator returned nullptr");
+                generator = nullptr;
+            }
+            return value;
+        }
+        llvm::Value* get() { return static_cast<llvm::Value*>(*this); }
+    };
 
     llvm::BasicBlock* llvm_block;
     ValueMapGp<Entry> regs_gp[LL_RI_GPMax];
@@ -167,9 +187,7 @@ private:
     Entry reg_ip;
     ValueMapFlags<Entry> flags;
 
-    llvm::Value** AccessRegFacet(LLReg reg, Facet facet,
-                                 bool suppress_phis = false);
-    PhiCreatedCbType phi_created_cb;
+    Entry* AccessRegFacet(LLReg reg, Facet facet);
 
     void UpdateAll(llvm::Value*, bool);
 };
