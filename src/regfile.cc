@@ -307,13 +307,8 @@ RegFile::SetReg(LLReg reg, Facet facet, llvm::Value* value, bool clearOthers)
 
     if (clearOthers) {
         if (reg.IsGp()) {
-            assert(facet == Facet::I64 || facet == Facet::PTR);
+            assert(facet == Facet::I64);
             regs_gp[reg.ri - (reg.IsGpHigh() ? LL_RI_AH : 0)].clear();
-            if (facet == Facet::PTR) {
-                llvm::IRBuilder<> irb(llvm_block);
-                llvm::Value* intval = irb.CreatePtrToInt(value, irb.getInt64Ty());
-                *AccessRegFacet(reg, Facet::I64) = intval;
-            }
         } else if (reg.IsVec()) {
             assert(facet == Facet::IVEC);
             regs_sse[reg.ri].clear();
