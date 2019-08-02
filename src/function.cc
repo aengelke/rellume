@@ -86,6 +86,10 @@ Function::Function(llvm::Module* mod)
     auto fn_type = llvm::FunctionType::get(void_type, {i8p_type}, false);
 
     llvm = llvm::Function::Create(fn_type, llvm::GlobalValue::ExternalLinkage, "", mod);
+    llvm->addParamAttr(0, llvm::Attribute::NoAlias);
+    llvm->addParamAttr(0, llvm::Attribute::NoCapture);
+    llvm->addParamAttr(0, llvm::Attribute::getWithAlignment(ctx, 16));
+    llvm->addDereferenceableParamAttr(0, 0x190);
 
     cfg.global_base_value = nullptr;
     cfg.enableOverflowIntrinsics = false;
