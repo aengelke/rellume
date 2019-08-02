@@ -29,7 +29,7 @@
 
 namespace rellume {
 
-Facet Facet::Resolve(unsigned bits)
+Facet Facet::Resolve(unsigned bits) const
 {
     switch (*this)
     {
@@ -82,7 +82,7 @@ Facet Facet::Resolve(unsigned bits)
     }
 }
 
-llvm::Type* Facet::Type(llvm::LLVMContext& ctx)
+llvm::Type* Facet::Type(llvm::LLVMContext& ctx) const
 {
     switch (*this)
     {

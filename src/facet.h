@@ -67,8 +67,8 @@ public:
 #endif
     };
 
-    llvm::Type* Type(llvm::LLVMContext& ctx);
-    Facet Resolve(unsigned bits);
+    llvm::Type* Type(llvm::LLVMContext& ctx) const;
+    Facet Resolve(unsigned bits) const;
 
     Facet() = default;
     constexpr Facet(Value value) : value(value) {}
