@@ -123,9 +123,6 @@ void RegFile::UpdateAll(llvm::Value* buf_ptr, bool store_mem) {
     assert(llvm_block->getTerminator() == nullptr && "update terminated block");
     llvm::IRBuilder<> irb(llvm_block);
 
-    // TODO: demand this as precondition, add assertion
-    buf_ptr = irb.CreatePointerCast(buf_ptr, irb.getInt8PtrTy());
-
     // Clear all register facets and disable automatic phi creation.
     if (!store_mem)
         ClearAll(nullptr);

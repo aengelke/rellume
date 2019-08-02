@@ -80,16 +80,10 @@ std::unique_ptr<BasicBlock> Function::CreateEntry()
 
 Function::Function(llvm::Module* mod)
 {
-    llvm::IRBuilder<> irb(mod->getContext());
-    llvm::SmallVector<llvm::Type*, 4> cpu_types;
-    cpu_types.push_back(irb.getInt64Ty()); // instruction pointer
-    cpu_types.push_back(llvm::ArrayType::get(irb.getInt64Ty(), 16));
-    cpu_types.push_back(llvm::ArrayType::get(irb.getInt1Ty(), 6));
-    cpu_types.push_back(llvm::ArrayType::get(irb.getIntNTy(LL_VECTOR_REGISTER_SIZE), 16));
-    llvm::Type* cpu_type = llvm::StructType::get(irb.getContext(), cpu_types);
-    llvm::Type* cpu_type_ptr = llvm::PointerType::get(cpu_type, 0);
-    llvm::Type* void_type = irb.getVoidTy();
-    llvm::FunctionType* fn_type = llvm::FunctionType::get(void_type, {cpu_type_ptr}, false);
+    llvm::LLVMContext& ctx = mod->getContext();
+    llvm::Type* void_type = llvm::Type::getVoidTy(ctx);
+    llvm::Type* i8p_type = llvm::Type::getInt8PtrTy(ctx);
+    auto fn_type = llvm::FunctionType::get(void_type, {i8p_type}, false);
 
     llvm = llvm::Function::Create(fn_type, llvm::GlobalValue::ExternalLinkage, "", mod);
 
@@ -213,8 +207,12 @@ ll_func_wrap_sysv(LLVMValueRef llvm_fn, LLVMTypeRef ty, LLVMModuleRef mod, size_
 
     llvm::IRBuilder<> irb(llvm_bb);
 
-    llvm::FunctionType* cpu_call_type = orig_fn->getFunctionType();
-    llvm::Type* cpu_type = cpu_call_type->getParamType(0)->getPointerElementType();
+    llvm::SmallVector<llvm::Type*, 4> cpu_types;
+    cpu_types.push_back(irb.getInt64Ty()); // instruction pointer
+    cpu_types.push_back(llvm::ArrayType::get(irb.getInt64Ty(), 16));
+    cpu_types.push_back(llvm::ArrayType::get(irb.getInt1Ty(), 6));
+    cpu_types.push_back(llvm::ArrayType::get(irb.getIntNTy(LL_VECTOR_REGISTER_SIZE), 16));
+    llvm::Type* cpu_type = llvm::StructType::get(irb.getContext(), cpu_types);
 
     llvm::Value* alloca = irb.CreateAlloca(cpu_type, int{0});
 
@@ -258,7 +256,8 @@ ll_func_wrap_sysv(LLVMValueRef llvm_fn, LLVMTypeRef ty, LLVMModuleRef mod, size_
     llvm::Value* sp = irb.CreatePtrToInt(sp_ptr, irb.getInt64Ty());
     irb.CreateStore(sp, rellume::GepHelper(irb, alloca, {0, 1, 4}));
 
-    llvm::CallInst* call = irb.CreateCall(cpu_call_type, orig_fn, {alloca});
+    llvm::Value* call_arg = irb.CreatePointerCast(alloca, irb.getInt8PtrTy());
+    llvm::CallInst* call = irb.CreateCall(orig_fn, {call_arg});
 
     llvm::Type* ret_type = new_fn->getReturnType();
     switch (ret_type->getTypeID())
