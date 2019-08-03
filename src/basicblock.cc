@@ -49,10 +49,15 @@
 namespace rellume {
 
 BasicBlock::BasicBlock(llvm::BasicBlock* llvm) : llvmBB(llvm), regfile(llvm) {
-    // Calling this function with a callback indicates that the regfile can
-    // create a PHI node if a reg+facet combination is not yet set.
-    regfile.ClearAll([&](LLReg reg, Facet facet, llvm::PHINode* phi) {
-        empty_phis.push_back(std::make_tuple(reg, facet, phi));
+    // Initialize all registers with a generator which adds a PHI node when the
+    // value-facet combination is requested.
+    regfile.InitAll([this](const LLReg reg, const Facet facet) {
+        return [this, reg, facet]() {
+            llvm::IRBuilder<> irb(llvmBB, llvmBB->begin());
+            llvm::PHINode* phi = irb.CreatePHI(facet.Type(irb.getContext()), 4);
+            empty_phis.push_back(std::make_tuple(reg, facet, phi));
+            return phi;
+        };
     });
 }
 

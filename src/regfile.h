@@ -140,8 +140,9 @@ public:
     RegFile(const RegFile&) = delete;
     RegFile& operator=(const RegFile&) = delete;
 
-    using PhiCreatedCbType = std::function<void(LLReg,Facet,llvm::PHINode*)>;
-    void ClearAll(PhiCreatedCbType phi_created_cb = nullptr);
+    using Generator = std::function<llvm::Value*()>;
+    using InitGenerator = std::function<Generator(const LLReg, const Facet)>;
+    void InitAll(InitGenerator init_gen = nullptr);
 
     llvm::Value* GetReg(LLReg reg, Facet facet);
     void SetReg(LLReg reg, Facet facet, llvm::Value*, bool clear_facets);
@@ -158,8 +159,6 @@ public:
 
 private:
     class Entry {
-        using Generator = std::function<llvm::Value*()>;
-
         // If value is nullptr, then the generator (unless that is null as well)
         // is used to get the actual value.
         llvm::Value* value;

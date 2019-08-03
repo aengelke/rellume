@@ -46,31 +46,22 @@
 
 namespace rellume {
 
-void RegFile::ClearAll(PhiCreatedCbType phi_created_cb) {
-    auto make_phi_creator = [&](const LLReg reg, const Facet facet) {
-        std::function<llvm::Value*()> res = nullptr;
-        if (phi_created_cb)
-            res = [phi_created_cb, this, reg, facet]() {
-                llvm::IRBuilder<> irb(llvm_block, llvm_block->begin());
-                llvm::PHINode* phi = irb.CreatePHI(facet.Type(irb.getContext()), 4);
-                phi_created_cb(reg, facet, phi);
-                return phi;
-            };
-        return res;
-    };
+void RegFile::InitAll(InitGenerator init_gen) {
+    if (!init_gen)
+        init_gen = [](const LLReg reg, const Facet facet) { return nullptr; };
 
     // Set create_phi to true for all registers.
     for (unsigned i = 0; i < LL_RI_GPMax; i++) {
         for (Facet facet : regs_gp[i].facets())
-            regs_gp[i][facet] = make_phi_creator(LLReg(LL_RT_GP64, i), facet);
+            regs_gp[i][facet] = init_gen(LLReg(LL_RT_GP64, i), facet);
     }
     for (unsigned i = 0; i < LL_RI_XMMMax; i++) {
         for (Facet facet : regs_sse[i].facets())
-            regs_sse[i][facet] = make_phi_creator(LLReg(LL_RT_XMM, i), facet);
+            regs_sse[i][facet] = init_gen(LLReg(LL_RT_XMM, i), facet);
     }
     for (Facet facet : flags.facets())
-        flags[facet] = make_phi_creator(LLReg(LL_RT_EFLAGS, 0), facet);
-    reg_ip = make_phi_creator(LLReg(LL_RT_IP, 0), Facet::I64);
+        flags[facet] = init_gen(LLReg(LL_RT_EFLAGS, 0), facet);
+    reg_ip = init_gen(LLReg(LL_RT_IP, 0), Facet::I64);
 }
 
 RegFile::Entry* RegFile::AccessRegFacet(LLReg reg, Facet facet) {
@@ -110,9 +101,9 @@ void RegFile::UpdateAll(llvm::Value* buf_ptr, bool store_mem) {
     assert(llvm_block->getTerminator() == nullptr && "update terminated block");
     llvm::IRBuilder<> irb(llvm_block);
 
-    // Clear all register facets and disable automatic phi creation.
+    // Clear all register facets
     if (!store_mem)
-        ClearAll(nullptr);
+        InitAll(nullptr);
 
     size_t offset;
     LLReg reg;
