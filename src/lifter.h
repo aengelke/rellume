@@ -95,11 +95,11 @@ public:
     void SetRegFacet(LLReg reg, Facet facet, llvm::Value* value) {
         regfile.SetReg(reg, facet, value, false);
     }
-    llvm::Value* GetFlag(int flag) {
-        return regfile.GetFlag(flag);
+    llvm::Value* GetFlag(Facet facet) {
+        return GetReg(LLReg(LL_RT_EFLAGS, 0), facet);
     }
-    void SetFlag(int flag, llvm::Value* value) {
-        regfile.SetFlag(flag, value);
+    void SetFlag(Facet facet, llvm::Value* value) {
+        SetRegFacet(LLReg(LL_RT_EFLAGS, 0), facet, value);
     }
 
     // Operand handling implemented in lloperand.cc
@@ -116,19 +116,19 @@ public:
     // llflags.cc
     void FlagCalcZ(llvm::Value* value) {
         auto zero = llvm::Constant::getNullValue(value->getType());
-        SetFlag(RFLAG_ZF, irb.CreateICmpEQ(value, zero));
+        SetFlag(Facet::ZF, irb.CreateICmpEQ(value, zero));
     }
     void FlagCalcS(llvm::Value* value) {
         auto zero = llvm::Constant::getNullValue(value->getType());
-        SetFlag(RFLAG_SF, irb.CreateICmpSLT(value, zero));
+        SetFlag(Facet::SF, irb.CreateICmpSLT(value, zero));
     }
     void FlagCalcP(llvm::Value* value);
     void FlagCalcA(llvm::Value* res, llvm::Value* lhs, llvm::Value* rhs);
     void FlagCalcCAdd(llvm::Value* res, llvm::Value* lhs, llvm::Value* rhs) {
-        SetFlag(RFLAG_CF, irb.CreateICmpULT(res, lhs));
+        SetFlag(Facet::CF, irb.CreateICmpULT(res, lhs));
     }
     void FlagCalcCSub(llvm::Value* res, llvm::Value* lhs, llvm::Value* rhs) {
-        SetFlag(RFLAG_CF, irb.CreateICmpULT(lhs, rhs));
+        SetFlag(Facet::CF, irb.CreateICmpULT(lhs, rhs));
     }
     void FlagCalcOAdd(llvm::Value* res, llvm::Value* lhs, llvm::Value* rhs);
     void FlagCalcOSub(llvm::Value* res, llvm::Value* lhs, llvm::Value* rhs);

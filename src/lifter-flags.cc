@@ -47,14 +47,14 @@ LifterBase::FlagCond(Condition cond)
     llvm::Value* result = nullptr;
     switch (static_cast<Condition>(static_cast<int>(cond) & ~1))
     {
-    case Condition::O:  result = GetFlag(RFLAG_OF); break;
-    case Condition::C:  result = GetFlag(RFLAG_CF); break;
-    case Condition::Z:  result = GetFlag(RFLAG_ZF); break;
-    case Condition::BE: result = irb.CreateOr(GetFlag(RFLAG_CF), GetFlag(RFLAG_ZF)); break;
-    case Condition::S:  result = GetFlag(RFLAG_SF); break;
-    case Condition::P:  result = GetFlag(RFLAG_PF); break;
-    case Condition::L:  result = irb.CreateICmpNE(GetFlag(RFLAG_SF), GetFlag(RFLAG_OF)); break;
-    case Condition::LE: result = irb.CreateOr(GetFlag(RFLAG_ZF), irb.CreateICmpNE(GetFlag(RFLAG_SF), GetFlag(RFLAG_OF))); break;
+    case Condition::O:  result = GetFlag(Facet::OF); break;
+    case Condition::C:  result = GetFlag(Facet::CF); break;
+    case Condition::Z:  result = GetFlag(Facet::ZF); break;
+    case Condition::BE: result = irb.CreateOr(GetFlag(Facet::CF), GetFlag(Facet::ZF)); break;
+    case Condition::S:  result = GetFlag(Facet::SF); break;
+    case Condition::P:  result = GetFlag(Facet::PF); break;
+    case Condition::L:  result = irb.CreateICmpNE(GetFlag(Facet::SF), GetFlag(Facet::OF)); break;
+    case Condition::LE: result = irb.CreateOr(GetFlag(Facet::ZF), irb.CreateICmpNE(GetFlag(Facet::SF), GetFlag(Facet::OF))); break;
     default: assert(0);
     }
 
@@ -64,9 +64,9 @@ LifterBase::FlagCond(Condition cond)
 llvm::Value* LifterBase::FlagAsReg(unsigned size) {
     llvm::Value* res = irb.getInt64(0x202); // IF
     llvm::Type* ty = res->getType();
-    static const std::pair<int, unsigned> flags[] = {
-        {RFLAG_CF, 0}, {RFLAG_PF, 2}, {RFLAG_AF, 4}, {RFLAG_ZF, 6},
-        {RFLAG_SF, 7}, {RFLAG_OF, 11},
+    static const std::pair<Facet, unsigned> flags[] = {
+        {Facet::CF, 0}, {Facet::PF, 2}, {Facet::AF, 4}, {Facet::ZF, 6},
+        {Facet::SF, 7}, {Facet::OF, 11},
     };
     for (auto& kv : flags) {
         llvm::Value* ext_bit = irb.CreateZExt(GetFlag(kv.first), ty);
@@ -88,7 +88,7 @@ LifterBase::FlagCalcP(llvm::Value* value)
     llvm::Value* count = irb.CreateCall(intrinsic, {trunc});
 #endif
     llvm::Value* bit = irb.CreateTruncOrBitCast(count, irb.getInt1Ty());
-    SetFlag(RFLAG_PF, irb.CreateNot(bit));
+    SetFlag(Facet::PF, irb.CreateNot(bit));
 }
 
 void
@@ -96,7 +96,7 @@ LifterBase::FlagCalcA(llvm::Value* res, llvm::Value* lhs, llvm::Value* rhs)
 {
     llvm::Value* tmp = irb.CreateXor(irb.CreateXor(lhs, rhs), res);
     llvm::Value* masked = irb.CreateAnd(tmp, llvm::ConstantInt::get(res->getType(), 16));
-    SetFlag(RFLAG_AF, irb.CreateICmpNE(masked, llvm::Constant::getNullValue(res->getType())));
+    SetFlag(Facet::AF, irb.CreateICmpNE(masked, llvm::Constant::getNullValue(res->getType())));
 }
 
 void
@@ -106,13 +106,13 @@ LifterBase::FlagCalcOAdd(llvm::Value* res, llvm::Value* lhs, llvm::Value* rhs)
     {
         llvm::Intrinsic::ID id = llvm::Intrinsic::sadd_with_overflow;
         llvm::Value* packed = irb.CreateBinaryIntrinsic(id, lhs, rhs);
-        SetFlag(RFLAG_OF, irb.CreateExtractValue(packed, 1));
+        SetFlag(Facet::OF, irb.CreateExtractValue(packed, 1));
     }
     else
     {
         llvm::Value* tmp1 = irb.CreateNot(irb.CreateXor(lhs, rhs));
         llvm::Value* tmp2 = irb.CreateAnd(tmp1, irb.CreateXor(res, lhs));
-        SetFlag(RFLAG_OF, irb.CreateICmpSLT(tmp2, llvm::Constant::getNullValue(res->getType())));
+        SetFlag(Facet::OF, irb.CreateICmpSLT(tmp2, llvm::Constant::getNullValue(res->getType())));
     }
 }
 
@@ -123,14 +123,14 @@ LifterBase::FlagCalcOSub(llvm::Value* res, llvm::Value* lhs, llvm::Value* rhs)
     {
         llvm::Intrinsic::ID id = llvm::Intrinsic::ssub_with_overflow;
         llvm::Value* packed = irb.CreateBinaryIntrinsic(id, lhs, rhs);
-        SetFlag(RFLAG_OF, irb.CreateExtractValue(packed, 1));
+        SetFlag(Facet::OF, irb.CreateExtractValue(packed, 1));
     }
     else
     {
         auto zero = llvm::Constant::getNullValue(res->getType());
         llvm::Value* sf = irb.CreateICmpSLT(res, zero);
         llvm::Value* lt = irb.CreateICmpSLT(lhs, rhs);
-        SetFlag(RFLAG_OF, irb.CreateICmpNE(sf, lt));
+        SetFlag(Facet::OF, irb.CreateICmpNE(sf, lt));
     }
 }
 

@@ -37,37 +37,6 @@
 
 namespace rellume {
 
-/**
- * \ingroup LLRegFile
- **/
-enum {
-    /**
-     * \brief The zero flag
-     **/
-    RFLAG_ZF = 0,
-    /**
-     * \brief The sign flag
-     **/
-    RFLAG_SF,
-    /**
-     * \brief The parity flag
-     **/
-    RFLAG_PF,
-    /**
-     * \brief The carry flag
-     **/
-    RFLAG_CF,
-    /**
-     * \brief The overflow flag
-     **/
-    RFLAG_OF,
-    /**
-     * \brief The auxiliary carry flag
-     **/
-    RFLAG_AF,
-    RFLAG_Max
-};
-
 template<typename R, Facet::Value... E>
 class ValueMap {
     template<typename T, int N, int M>
@@ -146,9 +115,6 @@ public:
 
     llvm::Value* GetReg(LLReg reg, Facet facet);
     void SetReg(LLReg reg, Facet facet, llvm::Value*, bool clear_facets);
-
-    llvm::Value* GetFlag(int flag);
-    void SetFlag(int flag, llvm::Value*);
 
     void UpdateAllFromMem(llvm::Value* buf_ptr) {
         UpdateAll(buf_ptr, false);

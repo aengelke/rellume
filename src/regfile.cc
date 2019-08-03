@@ -311,42 +311,6 @@ RegFile::SetReg(LLReg reg, Facet facet, llvm::Value* value, bool clearOthers)
     *facet_entry = value;
 }
 
-static Facet regfile_flag_to_facet(int flag) {
-    switch(flag) {
-    case RFLAG_ZF: return Facet::ZF;
-    case RFLAG_SF: return Facet::SF;
-    case RFLAG_PF: return Facet::PF;
-    case RFLAG_CF: return Facet::CF;
-    case RFLAG_OF: return Facet::OF;
-    case RFLAG_AF: return Facet::AF;
-    default: return Facet::MAX;
-    }
-}
-
-llvm::Value*
-RegFile::GetFlag(int flag)
-{
-    Facet facet = regfile_flag_to_facet(flag);
-    return AccessRegFacet(LLReg(LL_RT_EFLAGS, 0), facet)->get();
-}
-
-void
-RegFile::SetFlag(int flag, llvm::Value* value)
-{
-#ifdef RELLUME_ANNOTATE_METADATA
-    if (llvm::isa<llvm::Instruction>(value))
-    {
-        char buffer[20];
-        snprintf(buffer, sizeof(buffer), "asm.reg.%cf", "zspcoa"[flag]);
-        llvm::MDNode* md = llvm::MDNode::get(llvm_block->getContext(), {});
-        llvm::cast<llvm::Instruction>(value)->setMetadata(buffer, md);
-    }
-#endif
-
-    Facet facet = regfile_flag_to_facet(flag);
-    *AccessRegFacet(LLReg(LL_RT_EFLAGS, 0), facet) = value;
-}
-
 } // namespace
 
 /**
