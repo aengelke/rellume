@@ -31,29 +31,35 @@
 #include <cstdint>
 
 
+namespace {
+static rellume::Function* unwrap(LLFunc* fn) {
+    return reinterpret_cast<rellume::Function*>(fn);
+}
+}
+
 LLFunc* ll_func(LLVMModuleRef mod) {
     return reinterpret_cast<LLFunc*>(new rellume::Function(llvm::unwrap(mod)));
 }
 void ll_func_enable_overflow_intrinsics(LLFunc* fn, bool enable) {
-    reinterpret_cast<rellume::Function*>(fn)->EnableOverflowIntrinsics(enable);
+    unwrap(fn)->EnableOverflowIntrinsics(enable);
 }
 void ll_func_enable_fast_math(LLFunc* fn, bool enable) {
-    reinterpret_cast<rellume::Function*>(fn)->EnableFastMath(enable);
+    unwrap(fn)->EnableFastMath(enable);
 }
 void ll_func_set_global_base(LLFunc* fn, uintptr_t base, LLVMValueRef value) {
-    reinterpret_cast<rellume::Function*>(fn)->SetGlobalBase(base, llvm::unwrap(value));
+    unwrap(fn)->SetGlobalBase(base, llvm::unwrap(value));
 }
 
 void ll_func_add_inst(LLFunc* fn, uint64_t block_addr, LLInstr* instr) {
-    return reinterpret_cast<rellume::Function*>(fn)->AddInst(block_addr, *instr);
+    unwrap(fn)->AddInst(block_addr, *instr);
 }
 LLVMValueRef ll_func_lift(LLFunc* fn) {
-    return llvm::wrap(reinterpret_cast<rellume::Function*>(fn)->Lift());
+    return llvm::wrap(unwrap(fn)->Lift());
 }
 void ll_func_dispose(LLFunc* fn) {
-    delete reinterpret_cast<rellume::Function*>(fn);
+    delete unwrap(fn);
 }
 
 int ll_func_decode(LLFunc* func, uintptr_t addr) {
-    return reinterpret_cast<rellume::Function*>(func)->Decode(addr);
+    return unwrap(func)->Decode(addr);
 }
