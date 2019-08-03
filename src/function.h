@@ -29,6 +29,7 @@
 #include <llvm/IR/Function.h>
 #include <llvm/IR/Value.h>
 #include <cstdint>
+#include <functional>
 #include <unordered_map>
 
 
@@ -70,7 +71,8 @@ public:
     llvm::Function* Lift();
 
     // Implemented in lldecoder.cc
-    int Decode(uintptr_t addr);
+    using MemReader = std::function<size_t(uintptr_t, uint8_t*, size_t)>;
+    int Decode(uintptr_t addr, MemReader memacc = nullptr);
 
 private:
     std::unique_ptr<BasicBlock> CreateEntry();

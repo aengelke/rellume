@@ -54,9 +54,19 @@ namespace rellume {
 #define instrBreaks(instr) (instrIsJcc(instr) || (instr) == LL_INS_RET || \
                         (instr) == LL_INS_JMP || (instr) == LL_INS_CALL)
 
-int Function::Decode(uintptr_t addr)
+int Function::Decode(uintptr_t addr, MemReader memacc)
 {
     LLInstr inst;
+    uint8_t inst_buf[15];
+
+    if (memacc == nullptr) {
+        // Default memory access functions loads instruction bytes from the same
+        // address space.
+        memacc = [](uintptr_t addr, uint8_t* buf, size_t buf_sz) {
+            memcpy(buf, reinterpret_cast<uint8_t*>(addr), buf_sz);
+            return buf_sz;
+        };
+    }
 
     std::deque<uintptr_t> addr_queue;
     addr_queue.push_back(addr);
@@ -79,7 +89,12 @@ int Function::Decode(uintptr_t addr)
         auto cur_addr_entry = addr_map.find(cur_addr);
         while (cur_addr_entry == addr_map.end())
         {
-            inst = LLInstr::Decode(reinterpret_cast<uint8_t*>(cur_addr), 15, cur_addr);
+            size_t inst_buf_sz = memacc(cur_addr, inst_buf, sizeof(inst_buf));
+            // Sanity check.
+            if (inst_buf_sz == 0 || inst_buf_sz > sizeof(inst_buf))
+                break;
+
+            inst = LLInstr::Decode(inst_buf, inst_buf_sz, cur_addr);
             // If we reach an invalid instruction or an instruction we can't
             // decode, stop.
             if (inst.type == LL_INS_Invalid)
