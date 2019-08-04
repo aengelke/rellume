@@ -63,3 +63,9 @@ void ll_func_dispose(LLFunc* fn) {
 int ll_func_decode(LLFunc* func, uintptr_t addr) {
     return unwrap(func)->Decode(addr);
 }
+int ll_func_decode2(LLFunc* func, uintptr_t addr, RellumeMemAccessCb mem_acc,
+                    void* user_arg) {
+    return unwrap(func)->Decode(addr, [=](uintptr_t addr, uint8_t* buf, size_t buf_sz) {
+        return mem_acc(addr, buf, buf_sz, user_arg);
+    });
+}
