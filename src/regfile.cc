@@ -33,6 +33,8 @@
 #include <cassert>
 #include <cstdint>
 #include <cstring>
+#include <algorithm>
+#include <memory>
 #include <tuple>
 
 
@@ -46,7 +48,114 @@
 
 namespace rellume {
 
-void RegFile::InitAll(InitGenerator init_gen) {
+template<typename R, Facet::Value... E>
+class ValueMap {
+    template<typename T, int N, int M>
+    struct LookupTable {
+        constexpr LookupTable(std::initializer_list<T> il) : f(), b() {
+            int i = 0;
+            for (auto elem : il) {
+                f[i] = elem;
+                b[static_cast<int>(elem)] = 1 + i++;
+            }
+        }
+        T f[N];
+        unsigned b[M];
+    };
+
+    static const LookupTable<Facet::Value, sizeof...(E), Facet::MAX> table;
+    R values[sizeof...(E)];
+public:
+    bool has(Facet v) const {
+        return table.b[static_cast<int>(v)] > 0;
+    }
+    R& operator[](Facet v) {
+        assert(has(v));
+        return values[table.b[static_cast<int>(v)] - 1];
+    }
+    // This returns a reference to an array of size sizeof...(E).
+    const Facet::Value (&facets())[sizeof...(E)] {
+        return table.f;
+    }
+    void clear() {
+        std::fill_n(values, sizeof...(E), R{});
+    }
+};
+template<typename R, Facet::Value... E>
+const typename ValueMap<R, E...>::template LookupTable<Facet::Value, sizeof...(E), Facet::MAX> ValueMap<R, E...>::table({E...});
+
+template<typename R>
+using ValueMapGp = ValueMap<R, Facet::I64, Facet::I32, Facet::I16, Facet::I8, Facet::I8H, Facet::PTR>;
+
+template<typename R>
+using ValueMapSse = ValueMap<R, Facet::I128,
+#if LL_VECTOR_REGISTER_SIZE >= 256
+    Facet::I256,
+#endif
+    Facet::I8, Facet::V16I8,
+    Facet::I16, Facet::V8I16,
+    Facet::I32, Facet::V4I32,
+    Facet::I64, Facet::V2I64,
+    Facet::F32, Facet::V4F32,
+    Facet::F64, Facet::V2F64
+>;
+
+template<typename R>
+using ValueMapFlags = ValueMap<R, Facet::ZF, Facet::SF, Facet::PF, Facet::CF, Facet::OF, Facet::AF>;
+
+
+class RegFile::impl {
+public:
+    impl(llvm::BasicBlock* llvm_block) : llvm_block(llvm_block),
+            regs_gp(), regs_sse(), reg_ip(), flags() {}
+
+    void InitAll(InitGenerator init_gen = nullptr);
+
+    llvm::Value* GetReg(LLReg reg, Facet facet);
+    void SetReg(LLReg reg, Facet facet, llvm::Value*, bool clear_facets);
+
+    void UpdateAllFromMem(llvm::Value* buf_ptr) {
+        UpdateAll(buf_ptr, false);
+    }
+    void UpdateAllInMem(llvm::Value* buf_ptr) {
+        UpdateAll(buf_ptr, true);
+    }
+
+private:
+    class Entry {
+        // If value is nullptr, then the generator (unless that is null as well)
+        // is used to get the actual value.
+        llvm::Value* value;
+        Generator generator;
+
+    public:
+        Entry() : value(nullptr), generator(nullptr) {}
+        Entry(llvm::Value* value) : value(value), generator(nullptr) {}
+        Entry(Generator generator) : value(nullptr), generator(generator) {}
+
+        explicit operator llvm::Value*() {
+            if (value == nullptr && generator) {
+                value = generator();
+                assert(value != nullptr && "generator returned nullptr");
+                generator = nullptr;
+            }
+            return value;
+        }
+        llvm::Value* get() { return static_cast<llvm::Value*>(*this); }
+    };
+
+    llvm::BasicBlock* llvm_block;
+    ValueMapGp<Entry> regs_gp[LL_RI_GPMax];
+    ValueMapSse<Entry> regs_sse[LL_RI_XMMMax];
+    Entry reg_ip;
+    ValueMapFlags<Entry> flags;
+
+    Entry* AccessRegFacet(LLReg reg, Facet facet);
+
+    void UpdateAll(llvm::Value*, bool);
+};
+
+void RegFile::impl::InitAll(InitGenerator init_gen) {
     if (!init_gen)
         init_gen = [](const LLReg reg, const Facet facet) { return nullptr; };
 
@@ -64,7 +173,7 @@ void RegFile::InitAll(InitGenerator init_gen) {
     reg_ip = init_gen(LLReg(LL_RT_IP, 0), Facet::I64);
 }
 
-RegFile::Entry* RegFile::AccessRegFacet(LLReg reg, Facet facet) {
+RegFile::impl::Entry* RegFile::impl::AccessRegFacet(LLReg reg, Facet facet) {
     if (reg.IsGp())
     {
         auto& map_entry = regs_gp[reg.ri - (reg.IsGpHigh() ? LL_RI_AH : 0)];
@@ -91,7 +200,7 @@ RegFile::Entry* RegFile::AccessRegFacet(LLReg reg, Facet facet) {
     return nullptr;
 }
 
-void RegFile::UpdateAll(llvm::Value* buf_ptr, bool store_mem) {
+void RegFile::impl::UpdateAll(llvm::Value* buf_ptr, bool store_mem) {
     static constexpr std::tuple<size_t, LLReg, Facet> entries[] = {
 #define RELLUME_PARAM_REG(off,sz,reg,facet,name) std::make_tuple(off,reg,facet),
 #include <rellume/regs.inc>
@@ -125,7 +234,7 @@ void RegFile::UpdateAll(llvm::Value* buf_ptr, bool store_mem) {
 }
 
 llvm::Value*
-RegFile::GetReg(LLReg reg, Facet facet)
+RegFile::impl::GetReg(LLReg reg, Facet facet)
 {
     Entry* facet_entry = AccessRegFacet(reg, facet);
     // If we store the selected facet in our register file and the facet is
@@ -282,7 +391,7 @@ RegFile::GetReg(LLReg reg, Facet facet)
 }
 
 void
-RegFile::SetReg(LLReg reg, Facet facet, llvm::Value* value, bool clearOthers)
+RegFile::impl::SetReg(LLReg reg, Facet facet, llvm::Value* value, bool clearOthers)
 {
 #ifdef RELLUME_ANNOTATE_METADATA
     if (llvm::isa<llvm::Instruction>(value))
@@ -309,6 +418,26 @@ RegFile::SetReg(LLReg reg, Facet facet, llvm::Value* value, bool clearOthers)
     Entry* facet_entry = AccessRegFacet(reg, facet);
     assert(facet_entry && "attempt to store invalid facet");
     *facet_entry = value;
+}
+
+RegFile::RegFile(llvm::BasicBlock* llvm_block) :
+        pimpl{std::make_unique<impl>(llvm_block)} {}
+RegFile::~RegFile() {}
+
+void RegFile::InitAll(InitGenerator init_gen) {
+    pimpl->InitAll(init_gen);
+}
+llvm::Value* RegFile::GetReg(LLReg reg, Facet facet) {
+    return pimpl->GetReg(reg, facet);
+}
+void RegFile::SetReg(LLReg reg, Facet facet, llvm::Value* value, bool clear) {
+    pimpl->SetReg(reg, facet, value, clear);
+}
+void RegFile::UpdateAllFromMem(llvm::Value* buf_ptr) {
+    pimpl->UpdateAllFromMem(buf_ptr);
+}
+void RegFile::UpdateAllInMem(llvm::Value* buf_ptr) {
+    pimpl->UpdateAllInMem(buf_ptr);
 }
 
 } // namespace

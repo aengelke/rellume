@@ -29,79 +29,16 @@
 
 #include <llvm/IR/BasicBlock.h>
 #include <llvm/IR/Value.h>
-#include <cstdbool>
-#include <cstdint>
-#include <algorithm>
 #include <functional>
 
 
 namespace rellume {
 
-template<typename R, Facet::Value... E>
-class ValueMap {
-    template<typename T, int N, int M>
-    struct LookupTable {
-        constexpr LookupTable(std::initializer_list<T> il) : f(), b() {
-            int i = 0;
-            for (auto elem : il) {
-                f[i] = elem;
-                b[static_cast<int>(elem)] = 1 + i++;
-            }
-        }
-        T f[N];
-        unsigned b[M];
-    };
-
-    static const LookupTable<Facet::Value, sizeof...(E), Facet::MAX> table;
-    R values[sizeof...(E)];
-public:
-    bool has(Facet v) const {
-        return table.b[static_cast<int>(v)] > 0;
-    }
-    R at(Facet v) {
-        if (has(v))
-            return (*this)[v];
-        return R{};
-    }
-    R& operator[](Facet v) {
-        assert(has(v));
-        return values[table.b[static_cast<int>(v)] - 1];
-    }
-    // This returns a reference to an array of size sizeof...(E).
-    const Facet::Value (&facets())[sizeof...(E)] {
-        return table.f;
-    }
-    void clear() {
-        std::fill_n(values, sizeof...(E), R{});
-    }
-};
-template<typename R, Facet::Value... E>
-const typename ValueMap<R, E...>::template LookupTable<Facet::Value, sizeof...(E), Facet::MAX> ValueMap<R, E...>::table({E...});
-
-template<typename R>
-using ValueMapGp = ValueMap<R, Facet::I64, Facet::I32, Facet::I16, Facet::I8, Facet::I8H, Facet::PTR>;
-
-template<typename R>
-using ValueMapSse = ValueMap<R, Facet::I128,
-#if LL_VECTOR_REGISTER_SIZE >= 256
-    Facet::I256,
-#endif
-    Facet::I8, Facet::V16I8,
-    Facet::I16, Facet::V8I16,
-    Facet::I32, Facet::V4I32,
-    Facet::I64, Facet::V2I64,
-    Facet::F32, Facet::V4F32,
-    Facet::F64, Facet::V2F64
->;
-
-template<typename R>
-using ValueMapFlags = ValueMap<R, Facet::ZF, Facet::SF, Facet::PF, Facet::CF, Facet::OF, Facet::AF>;
-
 class RegFile
 {
 public:
-    RegFile(llvm::BasicBlock* llvm_block) : llvm_block(llvm_block),
-            regs_gp(), regs_sse(), reg_ip(), flags() {}
+    RegFile(llvm::BasicBlock* llvm_block);
+    ~RegFile();
 
     RegFile(RegFile&& rhs);
     RegFile& operator=(RegFile&& rhs);
@@ -116,45 +53,12 @@ public:
     llvm::Value* GetReg(LLReg reg, Facet facet);
     void SetReg(LLReg reg, Facet facet, llvm::Value*, bool clear_facets);
 
-    void UpdateAllFromMem(llvm::Value* buf_ptr) {
-        UpdateAll(buf_ptr, false);
-    }
-    void UpdateAllInMem(llvm::Value* buf_ptr) {
-        UpdateAll(buf_ptr, true);
-    }
+    void UpdateAllFromMem(llvm::Value* buf_ptr);
+    void UpdateAllInMem(llvm::Value* buf_ptr);
 
 private:
-    class Entry {
-        // If value is nullptr, then the generator (unless that is null as well)
-        // is used to get the actual value.
-        llvm::Value* value;
-        Generator generator;
-
-    public:
-        Entry() : value(nullptr), generator(nullptr) {}
-        Entry(llvm::Value* value) : value(value), generator(nullptr) {}
-        Entry(Generator generator) : value(nullptr), generator(generator) {}
-
-        explicit operator llvm::Value*() {
-            if (value == nullptr && generator) {
-                value = generator();
-                assert(value != nullptr && "generator returned nullptr");
-                generator = nullptr;
-            }
-            return value;
-        }
-        llvm::Value* get() { return static_cast<llvm::Value*>(*this); }
-    };
-
-    llvm::BasicBlock* llvm_block;
-    ValueMapGp<Entry> regs_gp[LL_RI_GPMax];
-    ValueMapSse<Entry> regs_sse[LL_RI_XMMMax];
-    Entry reg_ip;
-    ValueMapFlags<Entry> flags;
-
-    Entry* AccessRegFacet(LLReg reg, Facet facet);
-
-    void UpdateAll(llvm::Value*, bool);
+    class impl;
+    std::unique_ptr<impl> pimpl;
 };
 
 } // namespace
