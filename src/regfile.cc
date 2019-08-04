@@ -222,14 +222,11 @@ void RegFile::impl::UpdateAll(llvm::Value* buf_ptr, bool store_mem) {
         llvm::Type* ptr_ty = facet.Type(irb.getContext())->getPointerTo();
         llvm::Value* ptr = irb.CreateConstGEP1_64(buf_ptr, offset);
         ptr = irb.CreatePointerCast(ptr, ptr_ty);
-        Entry* facet_entry = AccessRegFacet(reg, facet);
 
-        assert(facet_entry != nullptr && "required facet doesn't exist");
-
-        if (store_mem) // store to mem, basically GetReg
-            irb.CreateStore(facet_entry->get(), ptr);
-        else // load from mem, basically SetReg
-            *facet_entry = irb.CreateLoad(ptr);
+        if (store_mem) // store to mem
+            irb.CreateStore(GetReg(reg, facet), ptr);
+        else // load from mem
+            SetReg(reg, facet, irb.CreateLoad(ptr), false);
     }
 }
 
