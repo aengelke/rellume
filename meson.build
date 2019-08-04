@@ -1,34 +1,9 @@
-project('rellume', ['c', 'cpp'],
+project('rellume', ['cpp'],
         default_options: [
             'buildtype=debugoptimized',
             'warning_level=3',
-            'c_std=gnu99',
             'cpp_std=c++14',
         ])
-
-if get_option('warning_level').to_int() >= 3
-  add_project_arguments(['-Wmissing-field-initializers',
-                         '-Wunused-parameter',
-                         '-Wold-style-definition',
-                         '-Wmissing-declarations',
-                         '-Wmissing-prototypes',
-                         '-Wredundant-decls',
-                         '-Wmissing-noreturn',
-                         '-Wshadow',
-                         '-Wpointer-arith',
-                         '-Wwrite-strings',
-                         '-Winline',
-                         '-Wformat-nonliteral',
-                         '-Wformat-security',
-                         '-Wswitch-default',
-                         '-Winit-self',
-                         '-Wnested-externs',
-                         '-Wstrict-prototypes',
-                         '-Wmissing-include-dirs',
-                         '-Wundef',
-                         '-Wmissing-format-attribute'
-                        ], language: 'c')
-endif
 
 add_project_arguments(['-Wno-unused-parameter'], language: 'cpp')
 
