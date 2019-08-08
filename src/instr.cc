@@ -152,6 +152,7 @@ LLInstr LLInstr::Decode(uint8_t* buf, size_t buf_size, uint64_t addr)
         case FD_OT_MEM:
             llinst.ops[i].type = LL_OP_MEM;
             llinst.ops[i].seg = convert_reg(2, FD_SEGMENT(&fdi), FD_RT_SEG).ri;
+            llinst.ops[i].addrsize = FD_ADDRSIZE(&fdi);
             llinst.ops[i].val = FD_OP_DISP(&fdi, i);
             llinst.ops[i].reg = convert_reg(8, FD_OP_BASE(&fdi, i), FD_RT_GPL);
             if (FD_OP_INDEX(&fdi, i) != FD_REG_NONE)

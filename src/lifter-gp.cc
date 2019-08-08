@@ -266,17 +266,20 @@ Lifter::LiftLea(const LLInstr& inst)
     llvm::Value* res_ptr = OpAddr(inst.ops[1], irb.getInt8Ty());
 
     // Compute as integer
-    llvm::Value* res = irb.getInt64(inst.ops[1].val);
+    unsigned addrsz = inst.ops[1].addrsize * 8;
+    Facet facet = Facet{Facet::I}.Resolve(addrsz);
+    llvm::Value* res = irb.getIntN(addrsz, inst.ops[1].val);
     if (inst.ops[1].reg.rt != LL_RT_None)
-        res = irb.CreateAdd(res, GetReg(inst.ops[1].reg, Facet::I64));
-    if (inst.ops[1].scale != 0)
-    {
-        llvm::Value* offset = GetReg(inst.ops[1].ireg, Facet::I64);
-        offset = irb.CreateMul(offset, irb.getInt64(inst.ops[1].scale));
+        res = irb.CreateAdd(res, GetReg(inst.ops[1].reg, facet));
+    if (inst.ops[1].scale != 0) {
+        llvm::Value* offset = GetReg(inst.ops[1].ireg, facet);
+        offset = irb.CreateMul(offset, irb.getIntN(addrsz, inst.ops[1].scale));
         res = irb.CreateAdd(res, offset);
     }
 
-    OpStoreGp(inst.ops[0], irb.CreateTrunc(res, irb.getIntNTy(inst.ops[0].size*8)));
+    llvm::Type* op_type = irb.getIntNTy(inst.ops[0].size * 8);
+    OpStoreGp(inst.ops[0], irb.CreateZExtOrTrunc(res, op_type));
+
     if (inst.ops[0].reg.rt == LL_RT_GP64)
         SetRegFacet(inst.ops[0].reg, Facet::PTR, res_ptr);
 }

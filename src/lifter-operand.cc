@@ -112,6 +112,14 @@ LifterBase::OpAddr(const LLInstrOp& op, llvm::Type* element_type)
         base = irb.CreateGEP(base, {offset});
     }
 
+    if (op.addrsize != 8) {
+        assert(op.addrsize == 4 && "invalid addrsize");
+        base = irb.CreatePtrToInt(base, irb.getInt64Ty());
+        base = irb.CreateTrunc(base, irb.getInt32Ty());
+        base = irb.CreateZExt(base, irb.getInt64Ty());
+        base = irb.CreateIntToPtr(base, element_type->getPointerTo(addrspace));
+    }
+
     return irb.CreatePointerCast(base, element_type->getPointerTo(addrspace));
 }
 
