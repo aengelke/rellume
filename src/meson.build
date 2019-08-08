@@ -11,6 +11,7 @@ sources = [
   'lifter-operand.cc',
   'regfile.cc',
   'rellume.cc',
+  'transforms.cc',
 ]
 
 rellume_inc_priv = include_directories('.')

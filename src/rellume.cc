@@ -24,6 +24,7 @@
 #include "rellume/rellume.h"
 
 #include "function.h"
+#include "transforms.h"
 #include <llvm/IR/Module.h>
 #include <llvm/IR/Value.h>
 #include <llvm-c/Core.h>
@@ -71,4 +72,11 @@ int ll_func_decode2(LLFunc* func, uintptr_t addr, RellumeMemAccessCb mem_acc,
     return unwrap(func)->Decode(addr, [=](uintptr_t addr, uint8_t* buf, size_t buf_sz) {
         return mem_acc(addr, buf, buf_sz, user_arg);
     });
+}
+
+LLVMValueRef ll_func_wrap_sysv(LLVMValueRef fn, LLVMTypeRef ty,
+                               LLVMModuleRef mod, size_t stack_sz) {
+    return llvm::wrap(rellume::WrapSysVAbi(llvm::unwrap<llvm::Function>(fn),
+                                           llvm::unwrap<llvm::FunctionType>(ty),
+                                           stack_sz));
 }
