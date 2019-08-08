@@ -13,10 +13,13 @@ FMT_SUBST = {
 }
 
 def parse_case(case):
-    case = shlex.split(case)
-    for i, part in enumerate(case):
+    pre, post = [], []
+    cur = pre
+    for part in shlex.split(case):
         if part == "=>":
+            cur = post
             continue
+
         key, val = tuple(part.split("=", 2))
         if val == "undef":
             pass
@@ -29,8 +32,8 @@ def parse_case(case):
             val = struct.pack("<" + "".join(fmt), *nums).hex()
         else:
             val = bytes.fromhex(val).hex()
-        case[i] = "%s=%s"%(key, val)
-    return case
+        cur.append("%s=%s"%(key, val))
+    return pre + ["=>"] + post
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser()
