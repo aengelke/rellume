@@ -106,10 +106,25 @@ LifterBase::OpAddr(const LLInstrOp& op, llvm::Type* element_type)
 
     if (op.scale != 0)
     {
+        // TODO: only do GEP in some sort of performance mode, it is unsafe.
+        // A GEP with base "null" always resolves to "null". The base might only
+        // later (during optimizations) be resolved to "null", causing the GEP
+        // to be removed entirely. Note that this only happens, if the pointer
+        // is solely constructed *from an scaled index* and therefore is very
+        // unlikely to occur in compiler-generated code.
+
+        bool use_mul = false;
+        if (auto constval = llvm::dyn_cast<llvm::Constant>(base))
+            use_mul = constval->isNullValue();
+
         llvm::Value* offset = GetReg(op.ireg, Facet::I64);
-        // TODO: if base is constant null, use mul+inttoptr
-        base = irb.CreatePointerCast(base, scale_type);
-        base = irb.CreateGEP(base, {offset});
+        if (use_mul) {
+            base = irb.CreateMul(offset, irb.getInt64(op.scale));
+            base = irb.CreateIntToPtr(base, scale_type);
+        } else {
+            base = irb.CreatePointerCast(base, scale_type);
+            base = irb.CreateGEP(base, {offset});
+        }
     }
 
     if (op.addrsize != 8) {
