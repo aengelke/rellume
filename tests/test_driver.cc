@@ -95,16 +95,18 @@ class TestCase {
         uintptr_t addr = std::stoul(key.substr(1), nullptr, 16);
         size_t value_len = value_str.length() / 2;
 
-        void* map = mmap(reinterpret_cast<void*>(addr), value_len,
+        uintptr_t paged_addr = addr & -0x1000;
+        size_t paged_size = value_len + (addr - paged_addr);
+        void* map = mmap(reinterpret_cast<void*>(paged_addr), paged_size,
                          PROT_READ|PROT_WRITE,
                          MAP_PRIVATE|MAP_ANONYMOUS|MAP_FIXED, -1, 0);
-        if (map == MAP_FAILED) {
+        if (map == MAP_FAILED || reinterpret_cast<uintptr_t>(map) != paged_addr) {
             diagnostic << "# error mapping address " << std::hex << addr << std::endl;
             return true;
         }
-        mem_maps.push_back(std::make_pair(map, value_len));
+        mem_maps.push_back(std::make_pair(map, paged_size));
 
-        uint8_t* buf = reinterpret_cast<uint8_t*>(map);
+        uint8_t* buf = reinterpret_cast<uint8_t*>(addr);
         for (size_t i = 0; i < value_len; i++) {
             char hex_byte[3] = {value_str[i*2],value_str[i*2+1], 0};
             buf[i] = std::strtoul(hex_byte, nullptr, 16);
