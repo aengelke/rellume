@@ -192,6 +192,9 @@ class TestCase {
         fn->setName("test_function");
         if (opt_verbose)
             fn->print(llvm::errs());
+        ll_func_fast_opt(llvm::wrap(fn));
+        if (opt_verbose)
+            fn->print(llvm::errs());
 
         std::string error;
 

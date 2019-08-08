@@ -74,6 +74,9 @@ int ll_func_decode2(LLFunc* func, uintptr_t addr, RellumeMemAccessCb mem_acc,
     });
 }
 
+void ll_func_fast_opt(LLVMValueRef llvm_fn) {
+    rellume::FastOpt(llvm::unwrap<llvm::Function>(llvm_fn));
+}
 LLVMValueRef ll_func_wrap_sysv(LLVMValueRef fn, LLVMTypeRef ty,
                                LLVMModuleRef mod, size_t stack_sz) {
     return llvm::wrap(rellume::WrapSysVAbi(llvm::unwrap<llvm::Function>(fn),

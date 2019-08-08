@@ -61,6 +61,7 @@ typedef size_t(* RellumeMemAccessCb)(size_t, uint8_t*, size_t, void*);
 RELLUME_API int ll_func_decode2(LLFunc* func, uintptr_t addr,
                                 RellumeMemAccessCb mem_acc, void* user_arg);
 
+RELLUME_API void ll_func_fast_opt(LLVMValueRef llvm_fn);
 RELLUME_API LLVMValueRef ll_func_wrap_sysv(LLVMValueRef llvm_fn, LLVMTypeRef ty,
                                            LLVMModuleRef mod, size_t stack_sz);
 

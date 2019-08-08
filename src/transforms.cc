@@ -53,6 +53,22 @@ static llvm::Value* GepHelper(llvm::IRBuilder<>& irb, llvm::Value* base, llvm::A
 
 }
 
+void FastOpt(llvm::Function* llvm_fn) {
+    // Run some optimization passes to remove most of the bloat
+    llvm::legacy::FunctionPassManager pm(llvm_fn->getParent());
+    pm.doInitialization();
+
+    // Aggressive DCE to remove phi cycles, etc.
+    pm.add(llvm::createAggressiveDCEPass());
+    // Fold some common subexpressions with MemorySSA to remove obsolete stores
+    pm.add(llvm::createEarlyCSEPass(true));
+    // Combine instructions to simplify code, but avoid expensive transforms
+    pm.add(llvm::createInstructionCombiningPass(false));
+
+    pm.run(*llvm_fn);
+    pm.doFinalization();
+}
+
 llvm::Function* WrapSysVAbi(llvm::Function* orig_fn, llvm::FunctionType* fn_ty,
                             std::size_t stack_size) {
     llvm::LLVMContext& ctx = orig_fn->getContext();

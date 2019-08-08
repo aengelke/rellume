@@ -31,6 +31,7 @@
 
 namespace rellume {
 
+void FastOpt(llvm::Function* llvm_fn);
 llvm::Function* WrapSysVAbi(llvm::Function* orig_fn, llvm::FunctionType* fn_ty,
                             std::size_t stack_size);
 
