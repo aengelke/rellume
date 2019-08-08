@@ -63,14 +63,18 @@ if __name__ == "__main__":
     asm = Assembler(args.assembler) if args.assembler else None
 
     for file in args.casefiles:
-        for line in file.readlines():
+        for i, line in enumerate(file.readlines()):
             line = line.strip()
             if not line or line[0] == "#":
                 continue
 
-            case = parse_case(line, asm)
-            assert not any(" " in part for part in case)
-            args.output.write(" ".join(case) + "\n")
+            try:
+                case = parse_case(line, asm)
+                assert not any(" " in part for part in case)
+                args.output.write(" ".join(case) + "\n")
+            except Exception as e:
+                print("error parsing line", i+1, e)
+                raise e
 
     if asm.close() != 0:
         raise Exception("assembly failed")
