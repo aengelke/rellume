@@ -51,6 +51,8 @@ struct LLConfig {
 
     /// Whether to verify the IR after lifting.
     bool verify_ir;
+    /// Whether to optimize the IR after lifting.
+    bool optimize_ir;
 
     /**
      * \brief The global offset base
