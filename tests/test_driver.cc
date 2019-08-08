@@ -42,7 +42,7 @@ struct CPU {
     uint8_t flags[6];
     uint8_t _pad[2];
     uint8_t sse[16][16];
-} __attribute__((packed));
+} __attribute__((aligned(16)));
 
 struct RegEntry {
     size_t size;
@@ -50,17 +50,9 @@ struct RegEntry {
 };
 
 static std::unordered_map<std::string,RegEntry> regs = {
-    {"rip", {8, offsetof(CPU, rip)}},
-    {"rax", {8, offsetof(CPU, gpr[0])}},
-    {"rcx", {8, offsetof(CPU, gpr[1])}},
-    {"rdx", {8, offsetof(CPU, gpr[2])}},
-    {"rbx", {8, offsetof(CPU, gpr[3])}},
-    {"zf", {1, offsetof(CPU, flags[0])}},
-    {"sf", {1, offsetof(CPU, flags[1])}},
-    {"pf", {1, offsetof(CPU, flags[2])}},
-    {"cf", {1, offsetof(CPU, flags[3])}},
-    {"of", {1, offsetof(CPU, flags[4])}},
-    {"af", {1, offsetof(CPU, flags[5])}},
+#define RELLUME_PARAM_REG(off,sz,reg,facet,name) {name, {sz, off}},
+#include <rellume/regs.inc>
+#undef RELLUME_PARAM_REG
 };
 
 class TestCase {
