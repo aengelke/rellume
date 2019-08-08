@@ -61,6 +61,7 @@ public:
     void EnableFastMath(bool enable) {
         cfg.enableFastMath = enable;
     }
+    void EnableVerifyIR(bool enable) { cfg.verify_ir = enable; }
 
     void SetGlobalBase(uintptr_t base, llvm::Value* value) {
         cfg.global_base_addr = base;

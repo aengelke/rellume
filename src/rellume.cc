@@ -46,6 +46,9 @@ void ll_func_enable_overflow_intrinsics(LLFunc* fn, bool enable) {
 void ll_func_enable_fast_math(LLFunc* fn, bool enable) {
     unwrap(fn)->EnableFastMath(enable);
 }
+void ll_func_enable_verify_ir(LLFunc* fn, bool enable) {
+    unwrap(fn)->EnableVerifyIR(enable);
+}
 void ll_func_set_global_base(LLFunc* fn, uintptr_t base, LLVMValueRef value) {
     unwrap(fn)->SetGlobalBase(base, llvm::unwrap(value));
 }
