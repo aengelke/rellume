@@ -18,21 +18,6 @@ matrix:
       env:
         - COMPILERC=gcc-7
         - COMPILERCXX=g++-7
-        - LLVM_CONFIG=llvm-config-6.0
-      addons:
-        apt:
-          sources:
-            - *default_srcs
-            - llvm-toolchain-xenial-6.0
-          packages:
-            - *default_pkgs
-            - llvm-6.0-dev
-            - gcc-7
-            - g++-7
-    - compiler: gcc
-      env:
-        - COMPILERC=gcc-7
-        - COMPILERCXX=g++-7
         - LLVM_CONFIG=llvm-config-7.0
       addons:
         apt:
