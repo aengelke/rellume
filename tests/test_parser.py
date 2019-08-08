@@ -12,7 +12,19 @@ FMT_SUBST = {
     "q": ("Q", lambda v: int(v, 0)),
 }
 
-def parse_case(case):
+class Assembler:
+    def __init__(self, proc):
+        self.proc = subprocess.Popen([proc], stdin=subprocess.PIPE, stdout=subprocess.PIPE, universal_newlines=True)
+    def assemble(self, code):
+        self.proc.stdin.write(code + "\n")
+        self.proc.stdin.flush()
+        res = self.proc.stdout.readline().strip()
+        return bytes.fromhex(res)
+    def close(self):
+        self.proc.communicate()
+        return self.proc.wait()
+
+def parse_case(case, asm=None):
     pre, post = [], []
     cur = pre
     for part in shlex.split(case):
@@ -23,8 +35,14 @@ def parse_case(case):
         key, val = tuple(part.split("=", 2))
         if val == "undef":
             pass
-        elif val[0] == "{":
-            raise Exception("not implemented")
+        elif key == "code":
+            if cur is not pre:
+                raise Exception("code in post-check")
+            code = asm.assemble(".intel_syntax noprefix;" + val)
+            pre.append("m1000000=" + code.hex() + "cc")
+            pre.append("rip=" + struct.pack("<Q", 0x1000000).hex())
+            post.append("rip=" + struct.pack("<Q", 0x1000000 + len(code)).hex())
+            continue
         elif ":" in val:
             fmt, nums = tuple(val.split(":", 2))
             fmt, fns = zip(*(FMT_SUBST[c] for c in fmt))
@@ -38,8 +56,11 @@ def parse_case(case):
 if __name__ == "__main__":
     parser = argparse.ArgumentParser()
     parser.add_argument("-o", "--output", type=argparse.FileType("w"), default='-')
+    parser.add_argument("-a", "--assembler")
     parser.add_argument("casefiles", type=argparse.FileType("r"), nargs="+")
     args = parser.parse_args()
+
+    asm = Assembler(args.assembler) if args.assembler else None
 
     for file in args.casefiles:
         for line in file.readlines():
@@ -47,6 +68,9 @@ if __name__ == "__main__":
             if not line or line[0] == "#":
                 continue
 
-            case = parse_case(line)
+            case = parse_case(line, asm)
             assert not any(" " in part for part in case)
             args.output.write(" ".join(case) + "\n")
+
+    if asm.close() != 0:
+        raise Exception("assembly failed")
