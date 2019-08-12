@@ -49,6 +49,9 @@ DEF_IT(SHR, state.LiftShift(inst, llvm::Instruction::LShr))
 DEF_IT(SAR, state.LiftShift(inst, llvm::Instruction::AShr))
 DEF_IT(CLTQ, state.LiftCdqe(inst))
 
+DEF_IT(CLD, state.LiftCld(inst))
+DEF_IT(STD, state.LiftStd(inst))
+
 DEF_IT(CMOVO, state.LiftCmovcc(inst, Condition::O))
 DEF_IT(CMOVNO, state.LiftCmovcc(inst, Condition::NO))
 DEF_IT(CMOVC, state.LiftCmovcc(inst, Condition::C))

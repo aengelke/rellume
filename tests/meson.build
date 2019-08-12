@@ -1,5 +1,5 @@
 
-casefiles = ['cases_basic.txt', 'cases_modrm.txt']
+casefiles = ['cases_basic.txt', 'cases_modrm.txt', 'cases_string.txt']
 
 assembler = executable('test_assembler', 'test_assembler.cc', dependencies: [libllvm])
 driver = executable('test_driver', 'test_driver.cc', dependencies: [librellume])

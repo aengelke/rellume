@@ -190,6 +190,9 @@ public:
         OpStoreGp(LLInstrOp::Reg(LLReg(LL_RT_IP, 0)), StackPop());
     }
 
+    void LiftCld(const LLInstr& inst) { SetFlag(Facet::DF, irb.getFalse()); }
+    void LiftStd(const LLInstr& inst) { SetFlag(Facet::DF, irb.getTrue()); }
+
     // llinstruction-sse.cc
     void LiftSseMovq(const LLInstr&, Facet type);
     void LiftSseBinOp(const LLInstr&, llvm::Instruction::BinaryOps op,
