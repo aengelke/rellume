@@ -54,7 +54,7 @@ public:
 #endif
 
         // Flags
-        ZF, SF, PF, CF, OF, AF,
+        ZF, SF, PF, CF, OF, AF, DF,
 
         // Pseudo-facets
         I, VI8, VI16, VI32, VI64, VF32, VF64,

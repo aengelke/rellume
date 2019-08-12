@@ -66,7 +66,7 @@ llvm::Value* LifterBase::FlagAsReg(unsigned size) {
     llvm::Type* ty = res->getType();
     static const std::pair<Facet, unsigned> flags[] = {
         {Facet::CF, 0}, {Facet::PF, 2}, {Facet::AF, 4}, {Facet::ZF, 6},
-        {Facet::SF, 7}, {Facet::OF, 11},
+        {Facet::SF, 7}, {Facet::DF, 10}, {Facet::OF, 11},
     };
     for (auto& kv : flags) {
         llvm::Value* ext_bit = irb.CreateZExt(GetFlag(kv.first), ty);

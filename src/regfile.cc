@@ -101,7 +101,7 @@ using ValueMapSse = ValueMap<R, Facet::I128,
 >;
 
 template<typename R>
-using ValueMapFlags = ValueMap<R, Facet::ZF, Facet::SF, Facet::PF, Facet::CF, Facet::OF, Facet::AF>;
+using ValueMapFlags = ValueMap<R, Facet::ZF, Facet::SF, Facet::PF, Facet::CF, Facet::OF, Facet::AF, Facet::DF>;
 
 
 class RegFile::impl {

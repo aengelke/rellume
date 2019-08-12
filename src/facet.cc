@@ -122,7 +122,8 @@ llvm::Type* Facet::Type(llvm::LLVMContext& ctx) const
     case Facet::PF:
     case Facet::CF:
     case Facet::OF:
-    case Facet::AF: return llvm::Type::getInt1Ty(ctx);
+    case Facet::AF:
+    case Facet::DF: return llvm::Type::getInt1Ty(ctx);
     default: assert(0);
     }
 
