@@ -73,12 +73,13 @@ public:
         assert(has(v));
         return values[table.b[static_cast<int>(v)] - 1];
     }
-    // This returns a reference to an array of size sizeof...(E).
-    const Facet::Value (&facets())[sizeof...(E)] {
-        return table.f;
+    template<typename F>
+    void setAll(const F& init_func) {
+        for (unsigned i = 0; i < sizeof...(E); i++)
+            values[i] = init_func(table.f[i]);
     }
     void clear() {
-        std::fill_n(values, sizeof...(E), R{});
+        setAll([](Facet f) { return nullptr; });
     }
 };
 template<typename R, Facet::Value... E>
@@ -155,22 +156,16 @@ private:
     void UpdateAll(llvm::Value*, bool);
 };
 
-void RegFile::impl::InitAll(InitGenerator init_gen) {
-    if (!init_gen)
-        init_gen = [](const LLReg reg, const Facet facet) { return nullptr; };
+void RegFile::impl::InitAll(InitGenerator fn) {
+    if (!fn)
+        fn = [](const LLReg reg, const Facet facet) { return nullptr; };
 
-    // Set create_phi to true for all registers.
-    for (unsigned i = 0; i < LL_RI_GPMax; i++) {
-        for (Facet facet : regs_gp[i].facets())
-            regs_gp[i][facet] = init_gen(LLReg(LL_RT_GP64, i), facet);
-    }
-    for (unsigned i = 0; i < LL_RI_XMMMax; i++) {
-        for (Facet facet : regs_sse[i].facets())
-            regs_sse[i][facet] = init_gen(LLReg(LL_RT_XMM, i), facet);
-    }
-    for (Facet facet : flags.facets())
-        flags[facet] = init_gen(LLReg(LL_RT_EFLAGS, 0), facet);
-    reg_ip = init_gen(LLReg(LL_RT_IP, 0), Facet::I64);
+    for (unsigned i = 0; i < LL_RI_GPMax; i++)
+        regs_gp[i].setAll([=](Facet f) { return fn(LLReg(LL_RT_GP64, i), f); });
+    for (unsigned i = 0; i < LL_RI_XMMMax; i++)
+        regs_sse[i].setAll([=](Facet f) { return fn(LLReg(LL_RT_XMM, i), f); });
+    flags.setAll([=](Facet f) { return fn(LLReg(LL_RT_EFLAGS, 0), f); });
+    reg_ip = fn(LLReg(LL_RT_IP, 0), Facet::I64);
 }
 
 RegFile::impl::Entry* RegFile::impl::AccessRegFacet(LLReg reg, Facet facet) {
