@@ -109,6 +109,9 @@ class RegFile::impl {
 public:
     impl() : insert_block(nullptr), regs_gp(), regs_sse(), reg_ip(), flags() {}
 
+    llvm::BasicBlock* GetInsertBlock() {
+        return insert_block;
+    }
     void SetInsertBlock(llvm::BasicBlock* new_block) {
         insert_block = new_block;
     }
@@ -418,6 +421,9 @@ RegFile::impl::SetReg(LLReg reg, Facet facet, llvm::Value* value, bool clearOthe
 RegFile::RegFile() : pimpl{std::make_unique<impl>()} {}
 RegFile::~RegFile() {}
 
+llvm::BasicBlock* RegFile::GetInsertBlock() {
+    return pimpl->GetInsertBlock();
+}
 void RegFile::SetInsertBlock(llvm::BasicBlock* new_block) {
     pimpl->SetInsertBlock(new_block);
 }

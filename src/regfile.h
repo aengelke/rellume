@@ -46,6 +46,7 @@ public:
     RegFile(const RegFile&) = delete;
     RegFile& operator=(const RegFile&) = delete;
 
+    llvm::BasicBlock* GetInsertBlock();
     void SetInsertBlock(llvm::BasicBlock* new_block);
 
     using Generator = std::function<llvm::Value*()>;
