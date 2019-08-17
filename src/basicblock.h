@@ -51,7 +51,10 @@ public:
     void BranchTo(llvm::Value* cond, BasicBlock& then, BasicBlock& other);
     bool FillPhis();
 
-    llvm::BasicBlock* Llvm() {
+    llvm::BasicBlock* BeginBlock() {
+        return llvmBB;
+    }
+    llvm::BasicBlock* EndBlock() {
         return llvmBB;
     }
 

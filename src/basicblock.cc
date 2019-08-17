@@ -53,7 +53,7 @@ BasicBlock::BasicBlock(llvm::BasicBlock* llvm) : llvmBB(llvm), regfile(llvm) {
     // value-facet combination is requested.
     regfile.InitAll([this](const LLReg reg, const Facet facet) {
         return [this, reg, facet]() {
-            llvm::IRBuilder<> irb(llvmBB, llvmBB->begin());
+            llvm::IRBuilder<> irb(BeginBlock(), BeginBlock()->begin());
             llvm::PHINode* phi = irb.CreatePHI(facet.Type(irb.getContext()), 4);
             empty_phis.push_back(std::make_tuple(reg, facet, phi));
             return phi;
@@ -63,14 +63,14 @@ BasicBlock::BasicBlock(llvm::BasicBlock* llvm) : llvmBB(llvm), regfile(llvm) {
 
 void BasicBlock::AddInst(const LLInstr& inst, LLConfig& cfg)
 {
-    Lifter state(cfg, regfile, llvmBB);
+    Lifter state(cfg, regfile, EndBlock());
 
     // Set new instruction pointer register
     llvm::Value* ripValue = state.irb.getInt64(inst.addr + inst.len);
     regfile.SetReg(LLReg(LL_RT_IP, 0), Facet::I64, ripValue, true);
 
     // Add separator for debugging.
-    llvm::Function* intrinsicDoNothing = llvm::Intrinsic::getDeclaration(llvmBB->getModule(), llvm::Intrinsic::donothing, {});
+    llvm::Function* intrinsicDoNothing = llvm::Intrinsic::getDeclaration(EndBlock()->getModule(), llvm::Intrinsic::donothing, {});
     state.irb.CreateCall(intrinsicDoNothing);
 
     switch (inst.type)
@@ -87,8 +87,8 @@ void BasicBlock::AddInst(const LLInstr& inst, LLConfig& cfg)
 }
 
 void BasicBlock::BranchTo(BasicBlock& next) {
-    llvm::IRBuilder<> irb(llvmBB);
-    irb.CreateBr(next.llvmBB);
+    llvm::IRBuilder<> irb(EndBlock());
+    irb.CreateBr(next.BeginBlock());
     next.predecessors.push_back(this);
 }
 
@@ -100,8 +100,8 @@ void BasicBlock::BranchTo(llvm::Value* cond, BasicBlock& then,
         return;
     }
 
-    llvm::IRBuilder<> irb(llvmBB);
-    irb.CreateCondBr(cond, then.llvmBB, other.llvmBB);
+    llvm::IRBuilder<> irb(EndBlock());
+    irb.CreateCondBr(cond, then.BeginBlock(), other.BeginBlock());
     then.predecessors.push_back(this);
     other.predecessors.push_back(this);
 }
@@ -116,7 +116,7 @@ bool BasicBlock::FillPhis() {
         llvm::PHINode* phi = std::get<2>(item);
         for (BasicBlock* pred : predecessors) {
             llvm::Value* value = pred->regfile.GetReg(reg, facet);
-            phi->addIncoming(value, pred->llvmBB);
+            phi->addIncoming(value, pred->EndBlock());
         }
     }
     empty_phis.clear();

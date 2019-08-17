@@ -115,7 +115,7 @@ std::unique_ptr<BasicBlock> Function::CreateExit() {
     // Pack CPU struct and return
     exit_block->regfile.UpdateAllInMem(llvm->arg_begin());
 
-    llvm::IRBuilder<> irb(exit_block->Llvm());
+    llvm::IRBuilder<> irb(exit_block->EndBlock());
     irb.CreateRetVoid();
 
     return exit_block;
