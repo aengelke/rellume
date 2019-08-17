@@ -107,10 +107,10 @@ using ValueMapFlags = ValueMap<R, Facet::ZF, Facet::SF, Facet::PF, Facet::CF, Fa
 
 class RegFile::impl {
 public:
-    impl() : llvm_block(nullptr), regs_gp(), regs_sse(), reg_ip(), flags() {}
+    impl() : insert_block(nullptr), regs_gp(), regs_sse(), reg_ip(), flags() {}
 
     void SetInsertBlock(llvm::BasicBlock* new_block) {
-        llvm_block = new_block;
+        insert_block = new_block;
     }
 
     void InitAll(InitGenerator init_gen = nullptr);
@@ -148,7 +148,7 @@ private:
         llvm::Value* get() { return static_cast<llvm::Value*>(*this); }
     };
 
-    llvm::BasicBlock* llvm_block;
+    llvm::BasicBlock* insert_block;
     ValueMapGp<Entry> regs_gp[LL_RI_GPMax];
     ValueMapSse<Entry> regs_sse[LL_RI_XMMMax];
     Entry reg_ip;
@@ -205,8 +205,8 @@ void RegFile::impl::UpdateAll(llvm::Value* buf_ptr, bool store_mem) {
 #undef RELLUME_PARAM_REG
     };
 
-    assert(llvm_block->getTerminator() == nullptr && "update terminated block");
-    llvm::IRBuilder<> irb(llvm_block);
+    assert(insert_block->getTerminator() == nullptr && "update terminated block");
+    llvm::IRBuilder<> irb(insert_block);
 
     // Clear all register facets
     if (!store_mem)
@@ -238,14 +238,14 @@ RegFile::impl::GetReg(LLReg reg, Facet facet)
         if (llvm::Value* res = facet_entry->get())
             return res;
 
-    llvm::LLVMContext& ctx = llvm_block->getContext();
+    llvm::LLVMContext& ctx = insert_block->getContext();
 
     llvm::IRBuilder<> builder(ctx);
-    llvm::Instruction* terminator = llvm_block->getTerminator();
+    llvm::Instruction* terminator = insert_block->getTerminator();
     if (terminator != NULL)
         builder.SetInsertPoint(terminator);
     else
-        builder.SetInsertPoint(llvm_block);
+        builder.SetInsertPoint(insert_block);
 
     llvm::Type* facetType = facet.Type(ctx);
 
@@ -393,12 +393,12 @@ RegFile::impl::SetReg(LLReg reg, Facet facet, llvm::Value* value, bool clearOthe
     {
         char buffer[20];
         snprintf(buffer, sizeof(buffer), "asm.reg.%s", reg.Name());
-        llvm::MDNode* md = llvm::MDNode::get(llvm_block->getContext(), {});
+        llvm::MDNode* md = llvm::MDNode::get(insert_block->getContext(), {});
         llvm::cast<llvm::Instruction>(value)->setMetadata(buffer, md);
     }
 #endif
 
-    assert(value->getType() == facet.Type(llvm_block->getContext()));
+    assert(value->getType() == facet.Type(insert_block->getContext()));
 
     if (clearOthers) {
         if (reg.IsGp()) {
