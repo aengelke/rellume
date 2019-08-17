@@ -48,7 +48,9 @@
 
 namespace rellume {
 
-BasicBlock::BasicBlock(llvm::BasicBlock* llvm) : llvmBB(llvm), regfile(llvm) {
+BasicBlock::BasicBlock(llvm::BasicBlock* llvm) : llvmBB(llvm), regfile() {
+    regfile.SetInsertBlock(EndBlock());
+
     // Initialize all registers with a generator which adds a PHI node when the
     // value-facet combination is requested.
     regfile.InitAll([this](const LLReg reg, const Facet facet) {

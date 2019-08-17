@@ -107,8 +107,11 @@ using ValueMapFlags = ValueMap<R, Facet::ZF, Facet::SF, Facet::PF, Facet::CF, Fa
 
 class RegFile::impl {
 public:
-    impl(llvm::BasicBlock* llvm_block) : llvm_block(llvm_block),
-            regs_gp(), regs_sse(), reg_ip(), flags() {}
+    impl() : llvm_block(nullptr), regs_gp(), regs_sse(), reg_ip(), flags() {}
+
+    void SetInsertBlock(llvm::BasicBlock* new_block) {
+        llvm_block = new_block;
+    }
 
     void InitAll(InitGenerator init_gen = nullptr);
 
@@ -412,10 +415,12 @@ RegFile::impl::SetReg(LLReg reg, Facet facet, llvm::Value* value, bool clearOthe
     *facet_entry = value;
 }
 
-RegFile::RegFile(llvm::BasicBlock* llvm_block) :
-        pimpl{std::make_unique<impl>(llvm_block)} {}
+RegFile::RegFile() : pimpl{std::make_unique<impl>()} {}
 RegFile::~RegFile() {}
 
+void RegFile::SetInsertBlock(llvm::BasicBlock* new_block) {
+    pimpl->SetInsertBlock(new_block);
+}
 void RegFile::InitAll(InitGenerator init_gen) {
     pimpl->InitAll(init_gen);
 }
