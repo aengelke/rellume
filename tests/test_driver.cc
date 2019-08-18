@@ -50,7 +50,7 @@ struct RegEntry {
 };
 
 static std::unordered_map<std::string,RegEntry> regs = {
-#define RELLUME_PARAM_REG(off,sz,reg,facet,name) {name, {sz, off}},
+#define RELLUME_PARAM_REG(off,sz,reg,facet,name,mn) {name, {sz, off}},
 #include <rellume/regs.inc>
 #undef RELLUME_PARAM_REG
 };

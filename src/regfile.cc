@@ -203,7 +203,7 @@ RegFile::impl::Entry* RegFile::impl::AccessRegFacet(LLReg reg, Facet facet) {
 
 void RegFile::impl::UpdateAll(llvm::Value* buf_ptr, bool store_mem) {
     static constexpr std::tuple<size_t, LLReg, Facet> entries[] = {
-#define RELLUME_PARAM_REG(off,sz,reg,facet,name) std::make_tuple(off,reg,facet),
+#define RELLUME_PARAM_REG(off,sz,reg,facet,name,mn) std::make_tuple(off,reg,facet),
 #include <rellume/regs.inc>
 #undef RELLUME_PARAM_REG
     };
