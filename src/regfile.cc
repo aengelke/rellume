@@ -33,7 +33,6 @@
 #include <cassert>
 #include <cstdint>
 #include <cstring>
-#include <algorithm>
 #include <memory>
 #include <tuple>
 

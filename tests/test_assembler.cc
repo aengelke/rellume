@@ -34,7 +34,7 @@ public:
                           uint64_t &FixedValue) override {
         assert(false && "relocations not supported");
     }
-    uint64_t writeObject(llvm::MCAssembler &Asm, const llvm::MCAsmLayout &Layout) {
+    uint64_t writeObject(llvm::MCAssembler &Asm, const llvm::MCAsmLayout &Layout) override {
         uint64_t offset = stream.tell();
         for (llvm::MCSection& sec : Asm) {
             assert(sec.getKind().isText() && "non-text sections not supported");

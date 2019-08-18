@@ -53,7 +53,7 @@ LifterBase::OpAddrConst(uint64_t addr)
     if (cfg.global_base_value != nullptr)
     {
         uintptr_t offset = addr - cfg.global_base_addr;
-        return irb.CreateGEP(cfg.global_base_value, {irb.getInt64(offset)});
+        return irb.CreateGEP(cfg.global_base_value, irb.getInt64(offset));
     }
 
     return irb.CreateIntToPtr(irb.getInt64(addr), irb.getInt8PtrTy());
@@ -91,11 +91,11 @@ LifterBase::OpAddr(const LLInstrOp& op, llvm::Type* element_type)
             if (op.scale != 0 && (op.val % op.scale) == 0)
             {
                 base = irb.CreatePointerCast(base, scale_type);
-                base = irb.CreateGEP(base, {irb.getInt64(op.val/op.scale)});
+                base = irb.CreateGEP(base, irb.getInt64(op.val/op.scale));
             }
             else
             {
-                base = irb.CreateGEP(base, {irb.getInt64(op.val)});
+                base = irb.CreateGEP(base, irb.getInt64(op.val));
             }
         }
     }
@@ -123,7 +123,7 @@ LifterBase::OpAddr(const LLInstrOp& op, llvm::Type* element_type)
             base = irb.CreateIntToPtr(base, scale_type);
         } else {
             base = irb.CreatePointerCast(base, scale_type);
-            base = irb.CreateGEP(base, {offset});
+            base = irb.CreateGEP(base, offset);
         }
     }
 
@@ -256,12 +256,8 @@ LifterBase::OpStoreVec(const LLInstrOp& op, llvm::Value* value, bool avx,
 
     llvm::Type* iVec = irb.getIntNTy(LL_VECTOR_REGISTER_SIZE);
     llvm::Value* current = irb.getIntN(LL_VECTOR_REGISTER_SIZE, 0);
-    llvm::Value* current128 = irb.getIntN(128, 0);
     if (!avx)
-    {
         current = GetReg(op.reg, Facet::IVEC);
-        current128 = GetReg(op.reg, Facet::I128);
-    }
 
     llvm::Type* value_type = value->getType();
     if (value_type->isVectorTy())

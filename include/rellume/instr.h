@@ -126,12 +126,12 @@ struct LLInstrOp {
     LLReg ireg;
     int scale;
     int seg;
-    int addrsize;
-    int size;
+    unsigned addrsize;
+    unsigned size;
 
 #if defined(__cplusplus) && defined(RELLUME_ENABLE_CPP_HEADER)
     static LLInstrOp Reg(const LLReg& reg) {
-        int sz = static_cast<int>(reg.Size());
+        unsigned sz = reg.Size();
         return LLInstrOp{0, LL_OP_REG, reg, LLReg::None(), 0, LL_RI_None, 0, sz};
     }
 #endif
