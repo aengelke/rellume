@@ -58,7 +58,7 @@ BasicBlock::BasicBlock(llvm::Function* fn, Kind kind, llvm::Value* mem_arg) :
         // the value-facet combination is requested.
         regfile.InitAll([this](const LLReg reg, const Facet facet) {
             return [this, reg, facet]() {
-                llvm::IRBuilder<> irb(BeginBlock(), BeginBlock()->begin());
+                llvm::IRBuilder<> irb(first_block, first_block->begin());
                 auto phi = irb.CreatePHI(facet.Type(irb.getContext()), 4);
                 empty_phis.push_back(std::make_tuple(reg, facet, phi));
                 return phi;
@@ -103,7 +103,7 @@ void BasicBlock::AddInst(const LLInstr& inst, LLConfig& cfg)
 
 void BasicBlock::BranchTo(BasicBlock& next) {
     llvm::IRBuilder<> irb(EndBlock());
-    irb.CreateBr(next.BeginBlock());
+    irb.CreateBr(next.first_block);
     next.predecessors.push_back(this);
 }
 
@@ -116,7 +116,7 @@ void BasicBlock::BranchTo(llvm::Value* cond, BasicBlock& then,
     }
 
     llvm::IRBuilder<> irb(EndBlock());
-    irb.CreateCondBr(cond, then.BeginBlock(), other.BeginBlock());
+    irb.CreateCondBr(cond, then.first_block, other.first_block);
     then.predecessors.push_back(this);
     other.predecessors.push_back(this);
 }

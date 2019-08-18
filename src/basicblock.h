@@ -61,9 +61,6 @@ public:
     }
 
 private:
-    llvm::BasicBlock* BeginBlock() {
-        return first_block;
-    }
     llvm::BasicBlock* EndBlock() {
         // The ending block is the last insertion point.
         return regfile.GetInsertBlock();
