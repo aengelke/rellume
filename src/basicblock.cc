@@ -76,7 +76,7 @@ BasicBlock::BasicBlock(llvm::Function* fn, Kind kind, llvm::Value* mem_arg) :
     }
 }
 
-void BasicBlock::AddInst(const LLInstr& inst, LLConfig& cfg)
+void BasicBlock::AddInst(const LLInstr& inst, const LLConfig& cfg)
 {
     // Set new instruction pointer register
     llvm::IRBuilder<> irb(EndBlock());

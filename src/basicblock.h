@@ -51,7 +51,7 @@ public:
     BasicBlock(const BasicBlock&) = delete;
     BasicBlock& operator=(const BasicBlock&) = delete;
 
-    void AddInst(const LLInstr& inst, LLConfig& cfg);
+    void AddInst(const LLInstr& inst, const LLConfig& cfg);
     void BranchTo(BasicBlock& next);
     void BranchTo(llvm::Value* cond, BasicBlock& then, BasicBlock& other);
     bool FillPhis();

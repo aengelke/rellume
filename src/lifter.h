@@ -58,7 +58,7 @@ enum class Condition {
  **/
 class LifterBase {
 protected:
-    LifterBase(LLConfig& cfg, RegFile& rf) : cfg(cfg), regfile(rf),
+    LifterBase(const LLConfig& cfg, RegFile& rf) : cfg(cfg), regfile(rf),
             irb(rf.GetInsertBlock()) {
         // Set fast-math flags. Newer LLVM supports FastMathFlags::getFast().
         if (cfg.enableFastMath) {
@@ -80,7 +80,7 @@ public:
     LifterBase& operator=(const LifterBase&) = delete;
 
 protected:
-    LLConfig& cfg;
+    const LLConfig& cfg;
 
     /// Current register file
     RegFile& regfile;
@@ -210,7 +210,7 @@ protected:
 
 class Lifter : public LifterBase {
 public:
-    Lifter(LLConfig& cfg, RegFile& rf) : LifterBase(cfg, rf) {}
+    Lifter(const LLConfig& cfg, RegFile& rf) : LifterBase(cfg, rf) {}
 
     // llinstruction-gp.cc
     void LiftMovgp(const LLInstr&, llvm::Instruction::CastOps cast);
