@@ -30,7 +30,6 @@
 #include <llvm/IR/DerivedTypes.h>
 #include <llvm/IR/Function.h>
 #include <llvm/IR/GlobalValue.h>
-#include <llvm/IR/IRBuilder.h>
 #include <llvm/IR/Type.h>
 #include <llvm/IR/Verifier.h>
 #include <cassert>
@@ -62,8 +61,8 @@ Function::Function(llvm::Module* mod)
     llvm->addDereferenceableParamAttr(0, 0x190);
 
     // Create entry basic block as first block in the function.
-    entry_block = std::make_unique<BasicBlock>(llvm);
-    entry_block->regfile.UpdateAllFromMem(llvm->arg_begin());
+    entry_block = std::make_unique<BasicBlock>(llvm, BasicBlock::ENTRY,
+                                               llvm->arg_begin());
 
     cfg.global_base_value = nullptr;
     cfg.enableOverflowIntrinsics = false;
@@ -97,16 +96,13 @@ llvm::Function* Function::Lift() {
     if (block_map.size() == 0)
         return nullptr;
 
-    // Create exit block, which packs the values into memory and returns.
-    exit_block = std::make_unique<BasicBlock>(llvm);
-    exit_block->regfile.UpdateAllInMem(llvm->arg_begin());
-    llvm::IRBuilder<> irb(exit_block->EndBlock());
-    irb.CreateRetVoid();
+    exit_block = std::make_unique<BasicBlock>(llvm, BasicBlock::EXIT,
+                                              llvm->arg_begin());
 
     entry_block->BranchTo(*block_map[entry_addr]);
 
     for (auto it = block_map.begin(); it != block_map.end(); ++it) {
-        llvm::Value* next_rip = it->second->regfile.GetReg(LLReg(LL_RT_IP, 0), Facet::I64);
+        llvm::Value* next_rip = it->second->NextRip();
         if (auto select = llvm::dyn_cast<llvm::SelectInst>(next_rip)) {
             it->second->BranchTo(select->getCondition(),
                                  ResolveAddr(select->getTrueValue()),

@@ -39,7 +39,11 @@ namespace rellume {
 class BasicBlock
 {
 public:
-    BasicBlock(llvm::Function* fn);
+    enum Kind {
+        DEFAULT, ENTRY, EXIT
+    };
+    BasicBlock(llvm::Function* fn, Kind kind = DEFAULT,
+               llvm::Value* mem_arg = nullptr);
 
     BasicBlock(BasicBlock&& rhs);
     BasicBlock& operator=(BasicBlock&& rhs);
@@ -52,6 +56,11 @@ public:
     void BranchTo(llvm::Value* cond, BasicBlock& then, BasicBlock& other);
     bool FillPhis();
 
+    llvm::Value* NextRip() {
+        return regfile.GetReg(LLReg(LL_RT_IP, 0), Facet::I64);
+    }
+
+private:
     llvm::BasicBlock* BeginBlock() {
         return first_block;
     }
@@ -60,15 +69,12 @@ public:
         return regfile.GetInsertBlock();
     }
 
-private:
     /// First LLVM basic block for the x86 basic block.
     llvm::BasicBlock* first_block;
 
-public:
     /// The register file for the basic block
     RegFile regfile;
 
-private:
     std::vector<BasicBlock*> predecessors;
     std::vector<std::tuple<LLReg, Facet, llvm::PHINode*>> empty_phis;
 };

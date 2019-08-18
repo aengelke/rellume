@@ -48,20 +48,32 @@
 
 namespace rellume {
 
-BasicBlock::BasicBlock(llvm::Function* fn) : regfile() {
+BasicBlock::BasicBlock(llvm::Function* fn, Kind kind, llvm::Value* mem_arg) :
+            regfile() {
     first_block = llvm::BasicBlock::Create(fn->getContext(), "", fn, nullptr);
     regfile.SetInsertBlock(first_block);
 
-    // Initialize all registers with a generator which adds a PHI node when the
-    // value-facet combination is requested.
-    regfile.InitAll([this](const LLReg reg, const Facet facet) {
-        return [this, reg, facet]() {
-            llvm::IRBuilder<> irb(BeginBlock(), BeginBlock()->begin());
-            llvm::PHINode* phi = irb.CreatePHI(facet.Type(irb.getContext()), 4);
-            empty_phis.push_back(std::make_tuple(reg, facet, phi));
-            return phi;
-        };
-    });
+    if (kind != ENTRY) {
+        // Initialize all registers with a generator which adds a PHI node when
+        // the value-facet combination is requested.
+        regfile.InitAll([this](const LLReg reg, const Facet facet) {
+            return [this, reg, facet]() {
+                llvm::IRBuilder<> irb(BeginBlock(), BeginBlock()->begin());
+                auto phi = irb.CreatePHI(facet.Type(irb.getContext()), 4);
+                empty_phis.push_back(std::make_tuple(reg, facet, phi));
+                return phi;
+            };
+        });
+    } else { // kind == ENTRY
+        regfile.UpdateAllFromMem(mem_arg);
+    }
+
+    if (kind == EXIT) {
+        // Exit block packs the values into memory and returns.
+        regfile.UpdateAllInMem(mem_arg);
+        llvm::IRBuilder<> irb(first_block);
+        irb.CreateRetVoid();
+    }
 }
 
 void BasicBlock::AddInst(const LLInstr& inst, LLConfig& cfg)
