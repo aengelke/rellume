@@ -48,7 +48,7 @@
 
 namespace rellume {
 
-BasicBlock::BasicBlock(llvm::BasicBlock* llvm) : llvmBB(llvm), regfile() {
+BasicBlock::BasicBlock(llvm::BasicBlock* llvm) : first_block(llvm), regfile() {
     regfile.SetInsertBlock(llvm);
 
     // Initialize all registers with a generator which adds a PHI node when the

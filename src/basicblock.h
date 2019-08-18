@@ -52,7 +52,7 @@ public:
     bool FillPhis();
 
     llvm::BasicBlock* BeginBlock() {
-        return llvmBB;
+        return first_block;
     }
     llvm::BasicBlock* EndBlock() {
         // The ending block is the last insertion point.
@@ -60,8 +60,8 @@ public:
     }
 
 private:
-    /// The LLVM basic block
-    llvm::BasicBlock* llvmBB;
+    /// First LLVM basic block for the x86 basic block.
+    llvm::BasicBlock* first_block;
 
 public:
     /// The register file for the basic block
