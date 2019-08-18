@@ -80,11 +80,14 @@ llvm::Function* WrapSysVAbi(llvm::Function* orig_fn, llvm::FunctionType* fn_ty,
     llvm::SmallVector<llvm::Type*, 4> cpu_types;
     cpu_types.push_back(irb.getInt64Ty()); // instruction pointer
     cpu_types.push_back(llvm::ArrayType::get(irb.getInt64Ty(), 16));
-    cpu_types.push_back(llvm::ArrayType::get(irb.getInt1Ty(), 6));
+    cpu_types.push_back(llvm::ArrayType::get(irb.getInt1Ty(), 7));
     cpu_types.push_back(llvm::ArrayType::get(irb.getIntNTy(LL_VECTOR_REGISTER_SIZE), 16));
     llvm::Type* cpu_type = llvm::StructType::get(irb.getContext(), cpu_types);
 
     llvm::Value* alloca = irb.CreateAlloca(cpu_type, int{0});
+
+    // Set direction flag to zero
+    irb.CreateStore(irb.getFalse(), rellume::GepHelper(irb, alloca, {0, 2, 6}));
 
     unsigned gp_regs[6] = { 7, 6, 2, 1, 8, 9 };
     unsigned gpRegOffset = 0;
