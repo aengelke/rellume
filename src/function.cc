@@ -84,6 +84,8 @@ Function::Function(llvm::Module* mod)
     llvm->addParamAttr(0, llvm::Attribute::getWithAlignment(ctx, 16));
     llvm->addDereferenceableParamAttr(0, 0x190);
 
+    entry_block = CreateEntry();
+
     cfg.global_base_value = nullptr;
     cfg.enableOverflowIntrinsics = false;
     cfg.enableFastMath = false;
@@ -136,13 +138,7 @@ llvm::Function* Function::Lift()
     if (block_map.size() == 0)
         return NULL;
 
-    // !!! DANGER !!!
-    // The entry and exit blocks go out of scope when this function returns, but
-    // other blocks may still have references to them. This means:
-    //
-    //    AFTER Lift() HAS BEEN CALLED, DO NOT TOUCH ANY BASIC BLOCK!
-    std::unique_ptr<BasicBlock> entry_block = CreateEntry();
-    std::unique_ptr<BasicBlock> exit_block = CreateExit();
+    exit_block = CreateExit();
 
     entry_block->BranchTo(*block_map[entry_addr]);
 

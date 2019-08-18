@@ -84,6 +84,8 @@ private:
 
     llvm::Function* llvm;
     uint64_t entry_addr;
+    std::unique_ptr<BasicBlock> entry_block;
+    std::unique_ptr<BasicBlock> exit_block;
     std::unordered_map<uint64_t,std::unique_ptr<BasicBlock>> block_map;
 };
 
