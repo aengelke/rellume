@@ -24,6 +24,7 @@
 
 static bool opt_verbose = false;
 static bool opt_jit = false;
+static bool opt_overflow_intrinsics = false;
 
 struct HexBuffer {
     uint8_t* buf;
@@ -181,6 +182,7 @@ class TestCase {
 
         LLFunc* rlfn = ll_func(llvm::wrap(mod.get()));
         ll_func_enable_verify_ir(rlfn, true);
+        ll_func_enable_overflow_intrinsics(rlfn, opt_overflow_intrinsics);
         ll_func_decode(rlfn, *reinterpret_cast<uint64_t*>(&state.rip));
         llvm::Function* fn = llvm::unwrap<llvm::Function>(ll_func_lift(rlfn));
         ll_func_dispose(rlfn);
@@ -281,10 +283,11 @@ public:
 
 int main(int argc, char** argv) {
     int opt;
-    while ((opt = getopt(argc, argv, "vj")) != -1) {
+    while ((opt = getopt(argc, argv, "vji")) != -1) {
         switch (opt) {
         case 'v': opt_verbose = true; break;
         case 'j': opt_jit = true; break;
+        case 'i': opt_overflow_intrinsics = true; break;
         default:
 usage:
             std::cerr << "usage: " << argv[0] << " [-v] [-j] casefile" << std::endl;
