@@ -107,7 +107,8 @@ int Function::Decode(uintptr_t addr, MemReader memacc)
             {
                 if (instrIsJcc(inst.type))
                     addr_queue.push_back(cur_addr + inst.len);
-                if (instrIsJcc(inst.type) || inst.type == LL_INS_JMP)
+                if ((instrIsJcc(inst.type) || inst.type == LL_INS_JMP) &&
+                        inst.ops[0].type == LL_OP_IMM)
                     addr_queue.push_back(inst.ops[0].val);
                 break;
             }
