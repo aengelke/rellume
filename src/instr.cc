@@ -298,6 +298,7 @@ end_ops:
     case FDI_SSE_XORPD: llinst.type = LL_INS_XORPD; break;
     case FDI_SSE_PXOR: llinst.type = LL_INS_PXOR; break;
     case FDI_JMP: llinst.type = LL_INS_JMP; break;
+    case FDI_JMP_IND: llinst.type = LL_INS_JMP; break;
     case FDI_JO: llinst.type = LL_INS_JO; break;
     case FDI_JNO: llinst.type = LL_INS_JNO; break;
     case FDI_JC: llinst.type = LL_INS_JC; break;
