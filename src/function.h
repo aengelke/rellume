@@ -68,6 +68,10 @@ public:
         cfg.global_base_value = value;
     }
 
+    void SetInstrImpl(LLInstrType type, llvm::Function* override) {
+        cfg.instr_overrides[type] = override;
+    }
+
     void AddInst(uint64_t block_addr, const LLInstr& inst);
     llvm::Function* Lift();
 

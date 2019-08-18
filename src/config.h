@@ -24,11 +24,14 @@
 #ifndef RELLUME_CONFIG_H
 #define RELLUME_CONFIG_H
 
+#include "rellume/instr.h"
 #include <cstdbool>
 #include <cstdint>
+#include <unordered_map>
 
 
 namespace llvm {
+class Function;
 class Value;
 }
 
@@ -49,6 +52,10 @@ struct LLConfig {
     /// The global variable used to access constant memory regions. Points to
     /// globalOffsetBase.
     llvm::Value* global_base_value = nullptr;
+
+    /// Overridden implementations for specific instruction. The function must
+    /// take a pointer to the CPU state as a single argument.
+    std::unordered_map<LLInstrType, llvm::Function*> instr_overrides;
 };
 
 } // namespace

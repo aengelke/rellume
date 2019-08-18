@@ -53,6 +53,9 @@ void ll_func_enable_verify_ir(LLFunc* fn, bool enable) {
 void ll_func_set_global_base(LLFunc* fn, uintptr_t base, LLVMValueRef value) {
     unwrap(fn)->SetGlobalBase(base, llvm::unwrap(value));
 }
+void ll_func_set_instr_impl(LLFunc* fn, LLInstrType type, LLVMValueRef value) {
+    unwrap(fn)->SetInstrImpl(type, llvm::unwrap<llvm::Function>(value));
+}
 
 void ll_func_add_inst(LLFunc* fn, uint64_t block_addr, LLInstr* instr) {
     unwrap(fn)->AddInst(block_addr, *instr);

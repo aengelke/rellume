@@ -88,6 +88,14 @@ void BasicBlock::AddInst(const LLInstr& inst, const LLConfig& cfg)
     irb.CreateCall(intrinsicDoNothing);
 
     Lifter state(cfg, regfile);
+
+    // Check overridden implementations first.
+    const auto& override = cfg.instr_overrides.find(inst.type);
+    if (override != cfg.instr_overrides.end()) {
+        state.LiftOverride(override->second);
+        return;
+    }
+
     switch (inst.type)
     {
 #define DEF_IT(opc,handler) case LL_INS_ ## opc : handler; break;

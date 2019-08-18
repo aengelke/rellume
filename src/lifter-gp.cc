@@ -40,6 +40,15 @@
 
 namespace rellume {
 
+void Lifter::LiftOverride(llvm::Function* override) {
+    llvm::Value* mem_arg = irb.GetInsertBlock()->getParent()->arg_begin();
+    auto call_type = llvm::FunctionType::get(irb.getVoidTy(), {mem_arg->getType()}, false);
+
+    regfile.UpdateAllInMem(mem_arg);
+    irb.CreateCall(call_type, override, {mem_arg});
+    regfile.UpdateAllFromMem(mem_arg);
+}
+
 void Lifter::LiftMovgp(const LLInstr& inst, llvm::Instruction::CastOps cast) {
     // TODO: if the instruction moves the whole register, keep all facets.
     // TODO: implement this for all register-register moves.
