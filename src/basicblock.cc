@@ -92,7 +92,7 @@ void BasicBlock::AddInst(const LLInstr& inst, const LLConfig& cfg)
     // Check overridden implementations first.
     const auto& override = cfg.instr_overrides.find(inst.type);
     if (override != cfg.instr_overrides.end()) {
-        state.LiftOverride(override->second);
+        state.LiftOverride(inst, override->second);
         return;
     }
 
@@ -103,6 +103,7 @@ void BasicBlock::AddInst(const LLInstr& inst, const LLConfig& cfg)
 #undef DEF_IT
 
         default:
+    not_implemented:
             printf("Could not handle instruction at %#zx\n", inst.addr);
             assert(0);
             break;

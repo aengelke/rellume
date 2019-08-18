@@ -40,7 +40,13 @@
 
 namespace rellume {
 
-void Lifter::LiftOverride(llvm::Function* override) {
+void Lifter::LiftOverride(const LLInstr& inst, llvm::Function* override) {
+    if (inst.type == LL_INS_SYSCALL) {
+        SetReg(LLReg(LL_RT_GP64, LL_RI_C), Facet::I64,
+               GetReg(LLReg(LL_RT_IP, 0), Facet::I64));
+        SetReg(LLReg(LL_RT_GP64, 11), Facet::I64, FlagAsReg(64));
+    }
+
     llvm::Value* mem_arg = irb.GetInsertBlock()->getParent()->arg_begin();
     auto call_type = llvm::FunctionType::get(irb.getVoidTy(), {mem_arg->getType()}, false);
 
