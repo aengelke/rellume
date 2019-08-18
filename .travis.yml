@@ -1,10 +1,8 @@
 language: cpp
-dist: xenial
+dist: bionic
 
 addons:
   apt:
-    sources: &default_srcs
-      - ubuntu-toolchain-r-test
     packages: &default_pkgs
       - libglib2.0-dev
       - python3-pip
@@ -18,12 +16,9 @@ matrix:
       env:
         - COMPILERC=gcc-7
         - COMPILERCXX=g++-7
-        - LLVM_CONFIG=llvm-config-7.0
+        - LLVM_CONFIG=llvm-config-7
       addons:
         apt:
-          sources:
-            - *default_srcs
-            - llvm-toolchain-xenial-7
           packages:
             - *default_pkgs
             - llvm-7-dev
@@ -33,12 +28,9 @@ matrix:
       env:
         - COMPILERC=gcc-7
         - COMPILERCXX=g++-7
-        - LLVM_CONFIG=llvm-config-8.0
+        - LLVM_CONFIG=llvm-config-8
       addons:
         apt:
-          sources:
-            - *default_srcs
-            - llvm-toolchain-xenial-8
           packages:
             - *default_pkgs
             - llvm-8-dev
@@ -46,18 +38,15 @@ matrix:
             - g++-7
     - compiler: clang
       env:
-        - COMPILERC=clang-5.0
-        - COMPILERCXX=clang++-5.0
-        - LLVM_CONFIG=llvm-config-7.0
+        - COMPILERC=clang-7
+        - COMPILERCXX=clang++-7
+        - LLVM_CONFIG=llvm-config-7
       addons:
         apt:
-          sources:
-            - *default_srcs
-            - llvm-toolchain-xenial-7
           packages:
             - *default_pkgs
             - llvm-7-dev
-            - clang-5.0
+            - clang-7
 
 install:
   # The meson included in the Xenial repositories is too old (0.29).
