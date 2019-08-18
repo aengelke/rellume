@@ -104,7 +104,7 @@ void BasicBlock::AddInst(const LLInstr& inst, const LLConfig& cfg)
 
         default:
     not_implemented:
-            printf("Could not handle instruction at %#zx\n", inst.addr);
+            fprintf(stderr, "Could not handle instruction at %#zx\n", inst.addr);
             assert(0);
             break;
     }

@@ -317,11 +317,9 @@ end_ops:
     case FDI_JG: llinst.type = LL_INS_JG; break;
     case FDI_C_EX: if (FD_OPSIZE(&fdi) == 8) llinst.type = LL_INS_CLTQ; break;
     default: {
-#if 0
         char buf[128];
         fd_format(&fdi, buf, sizeof(buf));
-        printf("Cannot convert instruction %s\n", buf);
-#endif
+        fprintf(stderr, "cannot convert instruction %s\n", buf);
         return LLInstr::Invalid(addr);
     }
     }
