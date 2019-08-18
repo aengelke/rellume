@@ -76,8 +76,6 @@ public:
     int Decode(uintptr_t addr, MemReader memacc = nullptr);
 
 private:
-    std::unique_ptr<BasicBlock> CreateEntry();
-    std::unique_ptr<BasicBlock> CreateExit();
     BasicBlock& ResolveAddr(llvm::Value* addr, BasicBlock& def);
 
     LLConfig cfg;

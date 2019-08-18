@@ -29,6 +29,7 @@
 #include "regfile.h"
 #include "rellume/instr.h"
 #include <llvm/IR/BasicBlock.h>
+#include <llvm/IR/Function.h>
 #include <tuple>
 #include <vector>
 
@@ -38,7 +39,7 @@ namespace rellume {
 class BasicBlock
 {
 public:
-    BasicBlock(llvm::BasicBlock* llvm);
+    BasicBlock(llvm::Function* fn);
 
     BasicBlock(BasicBlock&& rhs);
     BasicBlock& operator=(BasicBlock&& rhs);

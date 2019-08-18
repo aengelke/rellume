@@ -60,17 +60,6 @@
 
 namespace rellume {
 
-std::unique_ptr<BasicBlock> Function::CreateEntry()
-{
-    llvm::BasicBlock* first_bb = llvm->empty() ? nullptr : &llvm->front();
-    llvm::BasicBlock* llvm_bb = llvm::BasicBlock::Create(llvm->getContext(), "", llvm, first_bb);
-    auto entry_block = std::make_unique<BasicBlock>(llvm_bb);
-
-    entry_block->regfile.UpdateAllFromMem(llvm->arg_begin());
-
-    return entry_block;
-}
-
 Function::Function(llvm::Module* mod)
 {
     llvm::LLVMContext& ctx = mod->getContext();
@@ -84,7 +73,9 @@ Function::Function(llvm::Module* mod)
     llvm->addParamAttr(0, llvm::Attribute::getWithAlignment(ctx, 16));
     llvm->addDereferenceableParamAttr(0, 0x190);
 
-    entry_block = CreateEntry();
+    // Create entry basic block as first block in the function.
+    entry_block = std::make_unique<BasicBlock>(llvm);
+    entry_block->regfile.UpdateAllFromMem(llvm->arg_begin());
 
     cfg.global_base_value = nullptr;
     cfg.enableOverflowIntrinsics = false;
@@ -97,30 +88,12 @@ Function::~Function() = default;
 
 void Function::AddInst(uint64_t block_addr, const LLInstr& inst)
 {
-    auto block_it = block_map.find(block_addr);
-    if (block_it == block_map.end()) {
-        if (block_map.size() == 0)
-            entry_addr = block_addr;
-
-        llvm::BasicBlock* llvm_bb = llvm::BasicBlock::Create(llvm->getContext(),
-                                                             "", llvm, nullptr);
-        block_map[block_addr] = std::make_unique<BasicBlock>(llvm_bb);
-    }
+    if (block_map.size() == 0)
+        entry_addr = block_addr;
+    if (block_map.find(block_addr) == block_map.end())
+        block_map[block_addr] = std::make_unique<BasicBlock>(llvm);
 
     block_map[block_addr]->AddInst(inst, cfg);
-}
-
-std::unique_ptr<BasicBlock> Function::CreateExit() {
-    llvm::BasicBlock* llvm_bb = llvm::BasicBlock::Create(llvm->getContext(), "", llvm, nullptr);
-    auto exit_block = std::make_unique<BasicBlock>(llvm_bb);
-
-    // Pack CPU struct and return
-    exit_block->regfile.UpdateAllInMem(llvm->arg_begin());
-
-    llvm::IRBuilder<> irb(exit_block->EndBlock());
-    irb.CreateRetVoid();
-
-    return exit_block;
 }
 
 BasicBlock& Function::ResolveAddr(llvm::Value* addr, BasicBlock& def) {
@@ -138,7 +111,11 @@ llvm::Function* Function::Lift()
     if (block_map.size() == 0)
         return NULL;
 
-    exit_block = CreateExit();
+    // Create exit block, which packs the values into memory and returns.
+    exit_block = std::make_unique<BasicBlock>(llvm);
+    exit_block->regfile.UpdateAllInMem(llvm->arg_begin());
+    llvm::IRBuilder<> irb(exit_block->EndBlock());
+    irb.CreateRetVoid();
 
     entry_block->BranchTo(*block_map[entry_addr]);
 
