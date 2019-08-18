@@ -23,9 +23,7 @@
 
 #include "rellume/instr.h"
 
-extern "C" {
 #include <fadec.h>
-}
 #include <cstdint>
 #include <cstdio>
 #include <cstring>
