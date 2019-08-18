@@ -35,35 +35,21 @@ class Value;
 namespace rellume {
 
 struct LLConfig {
-    /**
-     * \brief Whether overflow intrinsics should be used.
-     **/
-    bool enableOverflowIntrinsics;
-    /**
-     * \brief Whether unsafe floating-point optimizations may be applied.
-     * Corresponds to -ffast-math.
-     **/
-    bool enableFastMath;
+    /// Use overflow intrinsics instead of compares and bitwise operations.
+    bool enableOverflowIntrinsics = false;
+    /// Unsafe floating-point optimizations, corresponds to -ffast-math.
+    bool enableFastMath = false;
+    /// Use pointer types for 64-bit reg-reg compares instead of ptrtoint.
+    bool prefer_pointer_cmp = false;
+    /// Verify the IR after lifting.
+    bool verify_ir = false;
 
-    /// Whether to use pointer for 64-bit reg-reg compares instead of using
-    /// ptrtoint.
-    bool prefer_pointer_cmp;
-
-    /// Whether to verify the IR after lifting.
-    bool verify_ir;
-
-    /**
-     * \brief The global offset base
-     **/
-    uintptr_t global_base_addr;
-    /**
-     * \brief The global variable used to access constant memory regions. Points
-     * to globalOffsetBase.
-     **/
-    llvm::Value* global_base_value;
+    /// The global offset base
+    uintptr_t global_base_addr = 0;
+    /// The global variable used to access constant memory regions. Points to
+    /// globalOffsetBase.
+    llvm::Value* global_base_value = nullptr;
 };
-
-typedef struct LLConfig LLConfig;
 
 } // namespace
 

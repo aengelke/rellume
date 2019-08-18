@@ -47,7 +47,7 @@
 
 namespace rellume {
 
-Function::Function(llvm::Module* mod)
+Function::Function(llvm::Module* mod) : cfg()
 {
     llvm::LLVMContext& ctx = mod->getContext();
     llvm::Type* void_type = llvm::Type::getVoidTy(ctx);
@@ -63,12 +63,6 @@ Function::Function(llvm::Module* mod)
     // Create entry basic block as first block in the function.
     entry_block = std::make_unique<BasicBlock>(llvm, BasicBlock::ENTRY,
                                                llvm->arg_begin());
-
-    cfg.global_base_value = nullptr;
-    cfg.enableOverflowIntrinsics = false;
-    cfg.enableFastMath = false;
-    cfg.prefer_pointer_cmp = false;
-    cfg.verify_ir = false;
 }
 
 Function::~Function() = default;
