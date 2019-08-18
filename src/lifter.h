@@ -79,6 +79,7 @@ public:
     LifterBase(const LifterBase&) = delete;
     LifterBase& operator=(const LifterBase&) = delete;
 
+protected:
     LLConfig& cfg;
 
     /// Current register file
@@ -111,7 +112,7 @@ public:
     // Operand handling implemented in lloperand.cc
 private:
     llvm::Value* OpAddrConst(uint64_t addr);
-public:
+protected:
     llvm::Value* OpAddr(const LLInstrOp& op, llvm::Type* element_type);
     llvm::Value* OpLoad(const LLInstrOp& op, Facet dataType, Alignment alignment = ALIGN_NONE);
     void OpStoreGp(const LLInstrOp& op, llvm::Value* value, Alignment alignment = ALIGN_NONE);

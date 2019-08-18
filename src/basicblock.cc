@@ -78,16 +78,16 @@ BasicBlock::BasicBlock(llvm::Function* fn, Kind kind, llvm::Value* mem_arg) :
 
 void BasicBlock::AddInst(const LLInstr& inst, LLConfig& cfg)
 {
-    Lifter state(cfg, regfile);
-
     // Set new instruction pointer register
-    llvm::Value* ripValue = state.irb.getInt64(inst.addr + inst.len);
+    llvm::IRBuilder<> irb(EndBlock());
+    llvm::Value* ripValue = irb.getInt64(inst.addr + inst.len);
     regfile.SetReg(LLReg(LL_RT_IP, 0), Facet::I64, ripValue, true);
 
     // Add separator for debugging.
     llvm::Function* intrinsicDoNothing = llvm::Intrinsic::getDeclaration(EndBlock()->getModule(), llvm::Intrinsic::donothing, {});
-    state.irb.CreateCall(intrinsicDoNothing);
+    irb.CreateCall(intrinsicDoNothing);
 
+    Lifter state(cfg, regfile);
     switch (inst.type)
     {
 #define DEF_IT(opc,handler) case LL_INS_ ## opc : handler; break;
