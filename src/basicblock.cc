@@ -78,7 +78,7 @@ BasicBlock::BasicBlock(llvm::Function* fn, Kind kind, llvm::Value* mem_arg) :
 
 void BasicBlock::AddInst(const LLInstr& inst, LLConfig& cfg)
 {
-    Lifter state(cfg, regfile, EndBlock());
+    Lifter state(cfg, regfile);
 
     // Set new instruction pointer register
     llvm::Value* ripValue = state.irb.getInt64(inst.addr + inst.len);
