@@ -218,6 +218,7 @@ end_ops:
     case FDI_CLD: llinst.type = LL_INS_CLD; break;
     case FDI_STD: llinst.type = LL_INS_STD; break;
     case FDI_STOS: llinst.type = !FD_HAS_REP(&fdi) ? LL_INS_STOS : LL_INS_REP_STOS; break;
+    case FDI_MOVS: llinst.type = !FD_HAS_REP(&fdi) ? LL_INS_MOVS : LL_INS_REP_MOVS; break;
     case FDI_CMOVO: llinst.type = LL_INS_CMOVO; break;
     case FDI_CMOVNO: llinst.type = LL_INS_CMOVNO; break;
     case FDI_CMOVC: llinst.type = LL_INS_CMOVC; break;

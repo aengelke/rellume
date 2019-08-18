@@ -347,6 +347,43 @@ void Lifter::LiftStos(const LLInstr& inst) {
     SetRegFacet(LLReg(LL_RT_GP64, LL_RI_DI), Facet::PTR, dst_ptr);
 }
 
+void Lifter::LiftMovs(const LLInstr& inst) {
+    llvm::Type* mov_ty = irb.getIntNTy(inst.operand_size * 8);
+    llvm::Value* src_ptr = GetReg(LLReg(LL_RT_GP64, LL_RI_SI), Facet::PTR);
+    llvm::Value* dst_ptr = GetReg(LLReg(LL_RT_GP64, LL_RI_DI), Facet::PTR);
+    src_ptr = irb.CreatePointerCast(src_ptr, mov_ty->getPointerTo());
+    dst_ptr = irb.CreatePointerCast(dst_ptr, mov_ty->getPointerTo());
+
+    llvm::Value* df = GetFlag(Facet::DF);
+    llvm::Value* adj = irb.CreateSelect(df, irb.getInt64(-1), irb.getInt64(1));
+
+    // TODO: optimize REP MOVSB and other sizes with constant zero to llvm
+    // memcpy intrinsic.
+
+    auto core_op = [&]() {
+        irb.CreateStore(irb.CreateLoad(src_ptr), dst_ptr);
+        src_ptr = irb.CreateGEP(src_ptr, adj);
+        dst_ptr = irb.CreateGEP(dst_ptr, adj);
+    };
+
+    if (inst.type == LL_INS_MOVS)
+        core_op();
+    else if (inst.type == LL_INS_REP_MOVS)
+        WrapRep(core_op, {&src_ptr, &dst_ptr}); // create PHI nodes for ptrs
+    else
+        assert(false);
+
+    src_ptr = irb.CreatePointerCast(src_ptr, irb.getInt8PtrTy());
+    llvm::Value* src_int = irb.CreatePtrToInt(src_ptr, irb.getInt64Ty());
+    SetReg(LLReg(LL_RT_GP64, LL_RI_SI), Facet::I64, src_int);
+    SetRegFacet(LLReg(LL_RT_GP64, LL_RI_SI), Facet::PTR, src_ptr);
+
+    dst_ptr = irb.CreatePointerCast(dst_ptr, irb.getInt8PtrTy());
+    llvm::Value* dst_int = irb.CreatePtrToInt(dst_ptr, irb.getInt64Ty());
+    SetReg(LLReg(LL_RT_GP64, LL_RI_DI), Facet::I64, dst_int);
+    SetRegFacet(LLReg(LL_RT_GP64, LL_RI_DI), Facet::PTR, dst_ptr);
+}
+
 } // namespace
 
 /**

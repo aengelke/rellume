@@ -266,6 +266,7 @@ public:
     void LiftCld(const LLInstr& inst) { SetFlag(Facet::DF, irb.getFalse()); }
     void LiftStd(const LLInstr& inst) { SetFlag(Facet::DF, irb.getTrue()); }
     void LiftStos(const LLInstr& inst);
+    void LiftMovs(const LLInstr& inst);
 
     // llinstruction-sse.cc
     void LiftSseMovq(const LLInstr&, Facet type);
