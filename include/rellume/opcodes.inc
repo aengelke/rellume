@@ -51,6 +51,8 @@ DEF_IT(CLTQ, state.LiftCdqe(inst))
 
 DEF_IT(CLD, state.LiftCld(inst))
 DEF_IT(STD, state.LiftStd(inst))
+DEF_IT(STOS, state.LiftStos(inst))
+DEF_IT(REP_STOS, state.LiftStos(inst))
 
 DEF_IT(CMOVO, state.LiftCmovcc(inst, Condition::O))
 DEF_IT(CMOVNO, state.LiftCmovcc(inst, Condition::NO))

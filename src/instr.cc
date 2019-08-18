@@ -217,6 +217,7 @@ end_ops:
     case FDI_SAR_CL: llinst.type = LL_INS_SAR; llinst.ops[1].type = LL_OP_REG; llinst.ops[1].size = 1; llinst.ops[1].reg = LLReg::Gp(1, 1); llinst.operand_count = 2; break;
     case FDI_CLD: llinst.type = LL_INS_CLD; break;
     case FDI_STD: llinst.type = LL_INS_STD; break;
+    case FDI_STOS: llinst.type = !FD_HAS_REP(&fdi) ? LL_INS_STOS : LL_INS_REP_STOS; break;
     case FDI_CMOVO: llinst.type = LL_INS_CMOVO; break;
     case FDI_CMOVNO: llinst.type = LL_INS_CMOVNO; break;
     case FDI_CMOVC: llinst.type = LL_INS_CMOVC; break;

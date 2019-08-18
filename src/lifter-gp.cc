@@ -302,6 +302,36 @@ void Lifter::LiftCdqe(const LLInstr& inst) {
     OpStoreGp(dst_op, irb.CreateSExt(OpLoad(src_op, Facet::I), dst_ty));
 }
 
+void Lifter::LiftStos(const LLInstr& inst) {
+    LLInstrOp src_op = LLInstrOp::Reg(LLReg::Gp(inst.operand_size, LL_RI_A));
+    llvm::Value* src = OpLoad(src_op, Facet::I);
+    llvm::Value* dst_ptr = GetReg(LLReg(LL_RT_GP64, LL_RI_DI), Facet::PTR);
+    dst_ptr = irb.CreatePointerCast(dst_ptr, src->getType()->getPointerTo());
+
+    llvm::Value* df = GetFlag(Facet::DF);
+    llvm::Value* adj = irb.CreateSelect(df, irb.getInt64(-1), irb.getInt64(1));
+
+    // TODO: optimize REP STOSB and other sizes with constant zero to llvm
+    // memset intrinsic.
+
+    auto core_op = [&]() {
+        irb.CreateStore(src, dst_ptr);
+        dst_ptr = irb.CreateGEP(dst_ptr, adj);
+    };
+
+    if (inst.type == LL_INS_STOS)
+        core_op();
+    else if (inst.type == LL_INS_REP_STOS)
+        WrapRep(core_op, {&dst_ptr}); // create PHI node for dst_ptr
+    else
+        assert(false);
+
+    dst_ptr = irb.CreatePointerCast(dst_ptr, irb.getInt8PtrTy());
+    llvm::Value* dst_int = irb.CreatePtrToInt(dst_ptr, irb.getInt64Ty());
+    SetReg(LLReg(LL_RT_GP64, LL_RI_DI), Facet::I64, dst_int);
+    SetRegFacet(LLReg(LL_RT_GP64, LL_RI_DI), Facet::PTR, dst_ptr);
+}
+
 } // namespace
 
 /**
