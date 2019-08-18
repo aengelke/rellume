@@ -76,7 +76,7 @@ public:
     int Decode(uintptr_t addr, MemReader memacc = nullptr);
 
 private:
-    BasicBlock& ResolveAddr(llvm::Value* addr, BasicBlock& def);
+    BasicBlock& ResolveAddr(llvm::Value* addr);
 
     LLConfig cfg;
 

@@ -26,28 +26,16 @@
 #include "basicblock.h"
 #include "config.h"
 #include "lifter.h"
-#include <llvm-c/Analysis.h>
-#include <llvm-c/Core.h>
-#include <llvm-c/Support.h>
-#include <llvm-c/Transforms/IPO.h>
-#include <llvm-c/Transforms/Scalar.h>
-#include <llvm-c/Transforms/Vectorize.h>
 #include <llvm/ADT/SmallVector.h>
-#include <llvm/IR/BasicBlock.h>
 #include <llvm/IR/DerivedTypes.h>
 #include <llvm/IR/Function.h>
 #include <llvm/IR/GlobalValue.h>
 #include <llvm/IR/IRBuilder.h>
-#include <llvm/IR/LegacyPassManager.h>
 #include <llvm/IR/Type.h>
 #include <llvm/IR/Verifier.h>
-#include <llvm/Transforms/InstCombine/InstCombine.h>
-#include <llvm/Transforms/Scalar.h>
-#include <llvm/Transforms/Utils/Cloning.h>
 #include <cassert>
 #include <cstdint>
 #include <memory>
-#include <vector>
 #include <unordered_map>
 
 
@@ -96,20 +84,18 @@ void Function::AddInst(uint64_t block_addr, const LLInstr& inst)
     block_map[block_addr]->AddInst(inst, cfg);
 }
 
-BasicBlock& Function::ResolveAddr(llvm::Value* addr, BasicBlock& def) {
-    if (auto const_addr = llvm::dyn_cast<llvm::ConstantInt>(addr))
-    {
+BasicBlock& Function::ResolveAddr(llvm::Value* addr) {
+    if (auto const_addr = llvm::dyn_cast<llvm::ConstantInt>(addr)) {
         auto block_it = block_map.find(const_addr->getZExtValue());
         if (block_it != block_map.end())
             return *(block_it->second);
     }
-    return def;
+    return *exit_block;
 }
 
-llvm::Function* Function::Lift()
-{
+llvm::Function* Function::Lift() {
     if (block_map.size() == 0)
-        return NULL;
+        return nullptr;
 
     // Create exit block, which packs the values into memory and returns.
     exit_block = std::make_unique<BasicBlock>(llvm);
@@ -123,10 +109,10 @@ llvm::Function* Function::Lift()
         llvm::Value* next_rip = it->second->regfile.GetReg(LLReg(LL_RT_IP, 0), Facet::I64);
         if (auto select = llvm::dyn_cast<llvm::SelectInst>(next_rip)) {
             it->second->BranchTo(select->getCondition(),
-                                 ResolveAddr(select->getTrueValue(), *exit_block),
-                                 ResolveAddr(select->getFalseValue(), *exit_block));
+                                 ResolveAddr(select->getTrueValue()),
+                                 ResolveAddr(select->getFalseValue()));
         } else {
-            it->second->BranchTo(ResolveAddr(next_rip, *exit_block));
+            it->second->BranchTo(ResolveAddr(next_rip));
         }
     }
 
@@ -143,7 +129,7 @@ llvm::Function* Function::Lift()
     }
 
     if (cfg.verify_ir && llvm::verifyFunction(*(llvm), &llvm::errs()))
-        return NULL;
+        return nullptr;
 
     return llvm;
 }
