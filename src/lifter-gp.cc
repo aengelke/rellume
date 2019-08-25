@@ -237,7 +237,7 @@ void Lifter::LiftMul(const LLInstr& inst) {
 
     if (inst.operand_count == 1) {
         if (inst.ops[0].size == 1) {
-            OpStoreGp(LLInstrOp::Reg(LLReg(LL_RT_GP16, LL_RI_A)), ext_res);
+            OpStoreGp(LLInstrOp({LL_RT_GP16, LL_RI_A}), ext_res);
         } else {
             // Don't use short_res to avoid having two multiplications.
             // TODO: is this concern still valid?
@@ -245,8 +245,8 @@ void Lifter::LiftMul(const LLInstr& inst) {
             llvm::Value* res_a = irb.CreateTrunc(ext_res, value_ty);
             llvm::Value* high = irb.CreateLShr(ext_res, inst.ops[0].size*8);
             llvm::Value* res_d = irb.CreateTrunc(high, value_ty);
-            OpStoreGp(LLInstrOp::Reg(LLReg::Gp(inst.ops[0].size, LL_RI_A)), res_a);
-            OpStoreGp(LLInstrOp::Reg(LLReg::Gp(inst.ops[0].size, LL_RI_D)), res_d);
+            OpStoreGp(LLInstrOp(LLReg::Gp(inst.ops[0].size, LL_RI_A)), res_a);
+            OpStoreGp(LLInstrOp(LLReg::Gp(inst.ops[0].size, LL_RI_D)), res_d);
         }
     } else {
         OpStoreGp(inst.ops[0], short_res);
@@ -310,15 +310,15 @@ void Lifter::LiftSetcc(const LLInstr& inst, Condition cond) {
 }
 
 void Lifter::LiftCdqe(const LLInstr& inst) {
-    LLInstrOp src_op = LLInstrOp::Reg(LLReg::Gp(inst.operand_size/2, LL_RI_A));
-    LLInstrOp dst_op = LLInstrOp::Reg(LLReg::Gp(inst.operand_size, LL_RI_A));
+    LLInstrOp src_op = LLInstrOp(LLReg::Gp(inst.operand_size/2, LL_RI_A));
+    LLInstrOp dst_op = LLInstrOp(LLReg::Gp(inst.operand_size, LL_RI_A));
     llvm::Type* dst_ty = irb.getIntNTy(inst.operand_size * 8);
 
     OpStoreGp(dst_op, irb.CreateSExt(OpLoad(src_op, Facet::I), dst_ty));
 }
 
 void Lifter::LiftStos(const LLInstr& inst) {
-    LLInstrOp src_op = LLInstrOp::Reg(LLReg::Gp(inst.operand_size, LL_RI_A));
+    LLInstrOp src_op = LLInstrOp(LLReg::Gp(inst.operand_size, LL_RI_A));
     llvm::Value* src = OpLoad(src_op, Facet::I);
     llvm::Value* dst_ptr = GetReg(LLReg(LL_RT_GP64, LL_RI_DI), Facet::PTR);
     dst_ptr = irb.CreatePointerCast(dst_ptr, src->getType()->getPointerTo());

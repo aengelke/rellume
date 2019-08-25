@@ -130,10 +130,8 @@ struct LLInstrOp {
     unsigned size;
 
 #if defined(__cplusplus) && defined(RELLUME_ENABLE_CPP_HEADER)
-    static LLInstrOp Reg(const LLReg& reg) {
-        unsigned sz = reg.Size();
-        return LLInstrOp{0, LL_OP_REG, reg, LLReg::None(), 0, LL_RI_None, 0, sz};
-    }
+    LLInstrOp() : type(LL_OP_NONE) {}
+    LLInstrOp(const LLReg reg) : type(LL_OP_REG), reg(reg), size(reg.Size()) {}
 #endif
 };
 

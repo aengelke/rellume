@@ -242,7 +242,7 @@ public:
     }
     void LiftLeave(const LLInstr& inst) {
         llvm::Value* val = StackPop(LLReg(LL_RT_GP64, LL_RI_BP));
-        OpStoreGp(LLInstrOp::Reg(LLReg(LL_RT_GP64, LL_RI_BP)), val);
+        OpStoreGp(LLInstrOp(LLReg(LL_RT_GP64, LL_RI_BP)), val);
     }
 
     void LiftJmp(const LLInstr& inst) {
@@ -260,7 +260,7 @@ public:
         SetReg(LLReg(LL_RT_IP, 0), Facet::I64, new_rip);
     }
     void LiftRet(const LLInstr& inst) {
-        OpStoreGp(LLInstrOp::Reg(LLReg(LL_RT_IP, 0)), StackPop());
+        OpStoreGp(LLInstrOp(LLReg(LL_RT_IP, 0)), StackPop());
     }
 
     void LiftCld(const LLInstr& inst) { SetFlag(Facet::DF, irb.getFalse()); }
