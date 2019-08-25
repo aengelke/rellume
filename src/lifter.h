@@ -111,7 +111,7 @@ protected:
 
     // Operand handling implemented in lloperand.cc
 private:
-    llvm::Value* OpAddrConst(uint64_t addr);
+    llvm::Value* OpAddrConst(uint64_t addr, llvm::PointerType* ptr_ty);
 protected:
     llvm::Value* OpAddr(const LLInstrOp& op, llvm::Type* element_type);
     llvm::Value* OpLoad(const LLInstrOp& op, Facet dataType, Alignment alignment = ALIGN_NONE);

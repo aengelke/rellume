@@ -45,18 +45,19 @@
 namespace rellume {
 
 llvm::Value*
-LifterBase::OpAddrConst(uint64_t addr)
+LifterBase::OpAddrConst(uint64_t addr, llvm::PointerType* ptr_ty)
 {
     if (addr == 0)
-        return llvm::ConstantPointerNull::get(irb.getInt8PtrTy());
+        return llvm::ConstantPointerNull::get(ptr_ty);
 
     if (cfg.global_base_value != nullptr)
     {
         uintptr_t offset = addr - cfg.global_base_addr;
-        return irb.CreateGEP(cfg.global_base_value, irb.getInt64(offset));
+        auto ptr = irb.CreateGEP(cfg.global_base_value, irb.getInt64(offset));
+        return irb.CreatePointerCast(ptr, ptr_ty);
     }
 
-    return irb.CreateIntToPtr(irb.getInt64(addr), irb.getInt8PtrTy());
+    return irb.CreateIntToPtr(irb.getInt64(addr), ptr_ty);
 }
 
 llvm::Value*
@@ -85,7 +86,7 @@ LifterBase::OpAddr(const LLInstrOp& op, llvm::Type* element_type)
         if (llvm::isa<llvm::Constant>(base))
         {
             auto base_addr = llvm::cast<llvm::ConstantInt>(GetReg(op.reg, Facet::I64));
-            base = OpAddrConst(base_addr->getZExtValue() + op.val);
+            base = OpAddrConst(base_addr->getZExtValue() + op.val, elem_ptr_ty);
         }
         else if (op.val != 0)
         {
@@ -102,7 +103,7 @@ LifterBase::OpAddr(const LLInstrOp& op, llvm::Type* element_type)
     }
     else
     {
-        base = OpAddrConst(op.val);
+        base = OpAddrConst(op.val, elem_ptr_ty);
     }
 
     if (op.scale != 0)
