@@ -283,6 +283,7 @@ public:
     void LiftSseShufps(const LLInstr&);
     void LiftSseInsertps(const LLInstr&);
     void LiftSsePcmpeqb(const LLInstr&);
+    void LiftSsePmovmskb(const LLInstr&);
 };
 
 } // namespace

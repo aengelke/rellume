@@ -191,6 +191,14 @@ void Lifter::LiftSsePcmpeqb(const LLInstr& inst) {
     OpStoreVec(inst.ops[0], irb.CreateSExt(eq, op1->getType()));
 }
 
+void Lifter::LiftSsePmovmskb(const LLInstr& inst) {
+    llvm::Value* src = OpLoad(inst.ops[1], Facet::VI8, ALIGN_MAX);
+    llvm::Value* zero = llvm::Constant::getNullValue(src->getType());
+    llvm::Value* bitvec = irb.CreateICmpSLT(src, zero);
+    llvm::Value* bits = irb.CreateBitCast(bitvec, irb.getIntNTy(inst.ops[1].size));
+    OpStoreGp(inst.ops[0], irb.CreateZExt(bits, irb.getInt64Ty()));
+}
+
 } // namespace
 
 /**
