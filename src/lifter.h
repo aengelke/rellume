@@ -219,6 +219,7 @@ public:
     void LiftAdd(const LLInstr&);
     void LiftSub(const LLInstr&);
     void LiftCmp(const LLInstr&);
+    void LiftCmpxchg(const LLInstr&);
     void LiftAndOrXor(const LLInstr& inst, llvm::Instruction::BinaryOps op,
                       bool writeback = true);
     void LiftNot(const LLInstr&);

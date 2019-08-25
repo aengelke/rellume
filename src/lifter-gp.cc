@@ -135,6 +135,26 @@ void Lifter::LiftCmp(const LLInstr& inst) {
     }
 }
 
+void Lifter::LiftCmpxchg(const LLInstr& inst) {
+    auto acc = OpLoad(LLInstrOp(LLReg::Gp(inst.ops[0].size, LL_RI_A)), Facet::I);
+    auto dst = OpLoad(inst.ops[0], Facet::I);
+    auto src = OpLoad(inst.ops[1], Facet::I);
+
+    // Full compare with acc and dst
+    llvm::Value* cmp_res = irb.CreateSub(acc, dst);
+    SetFlag(Facet::ZF, irb.CreateICmpEQ(acc, dst));
+    FlagCalcS(cmp_res);
+    FlagCalcP(cmp_res);
+    FlagCalcA(cmp_res, acc, dst);
+    FlagCalcCSub(cmp_res, acc, dst);
+    FlagCalcOSub(cmp_res, acc, dst);
+
+    // Store SRC if DST=ACC, else store DST again (i.e. don't change memory).
+    OpStoreGp(inst.ops[0], irb.CreateSelect(GetFlag(Facet::ZF), src, dst));
+    // ACC gets the value from memory.
+    OpStoreGp(LLInstrOp(LLReg::Gp(inst.ops[0].size, LL_RI_A)), dst);
+}
+
 void Lifter::LiftAndOrXor(const LLInstr& inst, llvm::Instruction::BinaryOps op,
                            bool writeback) {
     llvm::Value* res = irb.CreateBinOp(op, OpLoad(inst.ops[0], Facet::I),
