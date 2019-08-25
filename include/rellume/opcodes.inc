@@ -27,6 +27,7 @@ DEF_IT(CALL, state.LiftCall(inst))
 DEF_IT(RET, state.LiftRet(inst))
 DEF_IT(SYSCALL, goto not_implemented)
 DEF_IT(CPUID, goto not_implemented)
+DEF_IT(RDTSC, goto not_implemented)
 
 // Defined in llinstruction-gp.c
 DEF_IT(MOV, state.LiftMovgp(inst, llvm::Instruction::SExt))
