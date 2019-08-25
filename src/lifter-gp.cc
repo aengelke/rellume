@@ -238,7 +238,7 @@ void Lifter::LiftMul(const LLInstr& inst) {
     llvm::Value* op2;
     if (inst.operand_count == 1) {
         op1 = OpLoad(inst.ops[0], Facet::I);
-        op2 = OpLoad(LLInstrOp::Reg(LLReg::Gp(inst.ops[0].size, LL_RI_A)), Facet::I);
+        op2 = OpLoad(LLInstrOp(LLReg::Gp(inst.ops[0].size, LL_RI_A)), Facet::I);
     } else {
         op1 = OpLoad(inst.ops[inst.operand_count - 2], Facet::I);
         op2 = OpLoad(inst.ops[inst.operand_count - 1], Facet::I);
