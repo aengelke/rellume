@@ -71,9 +71,10 @@ LifterBase::OpAddr(const LLInstrOp& op, llvm::Type* element_type)
     default: assert(false); return nullptr;
     }
 
-    llvm::Type* scale_type = nullptr;
+    llvm::PointerType* elem_ptr_ty = element_type->getPointerTo(addrspace);
+    llvm::PointerType* scale_type = nullptr;
     if (op.scale * 8u == element_type->getPrimitiveSizeInBits())
-        scale_type = element_type->getPointerTo(addrspace);
+        scale_type = elem_ptr_ty;
     else if (op.scale != 0)
         scale_type = irb.getIntNTy(op.scale*8)->getPointerTo(addrspace);
 
@@ -120,7 +121,7 @@ LifterBase::OpAddr(const LLInstrOp& op, llvm::Type* element_type)
         llvm::Value* offset = GetReg(op.ireg, Facet::I64);
         if (use_mul) {
             base = irb.CreateMul(offset, irb.getInt64(op.scale));
-            base = irb.CreateIntToPtr(base, scale_type);
+            base = irb.CreateIntToPtr(base, elem_ptr_ty);
         } else {
             base = irb.CreatePointerCast(base, scale_type);
             base = irb.CreateGEP(base, offset);
@@ -132,10 +133,10 @@ LifterBase::OpAddr(const LLInstrOp& op, llvm::Type* element_type)
         base = irb.CreatePtrToInt(base, irb.getInt64Ty());
         base = irb.CreateTrunc(base, irb.getInt32Ty());
         base = irb.CreateZExt(base, irb.getInt64Ty());
-        base = irb.CreateIntToPtr(base, element_type->getPointerTo(addrspace));
+        base = irb.CreateIntToPtr(base, elem_ptr_ty);
     }
 
-    return irb.CreatePointerCast(base, element_type->getPointerTo(addrspace));
+    return irb.CreatePointerCast(base, elem_ptr_ty);
 }
 
 static void
