@@ -53,6 +53,8 @@ DEF_IT(DIV, state.LiftDiv(inst))
 DEF_IT(SHL, state.LiftShift(inst, llvm::Instruction::Shl))
 DEF_IT(SHR, state.LiftShift(inst, llvm::Instruction::LShr))
 DEF_IT(SAR, state.LiftShift(inst, llvm::Instruction::AShr))
+DEF_IT(BSF, state.LiftBsf(inst))
+DEF_IT(TZCNT, goto not_implemented)
 DEF_IT(CLTQ, state.LiftCdqe(inst))
 
 DEF_IT(CLD, state.LiftCld(inst))

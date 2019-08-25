@@ -208,3 +208,20 @@ code="not al" rax=q:0xffffffed => rax=q:0xffffff12
 code="not al" rax=q:0xffffffff => rax=q:0xffffff00
 code="not al" rax=q:0x0 => rax=q:0xff
 code="not byte ptr [0x2000000]" m2000000=0011223344556677 => m2000000=ff11223344556677
+
+code="bsf rdx, rax" rax=q:0xabcdef9012345678 => rdx=q:0x3 zf=00
+code="bsf rdx, rax" rax=q:0x8000000000000000 => rdx=q:0x3f zf=00
+code="bsf rdx, rax" rax=q:0xffffffffffffffff => rdx=q:0x0 zf=00
+code="bsf rdx, rax" rax=q:0x1 => rdx=q:0x0 zf=00
+code="bsf rdx, rax" rax=q:0x0 => rdx=undef zf=01
+code="bsf edx, eax" rax=q:0x12345678 => rdx=q:0x3 zf=00
+code="bsf edx, eax" rax=q:0x80000000 => rdx=q:0x1f zf=00
+code="bsf edx, eax" rax=q:0xffffffff => rdx=q:0x0 zf=00
+code="bsf edx, eax" rax=q:0x1 => rdx=q:0x0 zf=00
+code="bsf edx, eax" rax=q:0x0 => rdx=undef zf=01
+code="bsf dx, ax" rax=q:0x12345678 rdx=q:0x0 => rdx=q:0x3 zf=00
+code="bsf dx, ax" rax=q:0x8000 rdx=q:0x0 => rdx=q:0xf zf=00
+code="bsf dx, ax" rax=q:0xffff rdx=q:0x0 => rdx=q:0x0 zf=00
+code="bsf dx, ax" rax=q:0x1 rdx=q:0x0 => rdx=q:0x0 zf=00
+code="bsf dx, ax" rax=q:0x0 rdx=q:0x0 => rdx=undef zf=01
+code="bsf dx, ax" rax=q:0xffff0000 rdx=q:0x0 => rdx=undef zf=01

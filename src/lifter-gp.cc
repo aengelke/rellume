@@ -388,6 +388,21 @@ void Lifter::LiftCdqe(const LLInstr& inst) {
     OpStoreGp(dst_op, irb.CreateSExt(OpLoad(src_op, Facet::I), dst_ty));
 }
 
+void Lifter::LiftBsf(const LLInstr& inst) {
+    llvm::Value* src = OpLoad(inst.ops[1], Facet::I);
+    llvm::Value* res = irb.CreateBinaryIntrinsic(
+            llvm::Intrinsic::cttz, src, /*is_zero_undef=*/irb.getTrue());
+    OpStoreGp(inst.ops[0], res);
+
+    llvm::Value* undef = llvm::UndefValue::get(irb.getInt1Ty());
+    FlagCalcZ(src);
+    SetFlag(Facet::SF, undef);
+    SetFlag(Facet::PF, undef);
+    SetFlag(Facet::AF, undef);
+    SetFlag(Facet::OF, undef);
+    SetFlag(Facet::CF, undef);
+}
+
 void Lifter::LiftStos(const LLInstr& inst) {
     LLInstrOp src_op = LLInstrOp(LLReg::Gp(inst.operand_size, LL_RI_A));
     llvm::Value* src = OpLoad(src_op, Facet::I);

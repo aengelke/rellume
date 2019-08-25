@@ -220,6 +220,7 @@ end_ops:
     case FDI_SHR_CL: llinst.type = LL_INS_SHR; llinst.ops[1].type = LL_OP_REG; llinst.ops[1].size = 1; llinst.ops[1].reg = LLReg::Gp(1, 1); llinst.operand_count = 2; break;
     case FDI_SAR_IMM: llinst.type = LL_INS_SAR; break;
     case FDI_SAR_CL: llinst.type = LL_INS_SAR; llinst.ops[1].type = LL_OP_REG; llinst.ops[1].size = 1; llinst.ops[1].reg = LLReg::Gp(1, 1); llinst.operand_count = 2; break;
+    case FDI_BSF_TZCNT: llinst.type = !FD_HAS_REP(&fdi) ? LL_INS_BSF : LL_INS_TZCNT; break;
     case FDI_CLD: llinst.type = LL_INS_CLD; break;
     case FDI_STD: llinst.type = LL_INS_STD; break;
     case FDI_STOS: llinst.type = !FD_HAS_REP(&fdi) ? LL_INS_STOS : LL_INS_REP_STOS; break;
