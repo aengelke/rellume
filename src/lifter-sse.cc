@@ -184,6 +184,13 @@ void Lifter::LiftSseInsertps(const LLInstr& inst) {
     OpStoreVec(inst.ops[0], dst);
 }
 
+void Lifter::LiftSsePcmpeqb(const LLInstr& inst) {
+    llvm::Value* op1 = OpLoad(inst.ops[0], Facet::VI8, ALIGN_MAX);
+    llvm::Value* op2 = OpLoad(inst.ops[1], Facet::VI8, ALIGN_MAX);
+    llvm::Value* eq = irb.CreateICmpEQ(op1, op2);
+    OpStoreVec(inst.ops[0], irb.CreateSExt(eq, op1->getType()));
+}
+
 } // namespace
 
 /**

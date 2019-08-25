@@ -282,6 +282,7 @@ public:
     void LiftSseUnpck(const LLInstr&, Facet type);
     void LiftSseShufps(const LLInstr&);
     void LiftSseInsertps(const LLInstr&);
+    void LiftSsePcmpeqb(const LLInstr&);
 };
 
 } // namespace

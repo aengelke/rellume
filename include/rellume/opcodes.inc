@@ -141,6 +141,7 @@ DEF_IT(XORPS, state.LiftSseBinOp(inst, llvm::Instruction::Xor, Facet::VI32))
 DEF_IT(XORPD, state.LiftSseBinOp(inst, llvm::Instruction::Xor, Facet::VI64))
 
 DEF_IT(PXOR, state.LiftSseBinOp(inst, llvm::Instruction::Xor, Facet::VI64))
+DEF_IT(PCMPEQB, state.LiftSsePcmpeqb(inst))
 
 // Jumps are handled in the basic block generation code.
 DEF_IT(JMP, state.LiftJmp(inst))
