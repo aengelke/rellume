@@ -271,6 +271,57 @@ void Lifter::LiftMul(const LLInstr& inst) {
     SetFlag(Facet::CF, overflow);
 }
 
+void Lifter::LiftDiv(const LLInstr& inst) {
+    bool sign = inst.type == LL_INS_IDIV;
+    auto ext_op = sign ? llvm::Instruction::SExt : llvm::Instruction::ZExt;
+    auto div_op = sign ? llvm::Instruction::SDiv : llvm::Instruction::UDiv;
+    auto rem_op = sign ? llvm::Instruction::SRem : llvm::Instruction::URem;
+
+    // TODO: raise #DE on division by zero or overflow.
+
+    auto ex_ty = irb.getIntNTy(inst.ops[0].size*8 * 2);
+
+    llvm::Value* dividend;
+    if (inst.ops[0].size == 1) {
+        // Dividend is AX
+        dividend = OpLoad(LLInstrOp({LL_RT_GP16, LL_RI_A}), Facet::I);
+    } else {
+        // Dividend is DX:AX/EDX:EAX/RDX:RAX
+        auto low = OpLoad(LLInstrOp(LLReg::Gp(inst.ops[0].size, LL_RI_A)), Facet::I);
+        auto high = OpLoad(LLInstrOp(LLReg::Gp(inst.ops[0].size, LL_RI_D)), Facet::I);
+        high = irb.CreateShl(irb.CreateZExt(high, ex_ty), inst.ops[0].size*8);
+        dividend = irb.CreateOr(irb.CreateZExt(low, ex_ty), high);
+    }
+
+    // Divisor is the operand
+    auto divisor = irb.CreateCast(ext_op, OpLoad(inst.ops[0], Facet::I), ex_ty);
+
+    auto quot = irb.CreateBinOp(div_op, dividend, divisor);
+    auto rem = irb.CreateBinOp(rem_op, dividend, divisor);
+
+    auto val_ty = irb.getIntNTy(inst.ops[0].size*8);
+    quot = irb.CreateTrunc(quot, val_ty);
+    rem = irb.CreateTrunc(rem, val_ty);
+
+    if (inst.ops[0].size == 1) {
+        // Quotient is AL, remainder is AH
+        OpStoreGp(LLInstrOp({LL_RT_GP8Leg, LL_RI_A}), quot);
+        OpStoreGp(LLInstrOp({LL_RT_GP8Leg, LL_RI_AH}), rem);
+    } else {
+        // Quotient is AX/EAX/RAX, remainer is DX/EDX/RDX
+        OpStoreGp(LLInstrOp(LLReg::Gp(inst.ops[0].size, LL_RI_A)), quot);
+        OpStoreGp(LLInstrOp(LLReg::Gp(inst.ops[0].size, LL_RI_D)), rem);
+    }
+
+    llvm::Value* undef = llvm::UndefValue::get(irb.getInt1Ty());
+    SetFlag(Facet::ZF, undef);
+    SetFlag(Facet::SF, undef);
+    SetFlag(Facet::PF, undef);
+    SetFlag(Facet::AF, undef);
+    SetFlag(Facet::OF, undef);
+    SetFlag(Facet::CF, undef);
+}
+
 void
 Lifter::LiftLea(const LLInstr& inst)
 {

@@ -210,6 +210,8 @@ end_ops:
     case FDI_IMUL2: llinst.type = LL_INS_IMUL; break;
     case FDI_IMUL3: llinst.type = LL_INS_IMUL; break;
     case FDI_MUL: llinst.type = LL_INS_MUL; break;
+    case FDI_IDIV: llinst.type = LL_INS_IDIV; break;
+    case FDI_DIV: llinst.type = LL_INS_DIV; break;
     case FDI_SHL_IMM: llinst.type = LL_INS_SHL; break;
     case FDI_SHL_CL: llinst.type = LL_INS_SHL; llinst.ops[1].type = LL_OP_REG; llinst.ops[1].size = 1; llinst.ops[1].reg = LLReg::Gp(1, 1); llinst.operand_count = 2; break;
     case FDI_SHR_IMM: llinst.type = LL_INS_SHR; break;

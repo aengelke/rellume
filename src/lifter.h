@@ -226,6 +226,7 @@ public:
     void LiftIncDec(const LLInstr&);
     void LiftShift(const LLInstr&, llvm::Instruction::BinaryOps);
     void LiftMul(const LLInstr&);
+    void LiftDiv(const LLInstr&);
     void LiftLea(const LLInstr&);
     void LiftCmovcc(const LLInstr& inst, Condition cond);
     void LiftSetcc(const LLInstr& inst, Condition cond);
