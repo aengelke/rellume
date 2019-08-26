@@ -192,6 +192,8 @@ end_ops:
     case FDI_ADD_IMM: llinst.type = LL_INS_ADD; break;
     case FDI_SUB: llinst.type = LL_INS_SUB; break;
     case FDI_SUB_IMM: llinst.type = LL_INS_SUB; break;
+    case FDI_SBB: llinst.type = LL_INS_SBB; break;
+    case FDI_SBB_IMM: llinst.type = LL_INS_SBB; break;
     case FDI_CMP: llinst.type = LL_INS_CMP; break;
     case FDI_CMP_IMM: llinst.type = LL_INS_CMP; break;
     case FDI_CMPXCHG: llinst.type = LL_INS_CMPXCHG; break;
