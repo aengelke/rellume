@@ -249,6 +249,36 @@ void Lifter::LiftShift(const LLInstr& inst, llvm::Instruction::BinaryOps op) {
     SetFlag(Facet::CF, undef);
 }
 
+void Lifter::LiftRotate(const LLInstr& inst) {
+    llvm::Value* src = OpLoad(inst.ops[0], Facet::I);
+    llvm::Type* ty = src->getType();
+    llvm::Value* shift;
+    if (inst.operand_count == 1) {
+        shift = llvm::ConstantInt::get(ty, 1);
+    } else {
+        unsigned mask = inst.ops[0].size == 8 ? 0x3f : 0x1f;
+        shift = irb.CreateZExt(OpLoad(inst.ops[1], Facet::I), ty);
+        // TODO: support small shifts with amount > len
+        // LLVM sets the result to poison if this occurs.
+        shift = irb.CreateAnd(shift, mask);
+    }
+
+    auto id = inst.type == LL_INS_ROL ? llvm::Intrinsic::fshl
+                                      : llvm::Intrinsic::fshr;
+    llvm::Module* module = irb.GetInsertBlock()->getModule();
+    auto intrinsic = llvm::Intrinsic::getDeclaration(module, id, {ty});
+    llvm::Value* res = irb.CreateCall(intrinsic, {src, src, shift});
+    OpStoreGp(inst.ops[0], res);
+
+    // SF, ZF, AF, and PF are unaffected.
+    // TODO: calculate flags correctly
+    // CF is affected only if count > 0
+    // OF is affected only if count > 0, but undefined if count > 1
+    llvm::Value* undef = llvm::UndefValue::get(irb.getInt1Ty());
+    SetFlag(Facet::OF, undef);
+    SetFlag(Facet::CF, undef);
+}
+
 void Lifter::LiftMul(const LLInstr& inst) {
     llvm::Value* op1;
     llvm::Value* op2;
