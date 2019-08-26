@@ -221,6 +221,7 @@ public:
     void LiftSbb(const LLInstr&);
     void LiftCmp(const LLInstr&);
     void LiftCmpxchg(const LLInstr&);
+    void LiftXchg(const LLInstr&);
     void LiftAndOrXor(const LLInstr& inst, llvm::Instruction::BinaryOps op,
                       bool writeback = true);
     void LiftNot(const LLInstr&);

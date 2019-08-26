@@ -171,6 +171,14 @@ void Lifter::LiftCmpxchg(const LLInstr& inst) {
     OpStoreGp(LLInstrOp(LLReg::Gp(inst.ops[0].size, LL_RI_A)), dst);
 }
 
+void Lifter::LiftXchg(const LLInstr& inst) {
+    // TODO: atomic memory operation
+    llvm::Value* op1 = OpLoad(inst.ops[0], Facet::I);
+    llvm::Value* op2 = OpLoad(inst.ops[1], Facet::I);
+    OpStoreGp(inst.ops[0], op2);
+    OpStoreGp(inst.ops[1], op1);
+}
+
 void Lifter::LiftAndOrXor(const LLInstr& inst, llvm::Instruction::BinaryOps op,
                            bool writeback) {
     llvm::Value* res = irb.CreateBinOp(op, OpLoad(inst.ops[0], Facet::I),
