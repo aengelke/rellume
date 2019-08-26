@@ -133,13 +133,21 @@ void Lifter::LiftSseUnpck(const LLInstr& inst, Facet op_type) {
     // We always fetch 128 bits, as per SDM.
     llvm::Value* op2 = OpLoad(inst.ops[1], op_type, ALIGN_MAX);
     llvm::Value* res = nullptr;
-    if (inst.type == LL_INS_UNPCKLPS)
+    if (inst.type == LL_INS_PUNPCKLBW)
+        res = irb.CreateShuffleVector(op1, op2, {0, 16, 1, 17, 2, 18, 3, 19, 4, 20, 5, 21, 6, 22, 7, 23});
+    else if (inst.type == LL_INS_PUNPCKHBW)
+        res = irb.CreateShuffleVector(op1, op2, {8, 24, 9, 25, 10, 26, 11, 27, 12, 28, 13, 29, 14, 30, 15, 31});
+    else if (inst.type == LL_INS_PUNPCKLWD)
+        res = irb.CreateShuffleVector(op1, op2, {0, 8, 1, 9, 2, 10, 3, 11});
+    else if (inst.type == LL_INS_PUNPCKHWD)
+        res = irb.CreateShuffleVector(op1, op2, {4, 12, 5, 13, 6, 14, 7, 15});
+    else if (inst.type == LL_INS_UNPCKLPS || inst.type == LL_INS_PUNPCKLDQ)
         res = irb.CreateShuffleVector(op1, op2, {0, 4, 1, 5});
-    else if (inst.type == LL_INS_UNPCKLPD)
+    else if (inst.type == LL_INS_UNPCKLPD || inst.type == LL_INS_PUNPCKLQDQ)
         res = irb.CreateShuffleVector(op1, op2, {0, 2});
-    else if (inst.type == LL_INS_UNPCKHPS)
+    else if (inst.type == LL_INS_UNPCKHPS || inst.type == LL_INS_PUNPCKHDQ)
         res = irb.CreateShuffleVector(op1, op2, {2, 6, 3, 7});
-    else if (inst.type == LL_INS_UNPCKHPD)
+    else if (inst.type == LL_INS_UNPCKHPD || inst.type == LL_INS_PUNPCKHQDQ)
         res = irb.CreateShuffleVector(op1, op2, {1, 3});
     else
         assert(0);

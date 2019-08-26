@@ -274,6 +274,14 @@ end_ops:
     case FDI_SSE_MOVLPD: llinst.type = LL_INS_MOVLPD; break;
     case FDI_SSE_MOVHPS: llinst.type = LL_INS_MOVHPS; break;
     case FDI_SSE_MOVHPD: llinst.type = LL_INS_MOVHPD; break;
+    case FDI_SSE_PUNPCKLBW: llinst.type = LL_INS_PUNPCKLBW; break;
+    case FDI_SSE_PUNPCKLWD: llinst.type = LL_INS_PUNPCKLWD; break;
+    case FDI_SSE_PUNPCKLDQ: llinst.type = LL_INS_PUNPCKLDQ; break;
+    case FDI_SSE_PUNPCKLQDQ: llinst.type = LL_INS_PUNPCKLQDQ; break;
+    case FDI_SSE_PUNPCKHBW: llinst.type = LL_INS_PUNPCKHBW; break;
+    case FDI_SSE_PUNPCKHWD: llinst.type = LL_INS_PUNPCKHWD; break;
+    case FDI_SSE_PUNPCKHDQ: llinst.type = LL_INS_PUNPCKHDQ; break;
+    case FDI_SSE_PUNPCKHQDQ: llinst.type = LL_INS_PUNPCKHQDQ; break;
     case FDI_SSE_UNPACKLPS: llinst.type = LL_INS_UNPCKLPS; break;
     case FDI_SSE_UNPACKLPD: llinst.type = LL_INS_UNPCKLPD; break;
     case FDI_SSE_UNPACKHPS: llinst.type = LL_INS_UNPCKHPS; break;
