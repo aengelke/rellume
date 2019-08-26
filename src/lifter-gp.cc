@@ -404,10 +404,11 @@ void Lifter::LiftCdqe(const LLInstr& inst) {
     OpStoreGp(dst_op, irb.CreateSExt(OpLoad(src_op, Facet::I), dst_ty));
 }
 
-void Lifter::LiftBsf(const LLInstr& inst) {
+void Lifter::LiftBitscan(const LLInstr& inst, bool trailing) {
     llvm::Value* src = OpLoad(inst.ops[1], Facet::I);
+    auto id = trailing ? llvm::Intrinsic::cttz : llvm::Intrinsic::ctlz;
     llvm::Value* res = irb.CreateBinaryIntrinsic(
-            llvm::Intrinsic::cttz, src, /*is_zero_undef=*/irb.getTrue());
+            id, src, /*is_zero_undef=*/irb.getTrue());
     OpStoreGp(inst.ops[0], res);
 
     llvm::Value* undef = llvm::UndefValue::get(irb.getInt1Ty());

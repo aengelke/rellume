@@ -233,7 +233,7 @@ public:
     void LiftCmovcc(const LLInstr& inst, Condition cond);
     void LiftSetcc(const LLInstr& inst, Condition cond);
     void LiftCdqe(const LLInstr& inst);
-    void LiftBsf(const LLInstr& inst);
+    void LiftBitscan(const LLInstr& inst, bool trailing);
 
     void LiftPush(const LLInstr& inst) {
         StackPush(OpLoad(inst.ops[0], Facet::I));
