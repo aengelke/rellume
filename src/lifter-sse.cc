@@ -27,6 +27,7 @@
 #include "rellume/instr.h"
 #include <llvm/IR/IRBuilder.h>
 #include <llvm/IR/Value.h>
+#include <algorithm>
 
 
 
@@ -200,6 +201,17 @@ void Lifter::LiftSseInsertps(const LLInstr& inst) {
     }
 
     OpStoreVec(inst.ops[0], dst);
+}
+
+void Lifter::LiftSsePslldq(const LLInstr& inst) {
+    uint32_t shift = std::max(static_cast<uint32_t>(inst.ops[1].val), 16u);
+    uint32_t mask[16];
+    for (int i = 0; i < 16; i++)
+        mask[i] = i + (16 - shift);
+    llvm::Value* src = OpLoad(inst.ops[0], Facet::V16I8);
+    llvm::Value* zero = llvm::Constant::getNullValue(src->getType());
+    llvm::Value* res = irb.CreateShuffleVector(zero, src, mask);
+    OpStoreVec(inst.ops[0], res);
 }
 
 void Lifter::LiftSsePcmpeqb(const LLInstr& inst) {

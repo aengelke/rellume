@@ -168,6 +168,7 @@ DEF_IT(PSUBB, state.LiftSseBinOp(inst, llvm::Instruction::Sub, Facet::V16I8))
 DEF_IT(PSUBW, state.LiftSseBinOp(inst, llvm::Instruction::Sub, Facet::V8I16))
 DEF_IT(PSUBD, state.LiftSseBinOp(inst, llvm::Instruction::Sub, Facet::V4I32))
 DEF_IT(PSUBQ, state.LiftSseBinOp(inst, llvm::Instruction::Sub, Facet::V2I64))
+DEF_IT(PSLLDQ, state.LiftSsePslldq(inst))
 DEF_IT(PCMPEQB, state.LiftSsePcmpeqb(inst))
 DEF_IT(PMOVMSKB, state.LiftSsePmovmskb(inst))
 

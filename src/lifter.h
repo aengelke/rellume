@@ -287,6 +287,7 @@ public:
     void LiftSseShufps(const LLInstr&);
     void LiftSsePshufd(const LLInstr&);
     void LiftSseInsertps(const LLInstr&);
+    void LiftSsePslldq(const LLInstr&);
     void LiftSsePcmpeqb(const LLInstr&);
     void LiftSsePmovmskb(const LLInstr&);
 };
