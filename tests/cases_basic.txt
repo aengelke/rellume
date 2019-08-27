@@ -188,6 +188,27 @@ code="cmp al,0xff" rax=q:0xeeeeeeee => of=00 sf=01 zf=00 af=01 pf=00 cf=01
 code="cmp al,0x99" rax=q:0x22 => of=01 sf=01 zf=00 af=01 pf=00 cf=01
 code="cmp al,0x80" rax=q:0x80 => of=00 sf=00 zf=01 af=00 pf=01 cf=00
 
+code="neg rax" rax=q:0x12 => rax=q:0xffffffffffffffee of=00 sf=01 zf=00 af=01 pf=01 cf=01
+code="neg rax" rax=q:0xffffffffffffffee => rax=q:0x12 of=00 sf=00 zf=00 af=01 pf=01 cf=01
+code="neg rax" rax=q:0xffffffffffffffff => rax=q:0x1 of=00 sf=00 zf=00 af=01 pf=00 cf=01
+code="neg rax" rax=q:0x0 => rax=q:0x0 of=00 sf=00 zf=01 af=00 pf=01 cf=00
+code="neg rax" rax=q:0x8000000000000000 => rax=q:0x8000000000000000 of=01 sf=01 zf=00 af=00 pf=01 cf=01
+code="neg eax" rax=q:0x12 => rax=q:0xffffffee of=00 sf=01 zf=00 af=01 pf=01 cf=01
+code="neg eax" rax=q:0xffffffee => rax=q:0x12 of=00 sf=00 zf=00 af=01 pf=01 cf=01
+code="neg eax" rax=q:0xffffffff => rax=q:0x1 of=00 sf=00 zf=00 af=01 pf=00 cf=01
+code="neg eax" rax=q:0x0 => rax=q:0x0 of=00 sf=00 zf=01 af=00 pf=01 cf=00
+code="neg eax" rax=q:0x80000000 => rax=q:0x80000000 of=01 sf=01 zf=00 af=00 pf=01 cf=01
+code="neg ax" rax=q:0x12 => rax=q:0xffee of=00 sf=01 zf=00 af=01 pf=01 cf=01
+code="neg ax" rax=q:0xffffffee => rax=q:0xffff0012 of=00 sf=00 zf=00 af=01 pf=01 cf=01
+code="neg ax" rax=q:0xffffffff => rax=q:0xffff0001 of=00 sf=00 zf=00 af=01 pf=00 cf=01
+code="neg ax" rax=q:0x0 => rax=q:0x0 of=00 sf=00 zf=01 af=00 pf=01 cf=00
+code="neg ax" rax=q:0x8000 => rax=q:0x8000 of=01 sf=01 zf=00 af=00 pf=01 cf=01
+code="neg al" rax=q:0x12 => rax=q:0xee of=00 sf=01 zf=00 af=01 pf=01 cf=01
+code="neg al" rax=q:0xffffffee => rax=q:0xffffff12 of=00 sf=00 zf=00 af=01 pf=01 cf=01
+code="neg al" rax=q:0xffffffff => rax=q:0xffffff01 of=00 sf=00 zf=00 af=01 pf=00 cf=01
+code="neg al" rax=q:0x0 => rax=q:0x0 of=00 sf=00 zf=01 af=00 pf=01 cf=00
+code="neg al" rax=q:0x80 => rax=q:0x80 of=01 sf=01 zf=00 af=00 pf=00 cf=01
+
 code="not rax" rax=q:0x12 => rax=q:0xffffffffffffffed
 code="not rax" rax=q:0xffffffffffffffed => rax=q:0x12
 code="not rax" rax=q:0xffffffffffffffff => rax=q:0x0
