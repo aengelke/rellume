@@ -473,6 +473,7 @@ void Lifter::LiftStos(const LLInstr& inst) {
     auto core_op = [&]() {
         irb.CreateStore(src, dst_ptr);
         dst_ptr = irb.CreateGEP(dst_ptr, adj);
+        return llvm::UndefValue::get(irb.getInt1Ty());
     };
 
     if (inst.type == LL_INS_STOS)
@@ -505,6 +506,7 @@ void Lifter::LiftMovs(const LLInstr& inst) {
         irb.CreateStore(irb.CreateLoad(src_ptr), dst_ptr);
         src_ptr = irb.CreateGEP(src_ptr, adj);
         dst_ptr = irb.CreateGEP(dst_ptr, adj);
+        return llvm::UndefValue::get(irb.getInt1Ty());
     };
 
     if (inst.type == LL_INS_MOVS)
@@ -518,6 +520,37 @@ void Lifter::LiftMovs(const LLInstr& inst) {
     llvm::Value* src_int = irb.CreatePtrToInt(src_ptr, irb.getInt64Ty());
     SetReg(LLReg(LL_RT_GP64, LL_RI_SI), Facet::I64, src_int);
     SetRegFacet(LLReg(LL_RT_GP64, LL_RI_SI), Facet::PTR, src_ptr);
+
+    dst_ptr = irb.CreatePointerCast(dst_ptr, irb.getInt8PtrTy());
+    llvm::Value* dst_int = irb.CreatePtrToInt(dst_ptr, irb.getInt64Ty());
+    SetReg(LLReg(LL_RT_GP64, LL_RI_DI), Facet::I64, dst_int);
+    SetRegFacet(LLReg(LL_RT_GP64, LL_RI_DI), Facet::PTR, dst_ptr);
+}
+
+void Lifter::LiftScas(const LLInstr& inst) {
+    LLInstrOp src_op = LLInstrOp(LLReg::Gp(inst.operand_size, LL_RI_A));
+    llvm::Value* src = OpLoad(src_op, Facet::I);
+    llvm::Value* dst_ptr = GetReg(LLReg(LL_RT_GP64, LL_RI_DI), Facet::PTR);
+    dst_ptr = irb.CreatePointerCast(dst_ptr, src->getType()->getPointerTo());
+
+    llvm::Value* df = GetFlag(Facet::DF);
+    llvm::Value* adj = irb.CreateSelect(df, irb.getInt64(-1), irb.getInt64(1));
+
+    // TODO: calculate flags properly
+    auto core_op = [&]() {
+        llvm::Value* val = irb.CreateLoad(dst_ptr);
+        dst_ptr = irb.CreateGEP(dst_ptr, adj);
+        return irb.CreateICmpEQ(val, src);
+    };
+
+    if (inst.type == LL_INS_SCAS)
+        core_op();
+    else if (inst.type == LL_INS_REPZ_SCAS)
+        WrapRep(core_op, {&dst_ptr}, REPZ); // create PHI node for dst_ptr
+    else if (inst.type == LL_INS_REPNZ_SCAS)
+        WrapRep(core_op, {&dst_ptr}, REPNZ); // create PHI node for dst_ptr
+    else
+        assert(false);
 
     dst_ptr = irb.CreatePointerCast(dst_ptr, irb.getInt8PtrTy());
     llvm::Value* dst_int = irb.CreatePtrToInt(dst_ptr, irb.getInt64Ty());

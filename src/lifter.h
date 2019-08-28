@@ -143,8 +143,10 @@ protected:
     llvm::Value* FlagCond(Condition cond);
     llvm::Value* FlagAsReg(unsigned size);
 
+    enum RepMode { REP, REPZ, REPNZ };
     template<typename F>
-    void WrapRep(F func, std::initializer_list<llvm::Value**> phis_il) {
+    void WrapRep(F func, std::initializer_list<llvm::Value**> phis_il,
+                 RepMode repmode = REP) {
         auto header_block = irb.GetInsertBlock();
         auto fn = header_block->getParent();
         auto loop_block = llvm::BasicBlock::Create(irb.getContext(), "", fn);
@@ -177,11 +179,19 @@ protected:
             *phi_var = loop_phi;
         }
 
-        func();
         // Decrement count and check.
-        // TODO: respect REPZ/REPNZ as well
         count = irb.CreateSub(count, irb.getInt64(1));
         auto continue_loop = irb.CreateICmpNE(count, zero);
+
+        if (repmode == REP) {
+            func();
+        } else {
+            llvm::Value* zf = func();
+            if (repmode == REPNZ)
+                zf = irb.CreateNot(zf);
+            continue_loop = irb.CreateAnd(continue_loop, zf);
+        }
+
         irb.CreateCondBr(continue_loop, loop_block, cont_block);
 
         // In continuation block
@@ -273,6 +283,7 @@ public:
     void LiftStd(const LLInstr& inst) { SetFlag(Facet::DF, irb.getTrue()); }
     void LiftStos(const LLInstr& inst);
     void LiftMovs(const LLInstr& inst);
+    void LiftScas(const LLInstr& inst);
 
     // llinstruction-sse.cc
     void LiftSseMovq(const LLInstr&, Facet type);
