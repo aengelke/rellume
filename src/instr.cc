@@ -268,6 +268,11 @@ end_ops:
     case FDI_SETGE: llinst.type = LL_INS_SETGE; break;
     case FDI_SETLE: llinst.type = LL_INS_SETLE; break;
     case FDI_SETG: llinst.type = LL_INS_SETG; break;
+    case FDI_PREFETCH0: llinst.type = LL_INS_PREFETCHT0; break;
+    case FDI_PREFETCH1: llinst.type = LL_INS_PREFETCHT1; break;
+    case FDI_PREFETCH2: llinst.type = LL_INS_PREFETCHT2; break;
+    case FDI_PREFETCHNTA: llinst.type = LL_INS_PREFETCHNTA; break;
+    case FDI_PREFETCHW: llinst.type = LL_INS_PREFETCHW; break;
     case FDI_SSE_MOVD_G2X: llinst.type = LL_INS_MOVD; break;
     case FDI_SSE_MOVD_X2G: llinst.type = LL_INS_MOVD; break;
     case FDI_SSE_MOVQ_G2X: llinst.type = LL_INS_MOVQ; break;

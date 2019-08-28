@@ -40,6 +40,17 @@
 
 namespace rellume {
 
+void Lifter::LiftPrefetch(const LLInstr& inst, unsigned rw, unsigned locality) {
+    llvm::Module* module = irb.GetInsertBlock()->getModule();
+    auto id = llvm::Intrinsic::prefetch;
+    llvm::Function* intrinsic = llvm::Intrinsic::getDeclaration(module, id, {});
+
+    llvm::Value* addr = OpAddr(inst.ops[0], irb.getInt8Ty());
+    // Prefetch addr for read/write with given locality into the data cache.
+    irb.CreateCall(intrinsic, {addr, irb.getInt32(rw), irb.getInt32(locality),
+                               irb.getInt32(1)});
+}
+
 void Lifter::LiftSseMovq(const LLInstr& inst, Facet type)
 {
     llvm::Value* op1 = OpLoad(inst.ops[1], type);

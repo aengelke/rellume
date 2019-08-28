@@ -286,6 +286,7 @@ public:
     void LiftScas(const LLInstr& inst);
 
     // llinstruction-sse.cc
+    void LiftPrefetch(const LLInstr&, unsigned rw, unsigned locality);
     void LiftSseMovq(const LLInstr&, Facet type);
     void LiftSseBinOp(const LLInstr&, llvm::Instruction::BinaryOps op,
                       Facet type);

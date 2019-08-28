@@ -113,6 +113,11 @@ DEF_IT(SETLE, state.LiftSetcc(inst, Condition::LE))
 DEF_IT(SETG, state.LiftSetcc(inst, Condition::G))
 
 // Defined in llinstruction-sse.c
+DEF_IT(PREFETCHT0, state.LiftPrefetch(inst, 0, 3))
+DEF_IT(PREFETCHT1, state.LiftPrefetch(inst, 0, 2))
+DEF_IT(PREFETCHT2, state.LiftPrefetch(inst, 0, 1))
+DEF_IT(PREFETCHNTA, state.LiftPrefetch(inst, 0, 0))
+DEF_IT(PREFETCHW, state.LiftPrefetch(inst, 1, 1))
 DEF_IT(MOVD, state.LiftSseMovq(inst, Facet::I32))
 DEF_IT(MOVQ, state.LiftSseMovq(inst, Facet::I64))
 DEF_IT(MOVSS, state.LiftSseMovScalar(inst, Facet::F32))
