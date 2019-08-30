@@ -35,6 +35,8 @@
 #include <llvm/IR/IRBuilder.h>
 #include <llvm/IR/Metadata.h>
 #include <cstdio>
+#include <deque>
+#include <set>
 #include <vector>
 
 
@@ -65,15 +67,48 @@ BasicBlock::BasicBlock(llvm::Function* fn, Kind kind, llvm::Value* mem_arg) :
             };
         });
     } else { // kind == ENTRY
-        regfile.UpdateAllFromMem(mem_arg);
+        regfile.InitAll(nullptr);
     }
 
-    if (kind == EXIT) {
-        // Exit block packs the values into memory and returns.
-        regfile.UpdateAllInMem(mem_arg);
-        llvm::IRBuilder<> irb(first_block);
-        irb.CreateRetVoid();
+    if (kind == DEFAULT)
+        return;
+
+    // For ENTRY or EXIT kinds, we either need to setup all values or store them
+    // back to memory.
+    assert(mem_arg != nullptr && "mem_arg NULL for entry/exit block");
+
+    llvm::IRBuilder<> irb(first_block);
+
+    // TODO: somehow merge with RegFile::UpdateAll*
+
+    // List of offset-register-facet tuples we need to load/store.
+    static constexpr std::tuple<size_t, LLReg, Facet> entries[] = {
+#define RELLUME_PARAM_REG(off,sz,reg,facet,name,mn) std::make_tuple(off,reg,facet),
+#include <rellume/regs.inc>
+#undef RELLUME_PARAM_REG
+    };
+
+    for (auto& entry : entries) {
+        size_t offset; LLReg reg; Facet facet;
+        std::tie(offset, reg, facet) = entry;
+
+        llvm::Type* ptr_ty = facet.Type(irb.getContext())->getPointerTo();
+        llvm::Value* ptr = irb.CreateConstGEP1_64(mem_arg, offset);
+        ptr = irb.CreatePointerCast(ptr, ptr_ty);
+
+        llvm::Value* mem_ref;
+        if (kind == ENTRY) {
+            mem_ref = irb.CreateLoad(ptr);
+            regfile.SetReg(reg, facet, mem_ref, false);
+        } else { // kind == EXIT
+            mem_ref = irb.CreateStore(regfile.GetReg(reg, facet), ptr);
+        }
+        mem_ref_values.push_back(mem_ref);
     }
+
+    // Exit block returns.
+    if (kind == EXIT)
+        irb.CreateRetVoid();
 }
 
 void BasicBlock::AddInst(const LLInstr& inst, const LLConfig& cfg)
@@ -146,6 +181,51 @@ bool BasicBlock::FillPhis() {
     empty_phis.clear();
 
     return true;
+}
+
+void BasicBlock::RemoveUnmodifiedStores(const BasicBlock& entry) {
+    assert(entry.mem_ref_values.size() == mem_ref_values.size());
+
+    // Remove stores to the CPU struct where the only possible value to be
+    // stored is the value initially loaded from the struct.
+    for (size_t i = 0; i < mem_ref_values.size(); i++) {
+        llvm::StoreInst* store = llvm::cast<llvm::StoreInst>(mem_ref_values[i]);
+        llvm::LoadInst* load = llvm::cast<llvm::LoadInst>(entry.mem_ref_values[i]);
+
+        llvm::Value* stored_val = store->getValueOperand();
+        if (!llvm::isa<llvm::PHINode>(stored_val)) {
+            if (stored_val == load)
+                store->removeFromParent();
+            continue;
+        }
+
+        // Follow PHI nodes
+        std::set<llvm::PHINode*> visited_phis;
+        std::deque<llvm::PHINode*> phis;
+        phis.push_back(llvm::cast<llvm::PHINode>(stored_val));
+        while (!phis.empty()) {
+            llvm::PHINode* current_phi = phis.front();
+            phis.pop_front();
+            visited_phis.insert(current_phi);
+
+            for (llvm::Value* incoming : current_phi->incoming_values()) {
+                if (auto inc_phi = llvm::dyn_cast<llvm::PHINode>(incoming)) {
+                    // Don't iterate twice over a PHI node.
+                    if (visited_phis.count(inc_phi) == 0)
+                        phis.push_back(inc_phi);
+                } else if (incoming != load) {
+                    // A different value than the load is in the PHI-graph, so
+                    // do not replace.
+                    goto next_store;
+                }
+            }
+        }
+
+        store->eraseFromParent();
+
+next_store:
+        (void) 0;
+    }
 }
 
 } // namespace

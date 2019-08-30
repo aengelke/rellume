@@ -118,6 +118,8 @@ llvm::Function* Function::Lift() {
         changed |= exit_block->FillPhis();
     }
 
+    exit_block->RemoveUnmodifiedStores(*entry_block);
+
     if (cfg.verify_ir && llvm::verifyFunction(*(llvm), &llvm::errs()))
         return nullptr;
 

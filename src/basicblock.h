@@ -56,6 +56,8 @@ public:
     void BranchTo(llvm::Value* cond, BasicBlock& then, BasicBlock& other);
     bool FillPhis();
 
+    void RemoveUnmodifiedStores(const BasicBlock& entry);
+
     llvm::Value* NextRip() {
         return regfile.GetReg(LLReg(LL_RT_IP, 0), Facet::I64);
     }
@@ -74,6 +76,9 @@ private:
 
     std::vector<BasicBlock*> predecessors;
     std::vector<std::tuple<LLReg, Facet, llvm::PHINode*>> empty_phis;
+
+    // Stores load/store instructions for CPU struct access in entry/exit blocks
+    std::vector<llvm::Value*> mem_ref_values;
 };
 
 }
