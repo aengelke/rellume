@@ -29,6 +29,7 @@
 #include <llvm/IR/Instruction.h>
 #include <llvm/IR/IRBuilder.h>
 #include <llvm/IR/Value.h>
+#include <llvm/Transforms/Utils/Cloning.h>
 
 
 /**
@@ -51,8 +52,14 @@ void Lifter::LiftOverride(const LLInstr& inst, llvm::Function* override) {
     auto call_type = llvm::FunctionType::get(irb.getVoidTy(), {mem_arg->getType()}, false);
 
     regfile.UpdateAllInMem(mem_arg);
-    irb.CreateCall(call_type, override, {mem_arg});
+    llvm::CallInst* call = irb.CreateCall(call_type, override, {mem_arg});
     regfile.UpdateAllFromMem(mem_arg);
+
+    // Directly inline alwaysinline functions
+    if (override->hasFnAttribute(llvm::Attribute::AlwaysInline)) {
+        llvm::InlineFunctionInfo ifi;
+        llvm::InlineFunction(llvm::CallSite(call), ifi);
+    }
 }
 
 void Lifter::LiftMovgp(const LLInstr& inst, llvm::Instruction::CastOps cast) {
