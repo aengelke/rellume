@@ -50,8 +50,8 @@
 
 namespace rellume {
 
-BasicBlock::BasicBlock(llvm::Function* fn, Kind kind, llvm::Value* mem_arg) :
-            regfile() {
+BasicBlock::BasicBlock(llvm::Function* fn, Kind kind)
+        : regfile() {
     first_block = llvm::BasicBlock::Create(fn->getContext(), "", fn, nullptr);
     regfile.SetInsertBlock(first_block);
 
@@ -75,8 +75,6 @@ BasicBlock::BasicBlock(llvm::Function* fn, Kind kind, llvm::Value* mem_arg) :
 
     // For ENTRY or EXIT kinds, we either need to setup all values or store them
     // back to memory.
-    assert(mem_arg != nullptr && "mem_arg NULL for entry/exit block");
-
     llvm::IRBuilder<> irb(first_block);
 
     // TODO: somehow merge with RegFile::UpdateAll*
@@ -87,6 +85,8 @@ BasicBlock::BasicBlock(llvm::Function* fn, Kind kind, llvm::Value* mem_arg) :
 #include <rellume/regs.inc>
 #undef RELLUME_PARAM_REG
     };
+
+    llvm::Value* mem_arg = fn->arg_begin();
 
     for (auto& entry : entries) {
         size_t offset; LLReg reg; Facet facet;

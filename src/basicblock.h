@@ -42,8 +42,7 @@ public:
     enum Kind {
         DEFAULT, ENTRY, EXIT
     };
-    BasicBlock(llvm::Function* fn, Kind kind = DEFAULT,
-               llvm::Value* mem_arg = nullptr);
+    BasicBlock(llvm::Function* fn, Kind kind = DEFAULT);
 
     BasicBlock(BasicBlock&& rhs);
     BasicBlock& operator=(BasicBlock&& rhs);

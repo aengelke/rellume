@@ -61,8 +61,7 @@ Function::Function(llvm::Module* mod) : cfg()
     llvm->addDereferenceableParamAttr(0, 0x190);
 
     // Create entry basic block as first block in the function.
-    entry_block = std::make_unique<BasicBlock>(llvm, BasicBlock::ENTRY,
-                                               llvm->arg_begin());
+    entry_block = std::make_unique<BasicBlock>(llvm, BasicBlock::ENTRY);
 }
 
 Function::~Function() = default;
@@ -90,8 +89,7 @@ llvm::Function* Function::Lift() {
     if (block_map.size() == 0)
         return nullptr;
 
-    exit_block = std::make_unique<BasicBlock>(llvm, BasicBlock::EXIT,
-                                              llvm->arg_begin());
+    exit_block = std::make_unique<BasicBlock>(llvm, BasicBlock::EXIT);
 
     entry_block->BranchTo(*block_map[entry_addr]);
 
