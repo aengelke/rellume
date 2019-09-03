@@ -107,6 +107,9 @@ struct LLReg {
     bool IsVec() const {
         return rt == LL_RT_XMM || rt == LL_RT_YMM;
     }
+    inline bool operator==(const LLReg& rhs) const {
+        return rt == rhs.rt && ri == rhs.ri;
+    }
 #endif
 };
 
