@@ -24,6 +24,7 @@
 #include "function.h"
 
 #include "basicblock.h"
+#include "callconv.h"
 #include "config.h"
 #include "lifter.h"
 #include <llvm/ADT/SmallVector.h>
@@ -47,21 +48,27 @@
 
 namespace rellume {
 
-Function::Function(llvm::Module* mod) : cfg()
+Function::Function(llvm::Module* mod, CallConv callconv) : cfg()
 {
     llvm::LLVMContext& ctx = mod->getContext();
     llvm::Type* void_type = llvm::Type::getVoidTy(ctx);
     llvm::Type* i8p_type = llvm::Type::getInt8PtrTy(ctx);
-    auto fn_type = llvm::FunctionType::get(void_type, {i8p_type}, false);
 
-    llvm = llvm::Function::Create(fn_type, llvm::GlobalValue::ExternalLinkage, "", mod);
-    llvm->addParamAttr(0, llvm::Attribute::NoAlias);
-    llvm->addParamAttr(0, llvm::Attribute::NoCapture);
-    llvm->addParamAttr(0, llvm::Attribute::getWithAlignment(ctx, 16));
-    llvm->addDereferenceableParamAttr(0, 0x190);
+    cfg.callconv = callconv;
+
+    llvm = llvm::Function::Create(cfg.callconv.FnType(ctx),
+                                  llvm::GlobalValue::ExternalLinkage, "", mod);
+    llvm->setCallingConv(cfg.callconv.FnCallConv());
+
+    // CPU struct pointer parameters has some extra properties.
+    unsigned cpu_param_idx = cfg.callconv.CpuStructParamIdx();
+    llvm->addParamAttr(cpu_param_idx, llvm::Attribute::NoAlias);
+    llvm->addParamAttr(cpu_param_idx, llvm::Attribute::NoCapture);
+    llvm->addParamAttr(cpu_param_idx, llvm::Attribute::getWithAlignment(ctx, 16));
+    llvm->addDereferenceableParamAttr(cpu_param_idx, 0x190);
 
     // Create entry basic block as first block in the function.
-    entry_block = std::make_unique<BasicBlock>(llvm, BasicBlock::ENTRY);
+    entry_block = std::make_unique<BasicBlock>(llvm, cfg, BasicBlock::ENTRY);
 }
 
 Function::~Function() = default;
@@ -71,7 +78,7 @@ void Function::AddInst(uint64_t block_addr, const LLInstr& inst)
     if (block_map.size() == 0)
         entry_addr = block_addr;
     if (block_map.find(block_addr) == block_map.end())
-        block_map[block_addr] = std::make_unique<BasicBlock>(llvm);
+        block_map[block_addr] = std::make_unique<BasicBlock>(llvm, cfg);
 
     block_map[block_addr]->AddInst(inst, cfg);
 }
@@ -89,7 +96,7 @@ llvm::Function* Function::Lift() {
     if (block_map.size() == 0)
         return nullptr;
 
-    exit_block = std::make_unique<BasicBlock>(llvm, BasicBlock::EXIT);
+    exit_block = std::make_unique<BasicBlock>(llvm, cfg, BasicBlock::EXIT);
 
     entry_block->BranchTo(*block_map[entry_addr]);
 

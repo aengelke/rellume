@@ -24,6 +24,7 @@
 #ifndef LL_FUNCTION_H
 #define LL_FUNCTION_H
 
+#include "callconv.h"
 #include "config.h"
 #include "rellume/instr.h"
 #include <llvm/IR/Function.h>
@@ -40,7 +41,7 @@ class BasicBlock;
 class Function
 {
 public:
-    Function(llvm::Module* mod);
+    Function(llvm::Module* mod, CallConv callconv);
     ~Function();
 
     Function(Function&& rhs);

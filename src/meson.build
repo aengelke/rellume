@@ -1,6 +1,7 @@
 
 sources = [
   'basicblock.cc',
+  'callconv.cc',
   'facet.cc',
   'instr.cc',
   'function.cc',

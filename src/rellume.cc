@@ -23,6 +23,7 @@
 
 #include "rellume/rellume.h"
 
+#include "callconv.h"
 #include "function.h"
 #include "transforms.h"
 #include <llvm/IR/Module.h>
@@ -39,7 +40,7 @@ static rellume::Function* unwrap(LLFunc* fn) {
 }
 
 LLFunc* ll_func(LLVMModuleRef mod) {
-    return reinterpret_cast<LLFunc*>(new rellume::Function(llvm::unwrap(mod)));
+    return reinterpret_cast<LLFunc*>(new rellume::Function(llvm::unwrap(mod), rellume::CallConv::SPTR));
 }
 void ll_func_enable_overflow_intrinsics(LLFunc* fn, bool enable) {
     unwrap(fn)->EnableOverflowIntrinsics(enable);

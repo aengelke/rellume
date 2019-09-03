@@ -24,6 +24,7 @@
 #ifndef RELLUME_CONFIG_H
 #define RELLUME_CONFIG_H
 
+#include "callconv.h"
 #include "rellume/instr.h"
 #include <cstdbool>
 #include <cstdint>
@@ -46,6 +47,9 @@ struct LLConfig {
     bool prefer_pointer_cmp = false;
     /// Verify the IR after lifting.
     bool verify_ir = false;
+
+    /// Optimize generated IR for the HHVM calling convention.
+    CallConv callconv = CallConv::SPTR;
 
     /// The global offset base
     uintptr_t global_base_addr = 0;
