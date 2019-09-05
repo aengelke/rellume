@@ -44,6 +44,7 @@ struct LLFunc;
 typedef struct LLFunc LLFunc;
 
 RELLUME_API LLFunc* ll_func(LLVMModuleRef mod);
+RELLUME_API LLFunc* ll_func_hhvm(LLVMModuleRef mod);
 
 RELLUME_API void ll_func_enable_overflow_intrinsics(LLFunc* fn, bool enable);
 RELLUME_API void ll_func_enable_fast_math(LLFunc* fn, bool enable);

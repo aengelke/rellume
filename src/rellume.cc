@@ -42,6 +42,9 @@ static rellume::Function* unwrap(LLFunc* fn) {
 LLFunc* ll_func(LLVMModuleRef mod) {
     return reinterpret_cast<LLFunc*>(new rellume::Function(llvm::unwrap(mod), rellume::CallConv::SPTR));
 }
+LLFunc* ll_func_hhvm(LLVMModuleRef mod) {
+    return reinterpret_cast<LLFunc*>(new rellume::Function(llvm::unwrap(mod), rellume::CallConv::HHVM));
+}
 void ll_func_enable_overflow_intrinsics(LLFunc* fn, bool enable) {
     unwrap(fn)->EnableOverflowIntrinsics(enable);
 }
