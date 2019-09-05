@@ -127,7 +127,8 @@ llvm::Value* CallConv::Pack(RegFile& regfile, llvm::Value* val,
                 ins_idx = 12; // R12 is stored in R14
 
             if (ins_idx >= 0) {
-                ret_val = irb.CreateInsertValue(ret_val, reg_val, {ins_idx});
+                unsigned ins_idx_u = static_cast<unsigned>(ins_idx);
+                ret_val = irb.CreateInsertValue(ret_val, reg_val, {ins_idx_u});
                 store_in_sptr = false;
             }
         }
