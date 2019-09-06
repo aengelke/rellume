@@ -103,6 +103,11 @@ protected:
     void SetFlag(Facet facet, llvm::Value* value) {
         SetRegFacet(LLReg(LL_RT_EFLAGS, 0), facet, value);
     }
+    void SetFlagUndef(std::initializer_list<Facet> facets) {
+        llvm::Value* undef = llvm::UndefValue::get(irb.getInt1Ty());
+        for (const auto facet : facets)
+            SetRegFacet(LLReg(LL_RT_EFLAGS, 0), facet, undef);
+    }
 
     void SetInsertBlock(llvm::BasicBlock* new_block) {
         regfile.SetInsertBlock(new_block);

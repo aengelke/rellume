@@ -47,6 +47,8 @@ struct LLConfig {
     bool use_gep_ptr_arithmetic = true;
     /// Use pointer types for 64-bit reg-reg compares instead of ptrtoint.
     bool prefer_pointer_cmp = false;
+    /// Make CALL and RET clobber all status flags.
+    bool call_ret_clobber_flags = false;
     /// Verify the IR after lifting.
     bool verify_ir = false;
 

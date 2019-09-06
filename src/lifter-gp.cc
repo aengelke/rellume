@@ -483,12 +483,20 @@ void Lifter::LiftJcc(const LLInstr& inst, Condition cond) {
 }
 
 void Lifter::LiftCall(const LLInstr& inst) {
+    if (cfg.call_ret_clobber_flags)
+        SetFlagUndef({Facet::OF, Facet::SF, Facet::ZF, Facet::AF, Facet::PF,
+                      Facet::CF});
+
     llvm::Value* new_rip = OpLoad(inst.ops[0], Facet::I);
     StackPush(GetReg(LLReg(LL_RT_IP, 0), Facet::I64));
     SetReg(LLReg(LL_RT_IP, 0), Facet::I64, new_rip);
 }
 
 void Lifter::LiftRet(const LLInstr& inst) {
+    if (cfg.call_ret_clobber_flags)
+        SetFlagUndef({Facet::OF, Facet::SF, Facet::ZF, Facet::AF, Facet::PF,
+                      Facet::CF});
+
     OpStoreGp(LLInstrOp(LLReg(LL_RT_IP, 0)), StackPop());
 }
 
