@@ -82,7 +82,8 @@ void Lifter::LiftAdd(const LLInstr& inst) {
 
     // Compute pointer facet for 64-bit additions stored in a register.
     // TODO: handle case where the original pointer is the second operand.
-    if (inst.ops[0].type == LL_OP_REG && inst.ops[0].size == 8) {
+    if (cfg.use_gep_ptr_arithmetic && inst.ops[0].type == LL_OP_REG &&
+            inst.ops[0].size == 8) {
         llvm::Value* op1_ptr = GetReg(inst.ops[0].reg, Facet::PTR);
         SetReg(inst.ops[0].reg, Facet::I64, res);
         SetRegFacet(inst.ops[0].reg, Facet::PTR, irb.CreateGEP(op1_ptr, op2));
@@ -107,7 +108,8 @@ void Lifter::LiftSub(const LLInstr& inst) {
 
     // Compute pointer facet for 64-bit additions stored in a register.
     // TODO: handle case where the original pointer is the second operand.
-    if (inst.ops[0].type == LL_OP_REG && inst.ops[0].size == 8) {
+    if (cfg.use_gep_ptr_arithmetic && inst.ops[0].type == LL_OP_REG &&
+            inst.ops[0].size == 8) {
         llvm::Value* op1_ptr = GetReg(inst.ops[0].reg, Facet::PTR);
         llvm::Value* res_ptr = irb.CreateGEP(op1_ptr, irb.CreateNeg(op2));
         SetReg(inst.ops[0].reg, Facet::I64, res);
@@ -431,7 +433,7 @@ Lifter::LiftLea(const LLInstr& inst)
     llvm::Type* op_type = irb.getIntNTy(inst.ops[0].size * 8);
     OpStoreGp(inst.ops[0], irb.CreateZExtOrTrunc(res, op_type));
 
-    if (inst.ops[0].reg.rt == LL_RT_GP64)
+    if (cfg.use_gep_ptr_arithmetic && inst.ops[0].reg.rt == LL_RT_GP64)
         SetRegFacet(inst.ops[0].reg, Facet::PTR, res_ptr);
 }
 

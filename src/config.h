@@ -43,6 +43,8 @@ struct LLConfig {
     bool enableOverflowIntrinsics = false;
     /// Unsafe floating-point optimizations, corresponds to -ffast-math.
     bool enableFastMath = false;
+    /// Generate additional pointer facets using getelementptr for ADD/SUB/LEA.
+    bool use_gep_ptr_arithmetic = true;
     /// Use pointer types for 64-bit reg-reg compares instead of ptrtoint.
     bool prefer_pointer_cmp = false;
     /// Verify the IR after lifting.
