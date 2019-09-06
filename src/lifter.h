@@ -261,23 +261,10 @@ public:
         OpStoreGp(LLInstrOp(LLReg(LL_RT_GP64, LL_RI_BP)), val);
     }
 
-    void LiftJmp(const LLInstr& inst) {
-        SetReg(LLReg(LL_RT_IP, 0), Facet::I64, OpLoad(inst.ops[0], Facet::I64));
-    }
-    void LiftJcc(const LLInstr& inst, Condition cond) {
-        SetReg(LLReg(LL_RT_IP, 0), Facet::I64, irb.CreateSelect(FlagCond(cond),
-            OpLoad(inst.ops[0], Facet::I64),
-            GetReg(LLReg(LL_RT_IP, 0), Facet::I64)
-        ));
-    }
-    void LiftCall(const LLInstr& inst) {
-        llvm::Value* new_rip = OpLoad(inst.ops[0], Facet::I);
-        StackPush(GetReg(LLReg(LL_RT_IP, 0), Facet::I64));
-        SetReg(LLReg(LL_RT_IP, 0), Facet::I64, new_rip);
-    }
-    void LiftRet(const LLInstr& inst) {
-        OpStoreGp(LLInstrOp(LLReg(LL_RT_IP, 0)), StackPop());
-    }
+    void LiftJmp(const LLInstr& inst);
+    void LiftJcc(const LLInstr& inst, Condition cond);
+    void LiftCall(const LLInstr& inst);
+    void LiftRet(const LLInstr& inst);
 
     void LiftCld(const LLInstr& inst) { SetFlag(Facet::DF, irb.getFalse()); }
     void LiftStd(const LLInstr& inst) { SetFlag(Facet::DF, irb.getTrue()); }
