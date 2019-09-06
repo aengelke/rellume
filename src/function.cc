@@ -62,6 +62,7 @@ Function::Function(llvm::Module* mod, CallConv callconv) : cfg()
 
     // CPU struct pointer parameters has some extra properties.
     unsigned cpu_param_idx = cfg.callconv.CpuStructParamIdx();
+    llvm->addFnAttr("null-pointer-is-valid", "true");
     llvm->addParamAttr(cpu_param_idx, llvm::Attribute::NoAlias);
     llvm->addParamAttr(cpu_param_idx, llvm::Attribute::NoCapture);
     llvm->addParamAttr(cpu_param_idx, llvm::Attribute::getWithAlignment(ctx, 16));
