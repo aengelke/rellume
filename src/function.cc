@@ -50,12 +50,9 @@ namespace rellume {
 
 Function::Function(llvm::Module* mod, CallConv callconv) : cfg()
 {
-    llvm::LLVMContext& ctx = mod->getContext();
-    llvm::Type* void_type = llvm::Type::getVoidTy(ctx);
-    llvm::Type* i8p_type = llvm::Type::getInt8PtrTy(ctx);
-
     cfg.callconv = callconv;
 
+    llvm::LLVMContext& ctx = mod->getContext();
     llvm = llvm::Function::Create(cfg.callconv.FnType(ctx),
                                   llvm::GlobalValue::ExternalLinkage, "", mod);
     llvm->setCallingConv(cfg.callconv.FnCallConv());
