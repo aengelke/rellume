@@ -292,7 +292,7 @@ public:
     void LiftSsePshufd(const LLInstr&);
     void LiftSseInsertps(const LLInstr&);
     void LiftSsePslldq(const LLInstr&);
-    void LiftSsePcmpeqb(const LLInstr&);
+    void LiftSsePcmp(const LLInstr&, llvm::CmpInst::Predicate, Facet);
     void LiftSsePmovmskb(const LLInstr&);
 };
 

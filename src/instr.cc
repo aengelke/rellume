@@ -340,6 +340,13 @@ end_ops:
     case FDI_SSE_PSUBQ: llinst.type = LL_INS_PSUBQ; break;
     case FDI_SSE_PSLLDQ: llinst.type = LL_INS_PSLLDQ; break;
     case FDI_SSE_PCMPEQB: llinst.type = LL_INS_PCMPEQB; break;
+    case FDI_SSE_PCMPEQW: llinst.type = LL_INS_PCMPEQW; break;
+    case FDI_SSE_PCMPEQD: llinst.type = LL_INS_PCMPEQD; break;
+    case FDI_SSE_PCMPEQQ: llinst.type = LL_INS_PCMPEQQ; break;
+    case FDI_SSE_PCMPGTB: llinst.type = LL_INS_PCMPGTB; break;
+    case FDI_SSE_PCMPGTW: llinst.type = LL_INS_PCMPGTW; break;
+    case FDI_SSE_PCMPGTD: llinst.type = LL_INS_PCMPGTD; break;
+    case FDI_SSE_PCMPGTQ: llinst.type = LL_INS_PCMPGTQ; break;
     case FDI_SSE_PMOVMSKB: llinst.type = LL_INS_PMOVMSKB; break;
     case FDI_JMP: llinst.type = LL_INS_JMP; break;
     case FDI_JMP_IND: llinst.type = LL_INS_JMP; break;
