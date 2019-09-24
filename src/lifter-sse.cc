@@ -214,6 +214,25 @@ void Lifter::LiftSseInsertps(const LLInstr& inst) {
     OpStoreVec(inst.ops[0], dst);
 }
 
+void Lifter::LiftSsePsllElement(const LLInstr& inst, Facet op_type) {
+    llvm::Value* src = OpLoad(inst.ops[0], op_type);
+    llvm::Value* shift = OpLoad(inst.ops[1], Facet::I64);
+
+    llvm::Type* elem_ty = src->getType()->getVectorElementType();
+    unsigned elem_size = elem_ty->getIntegerBitWidth();
+    unsigned elem_cnt = src->getType()->getVectorNumElements();
+
+    llvm::Value* shift_trunc = irb.CreateTrunc(shift, elem_ty);
+    llvm::Value* shift_vec = irb.CreateVectorSplat(elem_cnt, shift_trunc);
+    llvm::Value* res_shift = irb.CreateShl(src, shift_vec);
+
+    // If shift >= elem_size, result is zero.
+    llvm::Value* zero = llvm::Constant::getNullValue(src->getType());
+    llvm::Value* cmp = irb.CreateICmpULT(shift, irb.getInt64(elem_size));
+    llvm::Value* res = irb.CreateSelect(cmp, res_shift, zero);
+    OpStoreVec(inst.ops[0], res);
+}
+
 void Lifter::LiftSsePslldq(const LLInstr& inst) {
     uint32_t shift = std::max(static_cast<uint32_t>(inst.ops[1].val), 16u);
     uint32_t mask[16];
