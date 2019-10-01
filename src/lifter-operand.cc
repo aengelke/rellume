@@ -73,6 +73,27 @@ LifterBase::OpAddr(const LLInstrOp& op, llvm::Type* element_type)
     }
 
     llvm::PointerType* elem_ptr_ty = element_type->getPointerTo(addrspace);
+
+    if (addrspace != 0 || op.addrsize != 8) {
+        // For segment offsets, use inttoptr because the pointer base is stored
+        // in the segment register. (And LLVM has some problems with addrspace
+        // casts between pointers.) For 32-bit address size, we can't normal
+        // pointers, so use integer arithmetic directly.
+        Facet addrsz_facet = op.addrsize == 8 ? Facet::I64 : Facet::I32;
+
+        llvm::Value* res = irb.getIntN(8*op.addrsize, op.val);
+        if (op.reg.rt != LL_RT_None)
+            res = irb.CreateAdd(res, GetReg(op.reg, addrsz_facet));
+        if (op.scale != 0) {
+            llvm::Value* ireg = GetReg(op.ireg, addrsz_facet);
+            llvm::Value* scaled_val = irb.getIntN(8*op.addrsize, op.scale);
+            res = irb.CreateAdd(res, irb.CreateMul(ireg, scaled_val));
+        }
+
+        res = irb.CreateZExt(res, irb.getInt64Ty());
+        return irb.CreateIntToPtr(res, elem_ptr_ty);
+    }
+
     llvm::PointerType* scale_type = nullptr;
     if (op.scale * 8u == element_type->getPrimitiveSizeInBits())
         scale_type = elem_ptr_ty;
@@ -127,14 +148,6 @@ LifterBase::OpAddr(const LLInstrOp& op, llvm::Type* element_type)
             base = irb.CreatePointerCast(base, scale_type);
             base = irb.CreateGEP(base, offset);
         }
-    }
-
-    if (op.addrsize != 8) {
-        assert(op.addrsize == 4 && "invalid addrsize");
-        base = irb.CreatePtrToInt(base, irb.getInt64Ty());
-        base = irb.CreateTrunc(base, irb.getInt32Ty());
-        base = irb.CreateZExt(base, irb.getInt64Ty());
-        base = irb.CreateIntToPtr(base, elem_ptr_ty);
     }
 
     return irb.CreatePointerCast(base, elem_ptr_ty);
