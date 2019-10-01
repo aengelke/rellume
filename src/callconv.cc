@@ -46,8 +46,8 @@ llvm::FunctionType* CallConv::FnType(llvm::LLVMContext& ctx) const {
         auto ret_ty = llvm::StructType::get(i64, i64, i64, i64, i64, i64, i64,
                                             i64, i64, i64, i64, i64, i64, i64);
         return llvm::FunctionType::get(ret_ty, {i64, i8p, i64, i64, i64, i64,
-                                       i64, i64, i64, i64, i64, i64, i64, i64,
-                                       i64}, false);
+                                                i64, i64, i64, i64, i64, i64,
+                                                i64, i64}, false);
     }
     }
 }
@@ -123,8 +123,6 @@ llvm::Value* CallConv::Pack(RegFile& regfile, llvm::Value* val,
                 ins_idx = 9; // R10 is stored in R10
             else if (reg == LLReg(LL_RT_GP64, 11))
                 ins_idx = 10; // R11 is stored in R11
-            else if (reg == LLReg(LL_RT_GP64, 12))
-                ins_idx = 12; // R12 is stored in R14
 
             if (ins_idx >= 0) {
                 unsigned ins_idx_u = static_cast<unsigned>(ins_idx);
@@ -187,8 +185,6 @@ void CallConv::Unpack(RegFile& regfile, llvm::Value* val,
                 arg_idx = 11; // R10 is stored in R10
             else if (reg == LLReg(LL_RT_GP64, 11))
                 arg_idx = 12; // R11 is stored in R11
-            else if (reg == LLReg(LL_RT_GP64, 12))
-                arg_idx = 14; // R12 is stored in R14
 
             if (arg_idx >= 0)
                 reg_val = &fn->arg_begin()[arg_idx];
