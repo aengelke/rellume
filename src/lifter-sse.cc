@@ -252,6 +252,14 @@ void Lifter::LiftSsePcmp(const LLInstr& inst, llvm::CmpInst::Predicate pred,
     OpStoreVec(inst.ops[0], irb.CreateSExt(eq, op1->getType()));
 }
 
+void Lifter::LiftSsePminmax(const LLInstr& inst, llvm::CmpInst::Predicate pred,
+                            Facet op_type) {
+    llvm::Value* op1 = OpLoad(inst.ops[0], op_type, ALIGN_MAX);
+    llvm::Value* op2 = OpLoad(inst.ops[1], op_type, ALIGN_MAX);
+    llvm::Value* cmp = irb.CreateICmp(pred, op1, op2);
+    OpStoreVec(inst.ops[0], irb.CreateSelect(cmp, op1, op2));
+}
+
 void Lifter::LiftSsePmovmskb(const LLInstr& inst) {
     llvm::Value* src = OpLoad(inst.ops[1], Facet::VI8, ALIGN_MAX);
     llvm::Value* zero = llvm::Constant::getNullValue(src->getType());
