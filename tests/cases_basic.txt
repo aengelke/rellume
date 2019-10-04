@@ -262,3 +262,183 @@ code="bsr dx, ax" rax=q:0xffff rdx=q:0x0 => rdx=q:0x0 zf=00
 code="bsr dx, ax" rax=q:0x12340001 rdx=q:0x0 => rdx=q:0xf zf=00
 code="bsr dx, ax" rax=q:0x12340000 rdx=q:0x0 => rdx=undef zf=01
 code="bsr dx, ax" rax=q:0xffff0000 rdx=q:0x0 => rdx=undef zf=01
+
+code="bt rax,rdx" rax=q:0xfffffffffffffffe rdx=q:0x00 => of=undef sf=undef af=undef pf=undef cf=00
+code="bt rax,rdx" rax=q:0x0000000000000001 rdx=q:0x00 => of=undef sf=undef af=undef pf=undef cf=01
+code="bt rax,rdx" rax=q:0xfffffffffffffffe rdx=q:0x40 => of=undef sf=undef af=undef pf=undef cf=00
+code="bt rax,rdx" rax=q:0x0000000000000001 rdx=q:0x40 => of=undef sf=undef af=undef pf=undef cf=01
+code="bt rax,rdx" rax=q:0xffffffff7fffffff rdx=q:0x1f => of=undef sf=undef af=undef pf=undef cf=00
+code="bt rax,rdx" rax=q:0x0000000080000000 rdx=q:0x1f => of=undef sf=undef af=undef pf=undef cf=01
+code="bt rax,rdx" rax=q:0x7fffffffffffffff rdx=q:0x3f => of=undef sf=undef af=undef pf=undef cf=00
+code="bt rax,rdx" rax=q:0x8000000000000000 rdx=q:0x3f => of=undef sf=undef af=undef pf=undef cf=01
+code="bt rax,rdx" rax=q:0x7fffffffffffffff rdx=q:0x7f => of=undef sf=undef af=undef pf=undef cf=00
+code="bt rax,rdx" rax=q:0x8000000000000000 rdx=q:0x7f => of=undef sf=undef af=undef pf=undef cf=01
+code="bt eax,edx" rax=q:0xfffffffffffffffe rdx=q:0x00 => of=undef sf=undef af=undef pf=undef cf=00
+code="bt eax,edx" rax=q:0x0000000000000001 rdx=q:0x00 => of=undef sf=undef af=undef pf=undef cf=01
+code="bt eax,edx" rax=q:0xffffffff7fffffff rdx=q:0x1f => of=undef sf=undef af=undef pf=undef cf=00
+code="bt eax,edx" rax=q:0x0000000080000000 rdx=q:0x1f => of=undef sf=undef af=undef pf=undef cf=01
+code="bt eax,edx" rax=q:0xffffffff7fffffff rdx=q:0x3f => of=undef sf=undef af=undef pf=undef cf=00
+code="bt eax,edx" rax=q:0x0000000080000000 rdx=q:0x3f => of=undef sf=undef af=undef pf=undef cf=01
+code="bt ax,dx" rax=q:0xfffffffffffffffe rdx=q:0x00 => of=undef sf=undef af=undef pf=undef cf=00
+code="bt ax,dx" rax=q:0x0000000000000001 rdx=q:0x00 => of=undef sf=undef af=undef pf=undef cf=01
+code="bt ax,dx" rax=q:0xffffffffffff7fff rdx=q:0x0f => of=undef sf=undef af=undef pf=undef cf=00
+code="bt ax,dx" rax=q:0x0000000000008000 rdx=q:0x0f => of=undef sf=undef af=undef pf=undef cf=01
+code="bt ax,dx" rax=q:0xffffffffffff7fff rdx=q:0x1f => of=undef sf=undef af=undef pf=undef cf=00
+code="bt ax,dx" rax=q:0x0000000000008000 rdx=q:0x1f => of=undef sf=undef af=undef pf=undef cf=01
+code="bt rax,0x00" rax=q:0xfffffffffffffffe => of=undef sf=undef af=undef pf=undef cf=00
+code="bt rax,0x00" rax=q:0x0000000000000001 => of=undef sf=undef af=undef pf=undef cf=01
+code="bt rax,0x40" rax=q:0xfffffffffffffffe => of=undef sf=undef af=undef pf=undef cf=00
+code="bt rax,0x40" rax=q:0x0000000000000001 => of=undef sf=undef af=undef pf=undef cf=01
+code="bt rax,0x1f" rax=q:0xffffffff7fffffff => of=undef sf=undef af=undef pf=undef cf=00
+code="bt rax,0x1f" rax=q:0x0000000080000000 => of=undef sf=undef af=undef pf=undef cf=01
+code="bt rax,0x3f" rax=q:0x7fffffffffffffff => of=undef sf=undef af=undef pf=undef cf=00
+code="bt rax,0x3f" rax=q:0x8000000000000000 => of=undef sf=undef af=undef pf=undef cf=01
+code="bt rax,0x7f" rax=q:0x7fffffffffffffff => of=undef sf=undef af=undef pf=undef cf=00
+code="bt rax,0x7f" rax=q:0x8000000000000000 => of=undef sf=undef af=undef pf=undef cf=01
+code="bt eax,0x00" rax=q:0xfffffffffffffffe => of=undef sf=undef af=undef pf=undef cf=00
+code="bt eax,0x00" rax=q:0x0000000000000001 => of=undef sf=undef af=undef pf=undef cf=01
+code="bt eax,0x1f" rax=q:0xffffffff7fffffff => of=undef sf=undef af=undef pf=undef cf=00
+code="bt eax,0x1f" rax=q:0x0000000080000000 => of=undef sf=undef af=undef pf=undef cf=01
+code="bt eax,0x3f" rax=q:0xffffffff7fffffff => of=undef sf=undef af=undef pf=undef cf=00
+code="bt eax,0x3f" rax=q:0x0000000080000000 => of=undef sf=undef af=undef pf=undef cf=01
+code="bt ax,0x00" rax=q:0xfffffffffffffffe => of=undef sf=undef af=undef pf=undef cf=00
+code="bt ax,0x00" rax=q:0x0000000000000001 => of=undef sf=undef af=undef pf=undef cf=01
+code="bt ax,0x0f" rax=q:0xffffffffffff7fff => of=undef sf=undef af=undef pf=undef cf=00
+code="bt ax,0x0f" rax=q:0x0000000000008000 => of=undef sf=undef af=undef pf=undef cf=01
+code="bt ax,0x1f" rax=q:0xffffffffffff7fff => of=undef sf=undef af=undef pf=undef cf=00
+code="bt ax,0x1f" rax=q:0x0000000000008000 => of=undef sf=undef af=undef pf=undef cf=01
+
+code="btc rax,rdx" rax=q:0xfffffffffffffffe rdx=q:0x00 => rax=q:0xffffffffffffffff of=undef sf=undef af=undef pf=undef cf=00
+code="btc rax,rdx" rax=q:0x0000000000000001 rdx=q:0x00 => rax=q:0x0000000000000000 of=undef sf=undef af=undef pf=undef cf=01
+code="btc rax,rdx" rax=q:0xfffffffffffffffe rdx=q:0x40 => rax=q:0xffffffffffffffff of=undef sf=undef af=undef pf=undef cf=00
+code="btc rax,rdx" rax=q:0x0000000000000001 rdx=q:0x40 => rax=q:0x0000000000000000 of=undef sf=undef af=undef pf=undef cf=01
+code="btc rax,rdx" rax=q:0xffffffff7fffffff rdx=q:0x1f => rax=q:0xffffffffffffffff of=undef sf=undef af=undef pf=undef cf=00
+code="btc rax,rdx" rax=q:0x0000000080000000 rdx=q:0x1f => rax=q:0x0000000000000000 of=undef sf=undef af=undef pf=undef cf=01
+code="btc rax,rdx" rax=q:0x7fffffffffffffff rdx=q:0x3f => rax=q:0xffffffffffffffff of=undef sf=undef af=undef pf=undef cf=00
+code="btc rax,rdx" rax=q:0x8000000000000000 rdx=q:0x3f => rax=q:0x0000000000000000 of=undef sf=undef af=undef pf=undef cf=01
+code="btc rax,rdx" rax=q:0x7fffffffffffffff rdx=q:0x7f => rax=q:0xffffffffffffffff of=undef sf=undef af=undef pf=undef cf=00
+code="btc rax,rdx" rax=q:0x8000000000000000 rdx=q:0x7f => rax=q:0x0000000000000000 of=undef sf=undef af=undef pf=undef cf=01
+code="btc eax,edx" rax=q:0xfffffffffffffffe rdx=q:0x00 => rax=q:0x00000000ffffffff of=undef sf=undef af=undef pf=undef cf=00
+code="btc eax,edx" rax=q:0x0000000000000001 rdx=q:0x00 => rax=q:0x0000000000000000 of=undef sf=undef af=undef pf=undef cf=01
+code="btc eax,edx" rax=q:0xffffffff7fffffff rdx=q:0x1f => rax=q:0x00000000ffffffff of=undef sf=undef af=undef pf=undef cf=00
+code="btc eax,edx" rax=q:0x0000000080000000 rdx=q:0x1f => rax=q:0x0000000000000000 of=undef sf=undef af=undef pf=undef cf=01
+code="btc eax,edx" rax=q:0xffffffff7fffffff rdx=q:0x3f => rax=q:0x00000000ffffffff of=undef sf=undef af=undef pf=undef cf=00
+code="btc eax,edx" rax=q:0x0000000080000000 rdx=q:0x3f => rax=q:0x0000000000000000 of=undef sf=undef af=undef pf=undef cf=01
+code="btc ax,dx" rax=q:0xfffffffffffffffe rdx=q:0x00 => rax=q:0xffffffffffffffff of=undef sf=undef af=undef pf=undef cf=00
+code="btc ax,dx" rax=q:0x0000000000000001 rdx=q:0x00 => rax=q:0x0000000000000000 of=undef sf=undef af=undef pf=undef cf=01
+code="btc ax,dx" rax=q:0xffffffffffff7fff rdx=q:0x0f => rax=q:0xffffffffffffffff of=undef sf=undef af=undef pf=undef cf=00
+code="btc ax,dx" rax=q:0x0000000000008000 rdx=q:0x0f => rax=q:0x0000000000000000 of=undef sf=undef af=undef pf=undef cf=01
+code="btc ax,dx" rax=q:0xffffffffffff7fff rdx=q:0x1f => rax=q:0xffffffffffffffff of=undef sf=undef af=undef pf=undef cf=00
+code="btc ax,dx" rax=q:0x0000000000008000 rdx=q:0x1f => rax=q:0x0000000000000000 of=undef sf=undef af=undef pf=undef cf=01
+code="btc rax,0x00" rax=q:0xfffffffffffffffe => rax=q:0xffffffffffffffff of=undef sf=undef af=undef pf=undef cf=00
+code="btc rax,0x00" rax=q:0x0000000000000001 => rax=q:0x0000000000000000 of=undef sf=undef af=undef pf=undef cf=01
+code="btc rax,0x40" rax=q:0xfffffffffffffffe => rax=q:0xffffffffffffffff of=undef sf=undef af=undef pf=undef cf=00
+code="btc rax,0x40" rax=q:0x0000000000000001 => rax=q:0x0000000000000000 of=undef sf=undef af=undef pf=undef cf=01
+code="btc rax,0x1f" rax=q:0xffffffff7fffffff => rax=q:0xffffffffffffffff of=undef sf=undef af=undef pf=undef cf=00
+code="btc rax,0x1f" rax=q:0x0000000080000000 => rax=q:0x0000000000000000 of=undef sf=undef af=undef pf=undef cf=01
+code="btc rax,0x3f" rax=q:0x7fffffffffffffff => rax=q:0xffffffffffffffff of=undef sf=undef af=undef pf=undef cf=00
+code="btc rax,0x3f" rax=q:0x8000000000000000 => rax=q:0x0000000000000000 of=undef sf=undef af=undef pf=undef cf=01
+code="btc rax,0x7f" rax=q:0x7fffffffffffffff => rax=q:0xffffffffffffffff of=undef sf=undef af=undef pf=undef cf=00
+code="btc rax,0x7f" rax=q:0x8000000000000000 => rax=q:0x0000000000000000 of=undef sf=undef af=undef pf=undef cf=01
+code="btc eax,0x00" rax=q:0xfffffffffffffffe => rax=q:0x00000000ffffffff of=undef sf=undef af=undef pf=undef cf=00
+code="btc eax,0x00" rax=q:0x0000000000000001 => rax=q:0x0000000000000000 of=undef sf=undef af=undef pf=undef cf=01
+code="btc eax,0x1f" rax=q:0xffffffff7fffffff => rax=q:0x00000000ffffffff of=undef sf=undef af=undef pf=undef cf=00
+code="btc eax,0x1f" rax=q:0x0000000080000000 => rax=q:0x0000000000000000 of=undef sf=undef af=undef pf=undef cf=01
+code="btc eax,0x3f" rax=q:0xffffffff7fffffff => rax=q:0x00000000ffffffff of=undef sf=undef af=undef pf=undef cf=00
+code="btc eax,0x3f" rax=q:0x0000000080000000 => rax=q:0x0000000000000000 of=undef sf=undef af=undef pf=undef cf=01
+code="btc ax,0x00" rax=q:0xfffffffffffffffe => rax=q:0xffffffffffffffff of=undef sf=undef af=undef pf=undef cf=00
+code="btc ax,0x00" rax=q:0x0000000000000001 => rax=q:0x0000000000000000 of=undef sf=undef af=undef pf=undef cf=01
+code="btc ax,0x0f" rax=q:0xffffffffffff7fff => rax=q:0xffffffffffffffff of=undef sf=undef af=undef pf=undef cf=00
+code="btc ax,0x0f" rax=q:0x0000000000008000 => rax=q:0x0000000000000000 of=undef sf=undef af=undef pf=undef cf=01
+code="btc ax,0x1f" rax=q:0xffffffffffff7fff => rax=q:0xffffffffffffffff of=undef sf=undef af=undef pf=undef cf=00
+code="btc ax,0x1f" rax=q:0x0000000000008000 => rax=q:0x0000000000000000 of=undef sf=undef af=undef pf=undef cf=01
+
+code="btr rax,rdx" rax=q:0xfffffffffffffffe rdx=q:0x00 => rax=q:0xfffffffffffffffe of=undef sf=undef af=undef pf=undef cf=00
+code="btr rax,rdx" rax=q:0x0000000000000001 rdx=q:0x00 => rax=q:0x0000000000000000 of=undef sf=undef af=undef pf=undef cf=01
+code="btr rax,rdx" rax=q:0xfffffffffffffffe rdx=q:0x40 => rax=q:0xfffffffffffffffe of=undef sf=undef af=undef pf=undef cf=00
+code="btr rax,rdx" rax=q:0x0000000000000001 rdx=q:0x40 => rax=q:0x0000000000000000 of=undef sf=undef af=undef pf=undef cf=01
+code="btr rax,rdx" rax=q:0xffffffff7fffffff rdx=q:0x1f => rax=q:0xffffffff7fffffff of=undef sf=undef af=undef pf=undef cf=00
+code="btr rax,rdx" rax=q:0x0000000080000000 rdx=q:0x1f => rax=q:0x0000000000000000 of=undef sf=undef af=undef pf=undef cf=01
+code="btr rax,rdx" rax=q:0x7fffffffffffffff rdx=q:0x3f => rax=q:0x7fffffffffffffff of=undef sf=undef af=undef pf=undef cf=00
+code="btr rax,rdx" rax=q:0x8000000000000000 rdx=q:0x3f => rax=q:0x0000000000000000 of=undef sf=undef af=undef pf=undef cf=01
+code="btr rax,rdx" rax=q:0x7fffffffffffffff rdx=q:0x7f => rax=q:0x7fffffffffffffff of=undef sf=undef af=undef pf=undef cf=00
+code="btr rax,rdx" rax=q:0x8000000000000000 rdx=q:0x7f => rax=q:0x0000000000000000 of=undef sf=undef af=undef pf=undef cf=01
+code="btr eax,edx" rax=q:0xfffffffffffffffe rdx=q:0x00 => rax=q:0x00000000fffffffe of=undef sf=undef af=undef pf=undef cf=00
+code="btr eax,edx" rax=q:0x0000000000000001 rdx=q:0x00 => rax=q:0x0000000000000000 of=undef sf=undef af=undef pf=undef cf=01
+code="btr eax,edx" rax=q:0xffffffff7fffffff rdx=q:0x1f => rax=q:0x000000007fffffff of=undef sf=undef af=undef pf=undef cf=00
+code="btr eax,edx" rax=q:0x0000000080000000 rdx=q:0x1f => rax=q:0x0000000000000000 of=undef sf=undef af=undef pf=undef cf=01
+code="btr eax,edx" rax=q:0xffffffff7fffffff rdx=q:0x3f => rax=q:0x000000007fffffff of=undef sf=undef af=undef pf=undef cf=00
+code="btr eax,edx" rax=q:0x0000000080000000 rdx=q:0x3f => rax=q:0x0000000000000000 of=undef sf=undef af=undef pf=undef cf=01
+code="btr ax,dx" rax=q:0xfffffffffffffffe rdx=q:0x00 => rax=q:0xfffffffffffffffe of=undef sf=undef af=undef pf=undef cf=00
+code="btr ax,dx" rax=q:0x0000000000000001 rdx=q:0x00 => rax=q:0x0000000000000000 of=undef sf=undef af=undef pf=undef cf=01
+code="btr ax,dx" rax=q:0xffffffffffff7fff rdx=q:0x0f => rax=q:0xffffffffffff7fff of=undef sf=undef af=undef pf=undef cf=00
+code="btr ax,dx" rax=q:0x0000000000008000 rdx=q:0x0f => rax=q:0x0000000000000000 of=undef sf=undef af=undef pf=undef cf=01
+code="btr ax,dx" rax=q:0xffffffffffff7fff rdx=q:0x1f => rax=q:0xffffffffffff7fff of=undef sf=undef af=undef pf=undef cf=00
+code="btr ax,dx" rax=q:0x0000000000008000 rdx=q:0x1f => rax=q:0x0000000000000000 of=undef sf=undef af=undef pf=undef cf=01
+code="btr rax,0x00" rax=q:0xfffffffffffffffe => rax=q:0xfffffffffffffffe of=undef sf=undef af=undef pf=undef cf=00
+code="btr rax,0x00" rax=q:0x0000000000000001 => rax=q:0x0000000000000000 of=undef sf=undef af=undef pf=undef cf=01
+code="btr rax,0x40" rax=q:0xfffffffffffffffe => rax=q:0xfffffffffffffffe of=undef sf=undef af=undef pf=undef cf=00
+code="btr rax,0x40" rax=q:0x0000000000000001 => rax=q:0x0000000000000000 of=undef sf=undef af=undef pf=undef cf=01
+code="btr rax,0x1f" rax=q:0xffffffff7fffffff => rax=q:0xffffffff7fffffff of=undef sf=undef af=undef pf=undef cf=00
+code="btr rax,0x1f" rax=q:0x0000000080000000 => rax=q:0x0000000000000000 of=undef sf=undef af=undef pf=undef cf=01
+code="btr rax,0x3f" rax=q:0x7fffffffffffffff => rax=q:0x7fffffffffffffff of=undef sf=undef af=undef pf=undef cf=00
+code="btr rax,0x3f" rax=q:0x8000000000000000 => rax=q:0x0000000000000000 of=undef sf=undef af=undef pf=undef cf=01
+code="btr rax,0x7f" rax=q:0x7fffffffffffffff => rax=q:0x7fffffffffffffff of=undef sf=undef af=undef pf=undef cf=00
+code="btr rax,0x7f" rax=q:0x8000000000000000 => rax=q:0x0000000000000000 of=undef sf=undef af=undef pf=undef cf=01
+code="btr eax,0x00" rax=q:0xfffffffffffffffe => rax=q:0x00000000fffffffe of=undef sf=undef af=undef pf=undef cf=00
+code="btr eax,0x00" rax=q:0x0000000000000001 => rax=q:0x0000000000000000 of=undef sf=undef af=undef pf=undef cf=01
+code="btr eax,0x1f" rax=q:0xffffffff7fffffff => rax=q:0x000000007fffffff of=undef sf=undef af=undef pf=undef cf=00
+code="btr eax,0x1f" rax=q:0x0000000080000000 => rax=q:0x0000000000000000 of=undef sf=undef af=undef pf=undef cf=01
+code="btr eax,0x3f" rax=q:0xffffffff7fffffff => rax=q:0x000000007fffffff of=undef sf=undef af=undef pf=undef cf=00
+code="btr eax,0x3f" rax=q:0x0000000080000000 => rax=q:0x0000000000000000 of=undef sf=undef af=undef pf=undef cf=01
+code="btr ax,0x00" rax=q:0xfffffffffffffffe => rax=q:0xfffffffffffffffe of=undef sf=undef af=undef pf=undef cf=00
+code="btr ax,0x00" rax=q:0x0000000000000001 => rax=q:0x0000000000000000 of=undef sf=undef af=undef pf=undef cf=01
+code="btr ax,0x0f" rax=q:0xffffffffffff7fff => rax=q:0xffffffffffff7fff of=undef sf=undef af=undef pf=undef cf=00
+code="btr ax,0x0f" rax=q:0x0000000000008000 => rax=q:0x0000000000000000 of=undef sf=undef af=undef pf=undef cf=01
+code="btr ax,0x1f" rax=q:0xffffffffffff7fff => rax=q:0xffffffffffff7fff of=undef sf=undef af=undef pf=undef cf=00
+code="btr ax,0x1f" rax=q:0x0000000000008000 => rax=q:0x0000000000000000 of=undef sf=undef af=undef pf=undef cf=01
+
+code="bts rax,rdx" rax=q:0xfffffffffffffffe rdx=q:0x00 => rax=q:0xffffffffffffffff of=undef sf=undef af=undef pf=undef cf=00
+code="bts rax,rdx" rax=q:0x0000000000000001 rdx=q:0x00 => rax=q:0x0000000000000001 of=undef sf=undef af=undef pf=undef cf=01
+code="bts rax,rdx" rax=q:0xfffffffffffffffe rdx=q:0x40 => rax=q:0xffffffffffffffff of=undef sf=undef af=undef pf=undef cf=00
+code="bts rax,rdx" rax=q:0x0000000000000001 rdx=q:0x40 => rax=q:0x0000000000000001 of=undef sf=undef af=undef pf=undef cf=01
+code="bts rax,rdx" rax=q:0xffffffff7fffffff rdx=q:0x1f => rax=q:0xffffffffffffffff of=undef sf=undef af=undef pf=undef cf=00
+code="bts rax,rdx" rax=q:0x0000000080000000 rdx=q:0x1f => rax=q:0x0000000080000000 of=undef sf=undef af=undef pf=undef cf=01
+code="bts rax,rdx" rax=q:0x7fffffffffffffff rdx=q:0x3f => rax=q:0xffffffffffffffff of=undef sf=undef af=undef pf=undef cf=00
+code="bts rax,rdx" rax=q:0x8000000000000000 rdx=q:0x3f => rax=q:0x8000000000000000 of=undef sf=undef af=undef pf=undef cf=01
+code="bts rax,rdx" rax=q:0x7fffffffffffffff rdx=q:0x7f => rax=q:0xffffffffffffffff of=undef sf=undef af=undef pf=undef cf=00
+code="bts rax,rdx" rax=q:0x8000000000000000 rdx=q:0x7f => rax=q:0x8000000000000000 of=undef sf=undef af=undef pf=undef cf=01
+code="bts eax,edx" rax=q:0xfffffffffffffffe rdx=q:0x00 => rax=q:0x00000000ffffffff of=undef sf=undef af=undef pf=undef cf=00
+code="bts eax,edx" rax=q:0x0000000000000001 rdx=q:0x00 => rax=q:0x0000000000000001 of=undef sf=undef af=undef pf=undef cf=01
+code="bts eax,edx" rax=q:0xffffffff7fffffff rdx=q:0x1f => rax=q:0x00000000ffffffff of=undef sf=undef af=undef pf=undef cf=00
+code="bts eax,edx" rax=q:0x0000000080000000 rdx=q:0x1f => rax=q:0x0000000080000000 of=undef sf=undef af=undef pf=undef cf=01
+code="bts eax,edx" rax=q:0xffffffff7fffffff rdx=q:0x3f => rax=q:0x00000000ffffffff of=undef sf=undef af=undef pf=undef cf=00
+code="bts eax,edx" rax=q:0x0000000080000000 rdx=q:0x3f => rax=q:0x0000000080000000 of=undef sf=undef af=undef pf=undef cf=01
+code="bts ax,dx" rax=q:0xfffffffffffffffe rdx=q:0x00 => rax=q:0xffffffffffffffff of=undef sf=undef af=undef pf=undef cf=00
+code="bts ax,dx" rax=q:0x0000000000000001 rdx=q:0x00 => rax=q:0x0000000000000001 of=undef sf=undef af=undef pf=undef cf=01
+code="bts ax,dx" rax=q:0xffffffffffff7fff rdx=q:0x0f => rax=q:0xffffffffffffffff of=undef sf=undef af=undef pf=undef cf=00
+code="bts ax,dx" rax=q:0x0000000000008000 rdx=q:0x0f => rax=q:0x0000000000008000 of=undef sf=undef af=undef pf=undef cf=01
+code="bts ax,dx" rax=q:0xffffffffffff7fff rdx=q:0x1f => rax=q:0xffffffffffffffff of=undef sf=undef af=undef pf=undef cf=00
+code="bts ax,dx" rax=q:0x0000000000008000 rdx=q:0x1f => rax=q:0x0000000000008000 of=undef sf=undef af=undef pf=undef cf=01
+code="bts rax,0x00" rax=q:0xfffffffffffffffe => rax=q:0xffffffffffffffff of=undef sf=undef af=undef pf=undef cf=00
+code="bts rax,0x00" rax=q:0x0000000000000001 => rax=q:0x0000000000000001 of=undef sf=undef af=undef pf=undef cf=01
+code="bts rax,0x40" rax=q:0xfffffffffffffffe => rax=q:0xffffffffffffffff of=undef sf=undef af=undef pf=undef cf=00
+code="bts rax,0x40" rax=q:0x0000000000000001 => rax=q:0x0000000000000001 of=undef sf=undef af=undef pf=undef cf=01
+code="bts rax,0x1f" rax=q:0xffffffff7fffffff => rax=q:0xffffffffffffffff of=undef sf=undef af=undef pf=undef cf=00
+code="bts rax,0x1f" rax=q:0x0000000080000000 => rax=q:0x0000000080000000 of=undef sf=undef af=undef pf=undef cf=01
+code="bts rax,0x3f" rax=q:0x7fffffffffffffff => rax=q:0xffffffffffffffff of=undef sf=undef af=undef pf=undef cf=00
+code="bts rax,0x3f" rax=q:0x8000000000000000 => rax=q:0x8000000000000000 of=undef sf=undef af=undef pf=undef cf=01
+code="bts rax,0x7f" rax=q:0x7fffffffffffffff => rax=q:0xffffffffffffffff of=undef sf=undef af=undef pf=undef cf=00
+code="bts rax,0x7f" rax=q:0x8000000000000000 => rax=q:0x8000000000000000 of=undef sf=undef af=undef pf=undef cf=01
+code="bts eax,0x00" rax=q:0xfffffffffffffffe => rax=q:0x00000000ffffffff of=undef sf=undef af=undef pf=undef cf=00
+code="bts eax,0x00" rax=q:0x0000000000000001 => rax=q:0x0000000000000001 of=undef sf=undef af=undef pf=undef cf=01
+code="bts eax,0x1f" rax=q:0xffffffff7fffffff => rax=q:0x00000000ffffffff of=undef sf=undef af=undef pf=undef cf=00
+code="bts eax,0x1f" rax=q:0x0000000080000000 => rax=q:0x0000000080000000 of=undef sf=undef af=undef pf=undef cf=01
+code="bts eax,0x3f" rax=q:0xffffffff7fffffff => rax=q:0x00000000ffffffff of=undef sf=undef af=undef pf=undef cf=00
+code="bts eax,0x3f" rax=q:0x0000000080000000 => rax=q:0x0000000080000000 of=undef sf=undef af=undef pf=undef cf=01
+code="bts ax,0x00" rax=q:0xfffffffffffffffe => rax=q:0xffffffffffffffff of=undef sf=undef af=undef pf=undef cf=00
+code="bts ax,0x00" rax=q:0x0000000000000001 => rax=q:0x0000000000000001 of=undef sf=undef af=undef pf=undef cf=01
+code="bts ax,0x0f" rax=q:0xffffffffffff7fff => rax=q:0xffffffffffffffff of=undef sf=undef af=undef pf=undef cf=00
+code="bts ax,0x0f" rax=q:0x0000000000008000 => rax=q:0x0000000000008000 of=undef sf=undef af=undef pf=undef cf=01
+code="bts ax,0x1f" rax=q:0xffffffffffff7fff => rax=q:0xffffffffffffffff of=undef sf=undef af=undef pf=undef cf=00
+code="bts ax,0x1f" rax=q:0x0000000000008000 => rax=q:0x0000000000008000 of=undef sf=undef af=undef pf=undef cf=01

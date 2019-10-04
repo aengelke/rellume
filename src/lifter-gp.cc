@@ -471,6 +471,49 @@ void Lifter::LiftBitscan(const LLInstr& inst, bool trailing) {
     SetFlag(Facet::CF, undef);
 }
 
+void Lifter::LiftBittest(const LLInstr& inst) {
+    llvm::Value* index = OpLoad(inst.ops[1], Facet::I);
+    unsigned op_size = inst.ops[0].size * 8;
+    assert((op_size == 16 || op_size == 32 || op_size == 64) &&
+            "invalid bittest operation size");
+
+    llvm::Value* val;
+    if (inst.ops[0].type == LL_OP_REG) {
+        val = OpLoad(inst.ops[0], Facet::I);
+    } else { // LL_OP_MEM
+        assert(false && "memory bittest not implemented");
+        return;
+    }
+
+    // Truncated here because memory operand may need full value.
+    index = irb.CreateAnd(index, irb.getIntN(op_size, op_size-1));
+    llvm::Value* mask = irb.CreateShl(irb.getIntN(op_size, 1), index);
+
+    llvm::Value* bit = irb.CreateAnd(val, mask);
+
+    if (inst.type == LL_INS_BT) {
+        goto skip_writeback;
+    } else if (inst.type == LL_INS_BTC) {
+        val = irb.CreateXor(val, mask);
+    } else if (inst.type == LL_INS_BTR) {
+        val = irb.CreateAnd(val, irb.CreateNot(mask));
+    } else if (inst.type == LL_INS_BTS) {
+        val = irb.CreateOr(val, mask);
+    }
+
+    if (inst.ops[0].type == LL_OP_REG) {
+        OpStoreGp(inst.ops[0], val);
+    } else { // LL_OP_MEM
+        assert(false && "memory bittest not implemented");
+        return;
+    }
+
+skip_writeback:
+    // Zero flag is not modified
+    SetFlag(Facet::CF, irb.CreateICmpNE(bit, irb.getIntN(op_size, 0)));
+    SetFlagUndef({Facet::OF, Facet::SF, Facet::AF, Facet::PF});
+}
+
 void Lifter::LiftJmp(const LLInstr& inst) {
     SetReg(LLReg(LL_RT_IP, 0), Facet::I64, OpLoad(inst.ops[0], Facet::I64));
 }

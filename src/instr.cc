@@ -229,6 +229,14 @@ end_ops:
     case FDI_ROR_CL: llinst.type = LL_INS_ROR; llinst.ops[1].type = LL_OP_REG; llinst.ops[1].size = 1; llinst.ops[1].reg = LLReg::Gp(1, 1); llinst.operand_count = 2; break;
     case FDI_BSF_TZCNT: llinst.type = !FD_HAS_REP(&fdi) ? LL_INS_BSF : LL_INS_TZCNT; break;
     case FDI_BSR_LZCNT: llinst.type = !FD_HAS_REP(&fdi) ? LL_INS_BSR : LL_INS_LZCNT; break;
+    case FDI_BT: llinst.type = LL_INS_BT; break;
+    case FDI_BT_IMM: llinst.type = LL_INS_BT; break;
+    case FDI_BTC: llinst.type = LL_INS_BTC; break;
+    case FDI_BTC_IMM: llinst.type = LL_INS_BTC; break;
+    case FDI_BTR: llinst.type = LL_INS_BTR; break;
+    case FDI_BTR_IMM: llinst.type = LL_INS_BTR; break;
+    case FDI_BTS: llinst.type = LL_INS_BTS; break;
+    case FDI_BTS_IMM: llinst.type = LL_INS_BTS; break;
     case FDI_CLD: llinst.type = LL_INS_CLD; break;
     case FDI_STD: llinst.type = LL_INS_STD; break;
     case FDI_LODS: llinst.type = !FD_HAS_REP(&fdi) ? LL_INS_LODS : LL_INS_REP_LODS; break;

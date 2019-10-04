@@ -251,6 +251,7 @@ public:
     void LiftSetcc(const LLInstr& inst, Condition cond);
     void LiftCdqe(const LLInstr& inst);
     void LiftBitscan(const LLInstr& inst, bool trailing);
+    void LiftBittest(const LLInstr& inst);
 
     void LiftPush(const LLInstr& inst) {
         StackPush(OpLoad(inst.ops[0], Facet::I));
