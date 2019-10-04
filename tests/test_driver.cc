@@ -16,6 +16,7 @@
 #include <memory>
 #include <sstream>
 #include <sys/mman.h>
+#include <sys/random.h>
 #include <unistd.h>
 #include <unordered_map>
 #include <unordered_set>
@@ -155,6 +156,7 @@ class TestCase {
 
         // 1. Setup initial state
         CPU initial{};
+        getrandom(&initial, sizeof(initial), 0);
 
         while (argstream >> arg) {
             if (arg == "=>")
