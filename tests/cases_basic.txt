@@ -10,14 +10,14 @@ code="mov eax, edx" rax=q:0x8899aabbccddeeff rdx=q:0x0011223344556677 => rax=q:0
 code="mov rax, rdx" rax=q:0x8899aabbccddeeff rdx=q:0x0011223344556677 => rax=q:0x0011223344556677
 code="mov eax, edx" rax=q:0x8899aabbccddeeff rdx=q:0x0011223344556677 => rax=q:0x0000000044556677
 
-code="div rcx" rax=q:0x10000 rdx=q:0x0 rcx=q:0x3 => rax=q:0x5555 rdx=q:0x1
+code="div rcx" rax=q:0x10000 rdx=q:0x0 rcx=q:0x3 => rax=q:0x5555 rdx=q:0x1 of=undef sf=undef zf=undef af=undef pf=undef cf=undef
 
-code="pushfq" rsp=q:0x20000008 m20000000=q:0x0 of=01 sf=00 zf=00 af=00 pf=00 cf=00 => rsp=q:0x20000000 m20000000=q:0xa02
-code="pushfq" rsp=q:0x20000008 m20000000=q:0x0 of=00 sf=01 zf=00 af=00 pf=00 cf=00 => rsp=q:0x20000000 m20000000=q:0x282
-code="pushfq" rsp=q:0x20000008 m20000000=q:0x0 of=00 sf=00 zf=01 af=00 pf=00 cf=00 => rsp=q:0x20000000 m20000000=q:0x242
-code="pushfq" rsp=q:0x20000008 m20000000=q:0x0 of=00 sf=00 zf=00 af=01 pf=00 cf=00 => rsp=q:0x20000000 m20000000=q:0x212
-code="pushfq" rsp=q:0x20000008 m20000000=q:0x0 of=00 sf=00 zf=00 af=00 pf=01 cf=00 => rsp=q:0x20000000 m20000000=q:0x206
-code="pushfq" rsp=q:0x20000008 m20000000=q:0x0 of=00 sf=00 zf=00 af=00 pf=00 cf=01 => rsp=q:0x20000000 m20000000=q:0x203
+code="pushfq" rsp=q:0x20000008 m20000000=q:0x0 of=01 sf=00 zf=00 af=00 pf=00 cf=00 df=00 => rsp=q:0x20000000 m20000000=q:0xa02
+code="pushfq" rsp=q:0x20000008 m20000000=q:0x0 of=00 sf=01 zf=00 af=00 pf=00 cf=00 df=00 => rsp=q:0x20000000 m20000000=q:0x282
+code="pushfq" rsp=q:0x20000008 m20000000=q:0x0 of=00 sf=00 zf=01 af=00 pf=00 cf=00 df=00 => rsp=q:0x20000000 m20000000=q:0x242
+code="pushfq" rsp=q:0x20000008 m20000000=q:0x0 of=00 sf=00 zf=00 af=01 pf=00 cf=00 df=00 => rsp=q:0x20000000 m20000000=q:0x212
+code="pushfq" rsp=q:0x20000008 m20000000=q:0x0 of=00 sf=00 zf=00 af=00 pf=01 cf=00 df=00 => rsp=q:0x20000000 m20000000=q:0x206
+code="pushfq" rsp=q:0x20000008 m20000000=q:0x0 of=00 sf=00 zf=00 af=00 pf=00 cf=01 df=00 => rsp=q:0x20000000 m20000000=q:0x203
 
 code="inc eax" rax=q:0xfadc9e84ffffffff => rax=q:0 zf=01 of=00 pf=01 sf=00 af=01
 code="inc eax" rax=q:0xd15121fd00000000 => rax=q:1 zf=00 of=00 pf=00 sf=00 af=00
