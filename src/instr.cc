@@ -173,6 +173,7 @@ end_ops:
     {
     case FDI_INT3: return LLInstr::Invalid(addr);
     case FDI_NOP: llinst.type = LL_INS_NOP; break;
+    case FDI_RDSSP: llinst.type = LL_INS_RDSSP; break;
     case FDI_CALL: llinst.type = LL_INS_CALL; break;
     case FDI_CALL_IND: llinst.type = LL_INS_CALL; break;
     case FDI_RET: llinst.type = LL_INS_RET; break;

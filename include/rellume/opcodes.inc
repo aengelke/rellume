@@ -18,6 +18,7 @@
  */
 
 DEF_IT(NOP,)
+DEF_IT(RDSSP,)
 
 DEF_IT(PUSH, state.LiftPush(inst))
 DEF_IT(PUSHFQ, state.LiftPushf(inst))
