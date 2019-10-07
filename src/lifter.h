@@ -249,7 +249,8 @@ public:
     void LiftLea(const LLInstr&);
     void LiftCmovcc(const LLInstr& inst, Condition cond);
     void LiftSetcc(const LLInstr& inst, Condition cond);
-    void LiftCdqe(const LLInstr& inst);
+    void LiftCext(const LLInstr& inst);
+    void LiftCsep(const LLInstr& inst);
     void LiftBitscan(const LLInstr& inst, bool trailing);
     void LiftBittest(const LLInstr& inst);
 

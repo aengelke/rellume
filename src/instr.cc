@@ -390,7 +390,8 @@ end_ops:
     case FDI_JGE: llinst.type = LL_INS_JGE; break;
     case FDI_JLE: llinst.type = LL_INS_JLE; break;
     case FDI_JG: llinst.type = LL_INS_JG; break;
-    case FDI_C_EX: if (FD_OPSIZE(&fdi) == 8) llinst.type = LL_INS_CLTQ; break;
+    case FDI_C_EX: llinst.type = LL_INS_CEXT; break;
+    case FDI_C_SEP: llinst.type = LL_INS_CSEP; break;
     case FDI_ENDBR64: llinst.type = LL_INS_NOP; break;
     default: {
         char buf[128];

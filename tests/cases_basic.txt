@@ -19,6 +19,19 @@ code="pushfq" rsp=q:0x20000008 m20000000=q:0x0 of=00 sf=00 zf=00 af=01 pf=00 cf=
 code="pushfq" rsp=q:0x20000008 m20000000=q:0x0 of=00 sf=00 zf=00 af=00 pf=01 cf=00 df=00 => rsp=q:0x20000000 m20000000=q:0x206
 code="pushfq" rsp=q:0x20000008 m20000000=q:0x0 of=00 sf=00 zf=00 af=00 pf=00 cf=01 df=00 => rsp=q:0x20000000 m20000000=q:0x203
 
+code="cdqe" rax=q:0xd15121fd00000000 => rax=q:0
+code="cdqe" rax=q:0xd15121fd80000000 => rax=q:0xffffffff80000000
+code="cwde" rax=q:0xd15121fd50d60000 => rax=q:0x0000000000000000
+code="cwde" rax=q:0xd15121fd50d68000 => rax=q:0x00000000ffff8000
+code="cbw" rax=q:0xd15121fd50d67f00 => rax=q:0xd15121fd50d60000
+code="cbw" rax=q:0xd15121fd50d67f80 => rax=q:0xd15121fd50d6ff80
+code="cqo" rax=q:0x215121fd20b5cbeb => rdx=q:0
+code="cqo" rax=q:0xd15121fd20b5cbeb => rdx=q:0xffffffffffffffff
+code="cdq" rax=q:0x215121fd70b5cbeb => rdx=q:0
+code="cdq" rax=q:0x215121fd80b5cbeb => rdx=q:0x00000000ffffffff
+code="cwd" rax=q:0x215121fd80b54beb rdx=q:0x55b5a243c1c3f9d1 => rdx=q:0x55b5a243c1c30000
+code="cwd" rax=q:0x215121fd80b5cbeb rdx=q:0x55b5a243c1c3f9d1 => rdx=q:0x55b5a243c1c3ffff
+
 code="inc eax" rax=q:0xfadc9e84ffffffff => rax=q:0 zf=01 of=00 pf=01 sf=00 af=01
 code="inc eax" rax=q:0xd15121fd00000000 => rax=q:1 zf=00 of=00 pf=00 sf=00 af=00
 code="inc eax" rax=q:0x3203f8527fffffff => rax=q:0x80000000 zf=00 of=01 pf=01 sf=01 af=01

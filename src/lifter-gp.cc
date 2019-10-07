@@ -447,12 +447,20 @@ void Lifter::LiftSetcc(const LLInstr& inst, Condition cond) {
     OpStoreGp(inst.ops[0], irb.CreateZExt(FlagCond(cond), irb.getInt8Ty()));
 }
 
-void Lifter::LiftCdqe(const LLInstr& inst) {
+void Lifter::LiftCext(const LLInstr& inst) {
     LLInstrOp src_op = LLInstrOp(LLReg::Gp(inst.operand_size/2, LL_RI_A));
     LLInstrOp dst_op = LLInstrOp(LLReg::Gp(inst.operand_size, LL_RI_A));
     llvm::Type* dst_ty = irb.getIntNTy(inst.operand_size * 8);
 
     OpStoreGp(dst_op, irb.CreateSExt(OpLoad(src_op, Facet::I), dst_ty));
+}
+
+void Lifter::LiftCsep(const LLInstr& inst) {
+    LLInstrOp src_op = LLInstrOp(LLReg::Gp(inst.operand_size, LL_RI_A));
+    LLInstrOp dst_op = LLInstrOp(LLReg::Gp(inst.operand_size, LL_RI_D));
+
+    llvm::Value* src = OpLoad(src_op, Facet::I);
+    OpStoreGp(dst_op, irb.CreateAShr(src, inst.operand_size * 8 - 1));
 }
 
 void Lifter::LiftBitscan(const LLInstr& inst, bool trailing) {
