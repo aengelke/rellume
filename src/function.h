@@ -36,7 +36,7 @@
 
 namespace rellume {
 
-class BasicBlock;
+class ArchBasicBlock;
 
 class Function
 {
@@ -81,15 +81,15 @@ public:
     int Decode(uintptr_t addr, MemReader memacc = nullptr);
 
 private:
-    BasicBlock& ResolveAddr(llvm::Value* addr);
+    ArchBasicBlock& ResolveAddr(llvm::Value* addr);
 
     LLConfig cfg;
 
     llvm::Function* llvm;
     uint64_t entry_addr;
-    std::unique_ptr<BasicBlock> entry_block;
-    std::unique_ptr<BasicBlock> exit_block;
-    std::unordered_map<uint64_t,std::unique_ptr<BasicBlock>> block_map;
+    std::unique_ptr<ArchBasicBlock> entry_block;
+    std::unique_ptr<ArchBasicBlock> exit_block;
+    std::unordered_map<uint64_t,std::unique_ptr<ArchBasicBlock>> block_map;
 };
 
 }

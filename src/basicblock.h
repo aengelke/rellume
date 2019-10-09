@@ -86,6 +86,69 @@ private:
     bool terminated = false;
 };
 
+class ArchBasicBlock
+{
+private:
+    llvm::Function* fn;
+    const LLConfig& cfg;
+
+    std::vector<std::unique_ptr<BasicBlock>> low_blocks;
+    BasicBlock* insert_block;
+
+public:
+    ArchBasicBlock(llvm::Function* fn, const LLConfig& cfg,
+                   BasicBlock::Kind kind = BasicBlock::DEFAULT)
+            : fn(fn), cfg(cfg) {
+        low_blocks.push_back(std::make_unique<BasicBlock>(fn, cfg, kind));
+        insert_block = low_blocks[0].get();
+    }
+
+    ArchBasicBlock(ArchBasicBlock&& rhs);
+    ArchBasicBlock& operator=(ArchBasicBlock&& rhs);
+
+    ArchBasicBlock(const ArchBasicBlock&) = delete;
+    ArchBasicBlock& operator=(const ArchBasicBlock&) = delete;
+
+private:
+    BasicBlock& BeginBlock() {
+        return *low_blocks[0];
+    }
+
+public:
+    void AddInst(const LLInstr& inst) {
+        insert_block->AddInst(inst, cfg);
+    }
+
+    BasicBlock* AddBlock() {
+        low_blocks.push_back(std::make_unique<BasicBlock>(fn, cfg, BasicBlock::DEFAULT));
+        return low_blocks[low_blocks.size()-1].get();
+    }
+    void SetInsertBlock(BasicBlock* new_insert_block) {
+        insert_block = new_insert_block;
+    }
+
+    void BranchTo(ArchBasicBlock& next) {
+        insert_block->BranchTo(next.BeginBlock());
+    }
+    void BranchTo(llvm::Value* cond, ArchBasicBlock& then, ArchBasicBlock& other) {
+        insert_block->BranchTo(cond, then.BeginBlock(), other.BeginBlock());
+    }
+    bool FillPhis() {
+        bool res = false;
+        for (const auto& lb : low_blocks)
+            res |= lb->FillPhis();
+        return res;
+    }
+
+    void RemoveUnmodifiedStores(ArchBasicBlock& entry) {
+        insert_block->RemoveUnmodifiedStores(entry.BeginBlock());
+    }
+
+    llvm::Value* NextRip() {
+        return insert_block->NextRip();
+    }
+};
+
 }
 
 #endif

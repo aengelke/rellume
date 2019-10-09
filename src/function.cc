@@ -66,7 +66,7 @@ Function::Function(llvm::Module* mod, CallConv callconv) : cfg()
     llvm->addDereferenceableParamAttr(cpu_param_idx, 0x190);
 
     // Create entry basic block as first block in the function.
-    entry_block = std::make_unique<BasicBlock>(llvm, cfg, BasicBlock::ENTRY);
+    entry_block = std::make_unique<ArchBasicBlock>(llvm, cfg, BasicBlock::ENTRY);
 }
 
 Function::~Function() = default;
@@ -76,12 +76,12 @@ void Function::AddInst(uint64_t block_addr, const LLInstr& inst)
     if (block_map.size() == 0)
         entry_addr = block_addr;
     if (block_map.find(block_addr) == block_map.end())
-        block_map[block_addr] = std::make_unique<BasicBlock>(llvm, cfg);
+        block_map[block_addr] = std::make_unique<ArchBasicBlock>(llvm, cfg);
 
-    block_map[block_addr]->AddInst(inst, cfg);
+    block_map[block_addr]->AddInst(inst);
 }
 
-BasicBlock& Function::ResolveAddr(llvm::Value* addr) {
+ArchBasicBlock& Function::ResolveAddr(llvm::Value* addr) {
     if (auto const_addr = llvm::dyn_cast<llvm::ConstantInt>(addr)) {
         auto block_it = block_map.find(const_addr->getZExtValue());
         if (block_it != block_map.end())
@@ -94,7 +94,7 @@ llvm::Function* Function::Lift() {
     if (block_map.size() == 0)
         return nullptr;
 
-    exit_block = std::make_unique<BasicBlock>(llvm, cfg, BasicBlock::EXIT);
+    exit_block = std::make_unique<ArchBasicBlock>(llvm, cfg, BasicBlock::EXIT);
 
     entry_block->BranchTo(*block_map[entry_addr]);
 
