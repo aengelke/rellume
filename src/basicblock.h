@@ -61,6 +61,10 @@ public:
         return regfile.GetReg(LLReg(LL_RT_IP, 0), Facet::I64);
     }
 
+    bool IsTerminated() {
+        return terminated;
+    }
+
 private:
     llvm::BasicBlock* EndBlock() {
         // The ending block is the last insertion point.
@@ -78,6 +82,8 @@ private:
 
     // Stores load/store instructions for CPU struct access in entry/exit blocks
     std::vector<llvm::Value*> mem_ref_values;
+
+    bool terminated = false;
 };
 
 }
