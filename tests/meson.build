@@ -2,7 +2,7 @@
 casefiles = [
     'cases_basic.txt',
     'cases_modrm.txt',
-    #'cases_string.txt',
+    'cases_string.txt',
     'cases_sse.txt',
 ]
 

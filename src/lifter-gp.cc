@@ -583,16 +583,144 @@ void Lifter::LiftRet(const LLInstr& inst) {
     OpStoreGp(LLInstrOp(LLReg(LL_RT_IP, 0)), StackPop());
 }
 
+LifterBase::RepInfo LifterBase::RepBegin() {
+    BasicBlock* loop_block = ablock.AddBlock();
+    BasicBlock* cont_block = ablock.AddBlock();
+
+    llvm::Value* count = GetReg(LLReg(LL_RT_GP64, LL_RI_C), Facet::I64);
+    llvm::Value* zero = llvm::Constant::getNullValue(count->getType());
+    llvm::Value* enter_loop = irb.CreateICmpNE(count, zero);
+    ablock.GetInsertBlock()->BranchTo(enter_loop, *loop_block, *cont_block);
+
+    SetInsertBlock(loop_block);
+
+    return std::make_pair(loop_block, cont_block);
+}
+
+void LifterBase::RepEnd(RepInfo info, RepMode mode) {
+    // Decrement count and check.
+    llvm::Value* count = GetReg(LLReg(LL_RT_GP64, LL_RI_C), Facet::I64);
+    count = irb.CreateSub(count, irb.getInt64(1));
+    SetReg(LLReg(LL_RT_GP64, LL_RI_C), Facet::I64, count);
+
+    llvm::Value* zero = llvm::Constant::getNullValue(count->getType());
+    llvm::Value* cond = irb.CreateICmpNE(count, zero);
+    if (mode == REPZ)
+        cond = irb.CreateAnd(cond, GetFlag(Facet::ZF));
+    else if (mode == REPNZ)
+        cond = irb.CreateAnd(cond, irb.CreateNot(GetFlag(Facet::ZF)));
+
+    ablock.GetInsertBlock()->BranchTo(cond, *info.first, *info.second);
+    SetInsertBlock(info.second);
+}
+
 void Lifter::LiftStos(const LLInstr& inst) {
-    assert(0);
+    RepInfo rep_info;
+    if (inst.type == LL_INS_REP_STOS)
+        rep_info = RepBegin();
+
+    LLInstrOp src_op = LLInstrOp(LLReg::Gp(inst.operand_size, LL_RI_A));
+    llvm::Value* src = OpLoad(src_op, Facet::I);
+    llvm::Value* dst_ptr = GetReg(LLReg(LL_RT_GP64, LL_RI_DI), Facet::PTR);
+    dst_ptr = irb.CreatePointerCast(dst_ptr, src->getType()->getPointerTo());
+
+    llvm::Value* df = GetFlag(Facet::DF);
+    llvm::Value* adj = irb.CreateSelect(df, irb.getInt64(-1), irb.getInt64(1));
+
+    // TODO: optimize REP STOSB and other sizes with constant zero to llvm
+    // memset intrinsic.
+    irb.CreateStore(src, dst_ptr);
+    dst_ptr = irb.CreateGEP(dst_ptr, adj);
+
+    dst_ptr = irb.CreatePointerCast(dst_ptr, irb.getInt8PtrTy());
+    llvm::Value* dst_int = irb.CreatePtrToInt(dst_ptr, irb.getInt64Ty());
+    SetReg(LLReg(LL_RT_GP64, LL_RI_DI), Facet::I64, dst_int);
+    SetRegFacet(LLReg(LL_RT_GP64, LL_RI_DI), Facet::PTR, dst_ptr);
+
+    if (inst.type == LL_INS_REP_STOS)
+        RepEnd(rep_info, REP);
 }
 
 void Lifter::LiftMovs(const LLInstr& inst) {
-    assert(false);
+    RepInfo rep_info;
+    if (inst.type == LL_INS_REP_MOVS)
+        rep_info = RepBegin();
+
+    llvm::Type* mov_ty = irb.getIntNTy(inst.operand_size * 8);
+    llvm::Value* src_ptr = GetReg(LLReg(LL_RT_GP64, LL_RI_SI), Facet::PTR);
+    llvm::Value* dst_ptr = GetReg(LLReg(LL_RT_GP64, LL_RI_DI), Facet::PTR);
+    src_ptr = irb.CreatePointerCast(src_ptr, mov_ty->getPointerTo());
+    dst_ptr = irb.CreatePointerCast(dst_ptr, mov_ty->getPointerTo());
+
+    llvm::Value* df = GetFlag(Facet::DF);
+    llvm::Value* adj = irb.CreateSelect(df, irb.getInt64(-1), irb.getInt64(1));
+
+    // TODO: optimize REP MOVSB and other sizes with constant zero to llvm
+    // memcpy intrinsic.
+    irb.CreateStore(irb.CreateLoad(src_ptr), dst_ptr);
+    src_ptr = irb.CreateGEP(src_ptr, adj);
+    dst_ptr = irb.CreateGEP(dst_ptr, adj);
+
+    src_ptr = irb.CreatePointerCast(src_ptr, irb.getInt8PtrTy());
+    llvm::Value* src_int = irb.CreatePtrToInt(src_ptr, irb.getInt64Ty());
+    SetReg(LLReg(LL_RT_GP64, LL_RI_SI), Facet::I64, src_int);
+    SetRegFacet(LLReg(LL_RT_GP64, LL_RI_SI), Facet::PTR, src_ptr);
+
+    dst_ptr = irb.CreatePointerCast(dst_ptr, irb.getInt8PtrTy());
+    llvm::Value* dst_int = irb.CreatePtrToInt(dst_ptr, irb.getInt64Ty());
+    SetReg(LLReg(LL_RT_GP64, LL_RI_DI), Facet::I64, dst_int);
+    SetRegFacet(LLReg(LL_RT_GP64, LL_RI_DI), Facet::PTR, dst_ptr);
+
+    if (inst.type == LL_INS_REP_MOVS)
+        RepEnd(rep_info, REP);
 }
 
 void Lifter::LiftScas(const LLInstr& inst) {
     assert(false);
+}
+
+void Lifter::LiftCmps(const LLInstr& inst) {
+    RepInfo rep_info;
+    if (inst.type == LL_INS_REPZ_CMPS || inst.type == LL_INS_REPNZ_CMPS)
+        rep_info = RepBegin();
+
+    llvm::Type* mov_ty = irb.getIntNTy(inst.operand_size * 8);
+    llvm::Value* src_ptr = GetReg(LLReg(LL_RT_GP64, LL_RI_SI), Facet::PTR);
+    llvm::Value* dst_ptr = GetReg(LLReg(LL_RT_GP64, LL_RI_DI), Facet::PTR);
+    src_ptr = irb.CreatePointerCast(src_ptr, mov_ty->getPointerTo());
+    dst_ptr = irb.CreatePointerCast(dst_ptr, mov_ty->getPointerTo());
+
+    llvm::Value* df = GetFlag(Facet::DF);
+    llvm::Value* adj = irb.CreateSelect(df, irb.getInt64(-1), irb.getInt64(1));
+
+    llvm::Value* op1 = irb.CreateLoad(src_ptr);
+    llvm::Value* op2 = irb.CreateLoad(dst_ptr);
+    // Perform a normal CMP operation.
+    llvm::Value* res = irb.CreateSub(op1, op2);
+    SetFlag(Facet::ZF, irb.CreateICmpEQ(op1, op2));
+    FlagCalcS(res);
+    FlagCalcP(res);
+    FlagCalcA(res, op1, op2);
+    FlagCalcCSub(res, op1, op2);
+    FlagCalcOSub(res, op1, op2);
+
+    src_ptr = irb.CreateGEP(src_ptr, adj);
+    dst_ptr = irb.CreateGEP(dst_ptr, adj);
+
+    src_ptr = irb.CreatePointerCast(src_ptr, irb.getInt8PtrTy());
+    llvm::Value* src_int = irb.CreatePtrToInt(src_ptr, irb.getInt64Ty());
+    SetReg(LLReg(LL_RT_GP64, LL_RI_SI), Facet::I64, src_int);
+    SetRegFacet(LLReg(LL_RT_GP64, LL_RI_SI), Facet::PTR, src_ptr);
+
+    dst_ptr = irb.CreatePointerCast(dst_ptr, irb.getInt8PtrTy());
+    llvm::Value* dst_int = irb.CreatePtrToInt(dst_ptr, irb.getInt64Ty());
+    SetReg(LLReg(LL_RT_GP64, LL_RI_DI), Facet::I64, dst_int);
+    SetRegFacet(LLReg(LL_RT_GP64, LL_RI_DI), Facet::PTR, dst_ptr);
+
+    if (inst.type == LL_INS_REPZ_CMPS)
+        RepEnd(rep_info, REPZ);
+    else if (inst.type == LL_INS_REPNZ_CMPS)
+        RepEnd(rep_info, REPNZ);
 }
 
 } // namespace

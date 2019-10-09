@@ -115,6 +115,12 @@ protected:
             SetRegFacet(LLReg(LL_RT_EFLAGS, 0), facet, undef);
     }
 
+    void SetInsertBlock(BasicBlock* block) {
+        ablock.SetInsertBlock(block);
+        regfile = block->GetRegFile();
+        irb.SetInsertPoint(regfile->GetInsertBlock());
+    }
+
     // Operand handling implemented in lloperand.cc
 private:
     llvm::Value* OpAddrConst(uint64_t addr, llvm::PointerType* ptr_ty);
@@ -148,6 +154,11 @@ protected:
 
     llvm::Value* FlagCond(Condition cond);
     llvm::Value* FlagAsReg(unsigned size);
+
+    enum RepMode { REP, REPZ, REPNZ };
+    using RepInfo = std::pair<BasicBlock*, BasicBlock*>;
+    RepInfo RepBegin();
+    void RepEnd(RepInfo info, RepMode mode);
 };
 
 class Lifter : public LifterBase {
@@ -206,6 +217,7 @@ public:
     void LiftStos(const LLInstr& inst);
     void LiftMovs(const LLInstr& inst);
     void LiftScas(const LLInstr& inst);
+    void LiftCmps(const LLInstr& inst);
 
     // llinstruction-sse.cc
     void LiftPrefetch(const LLInstr&, unsigned rw, unsigned locality);
