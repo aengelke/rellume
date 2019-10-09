@@ -171,6 +171,7 @@ public:
 
     void LiftMovgp(const LLInstr&, llvm::Instruction::CastOps cast);
     void LiftAdd(const LLInstr&);
+    void LiftXadd(const LLInstr&);
     void LiftSub(const LLInstr&);
     void LiftSbb(const LLInstr&);
     void LiftCmp(const LLInstr&);

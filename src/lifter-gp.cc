@@ -133,6 +133,23 @@ void Lifter::LiftAdd(const LLInstr& inst) {
     FlagCalcOAdd(res, op1, op2);
 }
 
+void Lifter::LiftXadd(const LLInstr& inst) {
+    llvm::Value* op1 = OpLoad(inst.ops[0], Facet::I);
+    llvm::Value* op2 = OpLoad(inst.ops[1], Facet::I);
+    llvm::Value* res = irb.CreateAdd(op1, op2);
+
+    // TODO: generate pointer facets?
+    OpStoreGp(inst.ops[0], res);
+    OpStoreGp(inst.ops[1], op1);
+
+    FlagCalcZ(res);
+    FlagCalcS(res);
+    FlagCalcP(res);
+    FlagCalcA(res, op1, op2);
+    FlagCalcCAdd(res, op1, op2);
+    FlagCalcOAdd(res, op1, op2);
+}
+
 void Lifter::LiftSub(const LLInstr& inst) {
     llvm::Value* op1 = OpLoad(inst.ops[0], Facet::I);
     llvm::Value* op2 = OpLoad(inst.ops[1], Facet::I);
