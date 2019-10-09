@@ -234,7 +234,7 @@ void Lifter::LiftSsePsllElement(const LLInstr& inst, Facet op_type) {
 }
 
 void Lifter::LiftSsePslldq(const LLInstr& inst) {
-    uint32_t shift = std::max(static_cast<uint32_t>(inst.ops[1].val), 16u);
+    uint32_t shift = std::min(static_cast<uint32_t>(inst.ops[1].val), 16u);
     uint32_t mask[16];
     for (int i = 0; i < 16; i++)
         mask[i] = i + (16 - shift);
