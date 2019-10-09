@@ -69,13 +69,8 @@ public:
     }
 
 private:
-    llvm::BasicBlock* EndBlock() {
-        // The ending block is the last insertion point.
-        return regfile.GetInsertBlock();
-    }
-
     /// First LLVM basic block for the x86 basic block.
-    llvm::BasicBlock* first_block;
+    llvm::BasicBlock* llvm_block;
 
     /// The register file for the basic block
     RegFile regfile;

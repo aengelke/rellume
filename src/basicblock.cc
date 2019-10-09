@@ -51,15 +51,15 @@ namespace rellume {
 
 BasicBlock::BasicBlock(llvm::Function* fn, const LLConfig& cfg, Kind kind)
         : regfile() {
-    first_block = llvm::BasicBlock::Create(fn->getContext(), "", fn, nullptr);
-    regfile.SetInsertBlock(first_block);
+    llvm_block = llvm::BasicBlock::Create(fn->getContext(), "", fn, nullptr);
+    regfile.SetInsertBlock(llvm_block);
 
     if (kind != ENTRY) {
         // Initialize all registers with a generator which adds a PHI node when
         // the value-facet combination is requested.
         regfile.InitAll([this](const LLReg reg, const Facet facet) {
             return [this, reg, facet]() {
-                llvm::IRBuilder<> irb(first_block, first_block->begin());
+                llvm::IRBuilder<> irb(llvm_block, llvm_block->begin());
                 auto phi = irb.CreatePHI(facet.Type(irb.getContext()), 4);
                 empty_phis.push_back(std::make_tuple(reg, facet, phi));
                 return phi;
@@ -75,7 +75,7 @@ BasicBlock::BasicBlock(llvm::Function* fn, const LLConfig& cfg, Kind kind)
     } else if (kind == EXIT) {
         llvm::Value* ret_val = cfg.callconv.Pack(regfile, fn, &mem_ref_values);
 
-        llvm::IRBuilder<> irb(first_block);
+        llvm::IRBuilder<> irb(llvm_block);
         if (ret_val == nullptr)
             irb.CreateRetVoid();
         else
@@ -87,8 +87,8 @@ BasicBlock::BasicBlock(llvm::Function* fn, const LLConfig& cfg, Kind kind)
 void BasicBlock::BranchTo(BasicBlock& next) {
     assert(!terminated && "attempting to add second terminator");
 
-    llvm::IRBuilder<> irb(EndBlock());
-    irb.CreateBr(next.first_block);
+    llvm::IRBuilder<> irb(llvm_block);
+    irb.CreateBr(next.llvm_block);
     next.predecessors.push_back(this);
     terminated = true;
 }
@@ -103,8 +103,8 @@ void BasicBlock::BranchTo(llvm::Value* cond, BasicBlock& then,
 
     assert(!terminated && "attempting to add second terminator");
 
-    llvm::IRBuilder<> irb(EndBlock());
-    irb.CreateCondBr(cond, then.first_block, other.first_block);
+    llvm::IRBuilder<> irb(llvm_block);
+    irb.CreateCondBr(cond, then.llvm_block, other.llvm_block);
     then.predecessors.push_back(this);
     other.predecessors.push_back(this);
     terminated = true;
@@ -121,7 +121,7 @@ bool BasicBlock::FillPhis() {
         for (BasicBlock* pred : predecessors) {
             assert(pred->terminated && "attempt to fill PHIs from open block");
             llvm::Value* value = pred->regfile.GetReg(reg, facet);
-            phi->addIncoming(value, pred->EndBlock());
+            phi->addIncoming(value, pred->llvm_block);
         }
     }
     empty_phis.clear();
