@@ -41,6 +41,38 @@
 
 namespace rellume {
 
+void Lifter::Lift(const LLInstr& inst) {
+    // Set new instruction pointer register
+    llvm::Value* ripValue = irb.getInt64(inst.addr + inst.len);
+    SetReg(LLReg(LL_RT_IP, 0), Facet::I64, ripValue);
+
+    // Add separator for debugging.
+    llvm::Module* module = irb.GetInsertBlock()->getModule();
+    irb.CreateCall(llvm::Intrinsic::getDeclaration(module,
+                                                   llvm::Intrinsic::donothing,
+                                                   {}));
+
+    // Check overridden implementations first.
+    const auto& override = cfg.instr_overrides.find(inst.type);
+    if (override != cfg.instr_overrides.end()) {
+        LiftOverride(inst, override->second);
+        return;
+    }
+
+    switch (inst.type)
+    {
+#define DEF_IT(opc,handler) case LL_INS_ ## opc : handler; break;
+#include "rellume/opcodes.inc"
+#undef DEF_IT
+
+        default:
+    not_implemented:
+            fprintf(stderr, "Could not handle instruction at %#zx\n", inst.addr);
+            assert(0);
+            break;
+    }
+}
+
 void Lifter::LiftOverride(const LLInstr& inst, llvm::Function* override) {
     if (inst.type == LL_INS_SYSCALL) {
         SetReg(LLReg(LL_RT_GP64, LL_RI_C), Facet::I64,

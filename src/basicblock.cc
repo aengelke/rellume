@@ -25,7 +25,6 @@
 
 #include "config.h"
 #include "facet.h"
-#include "lifter.h"
 #include "regfile.h"
 #include "rellume/instr.h"
 #include <llvm/IR/BasicBlock.h>
@@ -82,40 +81,6 @@ BasicBlock::BasicBlock(llvm::Function* fn, const LLConfig& cfg, Kind kind)
         else
             irb.CreateRet(ret_val);
         terminated = true;
-    }
-}
-
-void BasicBlock::AddInst(const LLInstr& inst, const LLConfig& cfg)
-{
-    // Set new instruction pointer register
-    llvm::IRBuilder<> irb(EndBlock());
-    llvm::Value* ripValue = irb.getInt64(inst.addr + inst.len);
-    regfile.SetReg(LLReg(LL_RT_IP, 0), Facet::I64, ripValue, true);
-
-    // Add separator for debugging.
-    llvm::Function* intrinsicDoNothing = llvm::Intrinsic::getDeclaration(EndBlock()->getModule(), llvm::Intrinsic::donothing, {});
-    irb.CreateCall(intrinsicDoNothing);
-
-    Lifter state(cfg, regfile);
-
-    // Check overridden implementations first.
-    const auto& override = cfg.instr_overrides.find(inst.type);
-    if (override != cfg.instr_overrides.end()) {
-        state.LiftOverride(inst, override->second);
-        return;
-    }
-
-    switch (inst.type)
-    {
-#define DEF_IT(opc,handler) case LL_INS_ ## opc : handler; break;
-#include "rellume/opcodes.inc"
-#undef DEF_IT
-
-        default:
-    not_implemented:
-            fprintf(stderr, "Could not handle instruction at %#zx\n", inst.addr);
-            assert(0);
-            break;
     }
 }
 

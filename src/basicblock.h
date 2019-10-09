@@ -26,6 +26,7 @@
 
 #include "config.h"
 #include "facet.h"
+#include "lifter.h"
 #include "regfile.h"
 #include "rellume/instr.h"
 #include <llvm/IR/BasicBlock.h>
@@ -50,7 +51,10 @@ public:
     BasicBlock(const BasicBlock&) = delete;
     BasicBlock& operator=(const BasicBlock&) = delete;
 
-    void AddInst(const LLInstr& inst, const LLConfig& cfg);
+    void AddInst(const LLInstr& inst, const LLConfig& cfg) {
+        Lifter state(cfg, regfile);
+        state.Lift(inst);
+    }
     void BranchTo(BasicBlock& next);
     void BranchTo(llvm::Value* cond, BasicBlock& then, BasicBlock& other);
     bool FillPhis();

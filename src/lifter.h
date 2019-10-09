@@ -228,6 +228,7 @@ public:
     Lifter(const LLConfig& cfg, RegFile& rf) : LifterBase(cfg, rf) {}
 
     // llinstruction-gp.cc
+    void Lift(const LLInstr&);
     void LiftOverride(const LLInstr&, llvm::Function* override);
 
     void LiftMovgp(const LLInstr&, llvm::Instruction::CastOps cast);
