@@ -24,6 +24,7 @@
 #ifndef RELLUME_LIFTER_H
 #define RELLUME_LIFTER_H
 
+#include "basicblock.h"
 #include "config.h"
 #include "facet.h"
 #include "regfile.h"
@@ -58,8 +59,10 @@ enum class Condition {
  **/
 class LifterBase {
 protected:
-    LifterBase(const LLConfig& cfg, RegFile& rf) : cfg(cfg), regfile(rf),
-            irb(rf.GetInsertBlock()) {
+    LifterBase(const LLConfig& cfg, ArchBasicBlock& ab)
+            : cfg(cfg), ablock(ab),
+              regfile(ablock.GetInsertBlock()->GetRegFile()),
+              irb(regfile->GetInsertBlock()) {
         // Set fast-math flags. Newer LLVM supports FastMathFlags::getFast().
         if (cfg.enableFastMath) {
             llvm::FastMathFlags fmf;
@@ -81,21 +84,24 @@ public:
 
 protected:
     const LLConfig& cfg;
+private:
+    ArchBasicBlock& ablock;
 
+protected:
     /// Current register file
-    RegFile& regfile;
+    RegFile* regfile;
 
     llvm::IRBuilder<> irb;
 
 
     llvm::Value* GetReg(LLReg reg, Facet facet) {
-        return regfile.GetReg(reg, facet);
+        return regfile->GetReg(reg, facet);
     }
     void SetReg(LLReg reg, Facet facet, llvm::Value* value) {
-        regfile.SetReg(reg, facet, value, true); // clear all other facets
+        regfile->SetReg(reg, facet, value, true); // clear all other facets
     }
     void SetRegFacet(LLReg reg, Facet facet, llvm::Value* value) {
-        regfile.SetReg(reg, facet, value, false);
+        regfile->SetReg(reg, facet, value, false);
     }
     llvm::Value* GetFlag(Facet facet) {
         return GetReg(LLReg(LL_RT_EFLAGS, 0), facet);
@@ -146,7 +152,7 @@ protected:
 
 class Lifter : public LifterBase {
 public:
-    Lifter(const LLConfig& cfg, RegFile& rf) : LifterBase(cfg, rf) {}
+    Lifter(const LLConfig& cfg, ArchBasicBlock& ab) : LifterBase(cfg, ab) {}
 
     // llinstruction-gp.cc
     void Lift(const LLInstr&);

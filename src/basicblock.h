@@ -26,7 +26,6 @@
 
 #include "config.h"
 #include "facet.h"
-#include "lifter.h"
 #include "regfile.h"
 #include "rellume/instr.h"
 #include <llvm/IR/BasicBlock.h>
@@ -51,10 +50,6 @@ public:
     BasicBlock(const BasicBlock&) = delete;
     BasicBlock& operator=(const BasicBlock&) = delete;
 
-    void AddInst(const LLInstr& inst, const LLConfig& cfg) {
-        Lifter state(cfg, regfile);
-        state.Lift(inst);
-    }
     void BranchTo(BasicBlock& next);
     void BranchTo(llvm::Value* cond, BasicBlock& then, BasicBlock& other);
     bool FillPhis();
@@ -67,6 +62,10 @@ public:
 
     bool IsTerminated() {
         return terminated;
+    }
+
+    RegFile* GetRegFile() {
+        return &regfile;
     }
 
 private:
@@ -119,13 +118,12 @@ private:
     }
 
 public:
-    void AddInst(const LLInstr& inst) {
-        insert_block->AddInst(inst, cfg);
-    }
-
     BasicBlock* AddBlock() {
         low_blocks.push_back(std::make_unique<BasicBlock>(fn, cfg, BasicBlock::DEFAULT));
         return low_blocks[low_blocks.size()-1].get();
+    }
+    BasicBlock* GetInsertBlock() {
+        return insert_block;
     }
     void SetInsertBlock(BasicBlock* new_insert_block) {
         insert_block = new_insert_block;
