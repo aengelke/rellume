@@ -109,11 +109,6 @@ protected:
             SetRegFacet(LLReg(LL_RT_EFLAGS, 0), facet, undef);
     }
 
-    void SetInsertBlock(llvm::BasicBlock* new_block) {
-        regfile.SetInsertBlock(new_block);
-        irb.SetInsertPoint(new_block);
-    }
-
     // Operand handling implemented in lloperand.cc
 private:
     llvm::Value* OpAddrConst(uint64_t addr, llvm::PointerType* ptr_ty);
@@ -147,80 +142,6 @@ protected:
 
     llvm::Value* FlagCond(Condition cond);
     llvm::Value* FlagAsReg(unsigned size);
-
-    enum RepMode { REP, REPZ, REPNZ };
-    template<typename F>
-    void WrapRep(F func, std::initializer_list<llvm::Value**> phis_il,
-                 RepMode repmode = REP) {
-        auto header_block = irb.GetInsertBlock();
-        auto fn = header_block->getParent();
-        auto loop_block = llvm::BasicBlock::Create(irb.getContext(), "", fn);
-        auto cont_block = llvm::BasicBlock::Create(irb.getContext(), "", fn);
-
-        // In header block
-        auto count = GetReg(LLReg(LL_RT_GP64, LL_RI_C), Facet::I64);
-        auto zero = llvm::Constant::getNullValue(count->getType());
-        auto enter_loop = irb.CreateICmpNE(count, zero);
-        irb.CreateCondBr(enter_loop, loop_block, cont_block);
-
-        // This vector contains the given variables to be wrapped as PHI nodes
-        // *and* the count/rcx variable.
-        std::vector<llvm::Value**> phis;
-        phis.push_back(&count);
-        for (auto phi_var : phis_il)
-            phis.push_back(phi_var);
-
-        // In loop block
-        irb.SetInsertPoint(loop_block);
-        // Create PHIs in the loop block merging the loop header and (later) the
-        // end of the loop block.
-        std::vector<llvm::PHINode*> loop_phis;
-        for (auto phi_var : phis) {
-            auto loop_phi = irb.CreatePHI((*phi_var)->getType(), 2);
-            loop_phi->addIncoming(*phi_var, header_block);
-
-            loop_phis.push_back(loop_phi);
-            // Use PHI node of loop block.
-            *phi_var = loop_phi;
-        }
-
-        // Decrement count and check.
-        count = irb.CreateSub(count, irb.getInt64(1));
-        auto continue_loop = irb.CreateICmpNE(count, zero);
-
-        if (repmode == REP) {
-            func();
-        } else {
-            llvm::Value* zf = func();
-            if (repmode == REPNZ)
-                zf = irb.CreateNot(zf);
-            continue_loop = irb.CreateAnd(continue_loop, zf);
-        }
-
-        irb.CreateCondBr(continue_loop, loop_block, cont_block);
-
-        // In continuation block
-        // Now also point the regfile/block/... to the new block, as code
-        // generation shall continue there afterwards.
-        SetInsertBlock(cont_block);
-        for (size_t i = 0; i < phis.size(); i++) {
-            // Add final value of loop to loop PHI nodes
-            auto& loop_phi = loop_phis[i];
-            auto header_val = loop_phi->getIncomingValueForBlock(header_block);
-            loop_phi->addIncoming(*(phis[i]), loop_block);
-
-            // Create PHI node in continuation, containing the value from the
-            // header block (retrieved via the loop PHI node) and the value from
-            // the loop block.
-            auto cont_phi = irb.CreatePHI(loop_phi->getType(), 2);
-            cont_phi->addIncoming(header_val, header_block);
-            cont_phi->addIncoming(*(phis[i]), loop_block);
-            // Use PHI node of continuation block
-            *(phis[i]) = cont_phi;
-        }
-
-        SetReg(LLReg(LL_RT_GP64, LL_RI_C), Facet::I64, count);
-    }
 };
 
 class Lifter : public LifterBase {

@@ -584,103 +584,15 @@ void Lifter::LiftRet(const LLInstr& inst) {
 }
 
 void Lifter::LiftStos(const LLInstr& inst) {
-    LLInstrOp src_op = LLInstrOp(LLReg::Gp(inst.operand_size, LL_RI_A));
-    llvm::Value* src = OpLoad(src_op, Facet::I);
-    llvm::Value* dst_ptr = GetReg(LLReg(LL_RT_GP64, LL_RI_DI), Facet::PTR);
-    dst_ptr = irb.CreatePointerCast(dst_ptr, src->getType()->getPointerTo());
-
-    llvm::Value* df = GetFlag(Facet::DF);
-    llvm::Value* adj = irb.CreateSelect(df, irb.getInt64(-1), irb.getInt64(1));
-
-    // TODO: optimize REP STOSB and other sizes with constant zero to llvm
-    // memset intrinsic.
-
-    auto core_op = [&]() {
-        irb.CreateStore(src, dst_ptr);
-        dst_ptr = irb.CreateGEP(dst_ptr, adj);
-        return llvm::UndefValue::get(irb.getInt1Ty());
-    };
-
-    if (inst.type == LL_INS_STOS)
-        core_op();
-    else if (inst.type == LL_INS_REP_STOS)
-        WrapRep(core_op, {&dst_ptr}); // create PHI node for dst_ptr
-    else
-        assert(false);
-
-    dst_ptr = irb.CreatePointerCast(dst_ptr, irb.getInt8PtrTy());
-    llvm::Value* dst_int = irb.CreatePtrToInt(dst_ptr, irb.getInt64Ty());
-    SetReg(LLReg(LL_RT_GP64, LL_RI_DI), Facet::I64, dst_int);
-    SetRegFacet(LLReg(LL_RT_GP64, LL_RI_DI), Facet::PTR, dst_ptr);
+    assert(0);
 }
 
 void Lifter::LiftMovs(const LLInstr& inst) {
-    llvm::Type* mov_ty = irb.getIntNTy(inst.operand_size * 8);
-    llvm::Value* src_ptr = GetReg(LLReg(LL_RT_GP64, LL_RI_SI), Facet::PTR);
-    llvm::Value* dst_ptr = GetReg(LLReg(LL_RT_GP64, LL_RI_DI), Facet::PTR);
-    src_ptr = irb.CreatePointerCast(src_ptr, mov_ty->getPointerTo());
-    dst_ptr = irb.CreatePointerCast(dst_ptr, mov_ty->getPointerTo());
-
-    llvm::Value* df = GetFlag(Facet::DF);
-    llvm::Value* adj = irb.CreateSelect(df, irb.getInt64(-1), irb.getInt64(1));
-
-    // TODO: optimize REP MOVSB and other sizes with constant zero to llvm
-    // memcpy intrinsic.
-
-    auto core_op = [&]() {
-        irb.CreateStore(irb.CreateLoad(src_ptr), dst_ptr);
-        src_ptr = irb.CreateGEP(src_ptr, adj);
-        dst_ptr = irb.CreateGEP(dst_ptr, adj);
-        return llvm::UndefValue::get(irb.getInt1Ty());
-    };
-
-    if (inst.type == LL_INS_MOVS)
-        core_op();
-    else if (inst.type == LL_INS_REP_MOVS)
-        WrapRep(core_op, {&src_ptr, &dst_ptr}); // create PHI nodes for ptrs
-    else
-        assert(false);
-
-    src_ptr = irb.CreatePointerCast(src_ptr, irb.getInt8PtrTy());
-    llvm::Value* src_int = irb.CreatePtrToInt(src_ptr, irb.getInt64Ty());
-    SetReg(LLReg(LL_RT_GP64, LL_RI_SI), Facet::I64, src_int);
-    SetRegFacet(LLReg(LL_RT_GP64, LL_RI_SI), Facet::PTR, src_ptr);
-
-    dst_ptr = irb.CreatePointerCast(dst_ptr, irb.getInt8PtrTy());
-    llvm::Value* dst_int = irb.CreatePtrToInt(dst_ptr, irb.getInt64Ty());
-    SetReg(LLReg(LL_RT_GP64, LL_RI_DI), Facet::I64, dst_int);
-    SetRegFacet(LLReg(LL_RT_GP64, LL_RI_DI), Facet::PTR, dst_ptr);
+    assert(false);
 }
 
 void Lifter::LiftScas(const LLInstr& inst) {
-    LLInstrOp src_op = LLInstrOp(LLReg::Gp(inst.operand_size, LL_RI_A));
-    llvm::Value* src = OpLoad(src_op, Facet::I);
-    llvm::Value* dst_ptr = GetReg(LLReg(LL_RT_GP64, LL_RI_DI), Facet::PTR);
-    dst_ptr = irb.CreatePointerCast(dst_ptr, src->getType()->getPointerTo());
-
-    llvm::Value* df = GetFlag(Facet::DF);
-    llvm::Value* adj = irb.CreateSelect(df, irb.getInt64(-1), irb.getInt64(1));
-
-    // TODO: calculate flags properly
-    auto core_op = [&]() {
-        llvm::Value* val = irb.CreateLoad(dst_ptr);
-        dst_ptr = irb.CreateGEP(dst_ptr, adj);
-        return irb.CreateICmpEQ(val, src);
-    };
-
-    if (inst.type == LL_INS_SCAS)
-        core_op();
-    else if (inst.type == LL_INS_REPZ_SCAS)
-        WrapRep(core_op, {&dst_ptr}, REPZ); // create PHI node for dst_ptr
-    else if (inst.type == LL_INS_REPNZ_SCAS)
-        WrapRep(core_op, {&dst_ptr}, REPNZ); // create PHI node for dst_ptr
-    else
-        assert(false);
-
-    dst_ptr = irb.CreatePointerCast(dst_ptr, irb.getInt8PtrTy());
-    llvm::Value* dst_int = irb.CreatePtrToInt(dst_ptr, irb.getInt64Ty());
-    SetReg(LLReg(LL_RT_GP64, LL_RI_DI), Facet::I64, dst_int);
-    SetRegFacet(LLReg(LL_RT_GP64, LL_RI_DI), Facet::PTR, dst_ptr);
+    assert(false);
 }
 
 } // namespace
