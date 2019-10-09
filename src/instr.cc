@@ -296,6 +296,8 @@ end_ops:
     case FDI_SSE_MOVAPD: llinst.type = LL_INS_MOVAPD; break;
     case FDI_SSE_MOVDQU: llinst.type = LL_INS_MOVDQU; break;
     case FDI_SSE_MOVDQA: llinst.type = LL_INS_MOVDQA; break;
+    case FDI_SSE_MOVNTDQ: llinst.type = LL_INS_MOVNTDQ; break;
+    case FDI_SSE_MOVNTDQA: llinst.type = LL_INS_MOVNTDQA; break;
     case FDI_SSE_MOVLPS: llinst.type = LL_INS_MOVLPS; break;
     case FDI_SSE_MOVLPD: llinst.type = LL_INS_MOVLPD; break;
     case FDI_SSE_MOVHPS: llinst.type = LL_INS_MOVHPS; break;
