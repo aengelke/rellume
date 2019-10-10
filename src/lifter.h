@@ -179,6 +179,8 @@ public:
 
     // llinstruction-gp.cc
     void Lift(const LLInstr&);
+
+private:
     void LiftOverride(const LLInstr&, llvm::Function* override);
 
     void LiftMovgp(const LLInstr&, llvm::Instruction::CastOps cast);
