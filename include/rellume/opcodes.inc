@@ -68,6 +68,7 @@ DEF_IT(BT, LiftBittest(inst))
 DEF_IT(BTC, LiftBittest(inst))
 DEF_IT(BTR, LiftBittest(inst))
 DEF_IT(BTS, LiftBittest(inst))
+DEF_IT(BSWAP, LiftBswap(inst))
 DEF_IT(CEXT, LiftCext(inst))
 DEF_IT(CSEP, LiftCsep(inst))
 

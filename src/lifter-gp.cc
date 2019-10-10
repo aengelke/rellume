@@ -587,6 +587,12 @@ skip_writeback:
     SetFlagUndef({Facet::OF, Facet::SF, Facet::AF, Facet::PF});
 }
 
+void Lifter::LiftBswap(const LLInstr& inst) {
+    assert(inst.ops[0].type == LL_OP_REG && "bswap with non-reg operand");
+    llvm::Value* src = OpLoad(inst.ops[0], Facet::I);
+    OpStoreGp(inst.ops[0], CreateUnaryIntrinsic(llvm::Intrinsic::bswap, src));
+}
+
 void Lifter::LiftJmp(const LLInstr& inst) {
     SetReg(LLReg(LL_RT_IP, 0), Facet::I64, OpLoad(inst.ops[0], Facet::I64));
 }
