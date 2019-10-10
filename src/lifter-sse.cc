@@ -233,15 +233,18 @@ void Lifter::LiftSsePsllElement(const LLInstr& inst, Facet op_type) {
     OpStoreVec(inst.ops[0], res);
 }
 
-void Lifter::LiftSsePslldq(const LLInstr& inst) {
+void Lifter::LiftSsePshiftBytes(const LLInstr& inst) {
     uint32_t shift = std::min(static_cast<uint32_t>(inst.ops[1].val), 16u);
+    bool right = inst.type == LL_INS_PSRLDQ;
     uint32_t mask[16];
     for (int i = 0; i < 16; i++)
-        mask[i] = i + (16 - shift);
+        mask[i] = i + (right ? shift : (16 - shift));
     llvm::Value* src = OpLoad(inst.ops[0], Facet::V16I8);
     llvm::Value* zero = llvm::Constant::getNullValue(src->getType());
-    llvm::Value* res = irb.CreateShuffleVector(zero, src, mask);
-    OpStoreVec(inst.ops[0], res);
+    if (right)
+        OpStoreVec(inst.ops[0], irb.CreateShuffleVector(src, zero, mask));
+    else
+        OpStoreVec(inst.ops[0], irb.CreateShuffleVector(zero, src, mask));
 }
 
 void Lifter::LiftSsePcmp(const LLInstr& inst, llvm::CmpInst::Predicate pred,
