@@ -159,6 +159,18 @@ protected:
     using RepInfo = std::pair<BasicBlock*, BasicBlock*>;
     RepInfo RepBegin();
     void RepEnd(RepInfo info, RepMode mode);
+
+
+    // Helper function for older LLVM versions
+    llvm::Value* CreateUnaryIntrinsic(llvm::Intrinsic::ID id, llvm::Value* v) {
+#if LL_LLVM_MAJOR >= 8
+        return irb.CreateUnaryIntrinsic(id, v);
+#else
+        llvm::Module* module = irb.GetInsertBlock()->getModule();
+        llvm::Function* intrinsic = llvm::Intrinsic::getDeclaration(module, id, {v->getType()});
+        return irb.CreateCall(intrinsic, {v});
+#endif
+    }
 };
 
 class Lifter : public LifterBase {

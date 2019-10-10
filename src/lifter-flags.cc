@@ -79,14 +79,7 @@ void
 LifterBase::FlagCalcP(llvm::Value* value)
 {
     llvm::Value* trunc = irb.CreateTruncOrBitCast(value, irb.getInt8Ty());
-#if LL_LLVM_MAJOR >= 8
-    llvm::Value* count = irb.CreateUnaryIntrinsic(llvm::Intrinsic::ctpop, trunc);
-#else
-    llvm::Module* module = irb.GetInsertBlock()->getModule();
-    auto id = llvm::Intrinsic::ctpop;
-    llvm::Function* intrinsic = llvm::Intrinsic::getDeclaration(module, id, {irb.getInt8Ty()});
-    llvm::Value* count = irb.CreateCall(intrinsic, {trunc});
-#endif
+    llvm::Value* count = CreateUnaryIntrinsic(llvm::Intrinsic::ctpop, trunc);
     llvm::Value* bit = irb.CreateTruncOrBitCast(count, irb.getInt1Ty());
     SetFlag(Facet::PF, irb.CreateNot(bit));
 }
