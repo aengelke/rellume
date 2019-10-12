@@ -63,8 +63,8 @@ int Function::Decode(uintptr_t addr, MemReader memacc)
     if (memacc == nullptr) {
         // Default memory access functions loads instruction bytes from the same
         // address space.
-        memacc = [](uintptr_t addr, uint8_t* buf, size_t buf_sz) {
-            memcpy(buf, reinterpret_cast<uint8_t*>(addr), buf_sz);
+        memacc = [](uintptr_t mem_addr, uint8_t* buf, size_t buf_sz) {
+            memcpy(buf, reinterpret_cast<uint8_t*>(mem_addr), buf_sz);
             return buf_sz;
         };
     }

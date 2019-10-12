@@ -257,13 +257,13 @@ class TestCase {
 
             size_t size = reg_entry.second.size;
             size_t offset = reg_entry.second.offset;
-            uint8_t* expected = expected_raw + offset;
-            uint8_t* state = state_raw + offset;
-            if (memcmp(state, expected, size) != 0) {
+            uint8_t* expected_bytes = expected_raw + offset;
+            uint8_t* state_bytes = state_raw + offset;
+            if (memcmp(state_bytes, expected_bytes, size) != 0) {
                 fail = true;
                 diagnostic << "# unexpected value for " << reg_entry.first << std::endl;
-                diagnostic << "# expected: " << HexBuffer{expected, size} << std::endl;
-                diagnostic << "#      got: " << HexBuffer{state, size} << std::endl;
+                diagnostic << "# expected: " << HexBuffer{expected_bytes, size} << std::endl;
+                diagnostic << "#      got: " << HexBuffer{state_bytes, size} << std::endl;
             }
         }
 

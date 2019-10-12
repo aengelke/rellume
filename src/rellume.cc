@@ -76,8 +76,8 @@ int ll_func_decode(LLFunc* func, uintptr_t addr) {
 }
 int ll_func_decode2(LLFunc* func, uintptr_t addr, RellumeMemAccessCb mem_acc,
                     void* user_arg) {
-    return unwrap(func)->Decode(addr, [=](uintptr_t addr, uint8_t* buf, size_t buf_sz) {
-        return mem_acc(addr, buf, buf_sz, user_arg);
+    return unwrap(func)->Decode(addr, [=](uintptr_t maddr, uint8_t* buf, size_t buf_sz) {
+        return mem_acc(maddr, buf, buf_sz, user_arg);
     });
 }
 

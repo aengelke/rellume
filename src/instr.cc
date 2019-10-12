@@ -404,9 +404,9 @@ end_ops:
     case FDI_C_SEP: llinst.type = LL_INS_CSEP; break;
     case FDI_ENDBR64: llinst.type = LL_INS_NOP; break;
     default: {
-        char buf[128];
-        fd_format(&fdi, buf, sizeof(buf));
-        fprintf(stderr, "cannot convert instruction %s\n", buf);
+        char fmt_buf[128];
+        fd_format(&fdi, fmt_buf, sizeof(fmt_buf));
+        fprintf(stderr, "cannot convert instruction %s\n", fmt_buf);
         return LLInstr::Invalid(addr);
     }
     }

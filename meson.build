@@ -5,7 +5,7 @@ project('rellume', ['cpp'],
             'cpp_std=c++14',
         ])
 
-add_project_arguments(['-Wno-unused-parameter'], language: 'cpp')
+add_project_arguments(['-Wno-unused-parameter', '-Wshadow=local'], language: 'cpp')
 
 libllvm = dependency('llvm', version: ['>=7', '<9'])
 add_project_arguments(['-DLL_LLVM_MAJOR='+libllvm.version().split('.')[0]], language: 'cpp')
