@@ -715,7 +715,40 @@ void Lifter::LiftMovs(const LLInstr& inst) {
 }
 
 void Lifter::LiftScas(const LLInstr& inst) {
-    assert(false);
+    RepInfo rep_info;
+    if (inst.type == LL_INS_REPZ_SCAS || inst.type == LL_INS_REPNZ_SCAS)
+        rep_info = RepBegin();
+
+    llvm::Type* mov_ty = irb.getIntNTy(inst.operand_size * 8);
+    llvm::Value* dst_ptr = GetReg(LLReg(LL_RT_GP64, LL_RI_DI), Facet::PTR);
+    dst_ptr = irb.CreatePointerCast(dst_ptr, mov_ty->getPointerTo());
+
+    llvm::Value* df = GetFlag(Facet::DF);
+    llvm::Value* adj = irb.CreateSelect(df, irb.getInt64(-1), irb.getInt64(1));
+
+    LLInstrOp src_op = LLInstrOp(LLReg::Gp(inst.operand_size, LL_RI_A));
+    llvm::Value* src = OpLoad(src_op, Facet::I);
+    llvm::Value* dst = irb.CreateLoad(dst_ptr);
+    // Perform a normal CMP operation.
+    llvm::Value* res = irb.CreateSub(src, dst);
+    SetFlag(Facet::ZF, irb.CreateICmpEQ(src, dst));
+    FlagCalcS(res);
+    FlagCalcP(res);
+    FlagCalcA(res, src, dst);
+    FlagCalcCSub(res, src, dst);
+    FlagCalcOSub(res, src, dst);
+
+    dst_ptr = irb.CreateGEP(dst_ptr, adj);
+
+    dst_ptr = irb.CreatePointerCast(dst_ptr, irb.getInt8PtrTy());
+    llvm::Value* dst_int = irb.CreatePtrToInt(dst_ptr, irb.getInt64Ty());
+    SetReg(LLReg(LL_RT_GP64, LL_RI_DI), Facet::I64, dst_int);
+    SetRegFacet(LLReg(LL_RT_GP64, LL_RI_DI), Facet::PTR, dst_ptr);
+
+    if (inst.type == LL_INS_REPZ_SCAS)
+        RepEnd(rep_info, REPZ);
+    else if (inst.type == LL_INS_REPNZ_SCAS)
+        RepEnd(rep_info, REPNZ);
 }
 
 void Lifter::LiftCmps(const LLInstr& inst) {
