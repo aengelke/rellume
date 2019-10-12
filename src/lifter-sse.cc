@@ -40,6 +40,11 @@
 
 namespace rellume {
 
+void Lifter::LiftFence(const LLInstr& inst) {
+    // TODO: distinguish also lfence and sfence.
+    irb.CreateFence(llvm::AtomicOrdering::SequentiallyConsistent);
+}
+
 void Lifter::LiftPrefetch(const LLInstr& inst, unsigned rw, unsigned locality) {
     llvm::Module* module = irb.GetInsertBlock()->getModule();
     auto id = llvm::Intrinsic::prefetch;

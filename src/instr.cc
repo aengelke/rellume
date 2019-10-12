@@ -281,6 +281,9 @@ end_ops:
     case FDI_SETGE: llinst.type = LL_INS_SETGE; break;
     case FDI_SETLE: llinst.type = LL_INS_SETLE; break;
     case FDI_SETG: llinst.type = LL_INS_SETG; break;
+    case FDI_LFENCE: llinst.type = LL_INS_LFENCE; break;
+    case FDI_SFENCE: llinst.type = LL_INS_SFENCE; break;
+    case FDI_MFENCE: llinst.type = LL_INS_MFENCE; break;
     case FDI_PREFETCH0: llinst.type = LL_INS_PREFETCHT0; break;
     case FDI_PREFETCH1: llinst.type = LL_INS_PREFETCHT1; break;
     case FDI_PREFETCH2: llinst.type = LL_INS_PREFETCHT2; break;

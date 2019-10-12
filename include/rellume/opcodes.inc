@@ -122,6 +122,9 @@ DEF_IT(SETLE, LiftSetcc(inst, Condition::LE))
 DEF_IT(SETG, LiftSetcc(inst, Condition::G))
 
 // Defined in llinstruction-sse.c
+DEF_IT(LFENCE, LiftFence(inst))
+DEF_IT(SFENCE, LiftFence(inst))
+DEF_IT(MFENCE, LiftFence(inst))
 DEF_IT(PREFETCHT0, LiftPrefetch(inst, 0, 3))
 DEF_IT(PREFETCHT1, LiftPrefetch(inst, 0, 2))
 DEF_IT(PREFETCHT2, LiftPrefetch(inst, 0, 1))
