@@ -39,18 +39,25 @@ extern "C" {
 #define RELLUME_API __attribute__((visibility("default")))
 
 
+typedef struct LLConfig LLConfig;
+
+RELLUME_API LLConfig* ll_config_new(void);
+RELLUME_API void ll_config_free(LLConfig*);
+
+RELLUME_API void ll_config_set_hhvm(LLConfig*, bool);
+RELLUME_API void ll_config_enable_overflow_intrinsics(LLConfig*, bool);
+RELLUME_API void ll_config_enable_fast_math(LLConfig*, bool);
+RELLUME_API void ll_config_enable_verify_ir(LLConfig*, bool);
+RELLUME_API void ll_config_set_global_base(LLConfig*, uintptr_t, LLVMValueRef);
+RELLUME_API void ll_config_set_instr_impl(LLConfig*, LLInstrType, LLVMValueRef);
+RELLUME_API void ll_config_set_call_ret_clobber_flags(LLConfig*, bool);
+
+
 struct LLFunc;
 
 typedef struct LLFunc LLFunc;
 
-RELLUME_API LLFunc* ll_func(LLVMModuleRef mod);
-RELLUME_API LLFunc* ll_func_hhvm(LLVMModuleRef mod);
-
-RELLUME_API void ll_func_enable_overflow_intrinsics(LLFunc* fn, bool enable);
-RELLUME_API void ll_func_enable_fast_math(LLFunc* fn, bool enable);
-RELLUME_API void ll_func_enable_verify_ir(LLFunc* fn, bool enable);
-RELLUME_API void ll_func_set_global_base(LLFunc* fn, uintptr_t base, LLVMValueRef value);
-RELLUME_API void ll_func_set_instr_impl(LLFunc* fn, LLInstrType type, LLVMValueRef value);
+RELLUME_API LLFunc* ll_func_new(LLVMModuleRef mod, LLConfig*);
 
 RELLUME_API void ll_func_add_inst(LLFunc* fn, uint64_t block_addr, LLInstr* instr);
 RELLUME_API LLVMValueRef ll_func_lift(LLFunc* fn);

@@ -48,7 +48,8 @@ main(void)
     LLVMTypeRef fnty = LLVMFunctionType(LLVMFloatType(), fnty_args, 2, false);
 
     // Create function for lifting
-    LLFunc* fn = ll_func(mod);
+    LLConfig* cfg = ll_config_new();
+    LLFunc* fn = ll_func_new(mod, cfg);
     // Lift the whole function by following all direct jumps
     ll_func_decode(fn, (uintptr_t) sample_func);
     LLVMValueRef llvm_fn = ll_func_lift(fn);

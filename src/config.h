@@ -39,7 +39,10 @@ class Value;
 namespace rellume {
 
 struct LLConfig {
-    /// Use overflow intrinsics instead of compares and bitwise operations.
+    /// Enable the usage of overflow intrinsics instead of bitwise operations
+    /// when setting the overflow flag. For dynamic values this leads to better
+    /// code which relies on the overflow flag again. However, immediate values
+    /// are not folded when they are guaranteed to (not) overflow.
     bool enableOverflowIntrinsics = false;
     /// Unsafe floating-point optimizations, corresponds to -ffast-math.
     bool enableFastMath = false;

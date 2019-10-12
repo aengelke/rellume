@@ -24,6 +24,7 @@
 #include "rellume/rellume.h"
 
 #include "callconv.h"
+#include "config.h"
 #include "function.h"
 #include "transforms.h"
 #include <llvm/IR/Module.h>
@@ -34,31 +35,46 @@
 
 
 namespace {
+static rellume::LLConfig* unwrap(LLConfig* fn) {
+    return reinterpret_cast<rellume::LLConfig*>(fn);
+}
 static rellume::Function* unwrap(LLFunc* fn) {
     return reinterpret_cast<rellume::Function*>(fn);
 }
 }
 
-LLFunc* ll_func(LLVMModuleRef mod) {
-    return reinterpret_cast<LLFunc*>(new rellume::Function(llvm::unwrap(mod), rellume::CallConv::SPTR));
+LLConfig* ll_config_new(void) {
+    return reinterpret_cast<LLConfig*>(new rellume::LLConfig());
 }
-LLFunc* ll_func_hhvm(LLVMModuleRef mod) {
-    return reinterpret_cast<LLFunc*>(new rellume::Function(llvm::unwrap(mod), rellume::CallConv::HHVM));
+void ll_config_free(LLConfig* cfg) {
+    delete unwrap(cfg);
 }
-void ll_func_enable_overflow_intrinsics(LLFunc* fn, bool enable) {
-    unwrap(fn)->EnableOverflowIntrinsics(enable);
+void ll_config_set_hhvm(LLConfig* cfg, bool hhvm) {
+    unwrap(cfg)->callconv = hhvm ? rellume::CallConv::HHVM : rellume::CallConv::SPTR;
 }
-void ll_func_enable_fast_math(LLFunc* fn, bool enable) {
-    unwrap(fn)->EnableFastMath(enable);
+void ll_config_enable_overflow_intrinsics(LLConfig* cfg, bool enable) {
+    unwrap(cfg)->enableOverflowIntrinsics = enable;
 }
-void ll_func_enable_verify_ir(LLFunc* fn, bool enable) {
-    unwrap(fn)->EnableVerifyIR(enable);
+void ll_config_enable_fast_math(LLConfig* cfg, bool enable) {
+    unwrap(cfg)->enableFastMath = enable;
 }
-void ll_func_set_global_base(LLFunc* fn, uintptr_t base, LLVMValueRef value) {
-    unwrap(fn)->SetGlobalBase(base, llvm::unwrap(value));
+void ll_config_enable_verify_ir(LLConfig* cfg, bool enable) {
+    unwrap(cfg)->verify_ir = enable;
 }
-void ll_func_set_instr_impl(LLFunc* fn, LLInstrType type, LLVMValueRef value) {
-    unwrap(fn)->SetInstrImpl(type, llvm::unwrap<llvm::Function>(value));
+void ll_config_set_global_base(LLConfig* cfg, uintptr_t base, LLVMValueRef value) {
+    unwrap(cfg)->global_base_addr = base;
+    unwrap(cfg)->global_base_value = llvm::unwrap(value);
+}
+void ll_config_set_instr_impl(LLConfig* cfg, LLInstrType type, LLVMValueRef value) {
+    unwrap(cfg)->instr_overrides[type] = llvm::unwrap<llvm::Function>(value);
+}
+void ll_config_set_call_ret_clobber_flags(LLConfig* cfg, bool enable) {
+    unwrap(cfg)->call_ret_clobber_flags = enable;
+}
+
+
+LLFunc* ll_func_new(LLVMModuleRef mod, LLConfig* cfg) {
+    return reinterpret_cast<LLFunc*>(new rellume::Function(llvm::unwrap(mod), unwrap(cfg)));
 }
 
 void ll_func_add_inst(LLFunc* fn, uint64_t block_addr, LLInstr* instr) {

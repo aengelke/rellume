@@ -48,17 +48,15 @@
 
 namespace rellume {
 
-Function::Function(llvm::Module* mod, CallConv callconv) : cfg()
+Function::Function(llvm::Module* mod, LLConfig* cfg) : cfg(cfg)
 {
-    cfg.callconv = callconv;
-
     llvm::LLVMContext& ctx = mod->getContext();
-    llvm = llvm::Function::Create(cfg.callconv.FnType(ctx),
+    llvm = llvm::Function::Create(cfg->callconv.FnType(ctx),
                                   llvm::GlobalValue::ExternalLinkage, "", mod);
-    llvm->setCallingConv(cfg.callconv.FnCallConv());
+    llvm->setCallingConv(cfg->callconv.FnCallConv());
 
     // CPU struct pointer parameters has some extra properties.
-    unsigned cpu_param_idx = cfg.callconv.CpuStructParamIdx();
+    unsigned cpu_param_idx = cfg->callconv.CpuStructParamIdx();
     llvm->addFnAttr("null-pointer-is-valid", "true");
     llvm->addParamAttr(cpu_param_idx, llvm::Attribute::NoAlias);
     llvm->addParamAttr(cpu_param_idx, llvm::Attribute::NoCapture);
@@ -66,7 +64,7 @@ Function::Function(llvm::Module* mod, CallConv callconv) : cfg()
     llvm->addDereferenceableParamAttr(cpu_param_idx, 0x190);
 
     // Create entry basic block as first block in the function.
-    entry_block = std::make_unique<ArchBasicBlock>(llvm, cfg, BasicBlock::ENTRY);
+    entry_block = std::make_unique<ArchBasicBlock>(llvm, *cfg, BasicBlock::ENTRY);
 }
 
 Function::~Function() = default;
@@ -76,9 +74,9 @@ void Function::AddInst(uint64_t block_addr, const LLInstr& inst)
     if (block_map.size() == 0)
         entry_addr = block_addr;
     if (block_map.find(block_addr) == block_map.end())
-        block_map[block_addr] = std::make_unique<ArchBasicBlock>(llvm, cfg);
+        block_map[block_addr] = std::make_unique<ArchBasicBlock>(llvm, *cfg);
 
-    Lifter lifter(cfg, *block_map[block_addr]);
+    Lifter lifter(*cfg, *block_map[block_addr]);
     lifter.Lift(inst);
 }
 
@@ -95,7 +93,7 @@ llvm::Function* Function::Lift() {
     if (block_map.size() == 0)
         return nullptr;
 
-    exit_block = std::make_unique<ArchBasicBlock>(llvm, cfg, BasicBlock::EXIT);
+    exit_block = std::make_unique<ArchBasicBlock>(llvm, *cfg, BasicBlock::EXIT);
 
     entry_block->BranchTo(*block_map[entry_addr]);
 
@@ -124,7 +122,7 @@ llvm::Function* Function::Lift() {
 
     exit_block->RemoveUnmodifiedStores(*entry_block);
 
-    if (cfg.verify_ir && llvm::verifyFunction(*(llvm), &llvm::errs()))
+    if (cfg->verify_ir && llvm::verifyFunction(*(llvm), &llvm::errs()))
         return nullptr;
 
     return llvm;

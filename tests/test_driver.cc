@@ -182,12 +182,14 @@ class TestCase {
         llvm::LLVMContext ctx;
         auto mod = std::make_unique<llvm::Module>("rellume_test", ctx);
 
-        LLFunc* rlfn = ll_func(llvm::wrap(mod.get()));
-        ll_func_enable_verify_ir(rlfn, true);
-        ll_func_enable_overflow_intrinsics(rlfn, opt_overflow_intrinsics);
+        LLConfig* rlcfg = ll_config_new();
+        ll_config_enable_verify_ir(rlcfg, true);
+        ll_config_enable_overflow_intrinsics(rlcfg, opt_overflow_intrinsics);
+        LLFunc* rlfn = ll_func_new(llvm::wrap(mod.get()), rlcfg);
         ll_func_decode(rlfn, *reinterpret_cast<uint64_t*>(&state.rip));
         llvm::Function* fn = llvm::unwrap<llvm::Function>(ll_func_lift(rlfn));
         ll_func_dispose(rlfn);
+        ll_config_free(rlcfg);
         if (fn == nullptr) {
             diagnostic << "# error during lifting" << std::endl;
             return true;

@@ -41,7 +41,7 @@ class ArchBasicBlock;
 class Function
 {
 public:
-    Function(llvm::Module* mod, CallConv callconv);
+    Function(llvm::Module* mod, LLConfig* cfg);
     ~Function();
 
     Function(Function&& rhs);
@@ -49,29 +49,6 @@ public:
 
     Function(const Function&) = delete;
     Function& operator=(const Function&) = delete;
-
-    /// Enable the usage of overflow intrinsics instead of bitwise operations
-    /// when setting the overflow flag. For dynamic values this leads to better
-    /// code which relies on the overflow flag again. However, immediate values
-    /// are not folded when they are guaranteed to overflow.
-    void EnableOverflowIntrinsics(bool enable) {
-        cfg.enableOverflowIntrinsics = enable;
-    }
-
-    /// Enable unsafe floating-point optimizations, similar to -ffast-math.
-    void EnableFastMath(bool enable) {
-        cfg.enableFastMath = enable;
-    }
-    void EnableVerifyIR(bool enable) { cfg.verify_ir = enable; }
-
-    void SetGlobalBase(uintptr_t base, llvm::Value* value) {
-        cfg.global_base_addr = base;
-        cfg.global_base_value = value;
-    }
-
-    void SetInstrImpl(LLInstrType type, llvm::Function* override) {
-        cfg.instr_overrides[type] = override;
-    }
 
     void AddInst(uint64_t block_addr, const LLInstr& inst);
     llvm::Function* Lift();
@@ -83,7 +60,7 @@ public:
 private:
     ArchBasicBlock& ResolveAddr(llvm::Value* addr);
 
-    LLConfig cfg;
+    LLConfig* cfg;
 
     llvm::Function* llvm;
     uint64_t entry_addr;
