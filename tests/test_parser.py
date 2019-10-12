@@ -6,10 +6,10 @@ import struct
 import subprocess
 
 FMT_SUBST = {
-    "b": ("B", lambda v: int(v, 0)),
-    "w": ("H", lambda v: int(v, 0)),
-    "l": ("L", lambda v: int(v, 0)),
-    "q": ("Q", lambda v: int(v, 0)),
+    "b": ("B", lambda v: int(v, 0) % 0x100),
+    "w": ("H", lambda v: int(v, 0) % 0x10000),
+    "l": ("L", lambda v: int(v, 0) % 0x100000000),
+    "q": ("Q", lambda v: int(v, 0) % 0x10000000000000000),
 }
 
 class Assembler:

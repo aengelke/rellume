@@ -276,6 +276,15 @@ code="bsr dx, ax" rax=q:0x12340001 rdx=q:0x0 => rdx=q:0xf zf=00
 code="bsr dx, ax" rax=q:0x12340000 rdx=q:0x0 => rdx=undef zf=01
 code="bsr dx, ax" rax=q:0xffff0000 rdx=q:0x0 => rdx=undef zf=01
 
+code="bt [rbx],rax" m2000000=fffffffffffffffffffffffffffffffffeffffffffffffffffffffffffffffff rbx=q:0x2000010 rax=q:0x00 => of=undef sf=undef af=undef pf=undef cf=00
+code="bt [rbx],rax" m2000000=fffffffffffffffffffffffffffffffffffeffffffffffffffffffffffffffff rbx=q:0x2000010 rax=q:0x08 => of=undef sf=undef af=undef pf=undef cf=00
+code="bt [rbx],rax" m2000000=ffffffffffffffffffffffffffffffffffff7fffffffffffffffffffffffffff rbx=q:0x2000010 rax=q:0x17 => of=undef sf=undef af=undef pf=undef cf=00
+code="bt [rbx],rax" m2000000=fffffffffffffffffffffffffffffffffffffffffffffffffeffffffffffffff rbx=q:0x2000010 rax=q:0x40 => of=undef sf=undef af=undef pf=undef cf=00
+code="bt [rbx],rax" m2000000=ffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff7f rbx=q:0x2000010 rax=q:0x7f => of=undef sf=undef af=undef pf=undef cf=00
+code="bt [rbx],rax" m2000000=ffffffffffffffffffffffffffffff7fffffffffffffffffffffffffffffffff rbx=q:0x2000010 rax=q:-0x01 => of=undef sf=undef af=undef pf=undef cf=00
+code="bt [rbx],rax" m2000000=fffffffffffffffffffffffffffffffeffffffffffffffffffffffffffffffff rbx=q:0x2000010 rax=q:-0x08 => of=undef sf=undef af=undef pf=undef cf=00
+code="bt [rbx],rax" m2000000=ffffffffffffffbfffffffffffffffffffffffffffffffffffffffffffffffff rbx=q:0x2000010 rax=q:-0x42 => of=undef sf=undef af=undef pf=undef cf=00
+
 code="bt rax,rdx" rax=q:0xfffffffffffffffe rdx=q:0x00 => of=undef sf=undef af=undef pf=undef cf=00
 code="bt rax,rdx" rax=q:0x0000000000000001 rdx=q:0x00 => of=undef sf=undef af=undef pf=undef cf=01
 code="bt rax,rdx" rax=q:0xfffffffffffffffe rdx=q:0x40 => of=undef sf=undef af=undef pf=undef cf=00

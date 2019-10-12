@@ -551,11 +551,17 @@ void Lifter::LiftBittest(const LLInstr& inst) {
             "invalid bittest operation size");
 
     llvm::Value* val;
+    llvm::Value* addr;
     if (inst.ops[0].type == LL_OP_REG) {
         val = OpLoad(inst.ops[0], Facet::I);
     } else { // LL_OP_MEM
-        assert(false && "memory bittest not implemented");
-        return;
+        addr = OpAddr(inst.ops[0], irb.getIntNTy(op_size));
+        // Immediate operands are truncated, register operands are sign-extended
+        if (inst.ops[1].type == LL_OP_REG) {
+            llvm::Value* off = irb.CreateAShr(index, __builtin_ctz(op_size));
+            addr = irb.CreateGEP(addr, irb.CreateSExt(off, irb.getInt64Ty()));
+        }
+        val = irb.CreateLoad(addr);
     }
 
     // Truncated here because memory operand may need full value.
@@ -574,12 +580,10 @@ void Lifter::LiftBittest(const LLInstr& inst) {
         val = irb.CreateOr(val, mask);
     }
 
-    if (inst.ops[0].type == LL_OP_REG) {
+    if (inst.ops[0].type == LL_OP_REG)
         OpStoreGp(inst.ops[0], val);
-    } else { // LL_OP_MEM
-        assert(false && "memory bittest not implemented");
-        return;
-    }
+    else // LL_OP_MEM
+        irb.CreateStore(val, addr);
 
 skip_writeback:
     // Zero flag is not modified
