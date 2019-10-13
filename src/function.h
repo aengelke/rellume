@@ -54,8 +54,13 @@ public:
     llvm::Function* Lift();
 
     // Implemented in lldecoder.cc
+    enum class DecodeStop {
+#define RELLUME_DECODE_STOP(name,val) name = val,
+#include "rellume/decode-stop.inc"
+#undef RELLUME_DECODE_STOP
+    };
     using MemReader = std::function<size_t(uintptr_t, uint8_t*, size_t)>;
-    int Decode(uintptr_t addr, MemReader memacc = nullptr);
+    int Decode(uintptr_t addr, DecodeStop stop, MemReader memacc = nullptr);
 
 private:
     ArchBasicBlock& ResolveAddr(llvm::Value* addr);

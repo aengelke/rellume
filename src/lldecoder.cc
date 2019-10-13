@@ -55,7 +55,7 @@ namespace rellume {
                         (instr) == LL_INS_JMP || (instr) == LL_INS_CALL || \
                         (instr) == LL_INS_SYSCALL)
 
-int Function::Decode(uintptr_t addr, MemReader memacc)
+int Function::Decode(uintptr_t addr, DecodeStop stop, MemReader memacc)
 {
     LLInstr inst;
     uint8_t inst_buf[15];
@@ -103,10 +103,20 @@ int Function::Decode(uintptr_t addr, MemReader memacc)
 
             addr_map[cur_addr] = std::make_pair(blocks.size(), insts.size());
             insts.push_back(inst);
-            if (instrBreaks(inst.type))
-            {
+
+            if (stop == DecodeStop::INSTR)
+                break;
+
+            if (instrBreaks(inst.type)) {
+                if (stop == DecodeStop::BASICBLOCK)
+                    break;
+
                 if (instrIsJcc(inst.type))
                     addr_queue.push_back(cur_addr + inst.len);
+
+                if (stop == DecodeStop::SUPERBLOCK)
+                    break;
+
                 if ((instrIsJcc(inst.type) || inst.type == LL_INS_JMP) &&
                         inst.ops[0].type == LL_OP_IMM)
                     addr_queue.push_back(inst.ops[0].val);

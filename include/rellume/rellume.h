@@ -67,6 +67,13 @@ RELLUME_API int ll_func_decode(LLFunc* func, uintptr_t addr);
 typedef size_t(* RellumeMemAccessCb)(size_t, uint8_t*, size_t, void*);
 RELLUME_API int ll_func_decode2(LLFunc* func, uintptr_t addr,
                                 RellumeMemAccessCb mem_acc, void* user_arg);
+typedef enum {
+#define RELLUME_DECODE_STOP(name,val) RELLUME_DECODE_ ## name = val,
+#include "rellume/decode-stop.inc"
+#undef RELLUME_DECODE_STOP
+} LLDecodeStop;
+RELLUME_API int ll_func_decode3(LLFunc* func, uintptr_t addr, LLDecodeStop stop,
+                                RellumeMemAccessCb mem_acc, void* user_arg);
 
 RELLUME_API void ll_func_fast_opt(LLVMValueRef llvm_fn);
 RELLUME_API LLVMValueRef ll_func_wrap_sysv(LLVMValueRef llvm_fn, LLVMTypeRef ty,

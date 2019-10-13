@@ -88,13 +88,19 @@ void ll_func_dispose(LLFunc* fn) {
 }
 
 int ll_func_decode(LLFunc* func, uintptr_t addr) {
-    return unwrap(func)->Decode(addr);
+    return unwrap(func)->Decode(addr, rellume::Function::DecodeStop::ALL);
 }
 int ll_func_decode2(LLFunc* func, uintptr_t addr, RellumeMemAccessCb mem_acc,
                     void* user_arg) {
-    return unwrap(func)->Decode(addr, [=](uintptr_t maddr, uint8_t* buf, size_t buf_sz) {
+    return ll_func_decode3(func, addr, RELLUME_DECODE_ALL, mem_acc, user_arg);
+}
+int ll_func_decode3(LLFunc* func, uintptr_t addr, LLDecodeStop stop,
+                    RellumeMemAccessCb mem_acc, void* user_arg) {
+    auto memacc_l = [=](uintptr_t maddr, uint8_t* buf, size_t buf_sz) {
         return mem_acc(maddr, buf, buf_sz, user_arg);
-    });
+    };
+    auto decode_stop = static_cast<rellume::Function::DecodeStop>(stop);
+    return unwrap(func)->Decode(addr, decode_stop, memacc_l);
 }
 
 void ll_func_fast_opt(LLVMValueRef llvm_fn) {
