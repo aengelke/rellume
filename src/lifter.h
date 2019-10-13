@@ -248,6 +248,7 @@ private:
     void LiftSseMovhps(const LLInstr&);
     void LiftSseMovhpd(const LLInstr&);
     void LiftSseUnpck(const LLInstr&, Facet type);
+    void LiftSseShufpd(const LLInstr&);
     void LiftSseShufps(const LLInstr&);
     void LiftSsePshufd(const LLInstr&);
     void LiftSseInsertps(const LLInstr&);

@@ -171,6 +171,14 @@ void Lifter::LiftSseUnpck(const LLInstr& inst, Facet op_type) {
     OpStoreVec(inst.ops[0], res);
 }
 
+void Lifter::LiftSseShufpd(const LLInstr& inst) {
+    uint32_t mask[2] = { inst.ops[2].val&1 ? 1u:0u, inst.ops[2].val&2 ? 3u:2u };
+    llvm::Value* op1 = OpLoad(inst.ops[0], Facet::VF64);
+    llvm::Value* op2 = OpLoad(inst.ops[1], Facet::VF64, ALIGN_MAX);
+    llvm::Value* res = irb.CreateShuffleVector(op1, op2, mask);
+    OpStoreVec(inst.ops[0], res);
+}
+
 void Lifter::LiftSseShufps(const LLInstr& inst) {
     uint32_t mask[4];
     for (int i = 0; i < 4; i++)
