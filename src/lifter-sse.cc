@@ -153,6 +153,32 @@ void Lifter::LiftSseMinmax(const LLInstr& inst, llvm::CmpInst::Predicate pred,
     OpStoreVec(inst.ops[0], irb.CreateSelect(cmp, op1, op2));
 }
 
+void Lifter::LiftSseCvt(const LLInstr& inst, Facet src_type, Facet dst_type) {
+    if (dst_type == Facet::I)
+        dst_type = dst_type.Resolve(inst.ops[0].size * 8);
+    llvm::Type* dst_ty = dst_type.Type(irb.getContext());
+
+    llvm::Value* src = OpLoad(inst.ops[1], src_type);
+    auto cast_op = llvm::CastInst::getCastOpcode(src, true, dst_ty, true);
+    llvm::Value* dst = irb.CreateCast(cast_op, src, dst_ty);
+
+    if (dst_ty->isIntegerTy()) {
+        OpStoreGp(inst.ops[0], dst);
+    } else if (dst_ty->isFloatingPointTy()) {
+        OpStoreVec(inst.ops[0], dst);
+    } else if (dst_ty->isVectorTy()) {
+        if (dst_ty->getPrimitiveSizeInBits() == 64) {
+            // Zero upper half
+            llvm::Value* zero_half = llvm::Constant::getNullValue(dst_ty);
+            dst = irb.CreateShuffleVector(dst, zero_half, {0, 1, 2, 3});
+        }
+        assert(dst_ty->getPrimitiveSizeInBits() == 128);
+        OpStoreVec(inst.ops[0], dst);
+    } else {
+        assert(false && "invalid cvt target type");
+    }
+}
+
 void Lifter::LiftSseUnpck(const LLInstr& inst, Facet op_type) {
     llvm::Value* op1 = OpLoad(inst.ops[0], op_type);
     // We always fetch 128 bits, as per SDM.

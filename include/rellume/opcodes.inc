@@ -193,6 +193,22 @@ DEF_IT(ANDPS, LiftSseBinOp(inst, llvm::Instruction::And, Facet::VI32))
 DEF_IT(ANDPD, LiftSseBinOp(inst, llvm::Instruction::And, Facet::VI64))
 DEF_IT(XORPS, LiftSseBinOp(inst, llvm::Instruction::Xor, Facet::VI32))
 DEF_IT(XORPD, LiftSseBinOp(inst, llvm::Instruction::Xor, Facet::VI64))
+DEF_IT(CVTDQ2PD, LiftSseCvt(inst, Facet::V2I32, Facet::V2F64))
+DEF_IT(CVTDQ2PS, LiftSseCvt(inst, Facet::V4I32, Facet::V4F32))
+DEF_IT(CVTPD2DQ, goto not_implemented) // non-truncating, same types as below
+DEF_IT(CVTTPD2DQ, LiftSseCvt(inst, Facet::V2F64, Facet::V2I32))
+DEF_IT(CVTPS2DQ, goto not_implemented) // non-truncating, same types as below
+DEF_IT(CVTTPS2DQ, LiftSseCvt(inst, Facet::V4F32, Facet::V4I32))
+DEF_IT(CVTPD2PS, LiftSseCvt(inst, Facet::V2F64, Facet::V2F32))
+DEF_IT(CVTPS2PD, LiftSseCvt(inst, Facet::V2F32, Facet::V2F64))
+DEF_IT(CVTSD2SS, LiftSseCvt(inst, Facet::F64, Facet::F32))
+DEF_IT(CVTSS2SD, LiftSseCvt(inst, Facet::F32, Facet::F64))
+DEF_IT(CVTSD2SI, goto not_implemented) // non-truncating, same types as below
+DEF_IT(CVTTSD2SI, LiftSseCvt(inst, Facet::F64, Facet::I))
+DEF_IT(CVTSS2SI, goto not_implemented) // non-truncating, same types as below
+DEF_IT(CVTTSS2SI, LiftSseCvt(inst, Facet::F32, Facet::I))
+DEF_IT(CVTSI2SD, LiftSseCvt(inst, Facet::I, Facet::F64))
+DEF_IT(CVTSI2SS, LiftSseCvt(inst, Facet::I, Facet::F32))
 
 DEF_IT(PXOR, LiftSseBinOp(inst, llvm::Instruction::Xor, Facet::VI64))
 DEF_IT(POR, LiftSseBinOp(inst, llvm::Instruction::Or, Facet::VI64))
