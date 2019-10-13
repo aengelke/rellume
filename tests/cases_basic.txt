@@ -259,20 +259,20 @@ code="bsf dx, ax" rax=q:0xffff rdx=q:0x0 => rdx=q:0x0 zf=00
 code="bsf dx, ax" rax=q:0x1 rdx=q:0x0 => rdx=q:0x0 zf=00
 code="bsf dx, ax" rax=q:0x0 rdx=q:0x0 => rdx=undef zf=01
 code="bsf dx, ax" rax=q:0xffff0000 rdx=q:0x0 => rdx=undef zf=01
-code="bsr rdx, rax" rax=q:0x2bcdef9012345678 => rdx=q:0x2 zf=00
-code="bsr rdx, rax" rax=q:0x8000000000000000 => rdx=q:0x0 zf=00
-code="bsr rdx, rax" rax=q:0xffffffffffffffff => rdx=q:0x0 zf=00
-code="bsr rdx, rax" rax=q:0x1 => rdx=q:0x3f zf=00
+code="bsr rdx, rax" rax=q:0x2bcdef9012345678 => rdx=q:0x3d zf=00
+code="bsr rdx, rax" rax=q:0x8000000000000000 => rdx=q:0x3f zf=00
+code="bsr rdx, rax" rax=q:0xffffffffffffffff => rdx=q:0x3f zf=00
+code="bsr rdx, rax" rax=q:0x1 => rdx=q:0x0 zf=00
 code="bsr rdx, rax" rax=q:0x0 => rdx=undef zf=01
-code="bsr edx, eax" rax=q:0x12345678 => rdx=q:0x3 zf=00
-code="bsr edx, eax" rax=q:0x80000000 => rdx=q:0x0 zf=00
-code="bsr edx, eax" rax=q:0xffffffff => rdx=q:0x0 zf=00
-code="bsr edx, eax" rax=q:0x1234567800000001 => rdx=q:0x1f zf=00
+code="bsr edx, eax" rax=q:0x12345678 => rdx=q:0x1c zf=00
+code="bsr edx, eax" rax=q:0x80000000 => rdx=q:0x1f zf=00
+code="bsr edx, eax" rax=q:0xffffffff => rdx=q:0x1f zf=00
+code="bsr edx, eax" rax=q:0x1234567800000001 => rdx=q:0x0 zf=00
 code="bsr edx, eax" rax=q:0x1234567800000000 => rdx=undef zf=01
-code="bsr dx, ax" rax=q:0x12345678 rdx=q:0x0 => rdx=q:0x1 zf=00
-code="bsr dx, ax" rax=q:0x8000 rdx=q:0x0 => rdx=q:0x0 zf=00
-code="bsr dx, ax" rax=q:0xffff rdx=q:0x0 => rdx=q:0x0 zf=00
-code="bsr dx, ax" rax=q:0x12340001 rdx=q:0x0 => rdx=q:0xf zf=00
+code="bsr dx, ax" rax=q:0x12345678 rdx=q:0x0 => rdx=q:0xe zf=00
+code="bsr dx, ax" rax=q:0x8000 rdx=q:0x0 => rdx=q:0xf zf=00
+code="bsr dx, ax" rax=q:0xffff rdx=q:0x0 => rdx=q:0xf zf=00
+code="bsr dx, ax" rax=q:0x12340001 rdx=q:0x0 => rdx=q:0x0 zf=00
 code="bsr dx, ax" rax=q:0x12340000 rdx=q:0x0 => rdx=undef zf=01
 code="bsr dx, ax" rax=q:0xffff0000 rdx=q:0x0 => rdx=undef zf=01
 

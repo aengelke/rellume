@@ -531,17 +531,16 @@ void Lifter::LiftCsep(const LLInstr& inst) {
 void Lifter::LiftBitscan(const LLInstr& inst, bool trailing) {
     llvm::Value* src = OpLoad(inst.ops[1], Facet::I);
     auto id = trailing ? llvm::Intrinsic::cttz : llvm::Intrinsic::ctlz;
-    llvm::Value* res = irb.CreateBinaryIntrinsic(
-            id, src, /*is_zero_undef=*/irb.getTrue());
+    llvm::Value* res = irb.CreateBinaryIntrinsic(id, src,
+                                                 /*zero_undef=*/irb.getTrue());
+    if (!trailing) {
+        unsigned sz = inst.ops[1].size*8;
+        res = irb.CreateSub(irb.getIntN(sz, sz - 1), res);
+    }
     OpStoreGp(inst.ops[0], res);
 
-    llvm::Value* undef = llvm::UndefValue::get(irb.getInt1Ty());
     FlagCalcZ(src);
-    SetFlag(Facet::SF, undef);
-    SetFlag(Facet::PF, undef);
-    SetFlag(Facet::AF, undef);
-    SetFlag(Facet::OF, undef);
-    SetFlag(Facet::CF, undef);
+    SetFlagUndef({Facet::OF, Facet::SF, Facet::AF, Facet::PF, Facet::CF});
 }
 
 void Lifter::LiftBittest(const LLInstr& inst) {
