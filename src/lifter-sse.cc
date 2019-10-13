@@ -145,6 +145,14 @@ void Lifter::LiftSseBinOp(const LLInstr& inst, llvm::Instruction::BinaryOps op,
                ALIGN_IMP);
 }
 
+void Lifter::LiftSseMinmax(const LLInstr& inst, llvm::CmpInst::Predicate pred,
+                            Facet op_type) {
+    llvm::Value* op1 = OpLoad(inst.ops[0], op_type, ALIGN_MAX);
+    llvm::Value* op2 = OpLoad(inst.ops[1], op_type, ALIGN_MAX);
+    llvm::Value* cmp = irb.CreateFCmp(pred, op1, op2);
+    OpStoreVec(inst.ops[0], irb.CreateSelect(cmp, op1, op2));
+}
+
 void Lifter::LiftSseUnpck(const LLInstr& inst, Facet op_type) {
     llvm::Value* op1 = OpLoad(inst.ops[0], op_type);
     // We always fetch 128 bits, as per SDM.

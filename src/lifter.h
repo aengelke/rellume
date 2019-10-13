@@ -247,6 +247,7 @@ private:
     void LiftSseMovlp(const LLInstr&);
     void LiftSseMovhps(const LLInstr&);
     void LiftSseMovhpd(const LLInstr&);
+    void LiftSseMinmax(const LLInstr&, llvm::CmpInst::Predicate, Facet);
     void LiftSseUnpck(const LLInstr&, Facet type);
     void LiftSseShufpd(const LLInstr&);
     void LiftSseShufps(const LLInstr&);

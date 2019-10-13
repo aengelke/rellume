@@ -340,6 +340,14 @@ end_ops:
     case FDI_SSE_DIVSD: llinst.type = LL_INS_DIVSD; break;
     case FDI_SSE_DIVPS: llinst.type = LL_INS_DIVPS; break;
     case FDI_SSE_DIVPD: llinst.type = LL_INS_DIVPD; break;
+    case FDI_SSE_MINSS: llinst.type = LL_INS_MINSS; break;
+    case FDI_SSE_MINSD: llinst.type = LL_INS_MINSD; break;
+    case FDI_SSE_MINPS: llinst.type = LL_INS_MINPS; break;
+    case FDI_SSE_MINPD: llinst.type = LL_INS_MINPD; break;
+    case FDI_SSE_MAXSS: llinst.type = LL_INS_MAXSS; break;
+    case FDI_SSE_MAXSD: llinst.type = LL_INS_MAXSD; break;
+    case FDI_SSE_MAXPS: llinst.type = LL_INS_MAXPS; break;
+    case FDI_SSE_MAXPD: llinst.type = LL_INS_MAXPD; break;
     case FDI_SSE_ORPS: llinst.type = LL_INS_ORPS; break;
     case FDI_SSE_ORPD: llinst.type = LL_INS_ORPD; break;
     case FDI_SSE_ANDPS: llinst.type = LL_INS_ANDPS; break;
