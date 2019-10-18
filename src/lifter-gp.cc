@@ -597,7 +597,9 @@ void Lifter::LiftBswap(const LLInstr& inst) {
 }
 
 void Lifter::LiftJmp(const LLInstr& inst) {
-    SetReg(LLReg(LL_RT_IP, 0), Facet::I64, OpLoad(inst.ops[0], Facet::I64));
+    LLInstrOp op = inst.ops[0];
+    op.seg = LL_RI_None; // Force default segment, 3e is notrack.
+    SetReg(LLReg(LL_RT_IP, 0), Facet::I64, OpLoad(op, Facet::I64));
 }
 
 void Lifter::LiftJcc(const LLInstr& inst, Condition cond) {
@@ -612,7 +614,9 @@ void Lifter::LiftCall(const LLInstr& inst) {
         SetFlagUndef({Facet::OF, Facet::SF, Facet::ZF, Facet::AF, Facet::PF,
                       Facet::CF});
 
-    llvm::Value* new_rip = OpLoad(inst.ops[0], Facet::I);
+    LLInstrOp op = inst.ops[0];
+    op.seg = LL_RI_None; // Force default segment, 3e is notrack.
+    llvm::Value* new_rip = OpLoad(op, Facet::I);
     StackPush(GetReg(LLReg(LL_RT_IP, 0), Facet::I64));
     SetReg(LLReg(LL_RT_IP, 0), Facet::I64, new_rip);
 }
