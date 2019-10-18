@@ -239,6 +239,8 @@ private:
     // llinstruction-sse.cc
     void LiftFence(const LLInstr&);
     void LiftPrefetch(const LLInstr&, unsigned rw, unsigned locality);
+    void LiftFxsave(const LLInstr&);
+    void LiftFxrstor(const LLInstr&);
     void LiftSseMovq(const LLInstr&, Facet type);
     void LiftSseBinOp(const LLInstr&, llvm::Instruction::BinaryOps op,
                       Facet type);

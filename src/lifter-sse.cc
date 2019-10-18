@@ -56,6 +56,33 @@ void Lifter::LiftPrefetch(const LLInstr& inst, unsigned rw, unsigned locality) {
                                irb.getInt32(1)});
 }
 
+void Lifter::LiftFxsave(const LLInstr& inst) {
+    llvm::Value* buf = OpAddr(inst.ops[0], irb.getInt8Ty());
+    llvm::Module* mod = irb.GetInsertBlock()->getModule();
+    irb.CreateAlignmentAssumption(mod->getDataLayout(), buf, 16);
+
+    // Zero FPU status
+    // TODO: FCW=0x37f, MXCSR=0x1f80, MXCSR_MASK=0xffff
+    irb.CreateMemSet(buf, irb.getInt8(0), 0xa0, 16);
+    for (unsigned i = 0; i < 16; i++) {
+        llvm::Value* ptr = irb.CreateConstGEP1_32(buf, 0xa0 + 0x10*i);
+        ptr = irb.CreatePointerCast(ptr, irb.getIntNTy(128)->getPointerTo());
+        irb.CreateStore(GetReg(LLReg(LL_RT_XMM, i), Facet::I128), ptr);
+    }
+}
+
+void Lifter::LiftFxrstor(const LLInstr& inst) {
+    llvm::Value* buf = OpAddr(inst.ops[0], irb.getInt8Ty());
+    llvm::Module* mod = irb.GetInsertBlock()->getModule();
+    irb.CreateAlignmentAssumption(mod->getDataLayout(), buf, 16);
+
+    for (unsigned i = 0; i < 16; i++) {
+        llvm::Value* ptr = irb.CreateConstGEP1_32(buf, 0xa0 + 0x10*i);
+        ptr = irb.CreatePointerCast(ptr, irb.getIntNTy(128)->getPointerTo());
+        SetReg(LLReg(LL_RT_XMM, i), Facet::I128, irb.CreateLoad(ptr));
+    }
+}
+
 void Lifter::LiftSseMovq(const LLInstr& inst, Facet type)
 {
     llvm::Value* op1 = OpLoad(inst.ops[1], type);
