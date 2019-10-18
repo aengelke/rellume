@@ -259,6 +259,7 @@ private:
     void LiftSseInsertps(const LLInstr&);
     void LiftSsePsllElement(const LLInstr&, Facet op_type);
     void LiftSsePshiftBytes(const LLInstr&);
+    void LiftSsePack(const LLInstr&, Facet, bool sign);
     void LiftSsePcmp(const LLInstr&, llvm::CmpInst::Predicate, Facet);
     void LiftSsePminmax(const LLInstr&, llvm::CmpInst::Predicate, Facet);
     void LiftSsePmovmskb(const LLInstr&);

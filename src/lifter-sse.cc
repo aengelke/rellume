@@ -332,6 +332,42 @@ void Lifter::LiftSsePshiftBytes(const LLInstr& inst) {
         OpStoreVec(inst.ops[0], irb.CreateShuffleVector(zero, src, mask));
 }
 
+void Lifter::LiftSsePack(const LLInstr& inst, Facet src_type, bool sign) {
+    llvm::Value* op1 = OpLoad(inst.ops[0], src_type, ALIGN_MAX);
+    llvm::Value* op2 = OpLoad(inst.ops[1], src_type, ALIGN_MAX);
+    llvm::Type* src_ty = op1->getType();
+    unsigned src_size = src_ty->getScalarSizeInBits();
+    unsigned src_elems = src_ty->getVectorNumElements();
+    unsigned dst_size = src_size / 2;
+    unsigned dst_elems = src_elems * 2;
+    auto* dst_ty = llvm::VectorType::get(irb.getIntNTy(dst_size), dst_elems);
+
+    llvm::APInt min, max;
+    if (sign) {
+        min = llvm::APInt::getSignedMinValue(dst_size).sext(src_size);
+        max = llvm::APInt::getSignedMaxValue(dst_size).sext(src_size);
+    } else {
+        min = llvm::APInt::getMinValue(dst_size).zext(src_size);
+        max = llvm::APInt::getMaxValue(dst_size).zext(src_size);
+    }
+
+    llvm::Constant* minv = llvm::Constant::getIntegerValue(src_ty, min);
+    llvm::Constant* maxv = llvm::Constant::getIntegerValue(src_ty, max);
+    op1 = irb.CreateSelect(irb.CreateICmpSLT(op1, minv), minv, op1);
+    op2 = irb.CreateSelect(irb.CreateICmpSLT(op2, minv), minv, op2);
+    op1 = irb.CreateSelect(irb.CreateICmpSGT(op1, maxv), maxv, op1);
+    op2 = irb.CreateSelect(irb.CreateICmpSGT(op2, maxv), maxv, op2);
+
+    llvm::SmallVector<unsigned, 16> mask;
+    for (unsigned i = 0; i < src_elems; i++)
+        mask.push_back(i);
+    for (unsigned i = 0; i < src_elems; i++)
+        mask.push_back(i + src_elems);
+
+    llvm::Value* shuffle = irb.CreateShuffleVector(op1, op2, mask);
+    OpStoreVec(inst.ops[0], irb.CreateTrunc(shuffle, dst_ty));
+}
+
 void Lifter::LiftSsePcmp(const LLInstr& inst, llvm::CmpInst::Predicate pred,
                          Facet op_type) {
     llvm::Value* op1 = OpLoad(inst.ops[0], op_type, ALIGN_MAX);
