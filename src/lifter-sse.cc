@@ -172,6 +172,17 @@ void Lifter::LiftSseBinOp(const LLInstr& inst, llvm::Instruction::BinaryOps op,
                ALIGN_IMP);
 }
 
+void Lifter::LiftSseComis(const LLInstr& inst, Facet op_type) {
+    llvm::Value* op1 = OpLoad(inst.ops[0], op_type);
+    llvm::Value* op2 = OpLoad(inst.ops[1], op_type);
+    SetFlag(Facet::ZF, irb.CreateFCmpUEQ(op1, op2));
+    SetFlag(Facet::CF, irb.CreateFCmpULT(op1, op2));
+    SetFlag(Facet::PF, irb.CreateFCmpUNO(op1, op2));
+    SetFlag(Facet::AF, irb.getFalse());
+    SetFlag(Facet::OF, irb.getFalse());
+    SetFlag(Facet::SF, irb.getFalse());
+}
+
 void Lifter::LiftSseMinmax(const LLInstr& inst, llvm::CmpInst::Predicate pred,
                             Facet op_type) {
     llvm::Value* op1 = OpLoad(inst.ops[0], op_type, ALIGN_MAX);

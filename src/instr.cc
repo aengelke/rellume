@@ -356,6 +356,10 @@ end_ops:
     case FDI_SSE_ANDPD: llinst.type = LL_INS_ANDPD; break;
     case FDI_SSE_XORPS: llinst.type = LL_INS_XORPS; break;
     case FDI_SSE_XORPD: llinst.type = LL_INS_XORPD; break;
+    case FDI_SSE_COMISS: llinst.type = LL_INS_COMISS; break;
+    case FDI_SSE_COMISD: llinst.type = LL_INS_COMISD; break;
+    case FDI_SSE_UCOMISS: llinst.type = LL_INS_UCOMISS; break;
+    case FDI_SSE_UCOMISD: llinst.type = LL_INS_UCOMISD; break;
     case FDI_SSE_CVTDQ2PD: llinst.type = LL_INS_CVTDQ2PD; break;
     case FDI_SSE_CVTDQ2PS: llinst.type = LL_INS_CVTDQ2PS; break;
     case FDI_SSE_CVTPD2DQ: llinst.type = LL_INS_CVTPD2DQ; break;
