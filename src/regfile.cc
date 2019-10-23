@@ -202,9 +202,9 @@ RegFile::impl::Entry* RegFile::impl::AccessRegFacet(LLReg reg, Facet facet) {
 
 void RegFile::impl::UpdateAll(llvm::Value* buf_ptr, bool store_mem) {
     static constexpr std::tuple<size_t, LLReg, Facet> entries[] = {
-#define RELLUME_PARAM_REG(off,sz,reg,facet,name,mn) std::make_tuple(off,reg,facet),
-#include <rellume/regs.inc>
-#undef RELLUME_PARAM_REG
+#define RELLUME_MAPPED_REG(off,reg,facet) std::make_tuple(off, reg, facet),
+#include <rellume/cpustruct-private.inc>
+#undef RELLUME_MAPPED_REG
     };
 
     assert(insert_block->getTerminator() == nullptr && "update terminated block");

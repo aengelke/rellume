@@ -69,9 +69,9 @@ unsigned CallConv::CpuStructParamIdx() const {
 }
 
 static const std::tuple<size_t, LLReg, Facet> cpu_struct_entries[] = {
-#define RELLUME_PARAM_REG(off,sz,reg,facet,name,mn) std::make_tuple(off,reg,facet),
-#include <rellume/regs.inc>
-#undef RELLUME_PARAM_REG
+#define RELLUME_MAPPED_REG(off,reg,facet) std::make_tuple(off, reg, facet),
+#include <rellume/cpustruct-private.inc>
+#undef RELLUME_MAPPED_REG
 };
 
 llvm::Value* CallConv::Pack(RegFile& regfile, llvm::Value* val,

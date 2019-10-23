@@ -7,7 +7,7 @@ casefiles = [
 ]
 
 assembler = executable('test_assembler', 'test_assembler.cc', dependencies: [libllvm])
-driver = executable('test_driver', 'test_driver.cc', dependencies: [librellume])
+driver = executable('test_driver', 'test_driver.cc', cpustruct_priv, dependencies: [librellume])
 
 python3 = find_program('python3')
 parsed_cases = custom_target('parsed_cases.txt',

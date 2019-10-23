@@ -24,7 +24,7 @@ rellume_flags = [
   '-fno-unwind-tables',
   '-fno-rtti',
 ]
-librellume_lib = library('rellume', sources,
+librellume_lib = library('rellume', sources, cpustruct_priv,
                          include_directories: [rellume_inc, rellume_inc_priv],
                          dependencies: [libllvm, fadec],
                          c_args: rellume_flags,

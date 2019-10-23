@@ -40,11 +40,8 @@ struct HexBuffer {
 
 struct CPU {
     uint8_t rip[8];
-    uint8_t gpr[16][8];
-    uint8_t flags[6];
-    uint8_t _pad[2];
-    uint8_t sse[16][16];
-} __attribute__((aligned(16)));
+    uint8_t data[4096-8];
+} __attribute__((aligned(64)));
 
 struct RegEntry {
     size_t size;
@@ -52,9 +49,9 @@ struct RegEntry {
 };
 
 static std::unordered_map<std::string,RegEntry> regs = {
-#define RELLUME_PARAM_REG(off,sz,reg,facet,name,mn) {name, {sz, off}},
-#include <rellume/regs.inc>
-#undef RELLUME_PARAM_REG
+#define RELLUME_NAMED_REG(name,nameu,sz,off) {#name, {sz, off}},
+#include <rellume/cpustruct-private.inc>
+#undef RELLUME_NAMED_REG
 };
 
 class TestCase {
