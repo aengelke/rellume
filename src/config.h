@@ -52,6 +52,8 @@ struct LLConfig {
     bool prefer_pointer_cmp = false;
     /// Make CALL and RET clobber all status flags.
     bool call_ret_clobber_flags = false;
+    /// Use native registers FS and GS for segmented memory access
+    bool use_native_segment_base = false;
     /// Verify the IR after lifting.
     bool verify_ir = false;
 

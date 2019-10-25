@@ -23,6 +23,7 @@
 
 #include "lifter.h"
 
+#include "callconv.h"
 #include "facet.h"
 #include "rellume/instr.h"
 #include <llvm/IR/Constants.h>
@@ -63,18 +64,7 @@ LifterBase::OpAddrConst(uint64_t addr, llvm::PointerType* ptr_ty)
 llvm::Value*
 LifterBase::OpAddr(const LLInstrOp& op, llvm::Type* element_type)
 {
-    int addrspace = 0;
-    switch (op.seg)
-    {
-    case LL_RI_None: addrspace = 0; break;
-    case LL_RI_GS: addrspace = 256; break;
-    case LL_RI_FS: addrspace = 257; break;
-    default: assert(false); return nullptr;
-    }
-
-    llvm::PointerType* elem_ptr_ty = element_type->getPointerTo(addrspace);
-
-    if (addrspace != 0 || op.addrsize != 8) {
+    if (op.seg == LL_RI_FS || op.seg == LL_RI_GS || op.addrsize != 8) {
         // For segment offsets, use inttoptr because the pointer base is stored
         // in the segment register. (And LLVM has some problems with addrspace
         // casts between pointers.) For 32-bit address size, we can't normal
@@ -90,15 +80,36 @@ LifterBase::OpAddr(const LLInstrOp& op, llvm::Type* element_type)
             res = irb.CreateAdd(res, irb.CreateMul(ireg, scaled_val));
         }
 
+        int addrspace = 0;
+        if (op.seg == LL_RI_FS || op.seg == LL_RI_GS) {
+            if (cfg.use_native_segment_base) {
+                addrspace = op.seg == LL_RI_FS ? 257 : 256;
+            } else {
+                unsigned off = op.seg == LL_RI_FS ? CpuStructOff::FSBASE
+                                                  : CpuStructOff::GSBASE;
+
+                unsigned struct_param_idx = cfg.callconv.CpuStructParamIdx();
+                llvm::Function* fn = irb.GetInsertBlock()->getParent();
+                llvm::Value* buf_ptr = &fn->arg_begin()[struct_param_idx];
+                llvm::Type* ptr_ty = irb.getInt64Ty()->getPointerTo();
+                llvm::Value* ptr = irb.CreateConstGEP1_64(buf_ptr, off);
+                ptr = irb.CreatePointerCast(ptr, ptr_ty);
+
+                res = irb.CreateAdd(res, irb.CreateLoad(ptr));
+            }
+        }
+
         res = irb.CreateZExt(res, irb.getInt64Ty());
-        return irb.CreateIntToPtr(res, elem_ptr_ty);
+        return irb.CreateIntToPtr(res, element_type->getPointerTo(addrspace));
     }
+
+    llvm::PointerType* elem_ptr_ty = element_type->getPointerTo();
 
     llvm::PointerType* scale_type = nullptr;
     if (op.scale * 8u == element_type->getPrimitiveSizeInBits())
         scale_type = elem_ptr_ty;
     else if (op.scale != 0)
-        scale_type = irb.getIntNTy(op.scale*8)->getPointerTo(addrspace);
+        scale_type = irb.getIntNTy(op.scale*8)->getPointerTo();
 
     llvm::Value* base;
     if (op.reg.rt != LL_RT_None)

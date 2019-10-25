@@ -51,6 +51,7 @@ RELLUME_API void ll_config_enable_verify_ir(LLConfig*, bool);
 RELLUME_API void ll_config_set_global_base(LLConfig*, uintptr_t, LLVMValueRef);
 RELLUME_API void ll_config_set_instr_impl(LLConfig*, LLInstrType, LLVMValueRef);
 RELLUME_API void ll_config_set_call_ret_clobber_flags(LLConfig*, bool);
+RELLUME_API void ll_config_set_use_native_segment_base(LLConfig*, bool);
 
 
 struct LLFunc;

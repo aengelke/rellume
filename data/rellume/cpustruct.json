@@ -24,6 +24,8 @@
     {"name": "af",      "size": 1,  "reg": ["EFLAGS", 0, "AF"]},
     {"name": "df",      "size": 1,  "reg": ["EFLAGS", 0, "DF"]},
     {                   "size": 1},
+    {"name": "fsbase",  "size": 8, "export": true},
+    {"name": "gsbase",  "size": 8, "export": true},
     {"name": "xmm0",    "size": 16, "reg": ["XMM", 0, "I128"]},
     {"name": "xmm1",    "size": 16, "reg": ["XMM", 1, "I128"]},
     {"name": "xmm2",    "size": 16, "reg": ["XMM", 2, "I128"]},

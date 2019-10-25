@@ -71,6 +71,9 @@ void ll_config_set_instr_impl(LLConfig* cfg, LLInstrType type, LLVMValueRef valu
 void ll_config_set_call_ret_clobber_flags(LLConfig* cfg, bool enable) {
     unwrap(cfg)->call_ret_clobber_flags = enable;
 }
+void ll_config_set_use_native_segment_base(LLConfig* cfg, bool enable) {
+    unwrap(cfg)->use_native_segment_base = enable;
+}
 
 
 LLFunc* ll_func_new(LLVMModuleRef mod, LLConfig* cfg) {
