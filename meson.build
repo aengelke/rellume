@@ -7,7 +7,7 @@ project('rellume', ['cpp'],
 
 add_project_arguments(['-Wno-unused-parameter', '-Wshadow=local'], language: 'cpp')
 
-libllvm = dependency('llvm', version: ['>=7', '<9'])
+libllvm = dependency('llvm', version: ['>=7', '<10'])
 add_project_arguments(['-DLL_LLVM_MAJOR='+libllvm.version().split('.')[0]], language: 'cpp')
 
 fadec_subproject = subproject('fadec', default_options: ['archmode=only64'])
