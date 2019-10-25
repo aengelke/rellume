@@ -62,6 +62,14 @@ private:
     Value value;
 };
 
+struct CpuStructOff {
+    enum {
+#define RELLUME_NAMED_REG(name,nameu,sz,off) nameu = off,
+#include <rellume/cpustruct-private.inc>
+#undef RELLUME_NAMED_REG
+    };
+};
+
 } // namespace
 
 #endif
