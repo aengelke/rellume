@@ -72,6 +72,10 @@ DEF_IT(BSWAP, LiftBswap(inst))
 DEF_IT(CEXT, LiftCext(inst))
 DEF_IT(CSEP, LiftCsep(inst))
 
+DEF_IT(CLC, LiftClc(inst))
+DEF_IT(STC, LiftStc(inst))
+DEF_IT(CMC, LiftCmc(inst))
+
 DEF_IT(CLD, LiftCld(inst))
 DEF_IT(STD, LiftStd(inst))
 DEF_IT(LODS, goto not_implemented)

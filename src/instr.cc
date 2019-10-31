@@ -242,6 +242,9 @@ end_ops:
     case FDI_BTS: llinst.type = LL_INS_BTS; break;
     case FDI_BTS_IMM: llinst.type = LL_INS_BTS; break;
     case FDI_BSWAP: llinst.type = LL_INS_BSWAP; break;
+    case FDI_CLC: llinst.type = LL_INS_CLC; break;
+    case FDI_STC: llinst.type = LL_INS_STC; break;
+    case FDI_CMC: llinst.type = LL_INS_CMC; break;
     case FDI_CLD: llinst.type = LL_INS_CLD; break;
     case FDI_STD: llinst.type = LL_INS_STD; break;
     case FDI_LODS: llinst.type = !FD_HAS_REP(&fdi) ? LL_INS_LODS : LL_INS_REP_LODS; break;

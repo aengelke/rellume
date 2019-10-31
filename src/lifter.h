@@ -229,6 +229,12 @@ private:
     void LiftCall(const LLInstr& inst);
     void LiftRet(const LLInstr& inst);
 
+    void LiftClc(const LLInstr& inst) { SetFlag(Facet::CF, irb.getFalse()); }
+    void LiftStc(const LLInstr& inst) { SetFlag(Facet::CF, irb.getTrue()); }
+    void LiftCmc(const LLInstr& inst) {
+        SetFlag(Facet::CF, irb.CreateNot(GetFlag(Facet::CF)));
+    }
+
     void LiftCld(const LLInstr& inst) { SetFlag(Facet::DF, irb.getFalse()); }
     void LiftStd(const LLInstr& inst) { SetFlag(Facet::DF, irb.getTrue()); }
     void LiftStos(const LLInstr& inst);
