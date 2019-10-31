@@ -56,9 +56,6 @@ public:
     llvm::Value* GetReg(LLReg reg, Facet facet);
     void SetReg(LLReg reg, Facet facet, llvm::Value*, bool clear_facets);
 
-    void UpdateAllFromMem(llvm::Value* buf_ptr);
-    void UpdateAllInMem(llvm::Value* buf_ptr);
-
 private:
     class impl;
     std::unique_ptr<impl> pimpl;

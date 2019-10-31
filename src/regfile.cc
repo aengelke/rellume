@@ -120,13 +120,6 @@ public:
     llvm::Value* GetReg(LLReg reg, Facet facet);
     void SetReg(LLReg reg, Facet facet, llvm::Value*, bool clear_facets);
 
-    void UpdateAllFromMem(llvm::Value* buf_ptr) {
-        UpdateAll(buf_ptr, false);
-    }
-    void UpdateAllInMem(llvm::Value* buf_ptr) {
-        UpdateAll(buf_ptr, true);
-    }
-
 private:
     class Entry {
         // If value is nullptr, then the generator (unless that is null as well)
@@ -157,8 +150,6 @@ private:
     ValueMapFlags<Entry> flags;
 
     Entry* AccessRegFacet(LLReg reg, Facet facet);
-
-    void UpdateAll(llvm::Value*, bool);
 };
 
 void RegFile::impl::InitAll(InitGenerator fn) {
@@ -198,36 +189,6 @@ RegFile::impl::Entry* RegFile::impl::AccessRegFacet(LLReg reg, Facet facet) {
     }
 
     return nullptr;
-}
-
-void RegFile::impl::UpdateAll(llvm::Value* buf_ptr, bool store_mem) {
-    static constexpr std::tuple<size_t, LLReg, Facet> entries[] = {
-#define RELLUME_MAPPED_REG(off,reg,facet) std::make_tuple(off, reg, facet),
-#include <rellume/cpustruct-private.inc>
-#undef RELLUME_MAPPED_REG
-    };
-
-    assert(insert_block->getTerminator() == nullptr && "update terminated block");
-    llvm::IRBuilder<> irb(insert_block);
-
-    // Clear all register facets
-    if (!store_mem)
-        InitAll(nullptr);
-
-    size_t offset;
-    LLReg reg;
-    Facet facet;
-    for (auto& entry : entries) {
-        std::tie(offset, reg, facet) = entry;
-        llvm::Type* ptr_ty = facet.Type(irb.getContext())->getPointerTo();
-        llvm::Value* ptr = irb.CreateConstGEP1_64(buf_ptr, offset);
-        ptr = irb.CreatePointerCast(ptr, ptr_ty);
-
-        if (store_mem) // store to mem
-            irb.CreateStore(GetReg(reg, facet), ptr);
-        else // load from mem
-            SetReg(reg, facet, irb.CreateLoad(ptr), false);
-    }
 }
 
 llvm::Value*
@@ -434,12 +395,6 @@ llvm::Value* RegFile::GetReg(LLReg reg, Facet facet) {
 }
 void RegFile::SetReg(LLReg reg, Facet facet, llvm::Value* value, bool clear) {
     pimpl->SetReg(reg, facet, value, clear);
-}
-void RegFile::UpdateAllFromMem(llvm::Value* buf_ptr) {
-    pimpl->UpdateAllFromMem(buf_ptr);
-}
-void RegFile::UpdateAllInMem(llvm::Value* buf_ptr) {
-    pimpl->UpdateAllInMem(buf_ptr);
 }
 
 } // namespace
