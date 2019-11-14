@@ -176,6 +176,12 @@ void Lifter::LiftSseBinOp(const LLInstr& inst, llvm::Instruction::BinaryOps op,
                ALIGN_IMP);
 }
 
+void Lifter::LiftSseAndn(const LLInstr& inst, Facet op_type) {
+    llvm::Value* op1 = OpLoad(inst.ops[0], op_type, ALIGN_MAX);
+    llvm::Value* op2 = OpLoad(inst.ops[1], op_type, ALIGN_MAX);
+    OpStoreVec(inst.ops[0], irb.CreateAnd(irb.CreateNot(op1), op2));
+}
+
 void Lifter::LiftSseComis(const LLInstr& inst, Facet op_type) {
     llvm::Value* op1 = OpLoad(inst.ops[0], op_type);
     llvm::Value* op2 = OpLoad(inst.ops[1], op_type);
