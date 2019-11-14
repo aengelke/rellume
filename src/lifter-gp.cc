@@ -332,6 +332,41 @@ void Lifter::LiftShift(const LLInstr& inst, llvm::Instruction::BinaryOps op) {
     SetFlagUndef({Facet::OF, Facet::AF, Facet::CF});
 }
 
+void Lifter::LiftShiftdouble(const LLInstr& inst) {
+    llvm::Value* src1 = OpLoad(inst.ops[0], Facet::I);
+    llvm::Value* src2 = OpLoad(inst.ops[1], Facet::I);
+    llvm::Type* ty = src1->getType();
+    llvm::Value* shift;
+    llvm::Value* res;
+    if (inst.operand_count == 2) {
+        shift = llvm::ConstantInt::get(ty, 1);
+    } else {
+        unsigned mask = inst.ops[0].size == 8 ? 0x3f : 0x1f;
+        shift = irb.CreateZExt(OpLoad(inst.ops[2], Facet::I), ty);
+        // TODO: support small shifts with amount > len
+        // LLVM sets the result to poison if this occurs.
+        shift = irb.CreateAnd(shift, mask);
+    }
+
+    auto id = inst.type == LL_INS_SHLD ? llvm::Intrinsic::fshl
+                                       : llvm::Intrinsic::fshr;
+    llvm::Module* module = irb.GetInsertBlock()->getModule();
+    auto intrinsic = llvm::Intrinsic::getDeclaration(module, id, {ty});
+    if (inst.type == LL_INS_SHLD)
+        res = irb.CreateCall(intrinsic, {src1, src2, shift});
+    else if (inst.type == LL_INS_SHRD)
+        res = irb.CreateCall(intrinsic, {src2, src1, shift});
+    else
+        assert(false && "invalid double-shift operation");
+    OpStoreGp(inst.ops[0], res);
+
+    // TODO: calculate flags correctly
+    FlagCalcZ(res);
+    FlagCalcS(res);
+    FlagCalcP(res);
+    SetFlagUndef({Facet::OF, Facet::AF, Facet::CF});
+}
+
 void Lifter::LiftRotate(const LLInstr& inst) {
     llvm::Value* src = OpLoad(inst.ops[0], Facet::I);
     llvm::Type* ty = src->getType();

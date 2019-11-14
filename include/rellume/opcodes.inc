@@ -60,6 +60,8 @@ DEF_IT(SHR, LiftShift(inst, llvm::Instruction::LShr))
 DEF_IT(SAR, LiftShift(inst, llvm::Instruction::AShr))
 DEF_IT(ROL, LiftRotate(inst))
 DEF_IT(ROR, LiftRotate(inst))
+DEF_IT(SHLD, LiftShiftdouble(inst))
+DEF_IT(SHRD, LiftShiftdouble(inst))
 DEF_IT(BSF, LiftBitscan(inst, /*trailing=*/true))
 DEF_IT(TZCNT, LiftBitscan(inst, /*trailing=*/true)) // TODO: support TZCNT
 DEF_IT(BSR, LiftBitscan(inst, /*trailing=*/false))
