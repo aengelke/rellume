@@ -384,11 +384,12 @@ void Lifter::LiftSsePminmax(const LLInstr& inst, llvm::CmpInst::Predicate pred,
     OpStoreVec(inst.ops[0], irb.CreateSelect(cmp, op1, op2));
 }
 
-void Lifter::LiftSsePmovmskb(const LLInstr& inst) {
-    llvm::Value* src = OpLoad(inst.ops[1], Facet::VI8, ALIGN_MAX);
+void Lifter::LiftSseMovmsk(const LLInstr& inst, Facet op_type) {
+    llvm::Value* src = OpLoad(inst.ops[1], op_type, ALIGN_MAX);
     llvm::Value* zero = llvm::Constant::getNullValue(src->getType());
     llvm::Value* bitvec = irb.CreateICmpSLT(src, zero);
-    llvm::Value* bits = irb.CreateBitCast(bitvec, irb.getIntNTy(inst.ops[1].size));
+    unsigned bit_count = src->getType()->getVectorNumElements();
+    llvm::Value* bits = irb.CreateBitCast(bitvec, irb.getIntNTy(bit_count));
     OpStoreGp(inst.ops[0], irb.CreateZExt(bits, irb.getInt64Ty()));
 }
 

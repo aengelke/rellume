@@ -268,7 +268,7 @@ private:
     void LiftSsePack(const LLInstr&, Facet, bool sign);
     void LiftSsePcmp(const LLInstr&, llvm::CmpInst::Predicate, Facet);
     void LiftSsePminmax(const LLInstr&, llvm::CmpInst::Predicate, Facet);
-    void LiftSsePmovmskb(const LLInstr&);
+    void LiftSseMovmsk(const LLInstr&, Facet op_type);
 };
 
 } // namespace

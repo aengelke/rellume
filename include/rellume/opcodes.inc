@@ -260,7 +260,9 @@ DEF_IT(PMAXUD, LiftSsePminmax(inst, llvm::CmpInst::ICMP_UGT, Facet::VI32))
 DEF_IT(PMAXSB, LiftSsePminmax(inst, llvm::CmpInst::ICMP_SGT, Facet::VI8))
 DEF_IT(PMAXSW, LiftSsePminmax(inst, llvm::CmpInst::ICMP_SGT, Facet::VI16))
 DEF_IT(PMAXSD, LiftSsePminmax(inst, llvm::CmpInst::ICMP_SGT, Facet::VI32))
-DEF_IT(PMOVMSKB, LiftSsePmovmskb(inst))
+DEF_IT(PMOVMSKB, LiftSseMovmsk(inst, Facet::VI8))
+DEF_IT(MOVMSKPS, LiftSseMovmsk(inst, Facet::VI32))
+DEF_IT(MOVMSKPD, LiftSseMovmsk(inst, Facet::VI64))
 
 // Jumps are handled in the basic block generation code.
 DEF_IT(JMP, LiftJmp(inst))
