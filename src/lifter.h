@@ -247,6 +247,7 @@ private:
     void LiftPrefetch(const LLInstr&, unsigned rw, unsigned locality);
     void LiftFxsave(const LLInstr&);
     void LiftFxrstor(const LLInstr&);
+    void LiftFstcw(const LLInstr&);
     void LiftSseMovq(const LLInstr&, Facet type);
     void LiftSseBinOp(const LLInstr&, llvm::Instruction::BinaryOps op,
                       Facet type);
