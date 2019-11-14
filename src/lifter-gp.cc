@@ -267,7 +267,7 @@ void Lifter::LiftAndOrXor(const LLInstr& inst, llvm::Instruction::BinaryOps op,
     FlagCalcZ(res);
     FlagCalcS(res);
     FlagCalcP(res);
-    SetFlag(Facet::AF, llvm::UndefValue::get(irb.getInt1Ty()));
+    SetFlagUndef({Facet::AF});
     SetFlag(Facet::CF, irb.getFalse());
     SetFlag(Facet::OF, irb.getFalse());
 }
@@ -325,14 +325,11 @@ void Lifter::LiftShift(const LLInstr& inst, llvm::Instruction::BinaryOps op) {
     llvm::Value* res = irb.CreateBinOp(op, src, shift);
     OpStoreGp(inst.ops[0], res);
 
-    llvm::Value* undef = llvm::UndefValue::get(irb.getInt1Ty());
     FlagCalcZ(res);
     FlagCalcS(res);
     FlagCalcP(res);
     // TODO: calculate flags correctly
-    SetFlag(Facet::AF, undef);
-    SetFlag(Facet::OF, undef);
-    SetFlag(Facet::CF, undef);
+    SetFlagUndef({Facet::OF, Facet::AF, Facet::CF});
 }
 
 void Lifter::LiftRotate(const LLInstr& inst) {
@@ -360,9 +357,7 @@ void Lifter::LiftRotate(const LLInstr& inst) {
     // TODO: calculate flags correctly
     // CF is affected only if count > 0
     // OF is affected only if count > 0, but undefined if count > 1
-    llvm::Value* undef = llvm::UndefValue::get(irb.getInt1Ty());
-    SetFlag(Facet::OF, undef);
-    SetFlag(Facet::CF, undef);
+    SetFlagUndef({Facet::OF, Facet::CF});
 }
 
 void Lifter::LiftMul(const LLInstr& inst) {
@@ -414,13 +409,9 @@ void Lifter::LiftMul(const LLInstr& inst) {
         overflow = irb.CreateICmpNE(ext_res, ext_short_res);
     }
 
-    llvm::Value* undef = llvm::UndefValue::get(irb.getInt1Ty());
-    SetFlag(Facet::ZF, undef);
-    SetFlag(Facet::SF, undef);
-    SetFlag(Facet::PF, undef);
-    SetFlag(Facet::AF, undef);
     SetFlag(Facet::OF, overflow);
     SetFlag(Facet::CF, overflow);
+    SetFlagUndef({Facet::SF, Facet::ZF, Facet::AF, Facet::PF});
 }
 
 void Lifter::LiftDiv(const LLInstr& inst) {
@@ -465,13 +456,8 @@ void Lifter::LiftDiv(const LLInstr& inst) {
         OpStoreGp(LLInstrOp(LLReg::Gp(inst.ops[0].size, LL_RI_D)), rem);
     }
 
-    llvm::Value* undef = llvm::UndefValue::get(irb.getInt1Ty());
-    SetFlag(Facet::ZF, undef);
-    SetFlag(Facet::SF, undef);
-    SetFlag(Facet::PF, undef);
-    SetFlag(Facet::AF, undef);
-    SetFlag(Facet::OF, undef);
-    SetFlag(Facet::CF, undef);
+    SetFlagUndef({Facet::OF, Facet::SF, Facet::ZF, Facet::AF, Facet::PF,
+                  Facet::CF});
 }
 
 void
