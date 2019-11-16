@@ -249,6 +249,7 @@ private:
     void LiftFxsave(const LLInstr&);
     void LiftFxrstor(const LLInstr&);
     void LiftFstcw(const LLInstr&);
+    void LiftStmxcsr(const LLInstr&);
     void LiftSseMovq(const LLInstr&, Facet type);
     void LiftSseBinOp(const LLInstr&, llvm::Instruction::BinaryOps op,
                       Facet type);

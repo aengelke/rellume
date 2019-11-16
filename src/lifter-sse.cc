@@ -87,6 +87,10 @@ void Lifter::LiftFstcw(const LLInstr& inst) {
     OpStoreGp(inst.ops[0], irb.getInt16(0x37f));
 }
 
+void Lifter::LiftStmxcsr(const LLInstr& inst) {
+    OpStoreGp(inst.ops[0], irb.getInt32(0x1f80));
+}
+
 void Lifter::LiftSseMovq(const LLInstr& inst, Facet type)
 {
     llvm::Value* op1 = OpLoad(inst.ops[1], type);
