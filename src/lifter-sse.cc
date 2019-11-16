@@ -193,6 +193,33 @@ void Lifter::LiftSseComis(const LLInstr& inst, Facet op_type) {
     SetFlag(Facet::SF, irb.getFalse());
 }
 
+void Lifter::LiftSseCmp(const LLInstr& inst, Facet op_type) {
+    llvm::FCmpInst::Predicate pred;
+    switch (inst.ops[2].val) {
+    case 0: pred = llvm::FCmpInst::FCMP_OEQ; break; // EQ_OQ
+    case 1: pred = llvm::FCmpInst::FCMP_OLT; break; // LT_OS
+    case 2: pred = llvm::FCmpInst::FCMP_OLE; break; // LE_OS
+    case 3: pred = llvm::FCmpInst::FCMP_UNO; break; // UNORD_Q
+    case 4: pred = llvm::FCmpInst::FCMP_UNE; break; // NEQ_UQ
+    case 5: pred = llvm::FCmpInst::FCMP_UGE; break; // NLT_US
+    case 6: pred = llvm::FCmpInst::FCMP_UGT; break; // NLE_US
+    case 7: pred = llvm::FCmpInst::FCMP_ORD; break; // ORD_Q
+    }
+    llvm::Value* op1 = OpLoad(inst.ops[0], op_type, ALIGN_MAX);
+    llvm::Value* op2 = OpLoad(inst.ops[1], op_type, ALIGN_MAX);
+    llvm::Value* eq = irb.CreateFCmp(pred, op1, op2);
+    llvm::Type* cmp_ty = op1->getType();
+    llvm::Type* res_ty;
+    if (cmp_ty->isVectorTy()) {
+        unsigned elem_cnt = cmp_ty->getVectorNumElements();
+        unsigned elem_size = cmp_ty->getVectorElementType()->getScalarSizeInBits();
+        res_ty = llvm::VectorType::get(irb.getIntNTy(elem_size), elem_cnt);
+    } else {
+        res_ty = irb.getIntNTy(cmp_ty->getScalarSizeInBits());
+    }
+    OpStoreVec(inst.ops[0], irb.CreateSExt(eq, res_ty));
+}
+
 void Lifter::LiftSseMinmax(const LLInstr& inst, llvm::CmpInst::Predicate pred,
                             Facet op_type) {
     llvm::Value* op1 = OpLoad(inst.ops[0], op_type, ALIGN_MAX);

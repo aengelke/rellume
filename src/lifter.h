@@ -259,6 +259,7 @@ private:
     void LiftSseMovhpd(const LLInstr&);
     void LiftSseAndn(const LLInstr&, Facet op_type);
     void LiftSseComis(const LLInstr&, Facet);
+    void LiftSseCmp(const LLInstr&, Facet op_type);
     void LiftSseMinmax(const LLInstr&, llvm::CmpInst::Predicate, Facet);
     void LiftSseCvt(const LLInstr&, Facet src_type, Facet dst_type);
     void LiftSseUnpck(const LLInstr&, Facet type);

@@ -370,6 +370,10 @@ end_ops:
     case FDI_SSE_COMISD: llinst.type = LL_INS_COMISD; break;
     case FDI_SSE_UCOMISS: llinst.type = LL_INS_UCOMISS; break;
     case FDI_SSE_UCOMISD: llinst.type = LL_INS_UCOMISD; break;
+    case FDI_SSE_CMPSS: llinst.type = LL_INS_CMPSS; break;
+    case FDI_SSE_CMPSD: llinst.type = LL_INS_CMPSD; break;
+    case FDI_SSE_CMPPS: llinst.type = LL_INS_CMPPS; break;
+    case FDI_SSE_CMPPD: llinst.type = LL_INS_CMPPD; break;
     case FDI_SSE_CVTDQ2PD: llinst.type = LL_INS_CVTDQ2PD; break;
     case FDI_SSE_CVTDQ2PS: llinst.type = LL_INS_CVTDQ2PS; break;
     case FDI_SSE_CVTPD2DQ: llinst.type = LL_INS_CVTPD2DQ; break;
