@@ -236,6 +236,11 @@ void Lifter::LiftSseMinmax(const LLInstr& inst, llvm::CmpInst::Predicate pred,
     OpStoreVec(inst.ops[0], irb.CreateSelect(cmp, op1, op2));
 }
 
+void Lifter::LiftSseSqrt(const LLInstr& inst, Facet op_type) {
+    llvm::Value* op1 = OpLoad(inst.ops[1], op_type);
+    OpStoreVec(inst.ops[0], CreateUnaryIntrinsic(llvm::Intrinsic::sqrt, op1));
+}
+
 void Lifter::LiftSseCvt(const LLInstr& inst, Facet src_type, Facet dst_type) {
     if (dst_type == Facet::I)
         dst_type = dst_type.Resolve(inst.ops[0].size * 8);
