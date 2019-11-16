@@ -299,6 +299,7 @@ end_ops:
     case FDI_FXSAVE: llinst.type = LL_INS_FXSAVE; break;
     case FDI_FXRSTOR: llinst.type = LL_INS_FXRSTOR; break;
     case FDI_FSTCW: llinst.type = LL_INS_FSTCW; break;
+    case FDI_FSTSW: llinst.type = LL_INS_FSTSW; break;
     case FDI_STMXCSR: llinst.type = LL_INS_STMXCSR; break;
     case FDI_SSE_MOVD_G2X: llinst.type = LL_INS_MOVD; break;
     case FDI_SSE_MOVD_X2G: llinst.type = LL_INS_MOVD; break;
