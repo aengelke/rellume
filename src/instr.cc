@@ -126,6 +126,7 @@ LLInstr LLInstr::Decode(uint8_t* buf, size_t buf_size, uint64_t addr)
     llinst.addr = addr;
     llinst.len = FD_SIZE(&fdi);
 
+    llinst.address_size = FD_ADDRSIZE(&fdi);
     llinst.operand_size = FD_OPSIZE(&fdi);
     llinst.operand_count = 0;
     for (int i = 0; i < 3; i++)
@@ -460,6 +461,7 @@ end_ops:
     case FDI_JGE: llinst.type = LL_INS_JGE; break;
     case FDI_JLE: llinst.type = LL_INS_JLE; break;
     case FDI_JG: llinst.type = LL_INS_JG; break;
+    case FDI_JCXZ: llinst.type = LL_INS_JCXZ; break;
     case FDI_C_EX: llinst.type = LL_INS_CEXT; break;
     case FDI_C_SEP: llinst.type = LL_INS_CSEP; break;
     case FDI_ENDBR64: llinst.type = LL_INS_NOP; break;

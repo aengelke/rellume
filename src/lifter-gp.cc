@@ -630,6 +630,16 @@ void Lifter::LiftJcc(const LLInstr& inst, Condition cond) {
     ));
 }
 
+void Lifter::LiftJcxz(const LLInstr& inst) {
+    unsigned sz = inst.address_size;
+    llvm::Value* cx = OpLoad(LLInstrOp(LLReg::Gp(sz, LL_RI_C)), Facet::I);
+    llvm::Value* cond = irb.CreateICmpEQ(cx, irb.getIntN(sz*8, 0));
+    SetReg(LLReg(LL_RT_IP, 0), Facet::I64, irb.CreateSelect(cond,
+        OpLoad(inst.ops[0], Facet::I64),
+        GetReg(LLReg(LL_RT_IP, 0), Facet::I64)
+    ));
+}
+
 void Lifter::LiftCall(const LLInstr& inst) {
     if (cfg.call_ret_clobber_flags)
         SetFlagUndef({Facet::OF, Facet::SF, Facet::ZF, Facet::AF, Facet::PF,
