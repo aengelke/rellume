@@ -259,8 +259,9 @@ void Lifter::LiftSseCvt(const LLInstr& inst, Facet src_type, Facet dst_type) {
             // Zero upper half
             llvm::Value* zero_half = llvm::Constant::getNullValue(dst_ty);
             dst = irb.CreateShuffleVector(dst, zero_half, {0, 1, 2, 3});
+        } else {
+            assert(dst_ty->getPrimitiveSizeInBits() == 128);
         }
-        assert(dst_ty->getPrimitiveSizeInBits() == 128);
         OpStoreVec(inst.ops[0], dst);
     } else {
         assert(false && "invalid cvt target type");
