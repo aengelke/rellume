@@ -49,7 +49,8 @@ namespace rellume {
     (instr) == LL_INS_JL || \
     (instr) == LL_INS_JGE || \
     (instr) == LL_INS_JLE || \
-    (instr) == LL_INS_JG \
+    (instr) == LL_INS_JG || \
+    (instr) == LL_INS_JCXZ \
 )
 #define instrBreaks(instr) (instrIsJcc(instr) || (instr) == LL_INS_RET || \
                         (instr) == LL_INS_JMP || (instr) == LL_INS_CALL || \
