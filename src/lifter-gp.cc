@@ -311,25 +311,46 @@ void Lifter::LiftIncDec(const LLInstr& inst) {
 
 void Lifter::LiftShift(const LLInstr& inst, llvm::Instruction::BinaryOps op) {
     llvm::Value* src = OpLoad(inst.ops[0], Facet::I);
-    llvm::Value* shift;
-    if (inst.operand_count == 1) {
-        shift = llvm::ConstantInt::get(src->getType(), 1);
-    } else {
-        unsigned mask = inst.ops[0].size == 8 ? 0x3f : 0x1f;
-        shift = irb.CreateZExt(OpLoad(inst.ops[1], Facet::I), src->getType());
-        // TODO: support small shifts with amount > len
-        // LLVM sets the result to poison if this occurs.
-        shift = irb.CreateAnd(shift, mask);
-    }
+    llvm::Value* src_ex;
+    if (inst.ops[0].size >= 4)
+        src_ex = src;
+    else if (inst.type == LL_INS_SAR)
+        src_ex = irb.CreateSExt(src, irb.getInt32Ty());
+    else // inst.ops[0].size < 4 && (SHR || SHL)
+        src_ex = irb.CreateZExt(src, irb.getInt32Ty());
 
-    llvm::Value* res = irb.CreateBinOp(op, src, shift);
+    llvm::Value* shift;
+    if (inst.operand_count == 1)
+        shift = irb.getInt8(1);
+    else
+        shift = OpLoad(inst.ops[1], Facet::I);
+
+    unsigned mask = inst.ops[0].size == 8 ? 0x3f : 0x1f;
+    shift = irb.CreateAnd(irb.CreateZExt(shift, src_ex->getType()), mask);
+
+    llvm::Value* res_ex = irb.CreateBinOp(op, src_ex, shift);
+    llvm::Value* res = irb.CreateTrunc(res_ex, src->getType());
     OpStoreGp(inst.ops[0], res);
 
-    FlagCalcZ(res);
+    // CF is the last bit shifted out
+    llvm::Value* cf_big;
+    if (inst.type == LL_INS_SHL) {
+        unsigned sz = inst.ops[0].size * 8;
+        llvm::Value* max = llvm::ConstantInt::get(src_ex->getType(), sz);
+        cf_big = irb.CreateLShr(src_ex, irb.CreateSub(max, shift));
+    } else { // SHR/SAR
+        llvm::Value* one = llvm::ConstantInt::get(src_ex->getType(), 1);
+        cf_big = irb.CreateLShr(src_ex, irb.CreateSub(shift, one));
+    }
+
+    // TODO: flags are only affected if shift != 0
     FlagCalcS(res);
+    FlagCalcZ(res);
     FlagCalcP(res);
-    // TODO: calculate flags correctly
-    SetFlagUndef({Facet::OF, Facet::AF, Facet::CF});
+    SetFlag(Facet::CF, irb.CreateTrunc(cf_big, irb.getInt1Ty()));
+    llvm::Value* zero = llvm::ConstantInt::get(src->getType(), 0);
+    SetFlag(Facet::OF, irb.CreateICmpSLT(irb.CreateXor(src, res), zero));
+    SetFlagUndef({Facet::AF});
 }
 
 void Lifter::LiftShiftdouble(const LLInstr& inst) {

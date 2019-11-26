@@ -253,6 +253,31 @@ code="not al" rax=q:0xffffffff => rax=q:0xffffff00
 code="not al" rax=q:0x0 => rax=q:0xff
 code="not byte ptr [0x2000000]" m2000000=0011223344556677 => m2000000=ff11223344556677
 
+code="shl eax, 1" rax=q:0xffffffff => rax=q:0xfffffffe of=00 sf=01 zf=00 af=undef pf=00 cf=01
+code="shl eax, 1" rax=q:0xbfffffff => rax=q:0x7ffffffe of=01 sf=00 zf=00 af=undef pf=00 cf=01
+code="shl eax, 1" rax=q:0x7fffffff => rax=q:0xfffffffe of=01 sf=01 zf=00 af=undef pf=00 cf=00
+code="shl eax, 1" rax=q:0x3fffffff => rax=q:0x7ffffffe of=00 sf=00 zf=00 af=undef pf=00 cf=00
+code="shl eax, 1" rax=q:0xc0000000 => rax=q:0x80000000 of=00 sf=01 zf=00 af=undef pf=01 cf=01
+code="shl eax, 1" rax=q:0x80000000 => rax=q:0x00000000 of=01 sf=00 zf=01 af=undef pf=01 cf=01
+code="shl eax, 1" rax=q:0x40000000 => rax=q:0x80000000 of=01 sf=01 zf=00 af=undef pf=01 cf=00
+code="shl eax, 1" rax=q:0x00000000 => rax=q:0x00000000 of=00 sf=00 zf=01 af=undef pf=01 cf=00
+code="shr eax, 1" rax=q:0xffffffff => rax=q:0x7fffffff of=01 sf=00 zf=00 af=undef pf=01 cf=01
+code="shr eax, 1" rax=q:0xfffffffe => rax=q:0x7fffffff of=01 sf=00 zf=00 af=undef pf=01 cf=00
+code="shr eax, 1" rax=q:0xfffffffd => rax=q:0x7ffffffe of=01 sf=00 zf=00 af=undef pf=00 cf=01
+code="shr eax, 1" rax=q:0xfffffffc => rax=q:0x7ffffffe of=01 sf=00 zf=00 af=undef pf=00 cf=00
+code="shr eax, 1" rax=q:0x00000003 => rax=q:0x00000001 of=00 sf=00 zf=00 af=undef pf=00 cf=01
+code="shr eax, 1" rax=q:0x00000002 => rax=q:0x00000001 of=00 sf=00 zf=00 af=undef pf=00 cf=00
+code="shr eax, 1" rax=q:0x00000001 => rax=q:0x00000000 of=00 sf=00 zf=01 af=undef pf=01 cf=01
+code="shr eax, 1" rax=q:0x00000000 => rax=q:0x00000000 of=00 sf=00 zf=01 af=undef pf=01 cf=00
+code="sar eax, 1" rax=q:0xffffffff => rax=q:0xffffffff of=00 sf=01 zf=00 af=undef pf=01 cf=01
+code="sar eax, 1" rax=q:0xfffffffe => rax=q:0xffffffff of=00 sf=01 zf=00 af=undef pf=01 cf=00
+code="sar eax, 1" rax=q:0xfffffffd => rax=q:0xfffffffe of=00 sf=01 zf=00 af=undef pf=00 cf=01
+code="sar eax, 1" rax=q:0xfffffffc => rax=q:0xfffffffe of=00 sf=01 zf=00 af=undef pf=00 cf=00
+code="sar eax, 1" rax=q:0x00000003 => rax=q:0x00000001 of=00 sf=00 zf=00 af=undef pf=00 cf=01
+code="sar eax, 1" rax=q:0x00000002 => rax=q:0x00000001 of=00 sf=00 zf=00 af=undef pf=00 cf=00
+code="sar eax, 1" rax=q:0x00000001 => rax=q:0x00000000 of=00 sf=00 zf=01 af=undef pf=01 cf=01
+code="sar eax, 1" rax=q:0x00000000 => rax=q:0x00000000 of=00 sf=00 zf=01 af=undef pf=01 cf=00
+
 code="bsf rdx, rax" rax=q:0xabcdef9012345678 => rdx=q:0x3 zf=00
 code="bsf rdx, rax" rax=q:0x8000000000000000 => rdx=q:0x3f zf=00
 code="bsf rdx, rax" rax=q:0xffffffffffffffff => rdx=q:0x0 zf=00
