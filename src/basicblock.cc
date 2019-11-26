@@ -152,16 +152,19 @@ void BasicBlock::RemoveUnmodifiedStores(const BasicBlock& entry) {
         std::set<llvm::PHINode*> visited_phis;
         std::deque<llvm::PHINode*> phis;
         phis.push_back(llvm::cast<llvm::PHINode>(stored_val));
+        visited_phis.insert(llvm::cast<llvm::PHINode>(stored_val));
+
         while (!phis.empty()) {
             llvm::PHINode* current_phi = phis.front();
             phis.pop_front();
-            visited_phis.insert(current_phi);
 
             for (llvm::Value* incoming : current_phi->incoming_values()) {
                 if (auto inc_phi = llvm::dyn_cast<llvm::PHINode>(incoming)) {
                     // Don't iterate twice over a PHI node.
-                    if (visited_phis.count(inc_phi) == 0)
+                    if (visited_phis.count(inc_phi) == 0) {
                         phis.push_back(inc_phi);
+                        visited_phis.insert(inc_phi);
+                    }
                 } else if (incoming != load) {
                     // A different value than the load is in the PHI-graph, so
                     // do not replace.
