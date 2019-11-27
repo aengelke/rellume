@@ -80,11 +80,10 @@ int Function::Decode(uintptr_t addr, DecodeStop stop, MemReader memacc)
     // Mapping from address to (block_idx, instr_idx)
     std::unordered_map<uintptr_t, std::pair<size_t,size_t>> addr_map;
 
-    std::deque<uintptr_t>::iterator addr_it = addr_queue.begin();
-    while (addr_it != addr_queue.end())
+    while (!addr_queue.empty())
     {
-        uintptr_t cur_addr = *addr_it;
-        addr_it = addr_queue.erase(addr_it);
+        uintptr_t cur_addr = addr_queue.front();
+        addr_queue.pop_front();
 
         size_t cur_block_start = insts.size();
 
