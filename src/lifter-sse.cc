@@ -350,7 +350,9 @@ void Lifter::LiftSseInsertps(const LLInstr& inst) {
     OpStoreVec(inst.ops[0], dst);
 }
 
-void Lifter::LiftSsePsllElement(const LLInstr& inst, Facet op_type) {
+void Lifter::LiftSsePshiftElement(const LLInstr& inst,
+                                  llvm::Instruction::BinaryOps op,
+                                  Facet op_type) {
     llvm::Value* src = OpLoad(inst.ops[0], op_type);
     llvm::Value* shift = OpLoad(inst.ops[1], Facet::I64);
 
@@ -358,14 +360,24 @@ void Lifter::LiftSsePsllElement(const LLInstr& inst, Facet op_type) {
     unsigned elem_size = elem_ty->getIntegerBitWidth();
     unsigned elem_cnt = src->getType()->getVectorNumElements();
 
+    // For arithmetical shifts, if shift >= elem_size, result is sign bit.
+    // So, we max shift at elem_size-1
+    if (op == llvm::Instruction::AShr) {
+        llvm::Value* max = irb.getInt64(elem_size-1);
+        shift = irb.CreateSelect(irb.CreateICmpUGT(shift, max), max, shift);
+    }
+
     llvm::Value* shift_trunc = irb.CreateTrunc(shift, elem_ty);
     llvm::Value* shift_vec = irb.CreateVectorSplat(elem_cnt, shift_trunc);
-    llvm::Value* res_shift = irb.CreateShl(src, shift_vec);
+    llvm::Value* res = irb.CreateBinOp(op, src, shift_vec);
 
-    // If shift >= elem_size, result is zero.
-    llvm::Value* zero = llvm::Constant::getNullValue(src->getType());
-    llvm::Value* cmp = irb.CreateICmpULT(shift, irb.getInt64(elem_size));
-    llvm::Value* res = irb.CreateSelect(cmp, res_shift, zero);
+    // For logical shifts, if shift >= elem_size, result is zero.
+    if (op != llvm::Instruction::AShr) {
+        llvm::Value* zero = llvm::Constant::getNullValue(src->getType());
+        llvm::Value* cmp = irb.CreateICmpULT(shift, irb.getInt64(elem_size));
+        res = irb.CreateSelect(cmp, res, zero);
+    }
+
     OpStoreVec(inst.ops[0], res);
 }
 
