@@ -350,6 +350,14 @@ void Lifter::LiftSseInsertps(const LLInstr& inst) {
     OpStoreVec(inst.ops[0], dst);
 }
 
+void Lifter::LiftSsePinsr(const LLInstr& inst, Facet vec_op, Facet src_op,
+                          unsigned mask) {
+    llvm::Value* dst = OpLoad(inst.ops[0], vec_op);
+    llvm::Value* src = OpLoad(inst.ops[1], src_op);
+    unsigned count = inst.ops[2].val & mask;
+    OpStoreVec(inst.ops[0], irb.CreateInsertElement(dst, src, count));
+}
+
 void Lifter::LiftSsePshiftElement(const LLInstr& inst,
                                   llvm::Instruction::BinaryOps op,
                                   Facet op_type) {

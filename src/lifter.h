@@ -271,6 +271,7 @@ private:
     void LiftSseShufps(const LLInstr&);
     void LiftSsePshufd(const LLInstr&);
     void LiftSseInsertps(const LLInstr&);
+    void LiftSsePinsr(const LLInstr&, Facet, Facet, unsigned);
     void LiftSsePshiftElement(const LLInstr&, llvm::Instruction::BinaryOps op, Facet op_type);
     void LiftSsePshiftBytes(const LLInstr&);
     void LiftSsePack(const LLInstr&, Facet, bool sign);
