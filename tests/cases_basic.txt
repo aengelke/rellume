@@ -1,6 +1,8 @@
 code="jmp foo; hlt; foo:" =>
 code="jmp rax" rax=q:0xf000abcd12345678 => rip=q:0xf000abcd12345678
 code="jrcxz foo; hlt; foo:" rcx=q:0 =>
+code="loop foo; hlt; foo:" rcx=q:0 => rcx=q:0xffffffffffffffff
+code="loop foo; jmp end; foo: hlt; end:" rcx=q:1 => rcx=q:0
 code="jmp 1f; 2: hlt; 1: jrcxz 2b" rcx=q:1 =>
 code="mov eax, fs:[0]" fsbase=q:0x20000000 m20000000=11223344 => rax=q:0x44332211
 

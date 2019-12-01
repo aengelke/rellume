@@ -229,6 +229,7 @@ private:
     void LiftJmp(const LLInstr& inst);
     void LiftJcc(const LLInstr& inst, Condition cond);
     void LiftJcxz(const LLInstr& inst);
+    void LiftLoop(const LLInstr& inst);
     void LiftCall(const LLInstr& inst);
     void LiftRet(const LLInstr& inst);
 

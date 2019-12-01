@@ -666,6 +666,27 @@ void Lifter::LiftJcxz(const LLInstr& inst) {
     ));
 }
 
+void Lifter::LiftLoop(const LLInstr& inst) {
+    unsigned sz = inst.address_size;
+    LLInstrOp cx_op = LLInstrOp(LLReg::Gp(sz, LL_RI_C));
+
+    // Decrement RCX/ECX
+    auto cx = irb.CreateSub(OpLoad(cx_op, Facet::I), irb.getIntN(sz*8, 1));
+    OpStoreGp(cx_op, cx);
+
+    // Construct condition
+    llvm::Value* cond = irb.CreateICmpNE(cx, irb.getIntN(sz*8, 0));
+    if (inst.type == LL_INS_LOOPE)
+        cond = irb.CreateAnd(cond, GetFlag(Facet::ZF));
+    else if (inst.type == LL_INS_LOOPNE)
+        cond = irb.CreateAnd(cond, irb.CreateNot(GetFlag(Facet::ZF)));
+
+    SetReg(LLReg(LL_RT_IP, 0), Facet::I64, irb.CreateSelect(cond,
+        OpLoad(inst.ops[0], Facet::I64),
+        GetReg(LLReg(LL_RT_IP, 0), Facet::I64)
+    ));
+}
+
 void Lifter::LiftCall(const LLInstr& inst) {
     if (cfg.call_ret_clobber_flags)
         SetFlagUndef({Facet::OF, Facet::SF, Facet::ZF, Facet::AF, Facet::PF,

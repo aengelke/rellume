@@ -479,6 +479,9 @@ end_ops:
     case FDI_JLE: llinst.type = LL_INS_JLE; break;
     case FDI_JG: llinst.type = LL_INS_JG; break;
     case FDI_JCXZ: llinst.type = LL_INS_JCXZ; break;
+    case FDI_LOOP: llinst.type = LL_INS_LOOP; break;
+    case FDI_LOOPZ: llinst.type = LL_INS_LOOPE; break;
+    case FDI_LOOPNZ: llinst.type = LL_INS_LOOPNE; break;
     case FDI_C_EX: llinst.type = LL_INS_CEXT; break;
     case FDI_C_SEP: llinst.type = LL_INS_CSEP; break;
     case FDI_ENDBR64: llinst.type = LL_INS_NOP; break;
