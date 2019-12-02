@@ -276,6 +276,7 @@ private:
     void LiftSsePshiftElement(const LLInstr&, llvm::Instruction::BinaryOps op, Facet op_type);
     void LiftSsePshiftBytes(const LLInstr&);
     void LiftSsePavg(const LLInstr&, Facet);
+    void LiftSsePmulhw(const LLInstr&, llvm::Instruction::CastOps cast);
     void LiftSsePack(const LLInstr&, Facet, bool sign);
     void LiftSsePcmp(const LLInstr&, llvm::CmpInst::Predicate, Facet);
     void LiftSsePminmax(const LLInstr&, llvm::CmpInst::Predicate, Facet);

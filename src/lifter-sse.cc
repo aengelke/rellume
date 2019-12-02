@@ -420,6 +420,21 @@ void Lifter::LiftSsePavg(const LLInstr& inst, Facet op_type) {
     OpStoreVec(inst.ops[0], res);
 }
 
+void Lifter::LiftSsePmulhw(const LLInstr& inst, llvm::Instruction::CastOps cast) {
+    llvm::Value* src1 = OpLoad(inst.ops[0], Facet::VI16);
+    llvm::Value* src2 = OpLoad(inst.ops[1], Facet::VI16);
+
+    unsigned elem_cnt = src1->getType()->getVectorNumElements();
+    llvm::Type* ext_ty = llvm::VectorType::get(irb.getInt32Ty(), elem_cnt);
+
+    llvm::Value* ext1 = irb.CreateCast(cast, src1, ext_ty);
+    llvm::Value* ext2 = irb.CreateCast(cast, src2, ext_ty);
+    llvm::Value* mul = irb.CreateMul(ext1, ext2);
+    llvm::Value* shift = irb.CreateVectorSplat(elem_cnt, irb.getInt32(16));
+    llvm::Value* res = irb.CreateTrunc(irb.CreateLShr(mul, shift), src1->getType());
+    OpStoreVec(inst.ops[0], res);
+}
+
 void Lifter::LiftSsePack(const LLInstr& inst, Facet src_type, bool sign) {
     llvm::Value* op1 = OpLoad(inst.ops[0], src_type, ALIGN_MAX);
     llvm::Value* op2 = OpLoad(inst.ops[1], src_type, ALIGN_MAX);
