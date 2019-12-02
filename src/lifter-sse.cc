@@ -403,6 +403,23 @@ void Lifter::LiftSsePshiftBytes(const LLInstr& inst) {
         OpStoreVec(inst.ops[0], irb.CreateShuffleVector(zero, src, mask));
 }
 
+void Lifter::LiftSsePavg(const LLInstr& inst, Facet op_type) {
+    llvm::Value* src1 = OpLoad(inst.ops[0], op_type);
+    llvm::Value* src2 = OpLoad(inst.ops[1], op_type);
+
+    llvm::Type* elem_ty = src1->getType()->getVectorElementType();
+    unsigned elem_size = elem_ty->getIntegerBitWidth();
+    unsigned elem_cnt = src1->getType()->getVectorNumElements();
+
+    llvm::Type* ext_ty = llvm::VectorType::get(irb.getIntNTy(elem_size*2), elem_cnt);
+    llvm::Value* ones = irb.CreateVectorSplat(elem_cnt, irb.getIntN(elem_size*2, 1));
+    llvm::Value* ext1 = irb.CreateZExt(src1, ext_ty);
+    llvm::Value* ext2 = irb.CreateZExt(src2, ext_ty);
+    llvm::Value* sum = irb.CreateAdd(irb.CreateAdd(ext1, ext2), ones);
+    llvm::Value* res = irb.CreateTrunc(irb.CreateLShr(sum, ones), src1->getType());
+    OpStoreVec(inst.ops[0], res);
+}
+
 void Lifter::LiftSsePack(const LLInstr& inst, Facet src_type, bool sign) {
     llvm::Value* op1 = OpLoad(inst.ops[0], src_type, ALIGN_MAX);
     llvm::Value* op2 = OpLoad(inst.ops[1], src_type, ALIGN_MAX);
