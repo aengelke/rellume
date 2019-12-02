@@ -190,6 +190,7 @@ end_ops:
     case FDI_MOVABS_IMM: llinst.type = LL_INS_MOV; break;
     case FDI_MOVZX: llinst.type = LL_INS_MOVZX; break;
     case FDI_MOVSX: llinst.type = LL_INS_MOVSX; break;
+    case FDI_MOVNTI: llinst.type = LL_INS_MOVNTI; break;
     case FDI_ADD: llinst.type = LL_INS_ADD; break;
     case FDI_ADD_IMM: llinst.type = LL_INS_ADD; break;
     case FDI_ADC: llinst.type = LL_INS_ADC; break;
