@@ -209,6 +209,7 @@ private:
     void LiftCsep(const LLInstr& inst);
     void LiftBitscan(const LLInstr& inst, bool trailing);
     void LiftBittest(const LLInstr& inst);
+    void LiftMovbe(const LLInstr& inst);
     void LiftBswap(const LLInstr& inst);
 
     void LiftPush(const LLInstr& inst) {

@@ -247,6 +247,7 @@ end_ops:
     case FDI_BTR_IMM: llinst.type = LL_INS_BTR; break;
     case FDI_BTS: llinst.type = LL_INS_BTS; break;
     case FDI_BTS_IMM: llinst.type = LL_INS_BTS; break;
+    case FDI_MOVBE_CRC32: llinst.type = !FD_HAS_REPNZ(&fdi) ? LL_INS_MOVBE : LL_INS_CRC32; break;
     case FDI_BSWAP: llinst.type = LL_INS_BSWAP; break;
     case FDI_CLC: llinst.type = LL_INS_CLC; break;
     case FDI_STC: llinst.type = LL_INS_STC; break;
