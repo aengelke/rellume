@@ -322,6 +322,16 @@ void Lifter::LiftSsePshufd(const LLInstr& inst) {
     OpStoreVec(inst.ops[0], res);
 }
 
+void Lifter::LiftSsePshufw(const LLInstr& inst, unsigned off) {
+    uint32_t mask[8] = {0, 1, 2, 3, 4, 5, 6, 7};
+    for (unsigned i = off; i < off+4; i++)
+        mask[i] = off + ((inst.ops[2].val >> 2*i) & 3);
+    llvm::Value* op1 = OpLoad(inst.ops[0], Facet::VI16);
+    llvm::Value* op2 = OpLoad(inst.ops[1], Facet::VI16, ALIGN_MAX);
+    llvm::Value* res = irb.CreateShuffleVector(op2, op2, mask);
+    OpStoreVec(inst.ops[0], res);
+}
+
 void Lifter::LiftSseInsertps(const LLInstr& inst) {
     int count_s = (inst.ops[2].val >> 6) & 3;
     int count_d = (inst.ops[2].val >> 4) & 3;

@@ -343,6 +343,8 @@ end_ops:
     case FDI_SSE_SHUFPD: llinst.type = LL_INS_SHUFPD; break;
     case FDI_SSE_SHUFPS: llinst.type = LL_INS_SHUFPS; break;
     case FDI_SSE_PSHUFD: llinst.type = LL_INS_PSHUFD; break;
+    case FDI_SSE_PSHUFLW: llinst.type = LL_INS_PSHUFLW; break;
+    case FDI_SSE_PSHUFHW: llinst.type = LL_INS_PSHUFHW; break;
     case FDI_SSE_INSERTPS: llinst.type = LL_INS_INSERTPS; break;
     case FDI_SSE_ADDSS: llinst.type = LL_INS_ADDSS; break;
     case FDI_SSE_ADDSD: llinst.type = LL_INS_ADDSD; break;

@@ -272,6 +272,7 @@ private:
     void LiftSseShufpd(const LLInstr&);
     void LiftSseShufps(const LLInstr&);
     void LiftSsePshufd(const LLInstr&);
+    void LiftSsePshufw(const LLInstr&, unsigned off);
     void LiftSseInsertps(const LLInstr&);
     void LiftSsePinsr(const LLInstr&, Facet, Facet, unsigned);
     void LiftSsePextr(const LLInstr&, Facet, unsigned);
