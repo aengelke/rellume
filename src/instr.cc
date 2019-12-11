@@ -436,6 +436,10 @@ end_ops:
     case FDI_SSE_PINSRW: llinst.type = LL_INS_PINSRW; break;
     case FDI_SSE_PINSRD: llinst.type = LL_INS_PINSRD; break;
     case FDI_SSE_PINSRQ: llinst.type = LL_INS_PINSRQ; break;
+    case FDI_SSE_PEXTRB: llinst.type = LL_INS_PEXTRB; break;
+    case FDI_SSE_PEXTRW: llinst.type = LL_INS_PEXTRW; break;
+    case FDI_SSE_PEXTRD: llinst.type = LL_INS_PEXTRD; break;
+    case FDI_SSE_PEXTRQ: llinst.type = LL_INS_PEXTRQ; break;
     case FDI_SSE_PAVGB: llinst.type = LL_INS_PAVGB; break;
     case FDI_SSE_PAVGW: llinst.type = LL_INS_PAVGW; break;
     case FDI_SSE_PMULHW: llinst.type = LL_INS_PMULHW; break;

@@ -358,6 +358,19 @@ void Lifter::LiftSsePinsr(const LLInstr& inst, Facet vec_op, Facet src_op,
     OpStoreVec(inst.ops[0], irb.CreateInsertElement(dst, src, count));
 }
 
+void Lifter::LiftSsePextr(const LLInstr& inst, Facet vec_op, unsigned mask) {
+    llvm::Value* src = OpLoad(inst.ops[1], vec_op);
+    unsigned count = inst.ops[2].val & mask;
+    llvm::Value* ext = irb.CreateExtractElement(src, count);
+    if (inst.ops[0].type == LL_OP_REG) {
+        assert(inst.ops[0].reg.IsGp());
+        ext = irb.CreateZExt(ext, irb.getInt64Ty());
+        OpStoreGp(LLInstrOp(LLReg::Gp(8, inst.ops[0].reg.ri)), ext);
+    } else {
+        OpStoreGp(inst.ops[0], ext);
+    }
+}
+
 void Lifter::LiftSsePshiftElement(const LLInstr& inst,
                                   llvm::Instruction::BinaryOps op,
                                   Facet op_type) {
