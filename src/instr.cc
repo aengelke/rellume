@@ -237,8 +237,10 @@ end_ops:
     case FDI_SHLD_CL: llinst.type = LL_INS_SHLD; llinst.ops[2].type = LL_OP_REG; llinst.ops[2].size = 1; llinst.ops[2].reg = LLReg::Gp(1, 1); llinst.operand_count = 3; break;
     case FDI_SHRD_IMM: llinst.type = LL_INS_SHRD; break;
     case FDI_SHRD_CL: llinst.type = LL_INS_SHRD; llinst.ops[2].type = LL_OP_REG; llinst.ops[2].size = 1; llinst.ops[2].reg = LLReg::Gp(1, 1); llinst.operand_count = 3; break;
-    case FDI_BSF_TZCNT: llinst.type = !FD_HAS_REP(&fdi) ? LL_INS_BSF : LL_INS_TZCNT; break;
-    case FDI_BSR_LZCNT: llinst.type = !FD_HAS_REP(&fdi) ? LL_INS_BSR : LL_INS_LZCNT; break;
+    case FDI_BSF: llinst.type = LL_INS_BSF; break;
+    case FDI_TZCNT: llinst.type = LL_INS_TZCNT; break;
+    case FDI_BSR: llinst.type = LL_INS_BSR; break;
+    case FDI_LZCNT: llinst.type = LL_INS_LZCNT; break;
     case FDI_BT: llinst.type = LL_INS_BT; break;
     case FDI_BT_IMM: llinst.type = LL_INS_BT; break;
     case FDI_BTC: llinst.type = LL_INS_BTC; break;
@@ -247,7 +249,8 @@ end_ops:
     case FDI_BTR_IMM: llinst.type = LL_INS_BTR; break;
     case FDI_BTS: llinst.type = LL_INS_BTS; break;
     case FDI_BTS_IMM: llinst.type = LL_INS_BTS; break;
-    case FDI_MOVBE_CRC32: llinst.type = !FD_HAS_REPNZ(&fdi) ? LL_INS_MOVBE : LL_INS_CRC32; break;
+    case FDI_CRC32: llinst.type = LL_INS_CRC32; break;
+    case FDI_MOVBE: llinst.type = LL_INS_MOVBE; break;
     case FDI_BSWAP: llinst.type = LL_INS_BSWAP; break;
     case FDI_CLC: llinst.type = LL_INS_CLC; break;
     case FDI_STC: llinst.type = LL_INS_STC; break;
