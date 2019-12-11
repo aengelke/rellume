@@ -318,7 +318,7 @@ void Lifter::LiftSsePshufd(const LLInstr& inst) {
         mask[i] = ((inst.ops[2].val >> 2*i) & 3);
     llvm::Value* op1 = OpLoad(inst.ops[0], Facet::VI32);
     llvm::Value* op2 = OpLoad(inst.ops[1], Facet::VI32, ALIGN_MAX);
-    llvm::Value* res = irb.CreateShuffleVector(op1, op2, mask);
+    llvm::Value* res = irb.CreateShuffleVector(op2, op2, mask);
     OpStoreVec(inst.ops[0], res);
 }
 
