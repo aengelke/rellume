@@ -316,9 +316,8 @@ void Lifter::LiftSsePshufd(const LLInstr& inst) {
     uint32_t mask[4];
     for (int i = 0; i < 4; i++)
         mask[i] = ((inst.ops[2].val >> 2*i) & 3);
-    llvm::Value* op1 = OpLoad(inst.ops[0], Facet::VI32);
-    llvm::Value* op2 = OpLoad(inst.ops[1], Facet::VI32, ALIGN_MAX);
-    llvm::Value* res = irb.CreateShuffleVector(op2, op2, mask);
+    llvm::Value* src = OpLoad(inst.ops[1], Facet::VI32, ALIGN_MAX);
+    llvm::Value* res = irb.CreateShuffleVector(src, src, mask);
     OpStoreVec(inst.ops[0], res);
 }
 
@@ -326,9 +325,8 @@ void Lifter::LiftSsePshufw(const LLInstr& inst, unsigned off) {
     uint32_t mask[8] = {0, 1, 2, 3, 4, 5, 6, 7};
     for (unsigned i = off; i < off+4; i++)
         mask[i] = off + ((inst.ops[2].val >> 2*i) & 3);
-    llvm::Value* op1 = OpLoad(inst.ops[0], Facet::VI16);
-    llvm::Value* op2 = OpLoad(inst.ops[1], Facet::VI16, ALIGN_MAX);
-    llvm::Value* res = irb.CreateShuffleVector(op2, op2, mask);
+    llvm::Value* src = OpLoad(inst.ops[1], Facet::VI16, ALIGN_MAX);
+    llvm::Value* res = irb.CreateShuffleVector(src, src, mask);
     OpStoreVec(inst.ops[0], res);
 }
 
