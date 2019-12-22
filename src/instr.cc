@@ -113,7 +113,7 @@ convert_reg(int size, int idx, int type)
     if (type == FD_RT_BND)
         return LLReg{ LL_RT_BND, (uint16_t) idx };
 
-    printf("Unknown reg convert %d/%d\n", type, size);
+    fprintf(stderr, "Unknown reg convert %d/%d\n", type, size);
     return LLReg{ LL_RT_None, LL_RI_None };
 }
 
