@@ -175,6 +175,13 @@ end_ops:
     case FDI_INT3: return LLInstr::Invalid(addr);
     case FDI_NOP: llinst.type = LL_INS_NOP; break;
     case FDI_RDSSP: llinst.type = LL_INS_RDSSP; break;
+    case FDI_BNDLDX: llinst.type = LL_INS_BNDLDX; break;
+    case FDI_BNDMOV: llinst.type = LL_INS_BNDMOV; break;
+    case FDI_BNDCU: llinst.type = LL_INS_BNDCU; break;
+    case FDI_BNDCL: llinst.type = LL_INS_BNDCL; break;
+    case FDI_BNDSTX: llinst.type = LL_INS_BNDSTX; break;
+    case FDI_BNDCN: llinst.type = LL_INS_BNDCN; break;
+    case FDI_BNDMK: llinst.type = LL_INS_BNDMK; break;
     case FDI_CALL: llinst.type = LL_INS_CALL; break;
     case FDI_CALL_IND: llinst.type = LL_INS_CALL; break;
     case FDI_RET: llinst.type = LL_INS_RET; break;

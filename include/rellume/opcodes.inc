@@ -19,6 +19,14 @@
 
 DEF_IT(NOP,)
 DEF_IT(RDSSP,)
+// Intel MPX, behave as NOP on processors without support (SDM Vol 1, 17.4)
+DEF_IT(BNDLDX,)
+DEF_IT(BNDMOV,)
+DEF_IT(BNDCU,)
+DEF_IT(BNDCL,)
+DEF_IT(BNDSTX,)
+DEF_IT(BNDCN,)
+DEF_IT(BNDMK,)
 
 DEF_IT(PUSH, LiftPush(inst))
 DEF_IT(PUSHFQ, LiftPushf(inst))
