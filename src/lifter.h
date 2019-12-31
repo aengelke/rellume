@@ -160,16 +160,12 @@ protected:
         RepMode mode;
         BasicBlock* loop_block;
         BasicBlock* cont_block;
+
+        llvm::Value* di;
+        llvm::Value* si;
     };
-    RepInfo RepBegin(RepInfo::RepMode mode);
+    RepInfo RepBegin(const LLInstr& inst);
     void RepEnd(RepInfo info);
-
-    struct StringOps {
-        llvm::Value *di, *si, *ax;
-    };
-    StringOps StringGetOps(const LLInstr& inst, bool di, bool si, bool ax);
-    void StringUpdateOps(StringOps ops, bool update_ax);
-
 
     // Helper function for older LLVM versions
     llvm::Value* CreateUnaryIntrinsic(llvm::Intrinsic::ID id, llvm::Value* v) {
@@ -251,10 +247,10 @@ private:
 
     void LiftCld(const LLInstr& inst) { SetFlag(Facet::DF, irb.getFalse()); }
     void LiftStd(const LLInstr& inst) { SetFlag(Facet::DF, irb.getTrue()); }
-    void LiftStos(const LLInstr& inst, RepInfo::RepMode mode);
-    void LiftMovs(const LLInstr& inst, RepInfo::RepMode mode);
-    void LiftScas(const LLInstr& inst, RepInfo::RepMode mode);
-    void LiftCmps(const LLInstr& inst, RepInfo::RepMode mode);
+    void LiftStos(const LLInstr& inst);
+    void LiftMovs(const LLInstr& inst);
+    void LiftScas(const LLInstr& inst);
+    void LiftCmps(const LLInstr& inst);
 
     // llinstruction-sse.cc
     void LiftFence(const LLInstr&);

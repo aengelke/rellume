@@ -707,9 +707,28 @@ void Lifter::LiftRet(const LLInstr& inst) {
     OpStoreGp(LLInstrOp(LLReg(LL_RT_IP, 0)), StackPop());
 }
 
-LifterBase::RepInfo LifterBase::RepBegin(RepInfo::RepMode rep_mode) {
-    RepInfo info = {rep_mode, nullptr, nullptr};
-    if (rep_mode != RepInfo::NO_REP) {
+LifterBase::RepInfo LifterBase::RepBegin(const LLInstr& inst) {
+    RepInfo info = {};
+    bool di = false, si = false;
+
+    switch (inst.type) {
+    case LL_INS_LODS:       info.mode=RepInfo::NO_REP; di=false; si=true; break;
+    case LL_INS_REP_LODS:   info.mode=RepInfo::REP;    di=false; si=true; break;
+    case LL_INS_STOS:       info.mode=RepInfo::NO_REP; di=true; si=false; break;
+    case LL_INS_REP_STOS:   info.mode=RepInfo::REP;    di=true; si=false; break;
+    case LL_INS_MOVS:       info.mode=RepInfo::NO_REP; di=true; si=true;  break;
+    case LL_INS_REP_MOVS:   info.mode=RepInfo::REP;    di=true; si=true;  break;
+    case LL_INS_SCAS:       info.mode=RepInfo::NO_REP; di=true; si=false; break;
+    case LL_INS_REPZ_SCAS:  info.mode=RepInfo::REPZ;   di=true; si=false; break;
+    case LL_INS_REPNZ_SCAS: info.mode=RepInfo::REPNZ;  di=true; si=false; break;
+    case LL_INS_CMPS:       info.mode=RepInfo::NO_REP; di=true; si=true;  break;
+    case LL_INS_REPZ_CMPS:  info.mode=RepInfo::REPZ;   di=true; si=true;  break;
+    case LL_INS_REPNZ_CMPS: info.mode=RepInfo::REPNZ;  di=true; si=true;  break;
+    default: assert(false && "non-string instruction in RepBegin");
+    }
+
+    // Iff instruction has REP/REPZ/REPNZ, add branching logic
+    if (info.mode != RepInfo::NO_REP) {
         info.loop_block = ablock.AddBlock();
         info.cont_block = ablock.AddBlock();
 
@@ -722,10 +741,40 @@ LifterBase::RepInfo LifterBase::RepBegin(RepInfo::RepMode rep_mode) {
         SetInsertBlock(info.loop_block);
     }
 
+    llvm::Type* op_ty = irb.getIntNTy(inst.operand_size * 8);
+    if (di) {
+        llvm::Value* ptr = GetReg(LLReg(LL_RT_GP64, LL_RI_DI), Facet::PTR);
+        info.di = irb.CreatePointerCast(ptr, op_ty->getPointerTo());
+    }
+    if (si) {
+        llvm::Value* ptr = GetReg(LLReg(LL_RT_GP64, LL_RI_SI), Facet::PTR);
+        info.si = irb.CreatePointerCast(ptr, op_ty->getPointerTo());
+    }
+
     return info;
 }
 
 void LifterBase::RepEnd(RepInfo info) {
+    // First update pointer registers with direction flag
+    llvm::Value* df = GetFlag(Facet::DF);
+    llvm::Value* adj = irb.CreateSelect(df, irb.getInt64(-1), irb.getInt64(1));
+
+    std::pair<int, llvm::Value*> ptr_regs[] = {
+        {LL_RI_DI, info.di}, {LL_RI_SI, info.si}
+    };
+
+    for (auto reg : ptr_regs) {
+        if (reg.second == nullptr)
+            continue;
+
+        llvm::Value* ptr = irb.CreateGEP(reg.second, adj);
+        ptr = irb.CreatePointerCast(ptr, irb.getInt8PtrTy());
+        llvm::Value* int_val = irb.CreatePtrToInt(ptr, irb.getInt64Ty());
+        SetReg(LLReg(LL_RT_GP64, reg.first), Facet::I64, int_val);
+        SetRegFacet(LLReg(LL_RT_GP64, reg.first), Facet::PTR, ptr);
+    }
+
+    // If instruction has REP/REPZ/REPNZ, add branching logic
     if (info.mode == RepInfo::NO_REP)
         return;
 
@@ -745,78 +794,31 @@ void LifterBase::RepEnd(RepInfo info) {
     SetInsertBlock(info.cont_block);
 }
 
-LifterBase::StringOps LifterBase::StringGetOps(const LLInstr& inst, bool di, bool si, bool ax) {
-    llvm::Type* op_ty = irb.getIntNTy(inst.operand_size * 8);
-    StringOps res = {};
-
-    if (di) {
-        llvm::Value* ptr = GetReg(LLReg(LL_RT_GP64, LL_RI_DI), Facet::PTR);
-        res.di = irb.CreatePointerCast(ptr, op_ty->getPointerTo());
-    }
-    if (si) {
-        llvm::Value* ptr = GetReg(LLReg(LL_RT_GP64, LL_RI_SI), Facet::PTR);
-        res.si = irb.CreatePointerCast(ptr, op_ty->getPointerTo());
-    }
-    if (ax)
-        res.ax = OpLoad(LLInstrOp(LLReg::Gp(inst.operand_size, LL_RI_A)), Facet::I);
-
-    return res;
-}
-
-void LifterBase::StringUpdateOps(StringOps ops, bool update_ax) {
-    llvm::Value* df = GetFlag(Facet::DF);
-    llvm::Value* adj = irb.CreateSelect(df, irb.getInt64(-1), irb.getInt64(1));
-
-    std::pair<int, llvm::Value*> ptr_regs[] = {
-        {LL_RI_DI, ops.di}, {LL_RI_SI, ops.si}
-    };
-
-    for (auto reg : ptr_regs) {
-        if (reg.second == nullptr)
-            continue;
-
-        llvm::Value* ptr = irb.CreateGEP(reg.second, adj);
-        ptr = irb.CreatePointerCast(ptr, irb.getInt8PtrTy());
-        llvm::Value* int_val = irb.CreatePtrToInt(ptr, irb.getInt64Ty());
-        SetReg(LLReg(LL_RT_GP64, reg.first), Facet::I64, int_val);
-        SetRegFacet(LLReg(LL_RT_GP64, reg.first), Facet::PTR, ptr);
-    }
-
-    if (update_ax) {
-        unsigned size = ops.ax->getType()->getIntegerBitWidth() / 8;
-        OpStoreGp(LLInstrOp(LLReg::Gp(size, LL_RI_A)), ops.ax);
-    }
-}
-
-void Lifter::LiftStos(const LLInstr& inst, RepInfo::RepMode rep_mode) {
-    RepInfo rep_info = RepBegin(rep_mode);
-
+void Lifter::LiftStos(const LLInstr& inst) {
     // TODO: optimize REP STOSB and other sizes with constant zero to llvm
     // memset intrinsic.
-    StringOps ops = StringGetOps(inst, /*di=*/true, /*si=*/false, /*ax=*/true);
-    irb.CreateStore(ops.ax, ops.di);
-    StringUpdateOps(ops, /*update_ax=*/false);
+    RepInfo rep_info = RepBegin(inst); // NOTE: this modifies control flow!
 
-    RepEnd(rep_info);
+    auto ax = OpLoad(LLInstrOp(LLReg::Gp(inst.operand_size, LL_RI_A)), Facet::I);
+    irb.CreateStore(ax, rep_info.di);
+
+    RepEnd(rep_info); // NOTE: this modifies control flow!
 }
 
-void Lifter::LiftMovs(const LLInstr& inst, RepInfo::RepMode rep_mode) {
-    RepInfo rep_info = RepBegin(rep_mode);
-
+void Lifter::LiftMovs(const LLInstr& inst) {
     // TODO: optimize REP MOVSB to use llvm memcpy intrinsic.
-    StringOps ops = StringGetOps(inst, /*di=*/true, /*si=*/true, /*ax=*/false);
-    irb.CreateStore(irb.CreateLoad(ops.si), ops.di);
-    StringUpdateOps(ops, /*update_ax=*/false);
+    RepInfo rep_info = RepBegin(inst); // NOTE: this modifies control flow!
 
-    RepEnd(rep_info);
+    irb.CreateStore(irb.CreateLoad(rep_info.si), rep_info.di);
+
+    RepEnd(rep_info); // NOTE: this modifies control flow!
 }
 
-void Lifter::LiftScas(const LLInstr& inst, RepInfo::RepMode rep_mode) {
-    RepInfo rep_info = RepBegin(rep_mode);
+void Lifter::LiftScas(const LLInstr& inst) {
+    RepInfo rep_info = RepBegin(inst); // NOTE: this modifies control flow!
 
-    StringOps ops = StringGetOps(inst, /*di=*/true, /*si=*/false, /*ax=*/true);
-    llvm::Value* src = ops.ax;
-    llvm::Value* dst = irb.CreateLoad(ops.di);
+    auto src = OpLoad(LLInstrOp(LLReg::Gp(inst.operand_size, LL_RI_A)), Facet::I);
+    llvm::Value* dst = irb.CreateLoad(rep_info.di);
     // Perform a normal CMP operation.
     llvm::Value* res = irb.CreateSub(src, dst);
     SetFlag(Facet::ZF, irb.CreateICmpEQ(src, dst));
@@ -825,17 +827,15 @@ void Lifter::LiftScas(const LLInstr& inst, RepInfo::RepMode rep_mode) {
     FlagCalcA(res, src, dst);
     FlagCalcCSub(res, src, dst);
     FlagCalcOSub(res, src, dst);
-    StringUpdateOps(ops, /*update_ax=*/false);
 
-    RepEnd(rep_info);
+    RepEnd(rep_info); // NOTE: this modifies control flow!
 }
 
-void Lifter::LiftCmps(const LLInstr& inst, RepInfo::RepMode rep_mode) {
-    RepInfo rep_info = RepBegin(rep_mode);
+void Lifter::LiftCmps(const LLInstr& inst) {
+    RepInfo rep_info = RepBegin(inst); // NOTE: this modifies control flow!
 
-    StringOps ops = StringGetOps(inst, /*di=*/true, /*si=*/true, /*ax=*/false);
-    llvm::Value* src = irb.CreateLoad(ops.si);
-    llvm::Value* dst = irb.CreateLoad(ops.di);
+    llvm::Value* src = irb.CreateLoad(rep_info.si);
+    llvm::Value* dst = irb.CreateLoad(rep_info.di);
     // Perform a normal CMP operation.
     llvm::Value* res = irb.CreateSub(src, dst);
     SetFlag(Facet::ZF, irb.CreateICmpEQ(src, dst));
@@ -844,9 +844,8 @@ void Lifter::LiftCmps(const LLInstr& inst, RepInfo::RepMode rep_mode) {
     FlagCalcA(res, src, dst);
     FlagCalcCSub(res, src, dst);
     FlagCalcOSub(res, src, dst);
-    StringUpdateOps(ops, /*update_ax=*/false);
 
-    RepEnd(rep_info);
+    RepEnd(rep_info); // NOTE: this modifies control flow!
 }
 
 } // namespace
