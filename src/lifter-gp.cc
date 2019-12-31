@@ -738,28 +738,59 @@ void LifterBase::RepEnd(RepInfo info, RepMode mode) {
     SetInsertBlock(info.second);
 }
 
+LifterBase::StringOps LifterBase::StringGetOps(const LLInstr& inst, bool di, bool si, bool ax) {
+    llvm::Type* op_ty = irb.getIntNTy(inst.operand_size * 8);
+    StringOps res = {};
+
+    if (di) {
+        llvm::Value* ptr = GetReg(LLReg(LL_RT_GP64, LL_RI_DI), Facet::PTR);
+        res.di = irb.CreatePointerCast(ptr, op_ty->getPointerTo());
+    }
+    if (si) {
+        llvm::Value* ptr = GetReg(LLReg(LL_RT_GP64, LL_RI_SI), Facet::PTR);
+        res.si = irb.CreatePointerCast(ptr, op_ty->getPointerTo());
+    }
+    if (ax)
+        res.ax = OpLoad(LLInstrOp(LLReg::Gp(inst.operand_size, LL_RI_A)), Facet::I);
+
+    return res;
+}
+
+void LifterBase::StringUpdateOps(StringOps ops, bool update_ax) {
+    llvm::Value* df = GetFlag(Facet::DF);
+    llvm::Value* adj = irb.CreateSelect(df, irb.getInt64(-1), irb.getInt64(1));
+
+    std::pair<int, llvm::Value*> ptr_regs[] = {
+        {LL_RI_DI, ops.di}, {LL_RI_SI, ops.si}
+    };
+
+    for (auto reg : ptr_regs) {
+        if (reg.second == nullptr)
+            continue;
+
+        llvm::Value* ptr = irb.CreateGEP(reg.second, adj);
+        ptr = irb.CreatePointerCast(ptr, irb.getInt8PtrTy());
+        llvm::Value* int_val = irb.CreatePtrToInt(ptr, irb.getInt64Ty());
+        SetReg(LLReg(LL_RT_GP64, reg.first), Facet::I64, int_val);
+        SetRegFacet(LLReg(LL_RT_GP64, reg.first), Facet::PTR, ptr);
+    }
+
+    if (update_ax) {
+        unsigned size = ops.ax->getType()->getIntegerBitWidth() / 8;
+        OpStoreGp(LLInstrOp(LLReg::Gp(size, LL_RI_A)), ops.ax);
+    }
+}
+
 void Lifter::LiftStos(const LLInstr& inst) {
     RepInfo rep_info;
     if (inst.type == LL_INS_REP_STOS)
         rep_info = RepBegin();
 
-    LLInstrOp src_op = LLInstrOp(LLReg::Gp(inst.operand_size, LL_RI_A));
-    llvm::Value* src = OpLoad(src_op, Facet::I);
-    llvm::Value* dst_ptr = GetReg(LLReg(LL_RT_GP64, LL_RI_DI), Facet::PTR);
-    dst_ptr = irb.CreatePointerCast(dst_ptr, src->getType()->getPointerTo());
-
-    llvm::Value* df = GetFlag(Facet::DF);
-    llvm::Value* adj = irb.CreateSelect(df, irb.getInt64(-1), irb.getInt64(1));
-
     // TODO: optimize REP STOSB and other sizes with constant zero to llvm
     // memset intrinsic.
-    irb.CreateStore(src, dst_ptr);
-    dst_ptr = irb.CreateGEP(dst_ptr, adj);
-
-    dst_ptr = irb.CreatePointerCast(dst_ptr, irb.getInt8PtrTy());
-    llvm::Value* dst_int = irb.CreatePtrToInt(dst_ptr, irb.getInt64Ty());
-    SetReg(LLReg(LL_RT_GP64, LL_RI_DI), Facet::I64, dst_int);
-    SetRegFacet(LLReg(LL_RT_GP64, LL_RI_DI), Facet::PTR, dst_ptr);
+    StringOps ops = StringGetOps(inst, /*di=*/true, /*si=*/false, /*ax=*/true);
+    irb.CreateStore(ops.ax, ops.di);
+    StringUpdateOps(ops, /*update_ax=*/false);
 
     if (inst.type == LL_INS_REP_STOS)
         RepEnd(rep_info, REP);
@@ -770,30 +801,10 @@ void Lifter::LiftMovs(const LLInstr& inst) {
     if (inst.type == LL_INS_REP_MOVS)
         rep_info = RepBegin();
 
-    llvm::Type* mov_ty = irb.getIntNTy(inst.operand_size * 8);
-    llvm::Value* src_ptr = GetReg(LLReg(LL_RT_GP64, LL_RI_SI), Facet::PTR);
-    llvm::Value* dst_ptr = GetReg(LLReg(LL_RT_GP64, LL_RI_DI), Facet::PTR);
-    src_ptr = irb.CreatePointerCast(src_ptr, mov_ty->getPointerTo());
-    dst_ptr = irb.CreatePointerCast(dst_ptr, mov_ty->getPointerTo());
-
-    llvm::Value* df = GetFlag(Facet::DF);
-    llvm::Value* adj = irb.CreateSelect(df, irb.getInt64(-1), irb.getInt64(1));
-
-    // TODO: optimize REP MOVSB and other sizes with constant zero to llvm
-    // memcpy intrinsic.
-    irb.CreateStore(irb.CreateLoad(src_ptr), dst_ptr);
-    src_ptr = irb.CreateGEP(src_ptr, adj);
-    dst_ptr = irb.CreateGEP(dst_ptr, adj);
-
-    src_ptr = irb.CreatePointerCast(src_ptr, irb.getInt8PtrTy());
-    llvm::Value* src_int = irb.CreatePtrToInt(src_ptr, irb.getInt64Ty());
-    SetReg(LLReg(LL_RT_GP64, LL_RI_SI), Facet::I64, src_int);
-    SetRegFacet(LLReg(LL_RT_GP64, LL_RI_SI), Facet::PTR, src_ptr);
-
-    dst_ptr = irb.CreatePointerCast(dst_ptr, irb.getInt8PtrTy());
-    llvm::Value* dst_int = irb.CreatePtrToInt(dst_ptr, irb.getInt64Ty());
-    SetReg(LLReg(LL_RT_GP64, LL_RI_DI), Facet::I64, dst_int);
-    SetRegFacet(LLReg(LL_RT_GP64, LL_RI_DI), Facet::PTR, dst_ptr);
+    // TODO: optimize REP MOVSB to use llvm memcpy intrinsic.
+    StringOps ops = StringGetOps(inst, /*di=*/true, /*si=*/true, /*ax=*/false);
+    irb.CreateStore(irb.CreateLoad(ops.si), ops.di);
+    StringUpdateOps(ops, /*update_ax=*/false);
 
     if (inst.type == LL_INS_REP_MOVS)
         RepEnd(rep_info, REP);
@@ -804,16 +815,9 @@ void Lifter::LiftScas(const LLInstr& inst) {
     if (inst.type == LL_INS_REPZ_SCAS || inst.type == LL_INS_REPNZ_SCAS)
         rep_info = RepBegin();
 
-    llvm::Type* mov_ty = irb.getIntNTy(inst.operand_size * 8);
-    llvm::Value* dst_ptr = GetReg(LLReg(LL_RT_GP64, LL_RI_DI), Facet::PTR);
-    dst_ptr = irb.CreatePointerCast(dst_ptr, mov_ty->getPointerTo());
-
-    llvm::Value* df = GetFlag(Facet::DF);
-    llvm::Value* adj = irb.CreateSelect(df, irb.getInt64(-1), irb.getInt64(1));
-
-    LLInstrOp src_op = LLInstrOp(LLReg::Gp(inst.operand_size, LL_RI_A));
-    llvm::Value* src = OpLoad(src_op, Facet::I);
-    llvm::Value* dst = irb.CreateLoad(dst_ptr);
+    StringOps ops = StringGetOps(inst, /*di=*/true, /*si=*/false, /*ax=*/true);
+    llvm::Value* src = ops.ax;
+    llvm::Value* dst = irb.CreateLoad(ops.di);
     // Perform a normal CMP operation.
     llvm::Value* res = irb.CreateSub(src, dst);
     SetFlag(Facet::ZF, irb.CreateICmpEQ(src, dst));
@@ -822,13 +826,7 @@ void Lifter::LiftScas(const LLInstr& inst) {
     FlagCalcA(res, src, dst);
     FlagCalcCSub(res, src, dst);
     FlagCalcOSub(res, src, dst);
-
-    dst_ptr = irb.CreateGEP(dst_ptr, adj);
-
-    dst_ptr = irb.CreatePointerCast(dst_ptr, irb.getInt8PtrTy());
-    llvm::Value* dst_int = irb.CreatePtrToInt(dst_ptr, irb.getInt64Ty());
-    SetReg(LLReg(LL_RT_GP64, LL_RI_DI), Facet::I64, dst_int);
-    SetRegFacet(LLReg(LL_RT_GP64, LL_RI_DI), Facet::PTR, dst_ptr);
+    StringUpdateOps(ops, /*update_ax=*/false);
 
     if (inst.type == LL_INS_REPZ_SCAS)
         RepEnd(rep_info, REPZ);
@@ -841,38 +839,18 @@ void Lifter::LiftCmps(const LLInstr& inst) {
     if (inst.type == LL_INS_REPZ_CMPS || inst.type == LL_INS_REPNZ_CMPS)
         rep_info = RepBegin();
 
-    llvm::Type* mov_ty = irb.getIntNTy(inst.operand_size * 8);
-    llvm::Value* src_ptr = GetReg(LLReg(LL_RT_GP64, LL_RI_SI), Facet::PTR);
-    llvm::Value* dst_ptr = GetReg(LLReg(LL_RT_GP64, LL_RI_DI), Facet::PTR);
-    src_ptr = irb.CreatePointerCast(src_ptr, mov_ty->getPointerTo());
-    dst_ptr = irb.CreatePointerCast(dst_ptr, mov_ty->getPointerTo());
-
-    llvm::Value* df = GetFlag(Facet::DF);
-    llvm::Value* adj = irb.CreateSelect(df, irb.getInt64(-1), irb.getInt64(1));
-
-    llvm::Value* op1 = irb.CreateLoad(src_ptr);
-    llvm::Value* op2 = irb.CreateLoad(dst_ptr);
+    StringOps ops = StringGetOps(inst, /*di=*/true, /*si=*/true, /*ax=*/false);
+    llvm::Value* src = irb.CreateLoad(ops.si);
+    llvm::Value* dst = irb.CreateLoad(ops.di);
     // Perform a normal CMP operation.
-    llvm::Value* res = irb.CreateSub(op1, op2);
-    SetFlag(Facet::ZF, irb.CreateICmpEQ(op1, op2));
+    llvm::Value* res = irb.CreateSub(src, dst);
+    SetFlag(Facet::ZF, irb.CreateICmpEQ(src, dst));
     FlagCalcS(res);
     FlagCalcP(res);
-    FlagCalcA(res, op1, op2);
-    FlagCalcCSub(res, op1, op2);
-    FlagCalcOSub(res, op1, op2);
-
-    src_ptr = irb.CreateGEP(src_ptr, adj);
-    dst_ptr = irb.CreateGEP(dst_ptr, adj);
-
-    src_ptr = irb.CreatePointerCast(src_ptr, irb.getInt8PtrTy());
-    llvm::Value* src_int = irb.CreatePtrToInt(src_ptr, irb.getInt64Ty());
-    SetReg(LLReg(LL_RT_GP64, LL_RI_SI), Facet::I64, src_int);
-    SetRegFacet(LLReg(LL_RT_GP64, LL_RI_SI), Facet::PTR, src_ptr);
-
-    dst_ptr = irb.CreatePointerCast(dst_ptr, irb.getInt8PtrTy());
-    llvm::Value* dst_int = irb.CreatePtrToInt(dst_ptr, irb.getInt64Ty());
-    SetReg(LLReg(LL_RT_GP64, LL_RI_DI), Facet::I64, dst_int);
-    SetRegFacet(LLReg(LL_RT_GP64, LL_RI_DI), Facet::PTR, dst_ptr);
+    FlagCalcA(res, src, dst);
+    FlagCalcCSub(res, src, dst);
+    FlagCalcOSub(res, src, dst);
+    StringUpdateOps(ops, /*update_ax=*/false);
 
     if (inst.type == LL_INS_REPZ_CMPS)
         RepEnd(rep_info, REPZ);

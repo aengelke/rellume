@@ -160,6 +160,12 @@ protected:
     RepInfo RepBegin();
     void RepEnd(RepInfo info, RepMode mode);
 
+    struct StringOps {
+        llvm::Value *di, *si, *ax;
+    };
+    StringOps StringGetOps(const LLInstr& inst, bool di, bool si, bool ax);
+    void StringUpdateOps(StringOps ops, bool update_ax);
+
 
     // Helper function for older LLVM versions
     llvm::Value* CreateUnaryIntrinsic(llvm::Intrinsic::ID id, llvm::Value* v) {
