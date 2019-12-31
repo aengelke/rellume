@@ -155,13 +155,14 @@ protected:
     llvm::Value* FlagCond(Condition cond);
     llvm::Value* FlagAsReg(unsigned size);
 
-    enum RepMode { REP, REPZ, REPNZ };
     struct RepInfo {
+        enum RepMode { NO_REP, REP, REPZ, REPNZ };
+        RepMode mode;
         BasicBlock* loop_block;
         BasicBlock* cont_block;
     };
-    RepInfo RepBegin();
-    void RepEnd(RepInfo info, RepMode mode);
+    RepInfo RepBegin(RepInfo::RepMode mode);
+    void RepEnd(RepInfo info);
 
     struct StringOps {
         llvm::Value *di, *si, *ax;
@@ -250,10 +251,10 @@ private:
 
     void LiftCld(const LLInstr& inst) { SetFlag(Facet::DF, irb.getFalse()); }
     void LiftStd(const LLInstr& inst) { SetFlag(Facet::DF, irb.getTrue()); }
-    void LiftStos(const LLInstr& inst);
-    void LiftMovs(const LLInstr& inst);
-    void LiftScas(const LLInstr& inst);
-    void LiftCmps(const LLInstr& inst);
+    void LiftStos(const LLInstr& inst, RepInfo::RepMode mode);
+    void LiftMovs(const LLInstr& inst, RepInfo::RepMode mode);
+    void LiftScas(const LLInstr& inst, RepInfo::RepMode mode);
+    void LiftCmps(const LLInstr& inst, RepInfo::RepMode mode);
 
     // llinstruction-sse.cc
     void LiftFence(const LLInstr&);

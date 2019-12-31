@@ -707,21 +707,28 @@ void Lifter::LiftRet(const LLInstr& inst) {
     OpStoreGp(LLInstrOp(LLReg(LL_RT_IP, 0)), StackPop());
 }
 
-LifterBase::RepInfo LifterBase::RepBegin() {
-    BasicBlock* loop_block = ablock.AddBlock();
-    BasicBlock* cont_block = ablock.AddBlock();
+LifterBase::RepInfo LifterBase::RepBegin(RepInfo::RepMode rep_mode) {
+    RepInfo info = {rep_mode, nullptr, nullptr};
+    if (rep_mode != RepInfo::NO_REP) {
+        info.loop_block = ablock.AddBlock();
+        info.cont_block = ablock.AddBlock();
 
-    llvm::Value* count = GetReg(LLReg(LL_RT_GP64, LL_RI_C), Facet::I64);
-    llvm::Value* zero = llvm::Constant::getNullValue(count->getType());
-    llvm::Value* enter_loop = irb.CreateICmpNE(count, zero);
-    ablock.GetInsertBlock()->BranchTo(enter_loop, *loop_block, *cont_block);
+        llvm::Value* count = GetReg(LLReg(LL_RT_GP64, LL_RI_C), Facet::I64);
+        llvm::Value* zero = llvm::Constant::getNullValue(count->getType());
+        llvm::Value* enter_loop = irb.CreateICmpNE(count, zero);
+        ablock.GetInsertBlock()->BranchTo(enter_loop, *info.loop_block,
+                                          *info.cont_block);
 
-    SetInsertBlock(loop_block);
+        SetInsertBlock(info.loop_block);
+    }
 
-    return RepInfo{loop_block, cont_block};
+    return info;
 }
 
-void LifterBase::RepEnd(RepInfo info, RepMode mode) {
+void LifterBase::RepEnd(RepInfo info) {
+    if (info.mode == RepInfo::NO_REP)
+        return;
+
     // Decrement count and check.
     llvm::Value* count = GetReg(LLReg(LL_RT_GP64, LL_RI_C), Facet::I64);
     count = irb.CreateSub(count, irb.getInt64(1));
@@ -729,9 +736,9 @@ void LifterBase::RepEnd(RepInfo info, RepMode mode) {
 
     llvm::Value* zero = llvm::Constant::getNullValue(count->getType());
     llvm::Value* cond = irb.CreateICmpNE(count, zero);
-    if (mode == REPZ)
+    if (info.mode == RepInfo::REPZ)
         cond = irb.CreateAnd(cond, GetFlag(Facet::ZF));
-    else if (mode == REPNZ)
+    else if (info.mode == RepInfo::REPNZ)
         cond = irb.CreateAnd(cond, irb.CreateNot(GetFlag(Facet::ZF)));
 
     ablock.GetInsertBlock()->BranchTo(cond, *info.loop_block, *info.cont_block);
@@ -781,10 +788,8 @@ void LifterBase::StringUpdateOps(StringOps ops, bool update_ax) {
     }
 }
 
-void Lifter::LiftStos(const LLInstr& inst) {
-    RepInfo rep_info;
-    if (inst.type == LL_INS_REP_STOS)
-        rep_info = RepBegin();
+void Lifter::LiftStos(const LLInstr& inst, RepInfo::RepMode rep_mode) {
+    RepInfo rep_info = RepBegin(rep_mode);
 
     // TODO: optimize REP STOSB and other sizes with constant zero to llvm
     // memset intrinsic.
@@ -792,28 +797,22 @@ void Lifter::LiftStos(const LLInstr& inst) {
     irb.CreateStore(ops.ax, ops.di);
     StringUpdateOps(ops, /*update_ax=*/false);
 
-    if (inst.type == LL_INS_REP_STOS)
-        RepEnd(rep_info, REP);
+    RepEnd(rep_info);
 }
 
-void Lifter::LiftMovs(const LLInstr& inst) {
-    RepInfo rep_info;
-    if (inst.type == LL_INS_REP_MOVS)
-        rep_info = RepBegin();
+void Lifter::LiftMovs(const LLInstr& inst, RepInfo::RepMode rep_mode) {
+    RepInfo rep_info = RepBegin(rep_mode);
 
     // TODO: optimize REP MOVSB to use llvm memcpy intrinsic.
     StringOps ops = StringGetOps(inst, /*di=*/true, /*si=*/true, /*ax=*/false);
     irb.CreateStore(irb.CreateLoad(ops.si), ops.di);
     StringUpdateOps(ops, /*update_ax=*/false);
 
-    if (inst.type == LL_INS_REP_MOVS)
-        RepEnd(rep_info, REP);
+    RepEnd(rep_info);
 }
 
-void Lifter::LiftScas(const LLInstr& inst) {
-    RepInfo rep_info;
-    if (inst.type == LL_INS_REPZ_SCAS || inst.type == LL_INS_REPNZ_SCAS)
-        rep_info = RepBegin();
+void Lifter::LiftScas(const LLInstr& inst, RepInfo::RepMode rep_mode) {
+    RepInfo rep_info = RepBegin(rep_mode);
 
     StringOps ops = StringGetOps(inst, /*di=*/true, /*si=*/false, /*ax=*/true);
     llvm::Value* src = ops.ax;
@@ -828,16 +827,11 @@ void Lifter::LiftScas(const LLInstr& inst) {
     FlagCalcOSub(res, src, dst);
     StringUpdateOps(ops, /*update_ax=*/false);
 
-    if (inst.type == LL_INS_REPZ_SCAS)
-        RepEnd(rep_info, REPZ);
-    else if (inst.type == LL_INS_REPNZ_SCAS)
-        RepEnd(rep_info, REPNZ);
+    RepEnd(rep_info);
 }
 
-void Lifter::LiftCmps(const LLInstr& inst) {
-    RepInfo rep_info;
-    if (inst.type == LL_INS_REPZ_CMPS || inst.type == LL_INS_REPNZ_CMPS)
-        rep_info = RepBegin();
+void Lifter::LiftCmps(const LLInstr& inst, RepInfo::RepMode rep_mode) {
+    RepInfo rep_info = RepBegin(rep_mode);
 
     StringOps ops = StringGetOps(inst, /*di=*/true, /*si=*/true, /*ax=*/false);
     llvm::Value* src = irb.CreateLoad(ops.si);
@@ -852,10 +846,7 @@ void Lifter::LiftCmps(const LLInstr& inst) {
     FlagCalcOSub(res, src, dst);
     StringUpdateOps(ops, /*update_ax=*/false);
 
-    if (inst.type == LL_INS_REPZ_CMPS)
-        RepEnd(rep_info, REPZ);
-    else if (inst.type == LL_INS_REPNZ_CMPS)
-        RepEnd(rep_info, REPNZ);
+    RepEnd(rep_info);
 }
 
 } // namespace
