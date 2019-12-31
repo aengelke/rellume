@@ -718,7 +718,7 @@ LifterBase::RepInfo LifterBase::RepBegin() {
 
     SetInsertBlock(loop_block);
 
-    return std::make_pair(loop_block, cont_block);
+    return RepInfo{loop_block, cont_block};
 }
 
 void LifterBase::RepEnd(RepInfo info, RepMode mode) {
@@ -734,8 +734,8 @@ void LifterBase::RepEnd(RepInfo info, RepMode mode) {
     else if (mode == REPNZ)
         cond = irb.CreateAnd(cond, irb.CreateNot(GetFlag(Facet::ZF)));
 
-    ablock.GetInsertBlock()->BranchTo(cond, *info.first, *info.second);
-    SetInsertBlock(info.second);
+    ablock.GetInsertBlock()->BranchTo(cond, *info.loop_block, *info.cont_block);
+    SetInsertBlock(info.cont_block);
 }
 
 LifterBase::StringOps LifterBase::StringGetOps(const LLInstr& inst, bool di, bool si, bool ax) {

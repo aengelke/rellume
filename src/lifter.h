@@ -156,7 +156,10 @@ protected:
     llvm::Value* FlagAsReg(unsigned size);
 
     enum RepMode { REP, REPZ, REPNZ };
-    using RepInfo = std::pair<BasicBlock*, BasicBlock*>;
+    struct RepInfo {
+        BasicBlock* loop_block;
+        BasicBlock* cont_block;
+    };
     RepInfo RepBegin();
     void RepEnd(RepInfo info, RepMode mode);
 
