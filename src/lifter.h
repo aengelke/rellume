@@ -151,6 +151,22 @@ protected:
     }
     void FlagCalcOAdd(llvm::Value* res, llvm::Value* lhs, llvm::Value* rhs);
     void FlagCalcOSub(llvm::Value* res, llvm::Value* lhs, llvm::Value* rhs);
+    void FlagCalcAdd(llvm::Value* res, llvm::Value* lhs, llvm::Value* rhs) {
+        FlagCalcZ(res);
+        FlagCalcS(res);
+        FlagCalcP(res);
+        FlagCalcA(res, lhs, rhs);
+        FlagCalcCAdd(res, lhs, rhs);
+        FlagCalcOAdd(res, lhs, rhs);
+    }
+    void FlagCalcSub(llvm::Value* res, llvm::Value* lhs, llvm::Value* rhs) {
+        SetFlag(Facet::ZF, irb.CreateICmpEQ(lhs, rhs));
+        FlagCalcS(res);
+        FlagCalcP(res);
+        FlagCalcA(res, lhs, rhs);
+        FlagCalcCSub(res, lhs, rhs);
+        FlagCalcOSub(res, lhs, rhs);
+    }
 
     llvm::Value* FlagCond(Condition cond);
     llvm::Value* FlagAsReg(unsigned size);

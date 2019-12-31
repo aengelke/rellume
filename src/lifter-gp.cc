@@ -125,12 +125,7 @@ void Lifter::LiftAdd(const LLInstr& inst) {
         OpStoreGp(inst.ops[0], res);
     }
 
-    FlagCalcZ(res);
-    FlagCalcS(res);
-    FlagCalcP(res);
-    FlagCalcA(res, op1, op2);
-    FlagCalcCAdd(res, op1, op2);
-    FlagCalcOAdd(res, op1, op2);
+    FlagCalcAdd(res, op1, op2);
 }
 
 void Lifter::LiftAdc(const LLInstr& inst) {
@@ -140,13 +135,7 @@ void Lifter::LiftAdc(const LLInstr& inst) {
     llvm::Value* res = irb.CreateAdd(op1, op2);
 
     OpStoreGp(inst.ops[0], res);
-
-    FlagCalcZ(res);
-    FlagCalcS(res);
-    FlagCalcP(res);
-    FlagCalcA(res, op1, op2);
-    FlagCalcCAdd(res, op1, op2);
-    FlagCalcOAdd(res, op1, op2);
+    FlagCalcAdd(res, op1, op2);
 }
 
 void Lifter::LiftXadd(const LLInstr& inst) {
@@ -157,13 +146,7 @@ void Lifter::LiftXadd(const LLInstr& inst) {
     // TODO: generate pointer facets?
     OpStoreGp(inst.ops[0], res);
     OpStoreGp(inst.ops[1], op1);
-
-    FlagCalcZ(res);
-    FlagCalcS(res);
-    FlagCalcP(res);
-    FlagCalcA(res, op1, op2);
-    FlagCalcCAdd(res, op1, op2);
-    FlagCalcOAdd(res, op1, op2);
+    FlagCalcAdd(res, op1, op2);
 }
 
 void Lifter::LiftSub(const LLInstr& inst) {
@@ -185,12 +168,7 @@ void Lifter::LiftSub(const LLInstr& inst) {
         OpStoreGp(inst.ops[0], res);
     }
 
-    SetFlag(Facet::ZF, irb.CreateICmpEQ(op1, op2));
-    FlagCalcS(res);
-    FlagCalcP(res);
-    FlagCalcA(res, op1, op2);
-    FlagCalcCSub(res, op1, op2);
-    FlagCalcOSub(res, op1, op2);
+    FlagCalcSub(res, op1, op2);
 }
 
 void Lifter::LiftSbb(const LLInstr& inst) {
@@ -200,25 +178,14 @@ void Lifter::LiftSbb(const LLInstr& inst) {
     llvm::Value* res = irb.CreateSub(op1, op2);
 
     OpStoreGp(inst.ops[0], res);
-
-    FlagCalcZ(res);
-    FlagCalcS(res);
-    FlagCalcP(res);
-    FlagCalcA(res, op1, op2);
-    FlagCalcCSub(res, op1, op2);
-    FlagCalcOSub(res, op1, op2);
+    FlagCalcSub(res, op1, op2);
 }
 
 void Lifter::LiftCmp(const LLInstr& inst) {
     llvm::Value* op1 = OpLoad(inst.ops[0], Facet::I);
     llvm::Value* op2 = OpLoad(inst.ops[1], Facet::I);
     llvm::Value* res = irb.CreateSub(op1, op2);
-    SetFlag(Facet::ZF, irb.CreateICmpEQ(op1, op2));
-    FlagCalcS(res);
-    FlagCalcP(res);
-    FlagCalcA(res, op1, op2);
-    FlagCalcCSub(res, op1, op2);
-    FlagCalcOSub(res, op1, op2);
+    FlagCalcSub(res, op1, op2);
 
     if (cfg.prefer_pointer_cmp && op1->getType()->getIntegerBitWidth() == 64 &&
         inst.ops[0].type == LL_OP_REG && inst.ops[1].type == LL_OP_REG)
@@ -236,12 +203,7 @@ void Lifter::LiftCmpxchg(const LLInstr& inst) {
 
     // Full compare with acc and dst
     llvm::Value* cmp_res = irb.CreateSub(acc, dst);
-    SetFlag(Facet::ZF, irb.CreateICmpEQ(acc, dst));
-    FlagCalcS(cmp_res);
-    FlagCalcP(cmp_res);
-    FlagCalcA(cmp_res, acc, dst);
-    FlagCalcCSub(cmp_res, acc, dst);
-    FlagCalcOSub(cmp_res, acc, dst);
+    FlagCalcSub(cmp_res, acc, dst);
 
     // Store SRC if DST=ACC, else store DST again (i.e. don't change memory).
     OpStoreGp(inst.ops[0], irb.CreateSelect(GetFlag(Facet::ZF), src, dst));
@@ -280,12 +242,7 @@ void Lifter::LiftNeg(const LLInstr& inst) {
     llvm::Value* op1 = OpLoad(inst.ops[0], Facet::I);
     llvm::Value* res = irb.CreateNeg(op1);
     llvm::Value* zero = llvm::Constant::getNullValue(res->getType());
-    FlagCalcZ(res);
-    FlagCalcS(res);
-    FlagCalcP(res);
-    FlagCalcA(res, zero, op1);
-    FlagCalcCSub(res, zero, op1);
-    FlagCalcOSub(res, zero, op1);
+    FlagCalcSub(res, zero, op1);
     OpStoreGp(inst.ops[0], res);
 }
 
@@ -820,13 +777,7 @@ void Lifter::LiftScas(const LLInstr& inst) {
     auto src = OpLoad(LLInstrOp(LLReg::Gp(inst.operand_size, LL_RI_A)), Facet::I);
     llvm::Value* dst = irb.CreateLoad(rep_info.di);
     // Perform a normal CMP operation.
-    llvm::Value* res = irb.CreateSub(src, dst);
-    SetFlag(Facet::ZF, irb.CreateICmpEQ(src, dst));
-    FlagCalcS(res);
-    FlagCalcP(res);
-    FlagCalcA(res, src, dst);
-    FlagCalcCSub(res, src, dst);
-    FlagCalcOSub(res, src, dst);
+    FlagCalcSub(irb.CreateSub(src, dst), src, dst);
 
     RepEnd(rep_info); // NOTE: this modifies control flow!
 }
@@ -837,13 +788,7 @@ void Lifter::LiftCmps(const LLInstr& inst) {
     llvm::Value* src = irb.CreateLoad(rep_info.si);
     llvm::Value* dst = irb.CreateLoad(rep_info.di);
     // Perform a normal CMP operation.
-    llvm::Value* res = irb.CreateSub(src, dst);
-    SetFlag(Facet::ZF, irb.CreateICmpEQ(src, dst));
-    FlagCalcS(res);
-    FlagCalcP(res);
-    FlagCalcA(res, src, dst);
-    FlagCalcCSub(res, src, dst);
-    FlagCalcOSub(res, src, dst);
+    FlagCalcSub(irb.CreateSub(src, dst), src, dst);
 
     RepEnd(rep_info); // NOTE: this modifies control flow!
 }
