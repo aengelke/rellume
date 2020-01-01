@@ -751,6 +751,15 @@ void LifterBase::RepEnd(RepInfo info) {
     SetInsertBlock(info.cont_block);
 }
 
+void Lifter::LiftLods(const LLInstr& inst) {
+    RepInfo rep_info = RepBegin(inst); // NOTE: this modifies control flow!
+
+    unsigned size = inst.operand_size;
+    OpStoreGp(LLInstrOp(LLReg::Gp(size, LL_RI_A)), irb.CreateLoad(rep_info.di));
+
+    RepEnd(rep_info); // NOTE: this modifies control flow!
+}
+
 void Lifter::LiftStos(const LLInstr& inst) {
     // TODO: optimize REP STOSB and other sizes with constant zero to llvm
     // memset intrinsic.

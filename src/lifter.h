@@ -263,6 +263,7 @@ private:
 
     void LiftCld(const LLInstr& inst) { SetFlag(Facet::DF, irb.getFalse()); }
     void LiftStd(const LLInstr& inst) { SetFlag(Facet::DF, irb.getTrue()); }
+    void LiftLods(const LLInstr& inst);
     void LiftStos(const LLInstr& inst);
     void LiftMovs(const LLInstr& inst);
     void LiftScas(const LLInstr& inst);
