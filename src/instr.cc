@@ -427,6 +427,14 @@ end_ops:
     case FDI_SSE_PSUBW: llinst.type = LL_INS_PSUBW; break;
     case FDI_SSE_PSUBD: llinst.type = LL_INS_PSUBD; break;
     case FDI_SSE_PSUBQ: llinst.type = LL_INS_PSUBQ; break;
+    case FDI_SSE_PADDSB: llinst.type = LL_INS_PADDSB; break;
+    case FDI_SSE_PADDSW: llinst.type = LL_INS_PADDSW; break;
+    case FDI_SSE_PADDUSB: llinst.type = LL_INS_PADDUSB; break;
+    case FDI_SSE_PADDUSW: llinst.type = LL_INS_PADDUSW; break;
+    case FDI_SSE_PSUBSB: llinst.type = LL_INS_PSUBSB; break;
+    case FDI_SSE_PSUBSW: llinst.type = LL_INS_PSUBSW; break;
+    case FDI_SSE_PSUBUSB: llinst.type = LL_INS_PSUBUSB; break;
+    case FDI_SSE_PSUBUSW: llinst.type = LL_INS_PSUBUSW; break;
     case FDI_SSE_PMULLW: llinst.type = LL_INS_PMULLW; break;
     case FDI_SSE_PMULLD: llinst.type = LL_INS_PMULLD; break;
     case FDI_SSE_PSLLW: llinst.type = LL_INS_PSLLW; break;

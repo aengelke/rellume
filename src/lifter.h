@@ -303,6 +303,9 @@ private:
     void LiftSsePshiftBytes(const LLInstr&);
     void LiftSsePavg(const LLInstr&, Facet);
     void LiftSsePmulhw(const LLInstr&, llvm::Instruction::CastOps cast);
+    void LiftSsePaddsubSaturate(const LLInstr& inst,
+                                llvm::Instruction::BinaryOps calc_op, bool sign,
+                                Facet op_ty);
     void LiftSsePack(const LLInstr&, Facet, bool sign);
     void LiftSsePcmp(const LLInstr&, llvm::CmpInst::Predicate, Facet);
     void LiftSsePminmax(const LLInstr&, llvm::CmpInst::Predicate, Facet);

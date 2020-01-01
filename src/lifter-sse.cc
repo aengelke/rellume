@@ -479,6 +479,23 @@ static llvm::Value* SaturateTrunc(llvm::IRBuilder<> irb, llvm::Value* val,
     return irb.CreateTrunc(val, dst_ty);
 }
 
+void Lifter::LiftSsePaddsubSaturate(const LLInstr& inst,
+                                    llvm::Instruction::BinaryOps calc_op,
+                                    bool sign, Facet op_ty) {
+    llvm::Value* src1 = OpLoad(inst.ops[0], op_ty);
+    llvm::Value* src2 = OpLoad(inst.ops[1], op_ty);
+    llvm::Instruction::CastOps cast = sign ? llvm::Instruction::SExt
+                                           : llvm::Instruction::ZExt;
+
+    llvm::VectorType* src_ty = llvm::cast<llvm::VectorType>(src1->getType());
+    llvm::Type* ext_ty = llvm::VectorType::getExtendedElementVectorType(src_ty);
+    llvm::Value* ext1 = irb.CreateCast(cast, src1, ext_ty);
+    llvm::Value* ext2 = irb.CreateCast(cast, src2, ext_ty);
+    llvm::Value* res = irb.CreateBinOp(calc_op, ext1, ext2);
+
+    OpStoreVec(inst.ops[0], SaturateTrunc(irb, res, sign));
+}
+
 void Lifter::LiftSsePack(const LLInstr& inst, Facet src_type, bool sign) {
     llvm::Value* op1 = OpLoad(inst.ops[0], src_type, ALIGN_MAX);
     llvm::Value* op2 = OpLoad(inst.ops[1], src_type, ALIGN_MAX);
