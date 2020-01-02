@@ -501,6 +501,21 @@ Lifter::LiftLea(const LLInstr& inst)
         SetRegFacet(inst.ops[0].reg, Facet::PTR, res_ptr);
 }
 
+void Lifter::LiftXlat(const LLInstr& inst) {
+    llvm::Value* al = OpLoad(LLInstrOp({LL_RT_GP8, LL_RI_A}), Facet::I8);
+    llvm::Value* bx;
+    if (inst.address_size == 8) {
+        bx = OpLoad(LLInstrOp({LL_RT_GP64, LL_RI_B}), Facet::PTR);
+    } else {
+        bx = OpLoad(LLInstrOp({LL_RT_GP32, LL_RI_B}), Facet::I32);
+        bx = irb.CreatePtrToInt(bx, irb.getInt8PtrTy());
+    }
+    assert(bx->getType() == irb.getInt8PtrTy() && "xlat wrong rbx type");
+
+    llvm::Value* ptr = irb.CreateGEP(bx, irb.CreateZExt(al, irb.getInt32Ty()));
+    OpStoreGp(LLInstrOp({LL_RT_GP8, LL_RI_A}), irb.CreateLoad(ptr));
+}
+
 void Lifter::LiftCmovcc(const LLInstr& inst, Condition cond) {
     llvm::Value* op1 = OpLoad(inst.ops[0], Facet::I);
     llvm::Value* op2 = OpLoad(inst.ops[1], Facet::I);
