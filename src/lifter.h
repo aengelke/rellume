@@ -94,6 +94,10 @@ protected:
     llvm::IRBuilder<> irb;
 
 
+    llvm::Module* GetModule() {
+        return irb.GetInsertBlock()->getModule();
+    }
+
     llvm::Value* GetReg(LLReg reg, Facet facet) {
         return regfile->GetReg(reg, facet);
     }
@@ -283,6 +287,7 @@ private:
                       Facet type);
     void LiftSseMovScalar(const LLInstr&, Facet);
     void LiftSseMovdq(const LLInstr&, Facet, Alignment);
+    void LiftSseMovntStore(const LLInstr&, Facet);
     void LiftSseMovlp(const LLInstr&);
     void LiftSseMovhps(const LLInstr&);
     void LiftSseMovhpd(const LLInstr&);

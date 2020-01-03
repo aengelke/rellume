@@ -127,6 +127,16 @@ void Lifter::LiftSseMovdq(const LLInstr& inst, Facet facet,
     OpStoreVec(inst.ops[0], OpLoad(inst.ops[1], facet, alignment), alignment);
 }
 
+void Lifter::LiftSseMovntStore(const LLInstr& inst, Facet facet) {
+    llvm::Value* value = OpLoad(inst.ops[1], facet, ALIGN_MAX);
+    llvm::Value* addr = OpAddr(inst.ops[0], value->getType());
+    llvm::StoreInst* store = irb.CreateStore(value, addr);
+    store->setAlignment(value->getType()->getPrimitiveSizeInBits() / 8);
+    llvm::MDNode* node = llvm::MDNode::get(store->getContext(),
+            llvm::ConstantAsMetadata::get(irb.getInt32(1)));
+    store->setMetadata(GetModule()->getMDKindID("nontemporal"), node);
+}
+
 void Lifter::LiftSseMovlp(const LLInstr& inst) {
     if (inst.ops[0].type == LL_OP_REG && inst.ops[1].type == LL_OP_REG) {
         // move high 64-bit from src to low 64-bit from dst
