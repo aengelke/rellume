@@ -88,11 +88,8 @@ LifterBase::OpAddr(const LLInstrOp& op, llvm::Type* element_type)
                 unsigned off = op.seg == LL_RI_FS ? CpuStructOff::FSBASE
                                                   : CpuStructOff::GSBASE;
 
-                unsigned struct_param_idx = cfg.callconv.CpuStructParamIdx();
-                llvm::Function* fn = irb.GetInsertBlock()->getParent();
-                llvm::Value* buf_ptr = &fn->arg_begin()[struct_param_idx];
                 llvm::Type* ptr_ty = irb.getInt64Ty()->getPointerTo();
-                llvm::Value* ptr = irb.CreateConstGEP1_64(buf_ptr, off);
+                llvm::Value* ptr = irb.CreateConstGEP1_64(fi.sptr_raw, off);
                 ptr = irb.CreatePointerCast(ptr, ptr_ty);
 
                 res = irb.CreateAdd(res, irb.CreateLoad(ptr));

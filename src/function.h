@@ -26,6 +26,7 @@
 
 #include "callconv.h"
 #include "config.h"
+#include "function-info.h"
 #include "rellume/instr.h"
 #include <llvm/IR/Function.h>
 #include <llvm/IR/Value.h>
@@ -66,6 +67,7 @@ private:
     ArchBasicBlock& ResolveAddr(llvm::Value* addr);
 
     LLConfig* cfg;
+    FunctionInfo fi;
 
     llvm::Function* llvm;
     uint64_t entry_addr;

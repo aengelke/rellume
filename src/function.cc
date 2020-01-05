@@ -48,7 +48,7 @@
 
 namespace rellume {
 
-Function::Function(llvm::Module* mod, LLConfig* cfg) : cfg(cfg)
+Function::Function(llvm::Module* mod, LLConfig* cfg) : cfg(cfg), fi{}
 {
     llvm::LLVMContext& ctx = mod->getContext();
     llvm = llvm::Function::Create(cfg->callconv.FnType(ctx),
@@ -63,8 +63,11 @@ Function::Function(llvm::Module* mod, LLConfig* cfg) : cfg(cfg)
     llvm->addParamAttr(cpu_param_idx, llvm::Attribute::getWithAlignment(ctx, 16));
     llvm->addDereferenceableParamAttr(cpu_param_idx, 0x190);
 
+    fi.fn = llvm;
+    fi.sptr_raw = &llvm->arg_begin()[cpu_param_idx];
+
     // Create entry basic block as first block in the function.
-    entry_block = std::make_unique<ArchBasicBlock>(llvm, *cfg, BasicBlock::ENTRY);
+    entry_block = std::make_unique<ArchBasicBlock>(fi, *cfg, BasicBlock::ENTRY);
 }
 
 Function::~Function() = default;
@@ -74,9 +77,9 @@ void Function::AddInst(uint64_t block_addr, const LLInstr& inst)
     if (block_map.size() == 0)
         entry_addr = block_addr;
     if (block_map.find(block_addr) == block_map.end())
-        block_map[block_addr] = std::make_unique<ArchBasicBlock>(llvm, *cfg);
+        block_map[block_addr] = std::make_unique<ArchBasicBlock>(fi, *cfg);
 
-    Lifter lifter(*cfg, *block_map[block_addr]);
+    Lifter lifter(fi, *cfg, *block_map[block_addr]);
     lifter.Lift(inst);
 }
 
@@ -93,7 +96,7 @@ llvm::Function* Function::Lift() {
     if (block_map.size() == 0)
         return nullptr;
 
-    exit_block = std::make_unique<ArchBasicBlock>(llvm, *cfg, BasicBlock::EXIT);
+    exit_block = std::make_unique<ArchBasicBlock>(fi, *cfg, BasicBlock::EXIT);
 
     entry_block->BranchTo(*block_map[entry_addr]);
 

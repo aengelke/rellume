@@ -24,6 +24,7 @@
 #ifndef RELLUME_CALLCONV_H
 #define RELLUME_CALLCONV_H
 
+#include <function-info.h>
 #include <llvm/IR/Type.h>
 #include <llvm/IR/Value.h>
 #include <cstddef>
@@ -47,11 +48,11 @@ public:
 
     // Pack values from regfile into the CPU struct. The return value for the
     // function is returned (or NULL for void).
-    llvm::Value* Pack(RegFile& regfile, llvm::Value* val,
+    llvm::Value* Pack(RegFile& regfile, FunctionInfo& fi,
                       std::vector<llvm::Value*>* sptr_access = nullptr) const;
     // Unpack values from val (usually the function) into the register file. For
     // SPTR, val can also be the CPU struct pointer directly.
-    void Unpack(RegFile& regfile, llvm::Value* val,
+    void Unpack(RegFile& regfile, FunctionInfo& fi,
                 std::vector<llvm::Value*>* sptr_access = nullptr) const;
 
     CallConv() = default;

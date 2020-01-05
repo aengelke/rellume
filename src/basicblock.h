@@ -26,6 +26,7 @@
 
 #include "config.h"
 #include "facet.h"
+#include "function-info.h"
 #include "regfile.h"
 #include "rellume/instr.h"
 #include <llvm/IR/BasicBlock.h>
@@ -42,7 +43,7 @@ public:
     enum Kind {
         DEFAULT, ENTRY, EXIT
     };
-    BasicBlock(llvm::Function* fn, const LLConfig& cfg, Kind kind = DEFAULT);
+    BasicBlock(FunctionInfo& fi, const LLConfig& cfg, Kind kind = DEFAULT);
 
     BasicBlock(BasicBlock&& rhs);
     BasicBlock& operator=(BasicBlock&& rhs);
@@ -87,17 +88,17 @@ private:
 class ArchBasicBlock
 {
 private:
-    llvm::Function* fn;
+    FunctionInfo& fi;
     const LLConfig& cfg;
 
     std::vector<std::unique_ptr<BasicBlock>> low_blocks;
     BasicBlock* insert_block;
 
 public:
-    ArchBasicBlock(llvm::Function* fn, const LLConfig& cfg,
+    ArchBasicBlock(FunctionInfo& fi, const LLConfig& cfg,
                    BasicBlock::Kind kind = BasicBlock::DEFAULT)
-            : fn(fn), cfg(cfg) {
-        low_blocks.push_back(std::make_unique<BasicBlock>(fn, cfg, kind));
+            : fi(fi), cfg(cfg) {
+        low_blocks.push_back(std::make_unique<BasicBlock>(fi, cfg, kind));
         insert_block = low_blocks[0].get();
     }
 
@@ -114,7 +115,7 @@ private:
 
 public:
     BasicBlock* AddBlock() {
-        low_blocks.push_back(std::make_unique<BasicBlock>(fn, cfg, BasicBlock::DEFAULT));
+        low_blocks.push_back(std::make_unique<BasicBlock>(fi, cfg, BasicBlock::DEFAULT));
         return low_blocks[low_blocks.size()-1].get();
     }
     BasicBlock* GetInsertBlock() {

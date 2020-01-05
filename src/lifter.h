@@ -27,6 +27,7 @@
 #include "basicblock.h"
 #include "config.h"
 #include "facet.h"
+#include "function-info.h"
 #include "regfile.h"
 #include "rellume/instr.h"
 #include <llvm/IR/BasicBlock.h>
@@ -59,8 +60,8 @@ enum class Condition {
  **/
 class LifterBase {
 protected:
-    LifterBase(const LLConfig& cfg, ArchBasicBlock& ab)
-            : cfg(cfg), ablock(ab),
+    LifterBase(FunctionInfo& fi, const LLConfig& cfg, ArchBasicBlock& ab)
+            : fi(fi), cfg(cfg), ablock(ab),
               regfile(ablock.GetInsertBlock()->GetRegFile()),
               irb(regfile->GetInsertBlock()) {
         // Set fast-math flags. Newer LLVM supports FastMathFlags::getFast().
@@ -83,6 +84,7 @@ public:
     LifterBase& operator=(const LifterBase&) = delete;
 
 protected:
+    FunctionInfo& fi;
     const LLConfig& cfg;
 private:
     ArchBasicBlock& ablock;
@@ -201,7 +203,8 @@ protected:
 
 class Lifter : public LifterBase {
 public:
-    Lifter(const LLConfig& cfg, ArchBasicBlock& ab) : LifterBase(cfg, ab) {}
+    Lifter(FunctionInfo& fi, const LLConfig& cfg, ArchBasicBlock& ab) :
+            LifterBase(fi, cfg, ab) {}
 
     // llinstruction-gp.cc
     void Lift(const LLInstr&);

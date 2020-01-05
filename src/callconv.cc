@@ -23,6 +23,7 @@
 
 #include "callconv.h"
 
+#include "function-info.h"
 #include "regfile.h"
 #include <llvm/IR/Function.h>
 #include <llvm/IR/Type.h>
@@ -74,18 +75,13 @@ static const std::tuple<size_t, LLReg, Facet> cpu_struct_entries[] = {
 #undef RELLUME_MAPPED_REG
 };
 
-llvm::Value* CallConv::Pack(RegFile& regfile, llvm::Value* val,
+llvm::Value* CallConv::Pack(RegFile& regfile, FunctionInfo& fi,
                             std::vector<llvm::Value*>* store_insts) const {
     llvm::IRBuilder<> irb(regfile.GetInsertBlock());
 
-    llvm::Value* sptr = val;
-    llvm::Function* fn = nullptr;
-    if ((fn = llvm::dyn_cast<llvm::Function>(val)))
-        sptr = &fn->arg_begin()[CpuStructParamIdx()];
-
     llvm::Value* ret_val = nullptr;
     if (*this == CallConv::HHVM)
-        ret_val = llvm::UndefValue::get(fn->getReturnType());
+        ret_val = llvm::UndefValue::get(fi.fn->getReturnType());
 
     for (auto& entry : cpu_struct_entries) {
         size_t offset; LLReg reg; Facet facet;
@@ -133,7 +129,7 @@ llvm::Value* CallConv::Pack(RegFile& regfile, llvm::Value* val,
 
         if (store_in_sptr) {
             llvm::Type* ptr_ty = facet.Type(irb.getContext())->getPointerTo();
-            llvm::Value* ptr = irb.CreateConstGEP1_64(sptr, offset);
+            llvm::Value* ptr = irb.CreateConstGEP1_64(fi.sptr_raw, offset);
             ptr = irb.CreatePointerCast(ptr, ptr_ty);
             store_inst = irb.CreateStore(reg_val, ptr);
         }
@@ -145,14 +141,9 @@ llvm::Value* CallConv::Pack(RegFile& regfile, llvm::Value* val,
     return ret_val;
 }
 
-void CallConv::Unpack(RegFile& regfile, llvm::Value* val,
+void CallConv::Unpack(RegFile& regfile, FunctionInfo& fi,
                       std::vector<llvm::Value*>* loaded_vals) const {
     llvm::IRBuilder<> irb(regfile.GetInsertBlock());
-
-    llvm::Value* sptr = val;
-    llvm::Function* fn = nullptr;
-    if ((fn = llvm::dyn_cast<llvm::Function>(val)))
-        sptr = &fn->arg_begin()[CpuStructParamIdx()];
 
     for (auto& entry : cpu_struct_entries) {
         size_t offset; LLReg reg; Facet facet;
@@ -187,12 +178,12 @@ void CallConv::Unpack(RegFile& regfile, llvm::Value* val,
                 arg_idx = 12; // R11 is stored in R11
 
             if (arg_idx >= 0)
-                reg_val = &fn->arg_begin()[arg_idx];
+                reg_val = &fi.fn->arg_begin()[arg_idx];
         }
 
         if (reg_val == nullptr) {
             llvm::Type* ptr_ty = facet.Type(irb.getContext())->getPointerTo();
-            llvm::Value* ptr = irb.CreateConstGEP1_64(sptr, offset);
+            llvm::Value* ptr = irb.CreateConstGEP1_64(fi.sptr_raw, offset);
             reg_val = irb.CreateLoad(irb.CreatePointerCast(ptr, ptr_ty));
         }
 

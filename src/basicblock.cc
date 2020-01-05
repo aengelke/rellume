@@ -25,6 +25,7 @@
 
 #include "config.h"
 #include "facet.h"
+#include "function-info.h"
 #include "regfile.h"
 #include "rellume/instr.h"
 #include <llvm/IR/BasicBlock.h>
@@ -49,9 +50,9 @@
 
 namespace rellume {
 
-BasicBlock::BasicBlock(llvm::Function* fn, const LLConfig& cfg, Kind kind)
+BasicBlock::BasicBlock(FunctionInfo& fi, const LLConfig& cfg, Kind kind)
         : regfile() {
-    llvm_block = llvm::BasicBlock::Create(fn->getContext(), "", fn, nullptr);
+    llvm_block = llvm::BasicBlock::Create(fi.fn->getContext(), "", fi.fn, nullptr);
     regfile.SetInsertBlock(llvm_block);
 
     if (kind != ENTRY) {
@@ -71,9 +72,9 @@ BasicBlock::BasicBlock(llvm::Function* fn, const LLConfig& cfg, Kind kind)
     // back to memory.
     if (kind == ENTRY) {
         regfile.InitAll(nullptr);
-        cfg.callconv.Unpack(regfile, fn, &mem_ref_values);
+        cfg.callconv.Unpack(regfile, fi, &mem_ref_values);
     } else if (kind == EXIT) {
-        llvm::Value* ret_val = cfg.callconv.Pack(regfile, fn, &mem_ref_values);
+        llvm::Value* ret_val = cfg.callconv.Pack(regfile, fi, &mem_ref_values);
 
         llvm::IRBuilder<> irb(llvm_block);
         if (ret_val == nullptr)

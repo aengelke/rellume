@@ -80,16 +80,14 @@ void Lifter::LiftOverride(const LLInstr& inst, llvm::Function* override) {
         SetReg(LLReg(LL_RT_GP64, 11), Facet::I64, FlagAsReg(64));
     }
 
-    llvm::Function* fn = irb.GetInsertBlock()->getParent();
-    llvm::Value* mem_arg = &fn->arg_begin()[cfg.callconv.CpuStructParamIdx()];
-    auto call_type = llvm::FunctionType::get(irb.getVoidTy(), {mem_arg->getType()}, false);
+    auto call_type = llvm::FunctionType::get(irb.getVoidTy(), {fi.sptr_raw->getType()}, false);
 
     // Pack all state into the CPU struct.
     CallConv sptr_conv = CallConv::SPTR;
-    sptr_conv.Pack(*regfile, mem_arg);
-    llvm::CallInst* call = irb.CreateCall(call_type, override, {mem_arg});
+    sptr_conv.Pack(*regfile, fi);
+    llvm::CallInst* call = irb.CreateCall(call_type, override, {fi.sptr_raw});
     regfile->InitAll(nullptr); // Clear all facets before importing register state
-    sptr_conv.Unpack(*regfile, mem_arg);
+    sptr_conv.Unpack(*regfile, fi);
 
     // Directly inline alwaysinline functions
     if (override->hasFnAttribute(llvm::Attribute::AlwaysInline)) {
