@@ -27,12 +27,14 @@
 #include "callconv.h"
 #include "config.h"
 #include "lifter.h"
+#include <llvm/ADT/DepthFirstIterator.h>
 #include <llvm/ADT/SmallVector.h>
 #include <llvm/IR/DerivedTypes.h>
 #include <llvm/IR/Function.h>
 #include <llvm/IR/GlobalValue.h>
 #include <llvm/IR/Type.h>
 #include <llvm/IR/Verifier.h>
+#include <llvm/Transforms/Utils/BasicBlockUtils.h>
 #include <cassert>
 #include <cstdint>
 #include <memory>
@@ -124,6 +126,21 @@ llvm::Function* Function::Lift() {
     }
 
     exit_block->RemoveUnmodifiedStores(*entry_block);
+
+    // Remove blocks without predecessors. This can happen if constants get
+    // folded already during construction, e.g. xor eax,eax;test eax,eax;jz
+#if LL_LLVM_MAJOR >= 9
+    llvm::EliminateUnreachableBlocks(*llvm);
+#else
+    llvm::df_iterator_default_set<llvm::BasicBlock*> reachable;
+    for (llvm::BasicBlock* block : llvm::depth_first_ext(llvm, reachable))
+        (void) block;
+    llvm::SmallVector<llvm::BasicBlock*, 8> dead_blocks;
+    for (llvm::BasicBlock& bb : *llvm)
+        if (!reachable.count(&bb))
+            dead_blocks.push_back(&bb);
+    llvm::DeleteDeadBlocks(dead_blocks);
+#endif
 
     if (cfg->verify_ir && llvm::verifyFunction(*(llvm), &llvm::errs()))
         return nullptr;
