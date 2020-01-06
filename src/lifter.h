@@ -104,9 +104,11 @@ protected:
         return regfile->GetReg(reg, facet);
     }
     void SetReg(LLReg reg, Facet facet, llvm::Value* value) {
+        fi.modified_regs.insert(reg);
         regfile->SetReg(reg, facet, value, true); // clear all other facets
     }
     void SetRegFacet(LLReg reg, Facet facet, llvm::Value* value) {
+        fi.modified_regs.insert(reg);
         regfile->SetReg(reg, facet, value, false);
     }
     llvm::Value* GetFlag(Facet facet) {

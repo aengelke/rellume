@@ -88,8 +88,6 @@ llvm::Value* CallConv::Pack(RegFile& regfile, FunctionInfo& fi,
         unsigned sptr_idx; size_t offset; LLReg reg; Facet facet;
         std::tie(sptr_idx, offset, reg, facet) = entry;
 
-        llvm::Value* reg_val = regfile.GetReg(reg, facet);
-
         llvm::Value* store_inst = nullptr;
         bool store_in_sptr = true;
         if (*this == CallConv::HHVM) {
@@ -123,13 +121,18 @@ llvm::Value* CallConv::Pack(RegFile& regfile, FunctionInfo& fi,
 
             if (ins_idx >= 0) {
                 unsigned ins_idx_u = static_cast<unsigned>(ins_idx);
+                llvm::Value* reg_val = regfile.GetReg(reg, facet);
                 ret_val = irb.CreateInsertValue(ret_val, reg_val, {ins_idx_u});
                 store_in_sptr = false;
             }
         }
 
-        if (store_in_sptr)
+        store_in_sptr &= !fi.modified_regs_final || fi.modified_regs.count(reg);
+        if (store_in_sptr) {
+            // GetReg moved in here to avoid generating dozens of dead PHI nodes
+            llvm::Value* reg_val = regfile.GetReg(reg, facet);
             store_inst = irb.CreateStore(reg_val, fi.sptr[sptr_idx]);
+        }
 
         if (store_insts != nullptr)
             store_insts->push_back(store_inst);
@@ -181,6 +184,7 @@ void CallConv::Unpack(RegFile& regfile, FunctionInfo& fi,
         if (reg_val == nullptr)
             reg_val = irb.CreateLoad(fi.sptr[sptr_idx]);
 
+        fi.modified_regs.insert(reg);
         regfile.SetReg(reg, facet, reg_val, false);
 
         if (loaded_vals != nullptr)

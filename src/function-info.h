@@ -24,8 +24,10 @@
 #ifndef RELLUME_FUNCTION_INFO_H
 #define RELLUME_FUNCTION_INFO_H
 
+#include "rellume/instr.h"
 #include <cstdbool>
 #include <cstdint>
+#include <set>
 
 
 namespace llvm {
@@ -67,6 +69,12 @@ public:
 #include <rellume/cpustruct-private.inc>
 #undef RELLUME_NAMED_REG
     }
+
+    // A set of all register ever modified in the function. To prevent use of
+    // this optimization for cconv packs inside a function (which would be
+    // incorrect), a separate flag is set in the end.
+    bool modified_regs_final;
+    std::set<X86Reg> modified_regs;
 };
 
 

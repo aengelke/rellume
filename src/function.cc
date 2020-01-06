@@ -71,6 +71,10 @@ Function::Function(llvm::Module* mod, LLConfig* cfg) : cfg(cfg), fi{}
     // Create entry basic block as first block in the function.
     // The entry block also initializes the sptr pointers in the function info.
     entry_block = std::make_unique<ArchBasicBlock>(fi, *cfg, BasicBlock::ENTRY);
+
+    // The entry block doesn't modify any registers, so remove the ones set by
+    // loading the registers from the sptr.
+    fi.modified_regs.clear();
 }
 
 Function::~Function() = default;
@@ -99,6 +103,8 @@ llvm::Function* Function::Lift() {
     if (block_map.size() == 0)
         return nullptr;
 
+    // For the exit block, no registers are modified anymore.
+    fi.modified_regs_final = true;
     exit_block = std::make_unique<ArchBasicBlock>(fi, *cfg, BasicBlock::EXIT);
 
     entry_block->BranchTo(*block_map[entry_addr]);
@@ -127,8 +133,6 @@ llvm::Function* Function::Lift() {
             changed |= item.second->FillPhis();
         changed |= exit_block->FillPhis();
     }
-
-    exit_block->RemoveUnmodifiedStores(*entry_block);
 
     // Remove blocks without predecessors. This can happen if constants get
     // folded already during construction, e.g. xor eax,eax;test eax,eax;jz
