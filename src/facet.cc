@@ -91,6 +91,7 @@ llvm::Type* Facet::Type(llvm::LLVMContext& ctx) const
     case Facet::I16: return llvm::Type::getInt16Ty(ctx);
     case Facet::I8: return llvm::Type::getInt8Ty(ctx);
     case Facet::I8H: return llvm::Type::getInt8Ty(ctx);
+    // Type used for PHI nodes
     case Facet::PTR: return llvm::Type::getInt8PtrTy(ctx);
     case Facet::I128: return llvm::Type::getInt128Ty(ctx);
 #if LL_VECTOR_REGISTER_SIZE >= 256

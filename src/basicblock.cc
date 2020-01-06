@@ -124,6 +124,10 @@ bool BasicBlock::FillPhis() {
         for (BasicBlock* pred : predecessors) {
             assert(pred->terminated && "attempt to fill PHIs from open block");
             llvm::Value* value = pred->regfile.GetReg(reg, facet);
+            if (facet == Facet::PTR && value->getType() != phi->getType()) {
+                llvm::IRBuilder<> irb(pred->llvm_block->getTerminator());
+                value = irb.CreatePointerCast(value, phi->getType());
+            }
             phi->addIncoming(value, pred->llvm_block);
         }
     }

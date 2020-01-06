@@ -209,7 +209,9 @@ RegFile::impl::GetReg(LLReg reg, Facet facet)
             res = builder.CreateTrunc(res, builder.getInt8Ty());
             break;
         case Facet::PTR:
-            res = builder.CreateIntToPtr(native, facetType);
+            // For pointer facets, it actually only matters that the value *is*
+            // a pointer -- we don't actually care about the type.
+            res = builder.CreateIntToPtr(native, builder.getInt8PtrTy());
             break;
         default:
             assert(false && "invalid facet for gp-reg");
@@ -226,7 +228,7 @@ RegFile::impl::GetReg(LLReg reg, Facet facet)
         if (facet == Facet::I64)
             return native;
         else if (facet == Facet::PTR)
-            return builder.CreateIntToPtr(native, facetType);
+            return builder.CreateIntToPtr(native, builder.getInt8PtrTy());
         else
             assert(false && "invalid facet for ip-reg");
     }
@@ -340,7 +342,10 @@ RegFile::impl::SetReg(LLReg reg, Facet facet, llvm::Value* value, bool clearOthe
     }
 #endif
 
-    assert(value->getType() == facet.Type(insert_block->getContext()));
+    if (facet == Facet::PTR)
+        assert(value->getType()->isPointerTy());
+    else
+        assert(value->getType() == facet.Type(insert_block->getContext()));
 
     if (clearOthers) {
         if (reg.IsGp()) {

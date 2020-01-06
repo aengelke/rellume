@@ -110,11 +110,12 @@ void Lifter::LiftAdd(const LLInstr& inst) {
     llvm::Value* op2 = OpLoad(inst.ops[1], Facet::I);
     llvm::Value* res = irb.CreateAdd(op1, op2);
 
-    // Compute pointer facet for 64-bit additions stored in a register.
-    // TODO: handle case where the original pointer is the second operand.
+    // Compute pointer facet for 64-bit add with immediate. We can't usefully do
+    // this for reg-reg, because we can't identify the base operand.
     if (cfg.use_gep_ptr_arithmetic && inst.ops[0].type == LL_OP_REG &&
-            inst.ops[0].size == 8) {
+            inst.ops[0].size == 8 && inst.ops[1].type == LL_OP_IMM) {
         llvm::Value* op1_ptr = GetReg(inst.ops[0].reg, Facet::PTR);
+        op1_ptr = irb.CreatePointerCast(op1_ptr, irb.getInt8PtrTy());
         SetReg(inst.ops[0].reg, Facet::I64, res);
         SetRegFacet(inst.ops[0].reg, Facet::PTR, irb.CreateGEP(op1_ptr, op2));
     } else {
@@ -157,6 +158,7 @@ void Lifter::LiftSub(const LLInstr& inst) {
     if (cfg.use_gep_ptr_arithmetic && inst.ops[0].type == LL_OP_REG &&
             inst.ops[0].size == 8) {
         llvm::Value* op1_ptr = GetReg(inst.ops[0].reg, Facet::PTR);
+        op1_ptr = irb.CreatePointerCast(op1_ptr, irb.getInt8PtrTy());
         llvm::Value* res_ptr = irb.CreateGEP(op1_ptr, irb.CreateNeg(op2));
         SetReg(inst.ops[0].reg, Facet::I64, res);
         SetRegFacet(inst.ops[0].reg, Facet::PTR, res_ptr);
@@ -504,9 +506,10 @@ void Lifter::LiftXlat(const LLInstr& inst) {
     llvm::Value* bx;
     if (inst.address_size == 8) {
         bx = OpLoad(LLInstrOp({LL_RT_GP64, LL_RI_B}), Facet::PTR);
+        bx = irb.CreatePointerCast(bx, irb.getInt8PtrTy());
     } else {
         bx = OpLoad(LLInstrOp({LL_RT_GP32, LL_RI_B}), Facet::I32);
-        bx = irb.CreatePtrToInt(bx, irb.getInt8PtrTy());
+        bx = irb.CreateIntToPtr(bx, irb.getInt8PtrTy());
     }
     assert(bx->getType() == irb.getInt8PtrTy() && "xlat wrong rbx type");
 
@@ -738,7 +741,6 @@ void LifterBase::RepEnd(RepInfo info) {
             continue;
 
         llvm::Value* ptr = irb.CreateGEP(reg.second, adj);
-        ptr = irb.CreatePointerCast(ptr, irb.getInt8PtrTy());
         llvm::Value* int_val = irb.CreatePtrToInt(ptr, irb.getInt64Ty());
         SetReg(LLReg(LL_RT_GP64, reg.first), Facet::I64, int_val);
         SetRegFacet(LLReg(LL_RT_GP64, reg.first), Facet::PTR, ptr);

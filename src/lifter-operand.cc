@@ -121,6 +121,7 @@ LifterBase::OpAddr(const LLInstrOp& op, llvm::Type* element_type)
             }
             else
             {
+                base = irb.CreatePointerCast(base, irb.getInt8PtrTy());
                 base = irb.CreateGEP(base, irb.getInt64(op.val));
             }
         }
@@ -336,7 +337,6 @@ void LifterBase::StackPush(llvm::Value* value) {
     rsp = irb.CreateConstGEP1_64(rsp, -1);
     irb.CreateStore(value, rsp);
 
-    rsp = irb.CreatePointerCast(rsp, irb.getInt8PtrTy());
     llvm::Value* rsp_int = irb.CreatePtrToInt(rsp, irb.getInt64Ty());
     SetReg(LLReg(LL_RT_GP64, LL_RI_SP), Facet::I64, rsp_int);
     SetRegFacet(LLReg(LL_RT_GP64, LL_RI_SP), Facet::PTR, rsp);
@@ -347,7 +347,6 @@ llvm::Value* LifterBase::StackPop(const LLReg sp_src_reg) {
     rsp = irb.CreatePointerCast(rsp, irb.getInt64Ty()->getPointerTo());
 
     llvm::Value* new_rsp = irb.CreateConstGEP1_64(rsp, 1);
-    new_rsp = irb.CreatePointerCast(new_rsp, irb.getInt8PtrTy());
     llvm::Value* new_rsp_int = irb.CreatePtrToInt(new_rsp, irb.getInt64Ty());
     SetReg(LLReg(LL_RT_GP64, LL_RI_SP), Facet::I64, new_rsp_int);
     SetRegFacet(LLReg(LL_RT_GP64, LL_RI_SP), Facet::PTR, new_rsp);
