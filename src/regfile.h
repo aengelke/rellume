@@ -50,11 +50,11 @@ public:
     llvm::BasicBlock* GetInsertBlock();
     void SetInsertBlock(llvm::BasicBlock* new_block);
 
-    using InitGenerator = std::function<DeferredValue(const LLReg, const Facet)>;
+    using InitGenerator = std::function<DeferredValue(const X86Reg, const Facet)>;
     void InitAll(InitGenerator init_gen = nullptr);
 
-    llvm::Value* GetReg(LLReg reg, Facet facet);
-    void SetReg(LLReg reg, Facet facet, llvm::Value*, bool clear_facets);
+    llvm::Value* GetReg(X86Reg reg, Facet facet);
+    void SetReg(X86Reg reg, Facet facet, llvm::Value*, bool clear_facets);
 
 private:
     class impl;

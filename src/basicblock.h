@@ -58,7 +58,7 @@ public:
     void RemoveUnmodifiedStores(const BasicBlock& entry);
 
     llvm::Value* NextRip() {
-        return regfile.GetReg(LLReg(LL_RT_IP, 0), Facet::I64);
+        return regfile.GetReg(X86Reg(X86Reg::IP), Facet::I64);
     }
 
     bool IsTerminated() {
@@ -77,7 +77,7 @@ private:
     RegFile regfile;
 
     std::vector<BasicBlock*> predecessors;
-    std::vector<std::tuple<LLReg, Facet, llvm::PHINode*>> empty_phis;
+    std::vector<std::tuple<X86Reg, Facet, llvm::PHINode*>> empty_phis;
 
     // Stores load/store instructions for CPU struct access in entry/exit blocks
     std::vector<llvm::Value*> mem_ref_values;

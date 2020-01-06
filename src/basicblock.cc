@@ -58,7 +58,7 @@ BasicBlock::BasicBlock(FunctionInfo& fi, const LLConfig& cfg, Kind kind)
     if (kind != ENTRY) {
         // Initialize all registers with a generator which adds a PHI node when
         // the value-facet combination is requested.
-        regfile.InitAll([this](const LLReg reg, const Facet facet) {
+        regfile.InitAll([this](const X86Reg reg, const Facet facet) {
             return DeferredValue([this, reg, facet]() {
                 llvm::IRBuilder<> irb(llvm_block, llvm_block->begin());
                 auto phi = irb.CreatePHI(facet.Type(irb.getContext()), 4);
@@ -115,7 +115,7 @@ bool BasicBlock::FillPhis() {
         return false;
 
     for (auto& item : empty_phis) {
-        LLReg reg = std::get<0>(item);
+        X86Reg reg = std::get<0>(item);
         Facet facet = std::get<1>(item);
         llvm::PHINode* phi = std::get<2>(item);
         for (BasicBlock* pred : predecessors) {

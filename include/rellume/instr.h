@@ -116,6 +116,35 @@ struct LLReg {
 
 typedef struct LLReg LLReg;
 
+#if defined(__cplusplus) && defined(RELLUME_ENABLE_CPP_HEADER)
+namespace rellume {
+    class X86Reg {
+    public:
+        enum RegType {
+            INVALID = 0, GP /*64-bit*/, IP /*64-bit*/, EFLAGS, VEC,
+        };
+    private:
+        uint8_t kind;
+        uint8_t index;
+    public:
+        constexpr X86Reg()
+                : kind(static_cast<uint8_t>(INVALID)), index(0) {}
+        constexpr X86Reg(RegType kind)
+                : kind(static_cast<uint8_t>(kind)), index(0) {}
+        constexpr X86Reg(RegType kind, uint8_t index)
+                : kind(static_cast<uint8_t>(kind)), index(index) {}
+        X86Reg(LLReg llr);
+        RegType Kind() const { return static_cast<RegType>(kind); }
+        uint8_t Index() const { return index; }
+
+        bool operator<(const X86Reg& rhs) const {
+            return (kind<<8) + index < (rhs.kind<<8) + rhs.index;
+        }
+    };
+
+}
+#endif
+
 enum {
     LL_OP_NONE = 0,
     LL_OP_REG,

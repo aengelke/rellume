@@ -118,8 +118,8 @@ public:
 
     void InitAll(InitGenerator init_gen = nullptr);
 
-    llvm::Value* GetReg(LLReg reg, Facet facet);
-    void SetReg(LLReg reg, Facet facet, llvm::Value*, bool clear_facets);
+    llvm::Value* GetReg(X86Reg reg, Facet facet);
+    void SetReg(X86Reg reg, Facet facet, llvm::Value*, bool clear_facets);
 
 private:
     llvm::BasicBlock* insert_block;
@@ -128,50 +128,47 @@ private:
     DeferredValue reg_ip;
     ValueMapFlags<DeferredValue> flags;
 
-    DeferredValue* AccessRegFacet(LLReg reg, Facet facet);
+    DeferredValue* AccessRegFacet(X86Reg reg, Facet facet);
 };
 
 void RegFile::impl::InitAll(InitGenerator fn) {
     if (!fn)
-        fn = [](const LLReg reg, const Facet facet) { return DeferredValue(nullptr); };
+        fn = [](const X86Reg reg, const Facet facet) { return DeferredValue(nullptr); };
 
     for (unsigned i = 0; i < LL_RI_GPMax; i++)
-        regs_gp[i].setAll([=](Facet f) { return fn(LLReg(LL_RT_GP64, i), f); });
+        regs_gp[i].setAll([=](Facet f) { return fn(X86Reg(X86Reg::GP, i), f); });
     for (unsigned i = 0; i < LL_RI_XMMMax; i++)
-        regs_sse[i].setAll([=](Facet f) { return fn(LLReg(LL_RT_XMM, i), f); });
-    flags.setAll([=](Facet f) { return fn(LLReg(LL_RT_EFLAGS, 0), f); });
-    reg_ip = fn(LLReg(LL_RT_IP, 0), Facet::I64);
+        regs_sse[i].setAll([=](Facet f) { return fn(X86Reg(X86Reg::VEC, i), f); });
+    flags.setAll([=](Facet f) { return fn(X86Reg(X86Reg::EFLAGS), f); });
+    reg_ip = fn(X86Reg(X86Reg::IP), Facet::I64);
 }
 
-DeferredValue* RegFile::impl::AccessRegFacet(LLReg reg, Facet facet) {
-    if (reg.IsGp())
-    {
-        auto& map_entry = regs_gp[reg.ri - (reg.IsGpHigh() ? LL_RI_AH : 0)];
-        if (map_entry.has(facet))
-            return &map_entry[facet];
-    }
-    else if (reg.rt == LL_RT_IP)
-    {
+DeferredValue* RegFile::impl::AccessRegFacet(X86Reg reg, Facet facet) {
+    unsigned idx = reg.Index();
+    switch (reg.Kind()) {
+    case X86Reg::GP:
+        if (regs_gp[idx].has(facet))
+            return &regs_gp[idx][facet];
+        return nullptr;
+    case X86Reg::IP:
         if (facet == Facet::I64)
             return &reg_ip;
-    }
-    else if (reg.rt == LL_RT_EFLAGS)
-    {
+        return nullptr;
+    case X86Reg::EFLAGS:
         if (flags.has(facet))
             return &flags[facet];
+        return nullptr;
+    case X86Reg::VEC:
+        if (regs_sse[idx].has(facet))
+            return &regs_sse[idx][facet];
+        return nullptr;
+    default:
+        return nullptr;
     }
-    else if (reg.IsVec())
-    {
-        auto& map_entry = regs_sse[reg.ri];
-        if (map_entry.has(facet))
-            return &map_entry[facet];
-    }
-
-    return nullptr;
 }
 
 llvm::Value*
-RegFile::impl::GetReg(LLReg reg, Facet facet)
+RegFile::impl::GetReg(X86Reg reg, Facet facet)
 {
     DeferredValue* facet_entry = AccessRegFacet(reg, facet);
     // If we store the selected facet in our register file and the facet is
@@ -191,7 +188,7 @@ RegFile::impl::GetReg(LLReg reg, Facet facet)
 
     llvm::Type* facetType = facet.Type(ctx);
 
-    if (reg.IsGp())
+    if (reg.Kind() == X86Reg::GP)
     {
         llvm::Value* res = nullptr;
         llvm::Value* native = *AccessRegFacet(reg, Facet::I64);
@@ -222,7 +219,7 @@ RegFile::impl::GetReg(LLReg reg, Facet facet)
             *facet_entry = res;
         return res;
     }
-    else if (reg.rt == LL_RT_IP)
+    else if (reg.Kind() == X86Reg::IP)
     {
         llvm::Value* native = *AccessRegFacet(reg, Facet::I64);
         if (facet == Facet::I64)
@@ -232,7 +229,7 @@ RegFile::impl::GetReg(LLReg reg, Facet facet)
         else
             assert(false && "invalid facet for ip-reg");
     }
-    else if (reg.IsVec())
+    else if (reg.Kind() == X86Reg::VEC)
     {
         llvm::Value* res = nullptr;
         llvm::Value* native = *AccessRegFacet(reg, Facet::IVEC);
@@ -330,30 +327,20 @@ RegFile::impl::GetReg(LLReg reg, Facet facet)
 }
 
 void
-RegFile::impl::SetReg(LLReg reg, Facet facet, llvm::Value* value, bool clearOthers)
+RegFile::impl::SetReg(X86Reg reg, Facet facet, llvm::Value* value, bool clearOthers)
 {
-#ifdef RELLUME_ANNOTATE_METADATA
-    if (llvm::isa<llvm::Instruction>(value))
-    {
-        char buffer[20];
-        snprintf(buffer, sizeof(buffer), "asm.reg.%s", reg.Name());
-        llvm::MDNode* md = llvm::MDNode::get(insert_block->getContext(), {});
-        llvm::cast<llvm::Instruction>(value)->setMetadata(buffer, md);
-    }
-#endif
-
     if (facet == Facet::PTR)
         assert(value->getType()->isPointerTy());
     else
         assert(value->getType() == facet.Type(insert_block->getContext()));
 
     if (clearOthers) {
-        if (reg.IsGp()) {
+        if (reg.Kind() == X86Reg::GP) {
             assert(facet == Facet::I64);
-            regs_gp[reg.ri - (reg.IsGpHigh() ? LL_RI_AH : 0)].clear();
-        } else if (reg.IsVec()) {
+            regs_gp[reg.Index()].clear();
+        } else if (reg.Kind() == X86Reg::VEC) {
             assert(facet == Facet::IVEC);
-            regs_sse[reg.ri].clear();
+            regs_sse[reg.Index()].clear();
         }
     }
 
@@ -374,10 +361,10 @@ void RegFile::SetInsertBlock(llvm::BasicBlock* new_block) {
 void RegFile::InitAll(InitGenerator init_gen) {
     pimpl->InitAll(init_gen);
 }
-llvm::Value* RegFile::GetReg(LLReg reg, Facet facet) {
+llvm::Value* RegFile::GetReg(X86Reg reg, Facet facet) {
     return pimpl->GetReg(reg, facet);
 }
-void RegFile::SetReg(LLReg reg, Facet facet, llvm::Value* value, bool clear) {
+void RegFile::SetReg(X86Reg reg, Facet facet, llvm::Value* value, bool clear) {
     pimpl->SetReg(reg, facet, value, clear);
 }
 
