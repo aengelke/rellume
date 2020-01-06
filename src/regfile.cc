@@ -23,6 +23,7 @@
 
 #include "regfile.h"
 
+#include "deferred-value.h"
 #include "facet.h"
 #include "rellume/instr.h"
 #include <llvm/IR/BasicBlock.h>
@@ -121,35 +122,13 @@ public:
     void SetReg(LLReg reg, Facet facet, llvm::Value*, bool clear_facets);
 
 private:
-    class Entry {
-        // If value is nullptr, then the generator (unless that is null as well)
-        // is used to get the actual value.
-        llvm::Value* value;
-        Generator generator;
-
-    public:
-        Entry() : value(nullptr), generator(nullptr) {}
-        Entry(llvm::Value* value) : value(value), generator(nullptr) {}
-        Entry(Generator generator) : value(nullptr), generator(generator) {}
-
-        explicit operator llvm::Value*() {
-            if (value == nullptr && generator) {
-                value = generator();
-                assert(value != nullptr && "generator returned nullptr");
-                generator = nullptr;
-            }
-            return value;
-        }
-        llvm::Value* get() { return static_cast<llvm::Value*>(*this); }
-    };
-
     llvm::BasicBlock* insert_block;
-    ValueMapGp<Entry> regs_gp[LL_RI_GPMax];
-    ValueMapSse<Entry> regs_sse[LL_RI_XMMMax];
-    Entry reg_ip;
-    ValueMapFlags<Entry> flags;
+    ValueMapGp<DeferredValue> regs_gp[LL_RI_GPMax];
+    ValueMapSse<DeferredValue> regs_sse[LL_RI_XMMMax];
+    DeferredValue reg_ip;
+    ValueMapFlags<DeferredValue> flags;
 
-    Entry* AccessRegFacet(LLReg reg, Facet facet);
+    DeferredValue* AccessRegFacet(LLReg reg, Facet facet);
 };
 
 void RegFile::impl::InitAll(InitGenerator fn) {
@@ -164,7 +143,7 @@ void RegFile::impl::InitAll(InitGenerator fn) {
     reg_ip = fn(LLReg(LL_RT_IP, 0), Facet::I64);
 }
 
-RegFile::impl::Entry* RegFile::impl::AccessRegFacet(LLReg reg, Facet facet) {
+DeferredValue* RegFile::impl::AccessRegFacet(LLReg reg, Facet facet) {
     if (reg.IsGp())
     {
         auto& map_entry = regs_gp[reg.ri - (reg.IsGpHigh() ? LL_RI_AH : 0)];
@@ -194,11 +173,11 @@ RegFile::impl::Entry* RegFile::impl::AccessRegFacet(LLReg reg, Facet facet) {
 llvm::Value*
 RegFile::impl::GetReg(LLReg reg, Facet facet)
 {
-    Entry* facet_entry = AccessRegFacet(reg, facet);
+    DeferredValue* facet_entry = AccessRegFacet(reg, facet);
     // If we store the selected facet in our register file and the facet is
     // valid, return it immediately.
     if (facet_entry)
-        if (llvm::Value* res = facet_entry->get())
+        if (llvm::Value* res = *facet_entry)
             return res;
 
     llvm::LLVMContext& ctx = insert_block->getContext();
@@ -215,7 +194,7 @@ RegFile::impl::GetReg(LLReg reg, Facet facet)
     if (reg.IsGp())
     {
         llvm::Value* res = nullptr;
-        llvm::Value* native = AccessRegFacet(reg, Facet::I64)->get();
+        llvm::Value* native = *AccessRegFacet(reg, Facet::I64);
         assert(native && "native gp-reg facet is null");
         switch (facet)
         {
@@ -243,7 +222,7 @@ RegFile::impl::GetReg(LLReg reg, Facet facet)
     }
     else if (reg.rt == LL_RT_IP)
     {
-        llvm::Value* native = AccessRegFacet(reg, Facet::I64)->get();
+        llvm::Value* native = *AccessRegFacet(reg, Facet::I64);
         if (facet == Facet::I64)
             return native;
         else if (facet == Facet::PTR)
@@ -254,7 +233,7 @@ RegFile::impl::GetReg(LLReg reg, Facet facet)
     else if (reg.IsVec())
     {
         llvm::Value* res = nullptr;
-        llvm::Value* native = AccessRegFacet(reg, Facet::IVEC)->get();
+        llvm::Value* native = *AccessRegFacet(reg, Facet::IVEC);
         assert(native && "native sse-reg facet is null");
         switch (facet)
         {
@@ -310,8 +289,8 @@ RegFile::impl::GetReg(LLReg reg, Facet facet)
 
             // Prefer 128-bit SSE facet over full vector register.
             if (targetBits <= 128)
-                if (Entry* entry_128 = AccessRegFacet(reg, Facet::I128))
-                    if (llvm::Value* value_128 = entry_128->get())
+                if (DeferredValue* entry_128 = AccessRegFacet(reg, Facet::I128))
+                    if (llvm::Value* value_128 = *entry_128)
                         native = value_128;
             int nativeBits = native->getType()->getPrimitiveSizeInBits();
 
@@ -373,7 +352,7 @@ RegFile::impl::SetReg(LLReg reg, Facet facet, llvm::Value* value, bool clearOthe
         }
     }
 
-    Entry* facet_entry = AccessRegFacet(reg, facet);
+    DeferredValue* facet_entry = AccessRegFacet(reg, facet);
     assert(facet_entry && "attempt to store invalid facet");
     *facet_entry = value;
 }

@@ -1,0 +1,73 @@
+/**
+ * This file is part of Rellume.
+ *
+ * (c) 2016-2019, Alexis Engelke <alexis.engelke@googlemail.com>
+ *
+ * Rellume is free software: you can redistribute it and/or modify
+ * it under the terms of the GNU Lesser General Public License (LGPL)
+ * as published by the Free Software Foundation, either version 2.1 of
+ * the License, or (at your option) any later version.
+ *
+ * Rellume is distributed in the hope that it will be useful,
+ * but WITHOUT ANY WARRANTY; without even the implied warranty of
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+ * GNU Lesser General Public License for more details.
+ *
+ * You should have received a copy of the GNU Lesser General Public License
+ * along with Rellume.  If not, see <http://www.gnu.org/licenses/>.
+ */
+
+/**
+ * \file
+ **/
+
+#ifndef LL_DEFERRED_VALUE_H
+#define LL_DEFERRED_VALUE_H
+
+#include "facet.h"
+#include "rellume/instr.h"
+
+#include <llvm/IR/BasicBlock.h>
+#include <llvm/IR/Value.h>
+#include <functional>
+
+
+namespace rellume {
+
+class DeferredValue {
+public:
+    using Generator = std::function<llvm::Value*()>;
+
+private:
+    // If value is nullptr, then the generator (unless that is null as well)
+    // is used to get the actual value.
+    llvm::Value* value;
+    Generator generator;
+
+public:
+    DeferredValue() : value(nullptr), generator(nullptr) {}
+    DeferredValue(llvm::Value* value) : value(value), generator(nullptr) {}
+    DeferredValue(Generator generator) : value(nullptr), generator(generator) {}
+
+    DeferredValue(DeferredValue&& rhs) = default;
+    DeferredValue& operator=(DeferredValue&& rhs) = default;
+
+    DeferredValue(DeferredValue const&) = delete;
+    DeferredValue& operator=(const DeferredValue&) = delete;
+
+    operator llvm::Value*() {
+        if (value == nullptr && generator) {
+            value = generator();
+            assert(value != nullptr && "generator returned nullptr");
+            generator = nullptr;
+        }
+        return value;
+    }
+    explicit operator bool() const {
+        return value || generator;
+    }
+};
+
+} // namespace
+
+#endif
