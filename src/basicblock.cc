@@ -74,9 +74,9 @@ BasicBlock::BasicBlock(FunctionInfo& fi, const LLConfig& cfg, Kind kind)
         regfile.InitAll(nullptr);
         llvm::IRBuilder<> irb(llvm_block);
         fi.InitSptr(irb);
-        cfg.callconv.Unpack(regfile, fi, &mem_ref_values);
+        cfg.callconv.Unpack(regfile, fi);
     } else if (kind == EXIT) {
-        llvm::Value* ret_val = cfg.callconv.Pack(regfile, fi, &mem_ref_values);
+        llvm::Value* ret_val = cfg.callconv.Pack(regfile, fi);
 
         llvm::IRBuilder<> irb(llvm_block);
         if (ret_val == nullptr)
@@ -131,57 +131,6 @@ bool BasicBlock::FillPhis() {
     empty_phis.clear();
 
     return true;
-}
-
-void BasicBlock::RemoveUnmodifiedStores(const BasicBlock& entry) {
-    assert(entry.mem_ref_values.size() == mem_ref_values.size());
-
-    // Remove stores to the CPU struct where the only possible value to be
-    // stored is the value initially loaded from the struct.
-    for (size_t i = 0; i < mem_ref_values.size(); i++) {
-        if (mem_ref_values[i] == nullptr || !llvm::isa<llvm::StoreInst>(mem_ref_values[i]))
-            continue;
-
-        llvm::StoreInst* store = llvm::cast<llvm::StoreInst>(mem_ref_values[i]);
-        llvm::LoadInst* load = llvm::cast<llvm::LoadInst>(entry.mem_ref_values[i]);
-
-        llvm::Value* stored_val = store->getValueOperand();
-        if (!llvm::isa<llvm::PHINode>(stored_val)) {
-            if (stored_val == load)
-                store->removeFromParent();
-            continue;
-        }
-
-        // Follow PHI nodes
-        std::set<llvm::PHINode*> visited_phis;
-        std::deque<llvm::PHINode*> phis;
-        phis.push_back(llvm::cast<llvm::PHINode>(stored_val));
-        visited_phis.insert(llvm::cast<llvm::PHINode>(stored_val));
-
-        while (!phis.empty()) {
-            llvm::PHINode* current_phi = phis.front();
-            phis.pop_front();
-
-            for (llvm::Value* incoming : current_phi->incoming_values()) {
-                if (auto inc_phi = llvm::dyn_cast<llvm::PHINode>(incoming)) {
-                    // Don't iterate twice over a PHI node.
-                    if (visited_phis.count(inc_phi) == 0) {
-                        phis.push_back(inc_phi);
-                        visited_phis.insert(inc_phi);
-                    }
-                } else if (incoming != load) {
-                    // A different value than the load is in the PHI-graph, so
-                    // do not replace.
-                    goto next_store;
-                }
-            }
-        }
-
-        store->eraseFromParent();
-
-next_store:
-        (void) 0;
-    }
 }
 
 } // namespace

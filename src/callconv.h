@@ -29,7 +29,6 @@
 #include <llvm/IR/Value.h>
 #include <cstddef>
 #include <tuple>
-#include <vector>
 
 
 namespace rellume {
@@ -49,12 +48,10 @@ public:
 
     // Pack values from regfile into the CPU struct. The return value for the
     // function is returned (or NULL for void).
-    llvm::Value* Pack(RegFile& regfile, FunctionInfo& fi,
-                      std::vector<llvm::Value*>* sptr_access = nullptr) const;
+    llvm::Value* Pack(RegFile& regfile, FunctionInfo& fi) const;
     // Unpack values from val (usually the function) into the register file. For
     // SPTR, val can also be the CPU struct pointer directly.
-    void Unpack(RegFile& regfile, FunctionInfo& fi,
-                std::vector<llvm::Value*>* sptr_access = nullptr) const;
+    void Unpack(RegFile& regfile, FunctionInfo& fi) const;
 
     CallConv() = default;
     constexpr CallConv(Value value) : value(value) {}

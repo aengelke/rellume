@@ -76,8 +76,7 @@ static const std::tuple<unsigned, size_t, LLReg, Facet> cpu_struct_entries[] = {
 #undef RELLUME_MAPPED_REG
 };
 
-llvm::Value* CallConv::Pack(RegFile& regfile, FunctionInfo& fi,
-                            std::vector<llvm::Value*>* store_insts) const {
+llvm::Value* CallConv::Pack(RegFile& regfile, FunctionInfo& fi) const {
     llvm::IRBuilder<> irb(regfile.GetInsertBlock());
 
     llvm::Value* ret_val = nullptr;
@@ -88,7 +87,6 @@ llvm::Value* CallConv::Pack(RegFile& regfile, FunctionInfo& fi,
         unsigned sptr_idx; size_t offset; LLReg reg; Facet facet;
         std::tie(sptr_idx, offset, reg, facet) = entry;
 
-        llvm::Value* store_inst = nullptr;
         bool store_in_sptr = true;
         if (*this == CallConv::HHVM) {
             int ins_idx = -1;
@@ -130,19 +128,14 @@ llvm::Value* CallConv::Pack(RegFile& regfile, FunctionInfo& fi,
         store_in_sptr &= !fi.modified_regs_final || fi.modified_regs.count(reg);
         if (store_in_sptr) {
             // GetReg moved in here to avoid generating dozens of dead PHI nodes
-            llvm::Value* reg_val = regfile.GetReg(reg, facet);
-            store_inst = irb.CreateStore(reg_val, fi.sptr[sptr_idx]);
+            irb.CreateStore(regfile.GetReg(reg, facet), fi.sptr[sptr_idx]);
         }
-
-        if (store_insts != nullptr)
-            store_insts->push_back(store_inst);
     }
 
     return ret_val;
 }
 
-void CallConv::Unpack(RegFile& regfile, FunctionInfo& fi,
-                      std::vector<llvm::Value*>* loaded_vals) const {
+void CallConv::Unpack(RegFile& regfile, FunctionInfo& fi) const {
     llvm::IRBuilder<> irb(regfile.GetInsertBlock());
 
     for (auto& entry : cpu_struct_entries) {
@@ -186,9 +179,6 @@ void CallConv::Unpack(RegFile& regfile, FunctionInfo& fi,
 
         fi.modified_regs.insert(reg);
         regfile.SetReg(reg, facet, reg_val, false);
-
-        if (loaded_vals != nullptr)
-            loaded_vals->push_back(reg_val);
     }
 }
 
