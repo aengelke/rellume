@@ -52,6 +52,9 @@ void ll_config_free(LLConfig* cfg) {
 void ll_config_set_hhvm(LLConfig* cfg, bool hhvm) {
     unwrap(cfg)->callconv = hhvm ? rellume::CallConv::HHVM : rellume::CallConv::SPTR;
 }
+void ll_config_set_sptr_addrspace(LLConfig* cfg, unsigned addrspace) {
+    unwrap(cfg)->sptr_addrspace = addrspace;
+}
 void ll_config_enable_overflow_intrinsics(LLConfig* cfg, bool enable) {
     unwrap(cfg)->enableOverflowIntrinsics = enable;
 }

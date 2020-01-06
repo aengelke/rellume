@@ -42,7 +42,8 @@ public:
         SPTR, HHVM,
     };
 
-    llvm::FunctionType* FnType(llvm::LLVMContext& ctx) const;
+    llvm::FunctionType* FnType(llvm::LLVMContext& ctx,
+                               unsigned sptr_addrspace) const;
     llvm::CallingConv::ID FnCallConv() const;
     unsigned CpuStructParamIdx() const;
 

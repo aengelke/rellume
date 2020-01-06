@@ -53,7 +53,7 @@ namespace rellume {
 Function::Function(llvm::Module* mod, LLConfig* cfg) : cfg(cfg), fi{}
 {
     llvm::LLVMContext& ctx = mod->getContext();
-    llvm = llvm::Function::Create(cfg->callconv.FnType(ctx),
+    llvm = llvm::Function::Create(cfg->callconv.FnType(ctx, cfg->sptr_addrspace),
                                   llvm::GlobalValue::ExternalLinkage, "", mod);
     llvm->setCallingConv(cfg->callconv.FnCallConv());
 

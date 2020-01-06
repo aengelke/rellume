@@ -33,9 +33,10 @@
 
 namespace rellume {
 
-llvm::FunctionType* CallConv::FnType(llvm::LLVMContext& ctx) const {
+llvm::FunctionType* CallConv::FnType(llvm::LLVMContext& ctx,
+                                     unsigned sptr_addrspace) const {
     llvm::Type* void_ty = llvm::Type::getVoidTy(ctx);
-    llvm::Type* i8p = llvm::Type::getInt8PtrTy(ctx);
+    llvm::Type* i8p = llvm::Type::getInt8Ty(ctx)->getPointerTo(sptr_addrspace);
     llvm::Type* i64 = llvm::Type::getInt64Ty(ctx);
 
     switch (*this) {

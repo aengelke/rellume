@@ -54,7 +54,8 @@ struct FunctionInfo {
 
 private:
     llvm::Value* GetSptrPtr(llvm::IRBuilder<> irb, size_t offset, size_t size) {
-        llvm::Type* ptr_ty = irb.getIntNTy(size)->getPointerTo();
+        unsigned addrspace = sptr_raw->getType()->getPointerAddressSpace();
+        llvm::Type* ptr_ty = irb.getIntNTy(size)->getPointerTo(addrspace);
         llvm::Value* ptr = irb.CreateConstGEP1_64(sptr_raw, offset);
         return irb.CreatePointerCast(ptr, ptr_ty);
     }

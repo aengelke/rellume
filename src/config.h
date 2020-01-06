@@ -59,6 +59,8 @@ struct LLConfig {
 
     /// Optimize generated IR for the HHVM calling convention.
     CallConv callconv = CallConv::SPTR;
+    /// Address space for CPU struct pointer parameter
+    unsigned sptr_addrspace = 0;
 
     /// The global offset base
     uintptr_t global_base_addr = 0;

@@ -45,6 +45,7 @@ RELLUME_API LLConfig* ll_config_new(void);
 RELLUME_API void ll_config_free(LLConfig*);
 
 RELLUME_API void ll_config_set_hhvm(LLConfig*, bool);
+RELLUME_API void ll_config_set_sptr_addrspace(LLConfig*, unsigned);
 RELLUME_API void ll_config_enable_overflow_intrinsics(LLConfig*, bool);
 RELLUME_API void ll_config_enable_fast_math(LLConfig*, bool);
 RELLUME_API void ll_config_enable_verify_ir(LLConfig*, bool);
