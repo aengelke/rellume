@@ -190,6 +190,7 @@ end_ops:
     case FDI_SYSCALL: llinst.type = LL_INS_SYSCALL; break;
     case FDI_CPUID: llinst.type = LL_INS_CPUID; break;
     case FDI_RDTSC: llinst.type = LL_INS_RDTSC; break;
+    case FDI_UD2: llinst.type = LL_INS_UD2; break;
     case FDI_PUSH: llinst.type = LL_INS_PUSH; break;
     case FDI_PUSHF: llinst.type = LL_INS_PUSHFQ; break;
     case FDI_POP: llinst.type = LL_INS_POP; break;

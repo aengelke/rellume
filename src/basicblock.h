@@ -62,7 +62,7 @@ public:
     }
 
     bool IsTerminated() {
-        return terminated;
+        return !!llvm_block->getTerminator();
     }
 
     RegFile* GetRegFile() {
@@ -81,8 +81,6 @@ private:
 
     // Stores load/store instructions for CPU struct access in entry/exit blocks
     std::vector<llvm::Value*> mem_ref_values;
-
-    bool terminated = false;
 };
 
 class ArchBasicBlock
@@ -142,6 +140,9 @@ public:
         insert_block->RemoveUnmodifiedStores(entry.BeginBlock());
     }
 
+    bool IsTerminated() {
+        return insert_block->IsTerminated();
+    }
     llvm::Value* NextRip() {
         return insert_block->NextRip();
     }

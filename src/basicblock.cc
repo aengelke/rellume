@@ -83,17 +83,15 @@ BasicBlock::BasicBlock(FunctionInfo& fi, const LLConfig& cfg, Kind kind)
             irb.CreateRetVoid();
         else
             irb.CreateRet(ret_val);
-        terminated = true;
     }
 }
 
 void BasicBlock::BranchTo(BasicBlock& next) {
-    assert(!terminated && "attempting to add second terminator");
+    assert(!IsTerminated() && "attempting to add second terminator");
 
     llvm::IRBuilder<> irb(llvm_block);
     irb.CreateBr(next.llvm_block);
     next.predecessors.push_back(this);
-    terminated = true;
 }
 
 void BasicBlock::BranchTo(llvm::Value* cond, BasicBlock& then,
@@ -104,13 +102,12 @@ void BasicBlock::BranchTo(llvm::Value* cond, BasicBlock& then,
         return;
     }
 
-    assert(!terminated && "attempting to add second terminator");
+    assert(!IsTerminated() && "attempting to add second terminator");
 
     llvm::IRBuilder<> irb(llvm_block);
     irb.CreateCondBr(cond, then.llvm_block, other.llvm_block);
     then.predecessors.push_back(this);
     other.predecessors.push_back(this);
-    terminated = true;
 }
 
 bool BasicBlock::FillPhis() {
@@ -122,7 +119,7 @@ bool BasicBlock::FillPhis() {
         Facet facet = std::get<1>(item);
         llvm::PHINode* phi = std::get<2>(item);
         for (BasicBlock* pred : predecessors) {
-            assert(pred->terminated && "attempt to fill PHIs from open block");
+            assert(pred->IsTerminated() && "attempt to fill PHIs from open block");
             llvm::Value* value = pred->regfile.GetReg(reg, facet);
             if (facet == Facet::PTR && value->getType() != phi->getType()) {
                 llvm::IRBuilder<> irb(pred->llvm_block->getTerminator());

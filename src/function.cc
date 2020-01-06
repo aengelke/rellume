@@ -104,6 +104,8 @@ llvm::Function* Function::Lift() {
     entry_block->BranchTo(*block_map[entry_addr]);
 
     for (auto it = block_map.begin(); it != block_map.end(); ++it) {
+        if (it->second->IsTerminated())
+            continue;
         llvm::Value* next_rip = it->second->NextRip();
         if (auto select = llvm::dyn_cast<llvm::SelectInst>(next_rip)) {
             it->second->BranchTo(select->getCondition(),

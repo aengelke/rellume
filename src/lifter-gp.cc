@@ -680,6 +680,11 @@ void Lifter::LiftRet(const LLInstr& inst) {
     OpStoreGp(LLInstrOp(LLReg(LL_RT_IP, 0)), StackPop());
 }
 
+void Lifter::LiftUnreachable(const LLInstr& inst) {
+    irb.CreateUnreachable();
+    SetReg({LL_RT_IP, 0}, Facet::I64, llvm::UndefValue::get(irb.getInt64Ty()));
+}
+
 LifterBase::RepInfo LifterBase::RepBegin(const LLInstr& inst) {
     RepInfo info = {};
     bool di = false, si = false;

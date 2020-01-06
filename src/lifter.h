@@ -266,6 +266,7 @@ private:
     void LiftLoop(const LLInstr& inst);
     void LiftCall(const LLInstr& inst);
     void LiftRet(const LLInstr& inst);
+    void LiftUnreachable(const LLInstr& inst);
 
     void LiftClc(const LLInstr& inst) { SetFlag(Facet::CF, irb.getFalse()); }
     void LiftStc(const LLInstr& inst) { SetFlag(Facet::CF, irb.getTrue()); }

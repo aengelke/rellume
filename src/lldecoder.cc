@@ -54,7 +54,7 @@ namespace rellume {
 )
 #define instrBreaks(instr) (instrIsJcc(instr) || (instr) == LL_INS_RET || \
                         (instr) == LL_INS_JMP || (instr) == LL_INS_CALL || \
-                        (instr) == LL_INS_SYSCALL)
+                        (instr) == LL_INS_SYSCALL || (instr) == LL_INS_UD2)
 
 int Function::Decode(uintptr_t addr, DecodeStop stop, MemReader memacc)
 {
