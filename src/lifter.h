@@ -176,6 +176,7 @@ protected:
 
     llvm::Value* FlagCond(Condition cond);
     llvm::Value* FlagAsReg(unsigned size);
+    void FlagFromReg(llvm::Value* val);
 
     struct RepInfo {
         enum RepMode { NO_REP, REP, REPZ, REPNZ };
@@ -250,6 +251,9 @@ private:
     }
     void LiftPop(const LLInstr& inst) {
         OpStoreGp(inst.ops[0], StackPop());
+    }
+    void LiftPopf(const LLInstr& inst) {
+        FlagFromReg(StackPop());
     }
     void LiftLeave(const LLInstr& inst) {
         llvm::Value* val = StackPop(LLReg(LL_RT_GP64, LL_RI_BP));

@@ -61,18 +61,29 @@ LifterBase::FlagCond(Condition cond)
     return static_cast<int>(cond) & 1 ? irb.CreateNot(result) : result;
 }
 
+static const std::pair<Facet, unsigned> RFLAGS_INDICES[] = {
+    {Facet::CF, 0}, {Facet::PF, 2}, {Facet::AF, 4}, {Facet::ZF, 6},
+    {Facet::SF, 7}, {Facet::DF, 10}, {Facet::OF, 11},
+};
+
 llvm::Value* LifterBase::FlagAsReg(unsigned size) {
     llvm::Value* res = irb.getInt64(0x202); // IF
     llvm::Type* ty = res->getType();
-    static const std::pair<Facet, unsigned> flags[] = {
-        {Facet::CF, 0}, {Facet::PF, 2}, {Facet::AF, 4}, {Facet::ZF, 6},
-        {Facet::SF, 7}, {Facet::DF, 10}, {Facet::OF, 11},
-    };
-    for (auto& kv : flags) {
+    for (auto& kv : RFLAGS_INDICES) {
         llvm::Value* ext_bit = irb.CreateZExt(GetFlag(kv.first), ty);
         res = irb.CreateOr(res, irb.CreateShl(ext_bit, kv.second));
     }
     return irb.CreateTruncOrBitCast(res, irb.getIntNTy(size));
+}
+
+void LifterBase::FlagFromReg(llvm::Value* val) {
+    unsigned sz = val->getType()->getIntegerBitWidth();
+    for (auto& kv : RFLAGS_INDICES) {
+        if (kv.second >= sz)
+            break;
+        llvm::Value* bit = irb.CreateLShr(val, kv.second);
+        SetFlag(kv.first, irb.CreateTrunc(bit, irb.getInt1Ty()));
+    }
 }
 
 void

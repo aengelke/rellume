@@ -24,6 +24,14 @@ code="pushfq" rsp=q:0x20000008 m20000000=q:0x0 of=00 sf=00 zf=01 af=00 pf=00 cf=
 code="pushfq" rsp=q:0x20000008 m20000000=q:0x0 of=00 sf=00 zf=00 af=01 pf=00 cf=00 df=00 => rsp=q:0x20000000 m20000000=q:0x212
 code="pushfq" rsp=q:0x20000008 m20000000=q:0x0 of=00 sf=00 zf=00 af=00 pf=01 cf=00 df=00 => rsp=q:0x20000000 m20000000=q:0x206
 code="pushfq" rsp=q:0x20000008 m20000000=q:0x0 of=00 sf=00 zf=00 af=00 pf=00 cf=01 df=00 => rsp=q:0x20000000 m20000000=q:0x203
+code="pushfq" rsp=q:0x20000008 m20000000=q:0x0 of=00 sf=00 zf=00 af=00 pf=00 cf=00 df=01 => rsp=q:0x20000000 m20000000=q:0x602
+code="popfq" rsp=q:0x20000000 m20000000=q:0xa02 => rsp=q:0x20000008 of=01 sf=00 zf=00 af=00 pf=00 cf=00 df=00
+code="popfq" rsp=q:0x20000000 m20000000=q:0x282 => rsp=q:0x20000008 of=00 sf=01 zf=00 af=00 pf=00 cf=00 df=00
+code="popfq" rsp=q:0x20000000 m20000000=q:0x242 => rsp=q:0x20000008 of=00 sf=00 zf=01 af=00 pf=00 cf=00 df=00
+code="popfq" rsp=q:0x20000000 m20000000=q:0x212 => rsp=q:0x20000008 of=00 sf=00 zf=00 af=01 pf=00 cf=00 df=00
+code="popfq" rsp=q:0x20000000 m20000000=q:0x206 => rsp=q:0x20000008 of=00 sf=00 zf=00 af=00 pf=01 cf=00 df=00
+code="popfq" rsp=q:0x20000000 m20000000=q:0x203 => rsp=q:0x20000008 of=00 sf=00 zf=00 af=00 pf=00 cf=01 df=00
+code="popfq" rsp=q:0x20000000 m20000000=q:0x602 => rsp=q:0x20000008 of=00 sf=00 zf=00 af=00 pf=00 cf=00 df=01
 
 code="clc" cf=00 => cf=00
 code="clc" cf=01 => cf=00
