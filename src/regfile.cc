@@ -133,7 +133,7 @@ private:
 
 void RegFile::impl::InitAll(InitGenerator fn) {
     if (!fn)
-        fn = [](const LLReg reg, const Facet facet) { return nullptr; };
+        fn = [](const LLReg reg, const Facet facet) { return DeferredValue(nullptr); };
 
     for (unsigned i = 0; i < LL_RI_GPMax; i++)
         regs_gp[i].setAll([=](Facet f) { return fn(LLReg(LL_RT_GP64, i), f); });

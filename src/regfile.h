@@ -24,6 +24,7 @@
 #ifndef LL_REGFILE_H
 #define LL_REGFILE_H
 
+#include "deferred-value.h"
 #include "facet.h"
 #include "rellume/instr.h"
 
@@ -49,8 +50,7 @@ public:
     llvm::BasicBlock* GetInsertBlock();
     void SetInsertBlock(llvm::BasicBlock* new_block);
 
-    using Generator = std::function<llvm::Value*()>;
-    using InitGenerator = std::function<Generator(const LLReg, const Facet)>;
+    using InitGenerator = std::function<DeferredValue(const LLReg, const Facet)>;
     void InitAll(InitGenerator init_gen = nullptr);
 
     llvm::Value* GetReg(LLReg reg, Facet facet);
