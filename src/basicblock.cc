@@ -72,6 +72,8 @@ BasicBlock::BasicBlock(FunctionInfo& fi, const LLConfig& cfg, Kind kind)
     // back to memory.
     if (kind == ENTRY) {
         regfile.InitAll(nullptr);
+        llvm::IRBuilder<> irb(llvm_block);
+        fi.InitSptr(irb);
         cfg.callconv.Unpack(regfile, fi, &mem_ref_values);
     } else if (kind == EXIT) {
         llvm::Value* ret_val = cfg.callconv.Pack(regfile, fi, &mem_ref_values);

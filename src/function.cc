@@ -69,6 +69,7 @@ Function::Function(llvm::Module* mod, LLConfig* cfg) : cfg(cfg), fi{}
     fi.sptr_raw = &llvm->arg_begin()[cpu_param_idx];
 
     // Create entry basic block as first block in the function.
+    // The entry block also initializes the sptr pointers in the function info.
     entry_block = std::make_unique<ArchBasicBlock>(fi, *cfg, BasicBlock::ENTRY);
 }
 

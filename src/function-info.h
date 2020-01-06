@@ -35,12 +35,39 @@ class Value;
 
 namespace rellume {
 
+namespace SptrIdx {
+    enum Idx {
+#define RELLUME_NAMED_REG(name,nameu,sz,off) nameu,
+#include <rellume/cpustruct-private.inc>
+#undef RELLUME_NAMED_REG
+        MAX
+    };
+
+}
+
 struct FunctionInfo {
     /// The function itself
     llvm::Function* fn;
     /// The sptr argument, and its elements
     llvm::Value* sptr_raw;
+    llvm::Value* sptr[SptrIdx::MAX];
+
+private:
+    llvm::Value* GetSptrPtr(llvm::IRBuilder<> irb, size_t offset, size_t size) {
+        llvm::Type* ptr_ty = irb.getIntNTy(size)->getPointerTo();
+        llvm::Value* ptr = irb.CreateConstGEP1_64(sptr_raw, offset);
+        return irb.CreatePointerCast(ptr, ptr_ty);
+    }
+
+public:
+    void InitSptr(llvm::IRBuilder<> irb) {
+#define RELLUME_NAMED_REG(name,nameu,sz,off) \
+        sptr[SptrIdx::nameu] = GetSptrPtr(irb, off, sz == 1 ? sz : sz * 8);
+#include <rellume/cpustruct-private.inc>
+#undef RELLUME_NAMED_REG
+    }
 };
+
 
 } // namespace
 

@@ -85,14 +85,9 @@ LifterBase::OpAddr(const LLInstrOp& op, llvm::Type* element_type)
             if (cfg.use_native_segment_base) {
                 addrspace = op.seg == LL_RI_FS ? 257 : 256;
             } else {
-                unsigned off = op.seg == LL_RI_FS ? CpuStructOff::FSBASE
-                                                  : CpuStructOff::GSBASE;
-
-                llvm::Type* ptr_ty = irb.getInt64Ty()->getPointerTo();
-                llvm::Value* ptr = irb.CreateConstGEP1_64(fi.sptr_raw, off);
-                ptr = irb.CreatePointerCast(ptr, ptr_ty);
-
-                res = irb.CreateAdd(res, irb.CreateLoad(ptr));
+                unsigned idx = op.seg == LL_RI_FS ? SptrIdx::FSBASE
+                                                  : SptrIdx::GSBASE;
+                res = irb.CreateAdd(res, irb.CreateLoad(fi.sptr[idx]));
             }
         }
 
