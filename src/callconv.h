@@ -24,7 +24,7 @@
 #ifndef RELLUME_CALLCONV_H
 #define RELLUME_CALLCONV_H
 
-#include <function-info.h>
+#include "function-info.h"
 #include <llvm/IR/Type.h>
 #include <llvm/IR/Value.h>
 #include <cstddef>
@@ -59,14 +59,6 @@ public:
     explicit operator bool() = delete;
 private:
     Value value;
-};
-
-struct CpuStructOff {
-    enum {
-#define RELLUME_NAMED_REG(name,nameu,sz,off) nameu = off,
-#include <rellume/cpustruct-private.inc>
-#undef RELLUME_NAMED_REG
-    };
 };
 
 } // namespace

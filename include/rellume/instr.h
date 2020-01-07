@@ -137,6 +137,9 @@ namespace rellume {
         RegType Kind() const { return static_cast<RegType>(kind); }
         uint8_t Index() const { return index; }
 
+        inline bool operator==(const X86Reg& rhs) const {
+            return kind == rhs.kind && index == rhs.index;
+        }
         bool operator<(const X86Reg& rhs) const {
             return (kind<<8) + index < (rhs.kind<<8) + rhs.index;
         }
