@@ -56,7 +56,7 @@ public:
     bool FillPhis();
 
     llvm::Value* NextRip() {
-        return regfile.GetReg(X86Reg(X86Reg::IP), Facet::I64);
+        return regfile.GetReg(X86Reg::IP, Facet::I64);
     }
 
     bool IsTerminated() {

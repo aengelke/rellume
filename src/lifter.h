@@ -100,27 +100,27 @@ protected:
         return irb.GetInsertBlock()->getModule();
     }
 
-    llvm::Value* GetReg(LLReg reg, Facet facet) {
+    llvm::Value* GetReg(X86Reg reg, Facet facet) {
         return regfile->GetReg(reg, facet);
     }
-    void SetReg(LLReg reg, Facet facet, llvm::Value* value) {
+    void SetReg(X86Reg reg, Facet facet, llvm::Value* value) {
         fi.modified_regs.insert(reg);
         regfile->SetReg(reg, facet, value, true); // clear all other facets
     }
-    void SetRegFacet(LLReg reg, Facet facet, llvm::Value* value) {
+    void SetRegFacet(X86Reg reg, Facet facet, llvm::Value* value) {
         fi.modified_regs.insert(reg);
         regfile->SetReg(reg, facet, value, false);
     }
     llvm::Value* GetFlag(Facet facet) {
-        return GetReg(LLReg(LL_RT_EFLAGS, 0), facet);
+        return GetReg(X86Reg::EFLAGS, facet);
     }
     void SetFlag(Facet facet, llvm::Value* value) {
-        SetRegFacet(LLReg(LL_RT_EFLAGS, 0), facet, value);
+        SetRegFacet(X86Reg::EFLAGS, facet, value);
     }
     void SetFlagUndef(std::initializer_list<Facet> facets) {
         llvm::Value* undef = llvm::UndefValue::get(irb.getInt1Ty());
         for (const auto facet : facets)
-            SetRegFacet(LLReg(LL_RT_EFLAGS, 0), facet, undef);
+            SetRegFacet(X86Reg::EFLAGS, facet, undef);
     }
 
     void SetInsertBlock(BasicBlock* block) {
@@ -138,7 +138,7 @@ protected:
     void OpStoreGp(const LLInstrOp& op, llvm::Value* value, Alignment alignment = ALIGN_NONE);
     void OpStoreVec(const LLInstrOp& op, llvm::Value* value, bool avx = false, Alignment alignment = ALIGN_IMP);
     void StackPush(llvm::Value* value);
-    llvm::Value* StackPop(const LLReg sp_src_reg = LLReg(LL_RT_GP64, LL_RI_SP));
+    llvm::Value* StackPop(const X86Reg sp_src_reg = X86Reg::GP(LL_RI_SP));
 
     // llflags.cc
     void FlagCalcZ(llvm::Value* value) {
@@ -258,7 +258,7 @@ private:
         FlagFromReg(StackPop());
     }
     void LiftLeave(const LLInstr& inst) {
-        llvm::Value* val = StackPop(LLReg(LL_RT_GP64, LL_RI_BP));
+        llvm::Value* val = StackPop(X86Reg::GP(LL_RI_BP));
         OpStoreGp(LLInstrOp(LLReg(LL_RT_GP64, LL_RI_BP)), val);
     }
 

@@ -67,7 +67,7 @@ void Lifter::LiftFxsave(const LLInstr& inst) {
     for (unsigned i = 0; i < 16; i++) {
         llvm::Value* ptr = irb.CreateConstGEP1_32(buf, 0xa0 + 0x10*i);
         ptr = irb.CreatePointerCast(ptr, irb.getIntNTy(128)->getPointerTo());
-        irb.CreateStore(GetReg(LLReg(LL_RT_XMM, i), Facet::I128), ptr);
+        irb.CreateStore(GetReg(X86Reg::VEC(i), Facet::I128), ptr);
     }
 }
 
@@ -79,7 +79,7 @@ void Lifter::LiftFxrstor(const LLInstr& inst) {
     for (unsigned i = 0; i < 16; i++) {
         llvm::Value* ptr = irb.CreateConstGEP1_32(buf, 0xa0 + 0x10*i);
         ptr = irb.CreatePointerCast(ptr, irb.getIntNTy(128)->getPointerTo());
-        SetReg(LLReg(LL_RT_XMM, i), Facet::I128, irb.CreateLoad(ptr));
+        SetReg(X86Reg::VEC(i), Facet::I128, irb.CreateLoad(ptr));
     }
 }
 

@@ -136,29 +136,29 @@ void RegFile::impl::InitAll(InitGenerator fn) {
         fn = [](const X86Reg reg, const Facet facet) { return DeferredValue(nullptr); };
 
     for (unsigned i = 0; i < LL_RI_GPMax; i++)
-        regs_gp[i].setAll([=](Facet f) { return fn(X86Reg(X86Reg::GP, i), f); });
+        regs_gp[i].setAll([=](Facet f) { return fn(X86Reg::GP(i), f); });
     for (unsigned i = 0; i < LL_RI_XMMMax; i++)
-        regs_sse[i].setAll([=](Facet f) { return fn(X86Reg(X86Reg::VEC, i), f); });
-    flags.setAll([=](Facet f) { return fn(X86Reg(X86Reg::EFLAGS), f); });
-    reg_ip = fn(X86Reg(X86Reg::IP), Facet::I64);
+        regs_sse[i].setAll([=](Facet f) { return fn(X86Reg::VEC(i), f); });
+    flags.setAll([=](Facet f) { return fn(X86Reg::EFLAGS, f); });
+    reg_ip = fn(X86Reg::IP, Facet::I64);
 }
 
 DeferredValue* RegFile::impl::AccessRegFacet(X86Reg reg, Facet facet) {
     unsigned idx = reg.Index();
     switch (reg.Kind()) {
-    case X86Reg::GP:
+    case X86Reg::RegKind::GP:
         if (regs_gp[idx].has(facet))
             return &regs_gp[idx][facet];
         return nullptr;
-    case X86Reg::IP:
+    case X86Reg::RegKind::IP:
         if (facet == Facet::I64)
             return &reg_ip;
         return nullptr;
-    case X86Reg::EFLAGS:
+    case X86Reg::RegKind::EFLAGS:
         if (flags.has(facet))
             return &flags[facet];
         return nullptr;
-    case X86Reg::VEC:
+    case X86Reg::RegKind::VEC:
         if (regs_sse[idx].has(facet))
             return &regs_sse[idx][facet];
         return nullptr;
@@ -188,7 +188,7 @@ RegFile::impl::GetReg(X86Reg reg, Facet facet)
 
     llvm::Type* facetType = facet.Type(ctx);
 
-    if (reg.Kind() == X86Reg::GP)
+    if (reg.Kind() == X86Reg::RegKind::GP)
     {
         llvm::Value* res = nullptr;
         llvm::Value* native = *AccessRegFacet(reg, Facet::I64);
@@ -219,7 +219,7 @@ RegFile::impl::GetReg(X86Reg reg, Facet facet)
             *facet_entry = res;
         return res;
     }
-    else if (reg.Kind() == X86Reg::IP)
+    else if (reg.Kind() == X86Reg::RegKind::IP)
     {
         llvm::Value* native = *AccessRegFacet(reg, Facet::I64);
         if (facet == Facet::I64)
@@ -229,7 +229,7 @@ RegFile::impl::GetReg(X86Reg reg, Facet facet)
         else
             assert(false && "invalid facet for ip-reg");
     }
-    else if (reg.Kind() == X86Reg::VEC)
+    else if (reg.Kind() == X86Reg::RegKind::VEC)
     {
         llvm::Value* res = nullptr;
         llvm::Value* native = *AccessRegFacet(reg, Facet::IVEC);
@@ -335,10 +335,10 @@ RegFile::impl::SetReg(X86Reg reg, Facet facet, llvm::Value* value, bool clearOth
         assert(value->getType() == facet.Type(insert_block->getContext()));
 
     if (clearOthers) {
-        if (reg.Kind() == X86Reg::GP) {
+        if (reg.Kind() == X86Reg::RegKind::GP) {
             assert(facet == Facet::I64);
             regs_gp[reg.Index()].clear();
-        } else if (reg.Kind() == X86Reg::VEC) {
+        } else if (reg.Kind() == X86Reg::RegKind::VEC) {
             assert(facet == Facet::IVEC);
             regs_sse[reg.Index()].clear();
         }

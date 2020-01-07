@@ -13,7 +13,7 @@ PUBLIC_MACROS = (
 PRIVATE_MACROS = (
     (
         "RELLUME_MAPPED_REG", lambda e: "reg" in e,
-        "RELLUME_MAPPED_REG({NAME}, {offset}, X86Reg(X86Reg::{reg[0]}, {reg[1]}), Facet::{reg[2]})",
+        "RELLUME_MAPPED_REG({NAME}, {offset}, X86Reg::{reg[0]}, Facet::{reg[1]})",
     ),
     (
         "RELLUME_NAMED_REG", lambda e: "name" in e,

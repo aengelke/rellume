@@ -92,29 +92,29 @@ llvm::Value* CallConv::Pack(RegFile& regfile, FunctionInfo& fi) const {
             int ins_idx = -1;
             if (reg == X86Reg(X86Reg::IP))
                 ins_idx = 0; // RIP is stored in RBX
-            else if (reg == X86Reg(X86Reg::GP, 0))
+            else if (reg == X86Reg::GP(0))
                 ins_idx = 8; // RAX is stored in RAX
-            else if (reg == X86Reg(X86Reg::GP, 1))
+            else if (reg == X86Reg::GP(1))
                 ins_idx = 5; // RCX is stored in RCX
-            else if (reg == X86Reg(X86Reg::GP, 2))
+            else if (reg == X86Reg::GP(2))
                 ins_idx = 4; // RDX is stored in RDX
-            else if (reg == X86Reg(X86Reg::GP, 3))
+            else if (reg == X86Reg::GP(3))
                 ins_idx = 1; // RBX is stored in RBP
-            else if (reg == X86Reg(X86Reg::GP, 4))
+            else if (reg == X86Reg::GP(4))
                 ins_idx = 13; // RSP is stored in R15
-            else if (reg == X86Reg(X86Reg::GP, 5))
+            else if (reg == X86Reg::GP(5))
                 ins_idx = 11; // RBP is stored in R13
-            else if (reg == X86Reg(X86Reg::GP, 6))
+            else if (reg == X86Reg::GP(6))
                 ins_idx = 3; // RSI is stored in RSI
-            else if (reg == X86Reg(X86Reg::GP, 7))
+            else if (reg == X86Reg::GP(7))
                 ins_idx = 2; // RDI is stored in RDI
-            else if (reg == X86Reg(X86Reg::GP, 8))
+            else if (reg == X86Reg::GP(8))
                 ins_idx = 6; // R8 is stored in R8
-            else if (reg == X86Reg(X86Reg::GP, 9))
+            else if (reg == X86Reg::GP(9))
                 ins_idx = 7; // R9 is stored in R9
-            else if (reg == X86Reg(X86Reg::GP, 10))
+            else if (reg == X86Reg::GP(10))
                 ins_idx = 9; // R10 is stored in R10
-            else if (reg == X86Reg(X86Reg::GP, 11))
+            else if (reg == X86Reg::GP(11))
                 ins_idx = 10; // R11 is stored in R11
 
             if (ins_idx >= 0) {
@@ -145,29 +145,29 @@ void CallConv::Unpack(RegFile& regfile, FunctionInfo& fi) const {
         llvm::Value* reg_val = nullptr;
         if (*this == CallConv::HHVM) {
             int arg_idx = -1;
-            if (reg == X86Reg(X86Reg::GP, 0))
+            if (reg == X86Reg::GP(0))
                 arg_idx = 10; // RAX is stored in RAX
-            else if (reg == X86Reg(X86Reg::GP, 1))
+            else if (reg == X86Reg::GP(1))
                 arg_idx = 7; // RCX is stored in RCX
-            else if (reg == X86Reg(X86Reg::GP, 2))
+            else if (reg == X86Reg::GP(2))
                 arg_idx = 6; // RDX is stored in RDX
-            else if (reg == X86Reg(X86Reg::GP, 3))
+            else if (reg == X86Reg::GP(3))
                 arg_idx = 2; // RBX is stored in RBP
-            else if (reg == X86Reg(X86Reg::GP, 4))
+            else if (reg == X86Reg::GP(4))
                 arg_idx = 3; // RSP is stored in R15
-            else if (reg == X86Reg(X86Reg::GP, 5))
+            else if (reg == X86Reg::GP(5))
                 arg_idx = 13; // RBP is stored in R13
-            else if (reg == X86Reg(X86Reg::GP, 6))
+            else if (reg == X86Reg::GP(6))
                 arg_idx = 5; // RSI is stored in RSI
-            else if (reg == X86Reg(X86Reg::GP, 7))
+            else if (reg == X86Reg::GP(7))
                 arg_idx = 4; // RDI is stored in RDI
-            else if (reg == X86Reg(X86Reg::GP, 8))
+            else if (reg == X86Reg::GP(8))
                 arg_idx = 8; // R8 is stored in R8
-            else if (reg == X86Reg(X86Reg::GP, 9))
+            else if (reg == X86Reg::GP(9))
                 arg_idx = 9; // R9 is stored in R9
-            else if (reg == X86Reg(X86Reg::GP, 10))
+            else if (reg == X86Reg::GP(10))
                 arg_idx = 11; // R10 is stored in R10
-            else if (reg == X86Reg(X86Reg::GP, 11))
+            else if (reg == X86Reg::GP(11))
                 arg_idx = 12; // R11 is stored in R11
 
             if (arg_idx >= 0)

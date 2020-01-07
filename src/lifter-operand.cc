@@ -73,9 +73,9 @@ LifterBase::OpAddr(const LLInstrOp& op, llvm::Type* element_type)
 
         llvm::Value* res = irb.getIntN(8*op.addrsize, op.val);
         if (op.reg.rt != LL_RT_None)
-            res = irb.CreateAdd(res, GetReg(op.reg, addrsz_facet));
+            res = irb.CreateAdd(res, GetReg(X86Reg(op.reg), addrsz_facet));
         if (op.scale != 0) {
-            llvm::Value* ireg = GetReg(op.ireg, addrsz_facet);
+            llvm::Value* ireg = GetReg(X86Reg(op.ireg), addrsz_facet);
             llvm::Value* scaled_val = irb.getIntN(8*op.addrsize, op.scale);
             res = irb.CreateAdd(res, irb.CreateMul(ireg, scaled_val));
         }
@@ -106,10 +106,10 @@ LifterBase::OpAddr(const LLInstrOp& op, llvm::Type* element_type)
     llvm::Value* base;
     if (op.reg.rt != LL_RT_None)
     {
-        base = GetReg(op.reg, Facet::PTR);
+        base = GetReg(X86Reg(op.reg), Facet::PTR);
         if (llvm::isa<llvm::Constant>(base))
         {
-            auto base_addr = llvm::cast<llvm::ConstantInt>(GetReg(op.reg, Facet::I64));
+            auto base_addr = llvm::cast<llvm::ConstantInt>(GetReg(X86Reg(op.reg), Facet::I64));
             base = OpAddrConst(base_addr->getZExtValue() + op.val, elem_ptr_ty);
         }
         else if (op.val != 0)
@@ -144,7 +144,7 @@ LifterBase::OpAddr(const LLInstrOp& op, llvm::Type* element_type)
         if (auto constval = llvm::dyn_cast<llvm::Constant>(base))
             use_mul = constval->isNullValue();
 
-        llvm::Value* offset = GetReg(op.ireg, Facet::I64);
+        llvm::Value* offset = GetReg(X86Reg(op.ireg), Facet::I64);
         if (use_mul) {
             base = irb.CreateMul(offset, irb.getInt64(op.scale));
             base = irb.CreateIntToPtr(base, elem_ptr_ty);
@@ -181,7 +181,7 @@ LifterBase::OpLoad(const LLInstrOp& op, Facet facet, Alignment alignment)
     {
         if (op.reg.IsGpHigh() && facet == Facet::I8)
             facet = Facet::I8H;
-        return GetReg(op.reg, facet);
+        return GetReg(X86Reg(op.reg), facet);
     }
     else if (op.type == LL_OP_MEM)
     {
@@ -215,7 +215,7 @@ LifterBase::OpStoreGp(const LLInstrOp& op, llvm::Value* value, Alignment alignme
 
     if (op.reg.rt == LL_RT_GP64 || op.reg.rt == LL_RT_IP)
     {
-        SetReg(op.reg, Facet::I64, value);
+        SetReg(X86Reg(op.reg), Facet::I64, value);
         return;
     }
 
@@ -223,8 +223,8 @@ LifterBase::OpStoreGp(const LLInstrOp& op, llvm::Value* value, Alignment alignme
 
     if (op.reg.rt == LL_RT_GP32)
     {
-        SetReg(op.reg, Facet::I64, value64);
-        SetRegFacet(op.reg, Facet::I32, value);
+        SetReg(X86Reg(op.reg), Facet::I64, value64);
+        SetRegFacet(X86Reg(op.reg), Facet::I32, value);
         return;
     }
 
@@ -251,9 +251,9 @@ LifterBase::OpStoreGp(const LLInstrOp& op, llvm::Value* value, Alignment alignme
         assert(false);
     }
 
-    llvm::Value* masked = irb.CreateAnd(GetReg(op.reg, Facet::I64), ~mask);
-    SetReg(op.reg, Facet::I64, irb.CreateOr(value64, masked));
-    SetRegFacet(op.reg, store_facet, value);
+    llvm::Value* masked = irb.CreateAnd(GetReg(X86Reg(op.reg), Facet::I64), ~mask);
+    SetReg(X86Reg(op.reg), Facet::I64, irb.CreateOr(value64, masked));
+    SetRegFacet(X86Reg(op.reg), store_facet, value);
 }
 
 void
@@ -276,7 +276,7 @@ LifterBase::OpStoreVec(const LLInstrOp& op, llvm::Value* value, bool avx,
     llvm::Type* iVec = irb.getIntNTy(LL_VECTOR_REGISTER_SIZE);
     llvm::Value* current = irb.getIntN(LL_VECTOR_REGISTER_SIZE, 0);
     if (!avx)
-        current = GetReg(op.reg, Facet::IVEC);
+        current = GetReg(X86Reg(op.reg), Facet::IVEC);
 
     llvm::Type* value_type = value->getType();
     if (value_type->isVectorTy())
@@ -302,13 +302,13 @@ LifterBase::OpStoreVec(const LLInstrOp& op, llvm::Value* value, bool avx,
             full_vec = irb.CreateShuffleVector(full_vec, current_vector, mask);
         }
 
-        SetReg(op.reg, Facet::IVEC, irb.CreateBitCast(full_vec, iVec));
+        SetReg(X86Reg(op.reg), Facet::IVEC, irb.CreateBitCast(full_vec, iVec));
 #if LL_VECTOR_REGISTER_SIZE >= 256
         // Induce some common facets via i128 for better SSE support
         if (operandWidth == 128)
         {
             llvm::Value* sse = irb.CreateBitCast(value, irb.getInt128Ty());
-            SetRegFacet(op.reg, Facet::I128, sse);
+            SetRegFacet(X86Reg(op.reg), Facet::I128, sse);
         }
 #endif
     }
@@ -318,7 +318,7 @@ LifterBase::OpStoreVec(const LLInstrOp& op, llvm::Value* value, bool avx,
         llvm::Type* full_type = llvm::VectorType::get(value_type, total_count);
         llvm::Value* full_vector = irb.CreateBitCast(current, full_type);
         full_vector = irb.CreateInsertElement(full_vector, value, 0ul);
-        SetReg(op.reg, Facet::IVEC, irb.CreateBitCast(full_vector, iVec));
+        SetReg(X86Reg(op.reg), Facet::IVEC, irb.CreateBitCast(full_vector, iVec));
 
 #if LL_VECTOR_REGISTER_SIZE >= 256
         // Induce some common facets via i128 for better SSE support
@@ -326,30 +326,30 @@ LifterBase::OpStoreVec(const LLInstrOp& op, llvm::Value* value, bool avx,
         llvm::Value* sse_vector = irb.CreateBitCast(current128, sse_type);
         sse_vector = irb.CreateInsertElement(sse_vector, value, 0ul);
         llvm::Value* sse = irb.CreateBitCast(sse_vector, irb.getInt128Ty());
-        SetRegFacet(op.reg, Facet::I128, sse);
+        SetRegFacet(X86Reg(op.reg), Facet::I128, sse);
 #endif
     }
 }
 
 void LifterBase::StackPush(llvm::Value* value) {
-    llvm::Value* rsp = GetReg(LLReg(LL_RT_GP64, LL_RI_SP), Facet::PTR);
+    llvm::Value* rsp = GetReg(X86Reg::GP(LL_RI_SP), Facet::PTR);
     rsp = irb.CreatePointerCast(rsp, value->getType()->getPointerTo());
     rsp = irb.CreateConstGEP1_64(rsp, -1);
     irb.CreateStore(value, rsp);
 
     llvm::Value* rsp_int = irb.CreatePtrToInt(rsp, irb.getInt64Ty());
-    SetReg(LLReg(LL_RT_GP64, LL_RI_SP), Facet::I64, rsp_int);
-    SetRegFacet(LLReg(LL_RT_GP64, LL_RI_SP), Facet::PTR, rsp);
+    SetReg(X86Reg::GP(LL_RI_SP), Facet::I64, rsp_int);
+    SetRegFacet(X86Reg::GP(LL_RI_SP), Facet::PTR, rsp);
 }
 
-llvm::Value* LifterBase::StackPop(const LLReg sp_src_reg) {
+llvm::Value* LifterBase::StackPop(const X86Reg sp_src_reg) {
     llvm::Value* rsp = GetReg(sp_src_reg, Facet::PTR);
     rsp = irb.CreatePointerCast(rsp, irb.getInt64Ty()->getPointerTo());
 
     llvm::Value* new_rsp = irb.CreateConstGEP1_64(rsp, 1);
     llvm::Value* new_rsp_int = irb.CreatePtrToInt(new_rsp, irb.getInt64Ty());
-    SetReg(LLReg(LL_RT_GP64, LL_RI_SP), Facet::I64, new_rsp_int);
-    SetRegFacet(LLReg(LL_RT_GP64, LL_RI_SP), Facet::PTR, new_rsp);
+    SetReg(X86Reg::GP(LL_RI_SP), Facet::I64, new_rsp_int);
+    SetRegFacet(X86Reg::GP(LL_RI_SP), Facet::PTR, new_rsp);
 
     return irb.CreateLoad(rsp);
 }
