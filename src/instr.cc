@@ -93,24 +93,6 @@ LLReg::Size() const
     }
 }
 
-namespace rellume {
-
-X86Reg::X86Reg(LLReg reg) : kind(RegKind::INVALID), index(0) {
-    if (reg.IsGp()) {
-        kind = RegKind::GP;
-        index = reg.ri - (reg.IsGpHigh() ? LL_RI_AH : 0);
-    } else if (reg.rt == LL_RT_IP) {
-        kind = RegKind::IP;
-    } else if (reg.rt == LL_RT_EFLAGS) {
-        kind = RegKind::EFLAGS;
-    } else if (reg.IsVec()) {
-        kind = RegKind::VEC;
-        index = reg.ri;
-    }
-}
-
-}
-
 static LLReg
 convert_reg(int size, int idx, int type)
 {

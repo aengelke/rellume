@@ -182,7 +182,6 @@ namespace rellume {
         constexpr X86Reg(RegKind kind, uint8_t index = 0)
                 : kind(kind), index(index) {}
     public:
-        explicit X86Reg(LLReg llr);
         RegKind Kind() const { return kind; }
         uint8_t Index() const { return index; }
 

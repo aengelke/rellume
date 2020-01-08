@@ -90,7 +90,7 @@ llvm::Value* CallConv::Pack(RegFile& regfile, FunctionInfo& fi) const {
         bool store_in_sptr = true;
         if (*this == CallConv::HHVM) {
             int ins_idx = -1;
-            if (reg == X86Reg(X86Reg::IP))
+            if (reg == X86Reg::IP)
                 ins_idx = 0; // RIP is stored in RBX
             else if (reg == X86Reg::GP(0))
                 ins_idx = 8; // RAX is stored in RAX
