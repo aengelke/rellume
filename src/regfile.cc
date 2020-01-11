@@ -116,6 +116,7 @@ public:
         insert_block = new_block;
     }
 
+    void Clear();
     void InitAll(InitGenerator init_gen = nullptr);
 
     llvm::Value* GetReg(X86Reg reg, Facet facet);
@@ -130,6 +131,15 @@ private:
 
     DeferredValue* AccessRegFacet(X86Reg reg, Facet facet);
 };
+
+void RegFile::impl::Clear() {
+    for (unsigned i = 0; i < LL_RI_GPMax; i++)
+        regs_gp[i].clear();
+    for (unsigned i = 0; i < LL_RI_XMMMax; i++)
+        regs_sse[i].clear();
+    flags.clear();
+    reg_ip = nullptr;
+}
 
 void RegFile::impl::InitAll(InitGenerator fn) {
     if (!fn)
@@ -357,6 +367,9 @@ llvm::BasicBlock* RegFile::GetInsertBlock() {
 }
 void RegFile::SetInsertBlock(llvm::BasicBlock* new_block) {
     pimpl->SetInsertBlock(new_block);
+}
+void RegFile::Clear() {
+    pimpl->Clear();
 }
 void RegFile::InitAll(InitGenerator init_gen) {
     pimpl->InitAll(init_gen);

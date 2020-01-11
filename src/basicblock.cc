@@ -71,7 +71,7 @@ BasicBlock::BasicBlock(FunctionInfo& fi, const LLConfig& cfg, Kind kind)
     // For ENTRY or EXIT kinds, we either need to setup all values or store them
     // back to memory.
     if (kind == ENTRY) {
-        regfile.InitAll(nullptr);
+        regfile.Clear();
         llvm::IRBuilder<> irb(llvm_block);
         fi.InitSptr(irb);
         cfg.callconv.Unpack(regfile, fi);

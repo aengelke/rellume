@@ -86,7 +86,7 @@ void Lifter::LiftOverride(const LLInstr& inst, llvm::Function* override) {
     CallConv sptr_conv = CallConv::SPTR;
     sptr_conv.Pack(*regfile, fi);
     llvm::CallInst* call = irb.CreateCall(call_type, override, {fi.sptr_raw});
-    regfile->InitAll(nullptr); // Clear all facets before importing register state
+    regfile->Clear(); // Clear all facets before importing register state
     sptr_conv.Unpack(*regfile, fi);
 
     // Directly inline alwaysinline functions
