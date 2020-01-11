@@ -107,7 +107,7 @@ using ValueMapFlags = ValueMap<R, Facet::ZF, Facet::SF, Facet::PF, Facet::CF, Fa
 
 class RegFile::impl {
 public:
-    impl() : insert_block(nullptr), regs_gp(), regs_sse(), reg_ip(), flags() {}
+    impl() : insert_block(nullptr) {}
 
     llvm::BasicBlock* GetInsertBlock() {
         return insert_block;
@@ -117,19 +117,19 @@ public:
     }
 
     void Clear();
-    void InitAll(InitGenerator init_gen = nullptr);
+    void InitWithPHIs(std::vector<PhiDesc>*);
 
     llvm::Value* GetReg(X86Reg reg, Facet facet);
     void SetReg(X86Reg reg, Facet facet, llvm::Value*, bool clear_facets);
 
 private:
     llvm::BasicBlock* insert_block;
-    ValueMapGp<DeferredValue> regs_gp[LL_RI_GPMax];
-    ValueMapSse<DeferredValue> regs_sse[LL_RI_XMMMax];
-    DeferredValue reg_ip;
-    ValueMapFlags<DeferredValue> flags;
+    ValueMapGp<DeferredValueBase> regs_gp[LL_RI_GPMax];
+    ValueMapSse<DeferredValueBase> regs_sse[LL_RI_XMMMax];
+    DeferredValueBase reg_ip;
+    ValueMapFlags<DeferredValueBase> flags;
 
-    DeferredValue* AccessRegFacet(X86Reg reg, Facet facet);
+    DeferredValueBase* AccessRegFacet(X86Reg reg, Facet facet);
     llvm::Value* GetRegFacet(X86Reg reg, Facet facet);
 };
 
@@ -142,19 +142,28 @@ void RegFile::impl::Clear() {
     reg_ip = nullptr;
 }
 
-void RegFile::impl::InitAll(InitGenerator fn) {
-    if (!fn)
-        fn = [](const X86Reg reg, const Facet facet) { return DeferredValue(); };
+void RegFile::impl::InitWithPHIs(std::vector<PhiDesc>* desc_vec) {
+    auto fn = [desc_vec] (Facet) {
+        using DeferData = std::vector<PhiDesc>*;
+        return DeferredValue<DeferData>([](X86Reg reg, Facet facet,
+                                           llvm::BasicBlock* bb,
+                                           DeferData* defer_data) {
+            llvm::IRBuilder<> irb(bb, bb->begin());
+            auto phi = irb.CreatePHI(facet.Type(irb.getContext()), 4);
+            (*defer_data)->push_back(std::make_tuple(reg, facet, phi));
+            return llvm::cast<llvm::Value>(phi);
+        }, desc_vec);
+    };
 
     for (unsigned i = 0; i < LL_RI_GPMax; i++)
-        regs_gp[i].setAll([=](Facet f) { return fn(X86Reg::GP(i), f); });
+        regs_gp[i].setAll(fn);
     for (unsigned i = 0; i < LL_RI_XMMMax; i++)
-        regs_sse[i].setAll([=](Facet f) { return fn(X86Reg::VEC(i), f); });
-    flags.setAll([=](Facet f) { return fn(X86Reg::EFLAGS, f); });
-    reg_ip = fn(X86Reg::IP, Facet::I64);
+        regs_sse[i].setAll(fn);
+    flags.setAll(fn);
+    reg_ip = fn(Facet::I64);
 }
 
-DeferredValue* RegFile::impl::AccessRegFacet(X86Reg reg, Facet facet) {
+DeferredValueBase* RegFile::impl::AccessRegFacet(X86Reg reg, Facet facet) {
     unsigned idx = reg.Index();
     switch (reg.Kind()) {
     case X86Reg::RegKind::GP:
@@ -179,7 +188,7 @@ DeferredValue* RegFile::impl::AccessRegFacet(X86Reg reg, Facet facet) {
 }
 
 llvm::Value* RegFile::impl::GetRegFacet(X86Reg reg, Facet facet) {
-    DeferredValue* def_val = AccessRegFacet(reg, facet);
+    DeferredValueBase* def_val = AccessRegFacet(reg, facet);
     if (def_val)
         return def_val->get(reg, facet, insert_block);
     return nullptr;
@@ -188,7 +197,7 @@ llvm::Value* RegFile::impl::GetRegFacet(X86Reg reg, Facet facet) {
 llvm::Value*
 RegFile::impl::GetReg(X86Reg reg, Facet facet)
 {
-    DeferredValue* facet_entry = AccessRegFacet(reg, facet);
+    DeferredValueBase* facet_entry = AccessRegFacet(reg, facet);
     // If we store the selected facet in our register file and the facet is
     // valid, return it immediately.
     if (llvm::Value* res = GetRegFacet(reg, facet))
@@ -360,7 +369,7 @@ RegFile::impl::SetReg(X86Reg reg, Facet facet, llvm::Value* value, bool clearOth
         }
     }
 
-    DeferredValue* facet_entry = AccessRegFacet(reg, facet);
+    DeferredValueBase* facet_entry = AccessRegFacet(reg, facet);
     assert(facet_entry && "attempt to store invalid facet");
     *facet_entry = value;
 }
@@ -377,8 +386,8 @@ void RegFile::SetInsertBlock(llvm::BasicBlock* new_block) {
 void RegFile::Clear() {
     pimpl->Clear();
 }
-void RegFile::InitAll(InitGenerator init_gen) {
-    pimpl->InitAll(init_gen);
+void RegFile::InitWithPHIs(std::vector<PhiDesc>* desc_vec) {
+    pimpl->InitWithPHIs(desc_vec);
 }
 llvm::Value* RegFile::GetReg(X86Reg reg, Facet facet) {
     return pimpl->GetReg(reg, facet);

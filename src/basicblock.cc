@@ -58,15 +58,8 @@ BasicBlock::BasicBlock(FunctionInfo& fi, const LLConfig& cfg, Kind kind)
     if (kind != ENTRY) {
         // Initialize all registers with a generator which adds a PHI node when
         // the value-facet combination is requested.
-        regfile.InitAll([this](const X86Reg reg, const Facet facet) {
-            return DeferredValue([](X86Reg reg, Facet facet, llvm::BasicBlock* bb, void** user_args) {
-                llvm::IRBuilder<> irb(bb, bb->begin());
-                auto phi = irb.CreatePHI(facet.Type(irb.getContext()), 4);
-                auto self = static_cast<BasicBlock*>(user_args[0]);
-                self->empty_phis.push_back(std::make_tuple(reg, facet, phi));
-                return llvm::cast<llvm::Value>(phi);
-            }, {this});
-        });
+        empty_phis.reserve(32);
+        regfile.InitWithPHIs(&empty_phis);
     }
 
     // For ENTRY or EXIT kinds, we either need to setup all values or store them

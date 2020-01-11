@@ -29,32 +29,33 @@
 
 #include <llvm/IR/BasicBlock.h>
 #include <llvm/IR/Value.h>
-#include <functional>
+#include <type_traits>
 
 
 namespace rellume {
 
-class DeferredValue {
+class DeferredValueBase {
 public:
-    using Generator = llvm::Value*(*)(X86Reg, Facet, llvm::BasicBlock*, void**);
+    using Generator = llvm::Value*(*)(X86Reg, Facet, llvm::BasicBlock*, void*);
 
-private:
+protected:
     // If value is nullptr, then the generator (unless that is null as well)
     // is used to get the actual value.
     void* values[3];
     Generator generator;
 
 public:
-    DeferredValue() : values{}, generator(nullptr) {}
-    DeferredValue(llvm::Value* value) : values{value}, generator(nullptr) {}
-    DeferredValue(Generator generator, void* a0 = nullptr, void* a1 = nullptr, void* a2 = nullptr)
-            : values{a0, a1, a2}, generator(generator) {}
+    DeferredValueBase() {}
+    DeferredValueBase(llvm::Value* value) : values{value}, generator(nullptr) {}
+    explicit DeferredValueBase(Generator generator) : generator(generator) {
+        assert(generator && "deferred value with null generator");
+    }
 
-    DeferredValue(DeferredValue&& rhs) = default;
-    DeferredValue& operator=(DeferredValue&& rhs) = default;
+    DeferredValueBase(DeferredValueBase&& rhs) = default;
+    DeferredValueBase& operator=(DeferredValueBase&& rhs) = default;
 
-    DeferredValue(DeferredValue const&) = delete;
-    DeferredValue& operator=(const DeferredValue&) = delete;
+    DeferredValueBase(DeferredValueBase const&) = delete;
+    DeferredValueBase& operator=(const DeferredValueBase&) = delete;
 
     llvm::Value* get(X86Reg reg, Facet facet, llvm::BasicBlock* bb) {
         if (generator) {
@@ -66,6 +67,19 @@ public:
     }
     explicit operator bool() const {
         return generator || values[0];
+    }
+};
+
+template<typename T>
+class DeferredValue : public DeferredValueBase {
+public:
+    using Generator = llvm::Value*(*)(X86Reg, Facet, llvm::BasicBlock*, T*);
+    DeferredValue(Generator generator, T data)
+            : DeferredValueBase(reinterpret_cast<DeferredValueBase::Generator>(generator)) {
+        static_assert(std::is_trivially_copyable<T>::value);
+        static_assert(sizeof(T) <= sizeof(values));
+        static_assert(alignof(T) <= alignof(void*));
+        *reinterpret_cast<T*>(values) = data;
     }
 };
 

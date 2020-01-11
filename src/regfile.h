@@ -30,7 +30,8 @@
 
 #include <llvm/IR/BasicBlock.h>
 #include <llvm/IR/Value.h>
-#include <functional>
+#include <tuple>
+#include <vector>
 
 
 namespace rellume {
@@ -51,8 +52,8 @@ public:
     void SetInsertBlock(llvm::BasicBlock* new_block);
 
     void Clear();
-    using InitGenerator = std::function<DeferredValue(const X86Reg, const Facet)>;
-    void InitAll(InitGenerator init_gen = nullptr);
+    using PhiDesc = std::tuple<X86Reg, Facet, llvm::PHINode*>;
+    void InitWithPHIs(std::vector<PhiDesc>*);
 
     llvm::Value* GetReg(X86Reg reg, Facet facet);
     void SetReg(X86Reg reg, Facet facet, llvm::Value*, bool clear_facets);
