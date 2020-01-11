@@ -106,11 +106,14 @@ protected:
         return regfile->GetReg(reg, facet);
     }
     void SetReg(X86Reg reg, Facet facet, llvm::Value* value) {
-        fi.modified_regs.insert(reg);
+        fi.ModifyReg(reg);
         regfile->SetReg(reg, facet, value, true); // clear all other facets
     }
     void SetRegFacet(X86Reg reg, Facet facet, llvm::Value* value) {
-        fi.modified_regs.insert(reg);
+        // TODO: be more accurate about flags
+        // Currently, when a single flag is modified, all other flags are marked
+        // as modified as well.
+        fi.ModifyReg(reg);
         regfile->SetReg(reg, facet, value, false);
     }
     llvm::Value* GetFlag(Facet facet) {

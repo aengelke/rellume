@@ -125,7 +125,7 @@ llvm::Value* CallConv::Pack(RegFile& regfile, FunctionInfo& fi) const {
             }
         }
 
-        store_in_sptr &= !fi.modified_regs_final || fi.modified_regs.count(reg);
+        store_in_sptr &= !fi.modified_regs_final || fi.modified_regs[sptr_idx];
         if (store_in_sptr) {
             // GetReg moved in here to avoid generating dozens of dead PHI nodes
             irb.CreateStore(regfile.GetReg(reg, facet), fi.sptr[sptr_idx]);
@@ -177,7 +177,7 @@ void CallConv::Unpack(RegFile& regfile, FunctionInfo& fi) const {
         if (reg_val == nullptr)
             reg_val = irb.CreateLoad(fi.sptr[sptr_idx]);
 
-        fi.modified_regs.insert(reg);
+        fi.modified_regs.set(sptr_idx);
         regfile.SetReg(reg, facet, reg_val, false);
     }
 }

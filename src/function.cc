@@ -74,7 +74,7 @@ Function::Function(llvm::Module* mod, LLConfig* cfg) : cfg(cfg), fi{}
 
     // The entry block doesn't modify any registers, so remove the ones set by
     // loading the registers from the sptr.
-    fi.modified_regs.clear();
+    fi.modified_regs.reset();
 }
 
 Function::~Function() = default;

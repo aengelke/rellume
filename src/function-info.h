@@ -27,7 +27,7 @@
 #include "rellume/instr.h"
 #include <cstdbool>
 #include <cstdint>
-#include <set>
+#include <bitset>
 
 
 namespace llvm {
@@ -44,7 +44,6 @@ namespace SptrIdx {
 #undef RELLUME_NAMED_REG
         MAX
     };
-
 }
 
 struct FunctionInfo {
@@ -74,7 +73,15 @@ public:
     // this optimization for cconv packs inside a function (which would be
     // incorrect), a separate flag is set in the end.
     bool modified_regs_final;
-    std::set<X86Reg> modified_regs;
+    std::bitset<SptrIdx::MAX> modified_regs;
+    // Mark all stored facets of a register as modified
+    void ModifyReg(X86Reg reg_rq) {
+#define RELLUME_MAPPED_REG(nameu,off,reg,facet) \
+        if (reg_rq == reg) \
+            modified_regs.set(SptrIdx::nameu);
+#include <rellume/cpustruct-private.inc>
+#undef RELLUME_MAPPED_REG
+    }
 };
 
 
