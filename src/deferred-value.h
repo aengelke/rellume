@@ -36,18 +36,19 @@ namespace rellume {
 
 class DeferredValue {
 public:
-    using Generator = std::function<llvm::Value*()>;
+    using Generator = llvm::Value*(*)(X86Reg, Facet, llvm::BasicBlock*, void**);
 
 private:
     // If value is nullptr, then the generator (unless that is null as well)
     // is used to get the actual value.
-    llvm::Value* value;
+    void* values[3];
     Generator generator;
 
 public:
-    DeferredValue() : value(nullptr), generator(nullptr) {}
-    DeferredValue(llvm::Value* value) : value(value), generator(nullptr) {}
-    DeferredValue(Generator generator) : value(nullptr), generator(generator) {}
+    DeferredValue() : values{}, generator(nullptr) {}
+    DeferredValue(llvm::Value* value) : values{value}, generator(nullptr) {}
+    DeferredValue(Generator generator, void* a0 = nullptr, void* a1 = nullptr, void* a2 = nullptr)
+            : values{a0, a1, a2}, generator(generator) {}
 
     DeferredValue(DeferredValue&& rhs) = default;
     DeferredValue& operator=(DeferredValue&& rhs) = default;
@@ -55,16 +56,16 @@ public:
     DeferredValue(DeferredValue const&) = delete;
     DeferredValue& operator=(const DeferredValue&) = delete;
 
-    operator llvm::Value*() {
-        if (value == nullptr && generator) {
-            value = generator();
-            assert(value != nullptr && "generator returned nullptr");
+    llvm::Value* get(X86Reg reg, Facet facet, llvm::BasicBlock* bb) {
+        if (generator) {
+            values[0] = generator(reg, facet, bb, values);
+            assert(values[0] != nullptr && "generator returned nullptr");
             generator = nullptr;
         }
-        return value;
+        return static_cast<llvm::Value*>(values[0]);
     }
     explicit operator bool() const {
-        return value || generator;
+        return generator || values[0];
     }
 };
 

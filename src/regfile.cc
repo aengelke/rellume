@@ -130,6 +130,7 @@ private:
     ValueMapFlags<DeferredValue> flags;
 
     DeferredValue* AccessRegFacet(X86Reg reg, Facet facet);
+    llvm::Value* GetRegFacet(X86Reg reg, Facet facet);
 };
 
 void RegFile::impl::Clear() {
@@ -143,7 +144,7 @@ void RegFile::impl::Clear() {
 
 void RegFile::impl::InitAll(InitGenerator fn) {
     if (!fn)
-        fn = [](const X86Reg reg, const Facet facet) { return DeferredValue(nullptr); };
+        fn = [](const X86Reg reg, const Facet facet) { return DeferredValue(); };
 
     for (unsigned i = 0; i < LL_RI_GPMax; i++)
         regs_gp[i].setAll([=](Facet f) { return fn(X86Reg::GP(i), f); });
@@ -177,15 +178,21 @@ DeferredValue* RegFile::impl::AccessRegFacet(X86Reg reg, Facet facet) {
     }
 }
 
+llvm::Value* RegFile::impl::GetRegFacet(X86Reg reg, Facet facet) {
+    DeferredValue* def_val = AccessRegFacet(reg, facet);
+    if (def_val)
+        return def_val->get(reg, facet, insert_block);
+    return nullptr;
+}
+
 llvm::Value*
 RegFile::impl::GetReg(X86Reg reg, Facet facet)
 {
     DeferredValue* facet_entry = AccessRegFacet(reg, facet);
     // If we store the selected facet in our register file and the facet is
     // valid, return it immediately.
-    if (facet_entry)
-        if (llvm::Value* res = *facet_entry)
-            return res;
+    if (llvm::Value* res = GetRegFacet(reg, facet))
+        return res;
 
     llvm::LLVMContext& ctx = insert_block->getContext();
 
@@ -201,7 +208,7 @@ RegFile::impl::GetReg(X86Reg reg, Facet facet)
     if (reg.Kind() == X86Reg::RegKind::GP)
     {
         llvm::Value* res = nullptr;
-        llvm::Value* native = *AccessRegFacet(reg, Facet::I64);
+        llvm::Value* native = GetRegFacet(reg, Facet::I64);
         assert(native && "native gp-reg facet is null");
         switch (facet)
         {
@@ -231,7 +238,7 @@ RegFile::impl::GetReg(X86Reg reg, Facet facet)
     }
     else if (reg.Kind() == X86Reg::RegKind::IP)
     {
-        llvm::Value* native = *AccessRegFacet(reg, Facet::I64);
+        llvm::Value* native = GetRegFacet(reg, Facet::I64);
         if (facet == Facet::I64)
             return native;
         else if (facet == Facet::PTR)
@@ -242,7 +249,7 @@ RegFile::impl::GetReg(X86Reg reg, Facet facet)
     else if (reg.Kind() == X86Reg::RegKind::VEC)
     {
         llvm::Value* res = nullptr;
-        llvm::Value* native = *AccessRegFacet(reg, Facet::IVEC);
+        llvm::Value* native = GetRegFacet(reg, Facet::IVEC);
         assert(native && "native sse-reg facet is null");
         switch (facet)
         {
@@ -298,9 +305,8 @@ RegFile::impl::GetReg(X86Reg reg, Facet facet)
 
             // Prefer 128-bit SSE facet over full vector register.
             if (targetBits <= 128)
-                if (DeferredValue* entry_128 = AccessRegFacet(reg, Facet::I128))
-                    if (llvm::Value* value_128 = *entry_128)
-                        native = value_128;
+                if (llvm::Value* value_128 = GetRegFacet(reg, Facet::I128))
+                    native = value_128;
             int nativeBits = native->getType()->getPrimitiveSizeInBits();
 
             int targetCnt = facetType->getVectorNumElements();
