@@ -2,7 +2,7 @@ project('rellume', ['cpp'],
         default_options: [
             'buildtype=debugoptimized',
             'warning_level=3',
-            'cpp_std=c++14',
+            'cpp_std=c++17',
         ])
 
 add_project_arguments(['-Wno-unused-parameter', '-Wshadow=local'], language: 'cpp')
