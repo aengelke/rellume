@@ -80,7 +80,8 @@ llvm::Function* WrapSysVAbi(llvm::Function* orig_fn, llvm::FunctionType* fn_ty,
     llvm::SmallVector<llvm::Type*, 4> cpu_types;
     cpu_types.push_back(irb.getInt64Ty()); // instruction pointer
     cpu_types.push_back(llvm::ArrayType::get(irb.getInt64Ty(), 16));
-    cpu_types.push_back(llvm::ArrayType::get(irb.getInt1Ty(), 7));
+    cpu_types.push_back(llvm::ArrayType::get(irb.getInt1Ty(), 8));
+    cpu_types.push_back(llvm::ArrayType::get(irb.getInt64Ty(), 2));
     cpu_types.push_back(llvm::ArrayType::get(irb.getIntNTy(LL_VECTOR_REGISTER_SIZE), 16));
     llvm::Type* cpu_type = llvm::StructType::get(irb.getContext(), cpu_types);
 
@@ -113,7 +114,7 @@ llvm::Function* WrapSysVAbi(llvm::Function* orig_fn, llvm::FunctionType* fn_ty,
             llvm::Type* vec_type = irb.getIntNTy(LL_VECTOR_REGISTER_SIZE);
             llvm::Value* intval = irb.CreateBitCast(arg, int_type);
             llvm::Value* ext = irb.CreateZExt(intval, vec_type);
-            irb.CreateStore(ext, rellume::GepHelper(irb, alloca, {0, 3, fpRegOffset}));
+            irb.CreateStore(ext, rellume::GepHelper(irb, alloca, {0, 4, fpRegOffset}));
             fpRegOffset++;
         }
         else
@@ -152,7 +153,7 @@ llvm::Function* WrapSysVAbi(llvm::Function* orig_fn, llvm::FunctionType* fn_ty,
             break;
         case llvm::Type::TypeID::FloatTyID:
         case llvm::Type::TypeID::DoubleTyID:
-            ret = irb.CreateLoad(rellume::GepHelper(irb, alloca, {0, 3, 0}));
+            ret = irb.CreateLoad(rellume::GepHelper(irb, alloca, {0, 4, 0}));
             ret = irb.CreateTrunc(ret, irb.getIntNTy(ret_type->getPrimitiveSizeInBits()));
             ret = irb.CreateBitCast(ret, ret_type);
             irb.CreateRet(ret);
