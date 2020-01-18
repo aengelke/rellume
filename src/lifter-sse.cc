@@ -222,6 +222,7 @@ void Lifter::LiftSseCmp(const LLInstr& inst, Facet op_type) {
     case 5: pred = llvm::FCmpInst::FCMP_UGE; break; // NLT_US
     case 6: pred = llvm::FCmpInst::FCMP_UGT; break; // NLE_US
     case 7: pred = llvm::FCmpInst::FCMP_ORD; break; // ORD_Q
+    default: assert(false); return;
     }
     llvm::Value* op1 = OpLoad(inst.ops[0], op_type, ALIGN_MAX);
     llvm::Value* op2 = OpLoad(inst.ops[1], op_type, ALIGN_MAX);

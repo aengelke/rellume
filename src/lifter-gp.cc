@@ -565,7 +565,7 @@ void Lifter::LiftBittest(const LLInstr& inst) {
             "invalid bittest operation size");
 
     llvm::Value* val;
-    llvm::Value* addr;
+    llvm::Value* addr = nullptr;
     if (inst.ops[0].type == LL_OP_REG) {
         val = OpLoad(inst.ops[0], Facet::I);
     } else { // LL_OP_MEM
