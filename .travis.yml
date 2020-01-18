@@ -16,18 +16,6 @@ matrix:
       env:
         - COMPILERC=gcc-7
         - COMPILERCXX=g++-7
-        - LLVM_CONFIG=llvm-config-7
-      addons:
-        apt:
-          packages:
-            - *default_pkgs
-            - llvm-7-dev
-            - gcc-7
-            - g++-7
-    - compiler: gcc
-      env:
-        - COMPILERC=gcc-7
-        - COMPILERCXX=g++-7
         - LLVM_CONFIG=llvm-config-8
       addons:
         apt:
@@ -38,15 +26,15 @@ matrix:
             - g++-7
     - compiler: clang
       env:
-        - COMPILERC=clang-7
-        - COMPILERCXX=clang++-7
-        - LLVM_CONFIG=llvm-config-7
+        - COMPILERC=clang-8
+        - COMPILERCXX=clang++-8
+        - LLVM_CONFIG=llvm-config-8
       addons:
         apt:
           packages:
             - *default_pkgs
-            - llvm-7-dev
-            - clang-7
+            - llvm-8-dev
+            - clang-8
 
 install:
   # The meson included in the Xenial repositories is too old (0.29).

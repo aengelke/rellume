@@ -67,11 +67,7 @@ protected:
         // Set fast-math flags. Newer LLVM supports FastMathFlags::getFast().
         if (cfg.enableFastMath) {
             llvm::FastMathFlags fmf;
-#if LL_LLVM_MAJOR >= 6
             fmf.setFast();
-#else
-            fmf.setUnsafeAlgebra();
-#endif
             irb.setFastMathFlags(fmf);
         }
     }
@@ -199,13 +195,8 @@ protected:
 
     // Helper function for older LLVM versions
     llvm::Value* CreateUnaryIntrinsic(llvm::Intrinsic::ID id, llvm::Value* v) {
-#if LL_LLVM_MAJOR >= 8
+        // TODO: remove this helper function
         return irb.CreateUnaryIntrinsic(id, v);
-#else
-        llvm::Module* module = irb.GetInsertBlock()->getModule();
-        llvm::Function* intrinsic = llvm::Intrinsic::getDeclaration(module, id, {v->getType()});
-        return irb.CreateCall(intrinsic, {v});
-#endif
     }
 };
 
