@@ -76,9 +76,9 @@ public:
     using Generator = llvm::Value*(*)(X86Reg, Facet, llvm::BasicBlock*, T*);
     DeferredValue(Generator generator, T data)
             : DeferredValueBase(reinterpret_cast<DeferredValueBase::Generator>(generator)) {
-        static_assert(std::is_trivially_copyable<T>::value);
-        static_assert(sizeof(T) <= sizeof(values));
-        static_assert(alignof(T) <= alignof(void*));
+        static_assert(std::is_trivially_copyable<T>::value, "invalid defer arg type");
+        static_assert(sizeof(T) <= sizeof(values), "defer arg type too big");
+        static_assert(alignof(T) <= alignof(void*), "defer arg type misaligned");
         *reinterpret_cast<T*>(values) = data;
     }
 };
