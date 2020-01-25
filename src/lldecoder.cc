@@ -119,12 +119,24 @@ int Function::Decode(uintptr_t addr, DecodeStop stop, MemReader memacc)
         }
     }
 
-    for (auto it = blocks.begin(); it != blocks.end(); it++)
-    {
+    bool first_inst = true;
+    for (auto it = blocks.begin(); it != blocks.end(); it++) {
         uint64_t block_addr = insts[it->first].addr;
-        for (size_t j = it->first; j < it->second; j++)
-            AddInst(block_addr, insts[j]);
+        for (size_t j = it->first; j < it->second; j++) {
+            if (!AddInst(block_addr, insts[j])) {
+                // If we fail on the first instruction, propagate error.
+                if (first_inst)
+                    return 1;
+                // Otherwise continue with other basic blocks.
+                break;
+            }
+            first_inst = false;
+        }
     }
+
+    // If we didn't lift a single instruction, return error code.
+    if (first_inst)
+        return 1;
 
     return 0;
 }

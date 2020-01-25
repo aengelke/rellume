@@ -51,7 +51,7 @@ public:
     Function(const Function&) = delete;
     Function& operator=(const Function&) = delete;
 
-    void AddInst(uint64_t block_addr, const LLInstr& inst);
+    bool AddInst(uint64_t block_addr, const LLInstr& inst);
     llvm::Function* Lift();
 
     // Implemented in lldecoder.cc

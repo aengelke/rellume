@@ -33,7 +33,7 @@ class ArchBasicBlock;
 class FunctionInfo;
 class LLConfig;
 
-void LiftInstruction(const LLInstr& inst, FunctionInfo& fi, const LLConfig& cfg,
+bool LiftInstruction(const LLInstr& inst, FunctionInfo& fi, const LLConfig& cfg,
                      ArchBasicBlock& ab) noexcept;
 
 } // namespace

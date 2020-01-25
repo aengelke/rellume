@@ -80,14 +80,14 @@ Function::Function(llvm::Module* mod, LLConfig* cfg) : cfg(cfg), fi{}
 
 Function::~Function() = default;
 
-void Function::AddInst(uint64_t block_addr, const LLInstr& inst)
+bool Function::AddInst(uint64_t block_addr, const LLInstr& inst)
 {
     if (block_map.size() == 0)
         entry_addr = block_addr;
     if (block_map.find(block_addr) == block_map.end())
         block_map[block_addr] = std::make_unique<ArchBasicBlock>(fi, *cfg);
 
-    LiftInstruction(inst, fi, *cfg, *block_map[block_addr]);
+    return LiftInstruction(inst, fi, *cfg, *block_map[block_addr]);
 }
 
 ArchBasicBlock& Function::ResolveAddr(llvm::Value* addr) {

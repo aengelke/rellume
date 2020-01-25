@@ -40,9 +40,9 @@
 namespace rellume {
 
 
-void LiftInstruction(const LLInstr& inst, FunctionInfo& fi, const LLConfig& cfg,
+bool LiftInstruction(const LLInstr& inst, FunctionInfo& fi, const LLConfig& cfg,
                      ArchBasicBlock& ab) noexcept {
-    Lifter(fi, cfg, ab).Lift(inst);
+    return Lifter(fi, cfg, ab).Lift(inst);
 }
 
 } // namespace

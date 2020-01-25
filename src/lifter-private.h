@@ -206,7 +206,7 @@ public:
             LifterBase(fi, cfg, ab) {}
 
     // llinstruction-gp.cc
-    void Lift(const LLInstr&);
+    bool Lift(const LLInstr&);
 
 private:
     void LiftOverride(const LLInstr&, llvm::Function* override);
