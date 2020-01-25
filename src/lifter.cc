@@ -21,21 +21,32 @@
  * \file
  **/
 
-#ifndef RELLUME_LIFTER_H
-#define RELLUME_LIFTER_H
+#include "lifter.h"
+
+#include "facet.h"
+#include "lifter-private.h"
+#include "regfile.h"
+#include "rellume/instr.h"
+#include <llvm/IR/Instruction.h>
+#include <llvm/IR/IRBuilder.h>
+#include <llvm/IR/Value.h>
+#include <llvm/Transforms/Utils/Cloning.h>
 
 
-struct LLInstr;
+/**
+ * @{
+ **/
 
 namespace rellume {
 
-class ArchBasicBlock;
-class FunctionInfo;
-class LLConfig;
 
 void LiftInstruction(const LLInstr& inst, FunctionInfo& fi, const LLConfig& cfg,
-                     ArchBasicBlock& ab) noexcept;
+                     ArchBasicBlock& ab) noexcept {
+    Lifter(fi, cfg, ab).Lift(inst);
+}
 
 } // namespace
 
-#endif
+/**
+ * @}
+ **/

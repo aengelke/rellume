@@ -21,7 +21,7 @@
  * \file
  **/
 
-#include "lifter.h"
+#include "lifter-private.h"
 
 #include "callconv.h"
 #include "facet.h"

@@ -87,8 +87,7 @@ void Function::AddInst(uint64_t block_addr, const LLInstr& inst)
     if (block_map.find(block_addr) == block_map.end())
         block_map[block_addr] = std::make_unique<ArchBasicBlock>(fi, *cfg);
 
-    Lifter lifter(fi, *cfg, *block_map[block_addr]);
-    lifter.Lift(inst);
+    LiftInstruction(inst, fi, *cfg, *block_map[block_addr]);
 }
 
 ArchBasicBlock& Function::ResolveAddr(llvm::Value* addr) {

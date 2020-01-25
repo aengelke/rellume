@@ -6,6 +6,7 @@ sources = [
   'instr.cc',
   'function.cc',
   'lldecoder.cc',
+  'lifter.cc',
   'lifter-flags.cc',
   'lifter-gp.cc',
   'lifter-sse.cc',

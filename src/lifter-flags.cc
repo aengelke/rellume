@@ -21,7 +21,7 @@
  * \file
  **/
 
-#include "lifter.h"
+#include "lifter-private.h"
 
 #include "regfile.h"
 #include "rellume/instr.h"
