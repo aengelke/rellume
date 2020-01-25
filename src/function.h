@@ -24,10 +24,7 @@
 #ifndef LL_FUNCTION_H
 #define LL_FUNCTION_H
 
-#include "callconv.h"
-#include "config.h"
 #include "function-info.h"
-#include "rellume/instr.h"
 #include <llvm/IR/Function.h>
 #include <llvm/IR/Value.h>
 #include <cstdint>
@@ -35,9 +32,12 @@
 #include <unordered_map>
 
 
+struct LLInstr;
+
 namespace rellume {
 
 class ArchBasicBlock;
+class LLConfig;
 
 class Function
 {

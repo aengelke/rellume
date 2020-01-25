@@ -26,6 +26,7 @@
 #include "basicblock.h"
 #include "callconv.h"
 #include "config.h"
+#include "function-info.h"
 #include "lifter.h"
 #include <llvm/ADT/DepthFirstIterator.h>
 #include <llvm/ADT/SmallVector.h>

@@ -24,9 +24,7 @@
 #ifndef LL_BASIC_BLOCK_H
 #define LL_BASIC_BLOCK_H
 
-#include "config.h"
 #include "facet.h"
-#include "function-info.h"
 #include "regfile.h"
 #include "rellume/instr.h"
 #include <llvm/IR/BasicBlock.h>
@@ -36,6 +34,9 @@
 
 
 namespace rellume {
+
+class FunctionInfo;
+class LLConfig;
 
 class BasicBlock
 {
