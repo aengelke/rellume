@@ -24,7 +24,6 @@
 #ifndef LL_REGFILE_H
 #define LL_REGFILE_H
 
-#include "deferred-value.h"
 #include "facet.h"
 #include "rellume/instr.h"
 
