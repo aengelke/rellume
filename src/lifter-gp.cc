@@ -509,9 +509,9 @@ void Lifter::LiftXlat(const LLInstr& inst) {
         bx = irb.CreatePointerCast(bx, irb.getInt8PtrTy());
     } else {
         bx = OpLoad(LLInstrOp({LL_RT_GP32, LL_RI_B}), Facet::I32);
+        bx = irb.CreateZExt(bx, irb.getInt64Ty());
         bx = irb.CreateIntToPtr(bx, irb.getInt8PtrTy());
     }
-    assert(bx->getType() == irb.getInt8PtrTy() && "xlat wrong rbx type");
 
     llvm::Value* ptr = irb.CreateGEP(bx, irb.CreateZExt(al, irb.getInt32Ty()));
     OpStoreGp(LLInstrOp({LL_RT_GP8, LL_RI_A}), irb.CreateLoad(ptr));
