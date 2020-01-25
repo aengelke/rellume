@@ -241,6 +241,12 @@ private:
     void LiftMovbe(const LLInstr& inst);
     void LiftBswap(const LLInstr& inst);
 
+    void LiftLahf(const LLInstr& inst) {
+        OpStoreGp(LLInstrOp(LLReg(LL_RT_GP8Leg, LL_RI_AH)), FlagAsReg(8));
+    }
+    void LiftSahf(const LLInstr& inst) {
+        FlagFromReg(OpLoad(LLReg(LL_RT_GP8Leg, LL_RI_AH), Facet::I8));
+    }
     void LiftPush(const LLInstr& inst) {
         StackPush(OpLoad(inst.ops[0], Facet::I));
     }

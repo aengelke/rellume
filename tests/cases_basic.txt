@@ -33,6 +33,21 @@ code="popfq" rsp=q:0x20000000 m20000000=q:0x206 => rsp=q:0x20000008 of=00 sf=00 
 code="popfq" rsp=q:0x20000000 m20000000=q:0x203 => rsp=q:0x20000008 of=00 sf=00 zf=00 af=00 pf=00 cf=01 df=00
 code="popfq" rsp=q:0x20000000 m20000000=q:0x602 => rsp=q:0x20000008 of=00 sf=00 zf=00 af=00 pf=00 cf=00 df=01
 
+code="lahf" rax=q:0xffaaff of=01 sf=00 zf=00 af=00 pf=00 cf=00 df=00 => rax=q:0xff02ff
+code="lahf" rax=q:0xffaaff of=00 sf=01 zf=00 af=00 pf=00 cf=00 df=00 => rax=q:0xff82ff
+code="lahf" rax=q:0xffaaff of=00 sf=00 zf=01 af=00 pf=00 cf=00 df=00 => rax=q:0xff42ff
+code="lahf" rax=q:0xffaaff of=00 sf=00 zf=00 af=01 pf=00 cf=00 df=00 => rax=q:0xff12ff
+code="lahf" rax=q:0xffaaff of=00 sf=00 zf=00 af=00 pf=01 cf=00 df=00 => rax=q:0xff06ff
+code="lahf" rax=q:0xffaaff of=00 sf=00 zf=00 af=00 pf=00 cf=01 df=00 => rax=q:0xff03ff
+code="lahf" rax=q:0xffaaff of=00 sf=00 zf=00 af=00 pf=00 cf=00 df=01 => rax=q:0xff02ff
+code="sahf" rax=q:0xff02ff => sf=00 zf=00 af=00 pf=00 cf=00
+code="sahf" rax=q:0xff82ff => sf=01 zf=00 af=00 pf=00 cf=00
+code="sahf" rax=q:0xff42ff => sf=00 zf=01 af=00 pf=00 cf=00
+code="sahf" rax=q:0xff12ff => sf=00 zf=00 af=01 pf=00 cf=00
+code="sahf" rax=q:0xff06ff => sf=00 zf=00 af=00 pf=01 cf=00
+code="sahf" rax=q:0xff03ff => sf=00 zf=00 af=00 pf=00 cf=01
+code="sahf" rax=q:0xff02ff => sf=00 zf=00 af=00 pf=00 cf=00
+
 code="clc" cf=00 => cf=00
 code="clc" cf=01 => cf=00
 code="stc" cf=00 => cf=01

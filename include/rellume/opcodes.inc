@@ -41,6 +41,9 @@ DEF_IT(RDTSC, goto not_implemented)
 DEF_IT(CRC32, goto not_implemented)
 DEF_IT(UD2, LiftUnreachable(inst))
 
+DEF_IT(LAHF, LiftLahf(inst))
+DEF_IT(SAHF, LiftSahf(inst))
+
 // Defined in llinstruction-gp.c
 DEF_IT(MOV, LiftMovgp(inst, llvm::Instruction::SExt))
 DEF_IT(MOVZX, LiftMovgp(inst, llvm::Instruction::ZExt))
