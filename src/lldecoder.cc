@@ -33,29 +33,6 @@
 
 namespace rellume {
 
-#define instrIsJcc(instr) ( \
-    (instr) == LL_INS_JO || \
-    (instr) == LL_INS_JNO || \
-    (instr) == LL_INS_JC || \
-    (instr) == LL_INS_JNC || \
-    (instr) == LL_INS_JZ || \
-    (instr) == LL_INS_JNZ || \
-    (instr) == LL_INS_JBE || \
-    (instr) == LL_INS_JA || \
-    (instr) == LL_INS_JS || \
-    (instr) == LL_INS_JNS || \
-    (instr) == LL_INS_JP || \
-    (instr) == LL_INS_JNP || \
-    (instr) == LL_INS_JL || \
-    (instr) == LL_INS_JGE || \
-    (instr) == LL_INS_JLE || \
-    (instr) == LL_INS_JG || \
-    (instr) == LL_INS_JCXZ \
-)
-#define instrBreaks(instr) (instrIsJcc(instr) || (instr) == LL_INS_RET || \
-                        (instr) == LL_INS_JMP || (instr) == LL_INS_CALL || \
-                        (instr) == LL_INS_SYSCALL || (instr) == LL_INS_UD2)
-
 int Function::Decode(uintptr_t addr, DecodeStop stop, MemReader memacc)
 {
     LLInstr inst;
@@ -107,18 +84,17 @@ int Function::Decode(uintptr_t addr, DecodeStop stop, MemReader memacc)
             if (stop == DecodeStop::INSTR)
                 break;
 
-            if (instrBreaks(inst.type)) {
+            if (inst.BreaksAlways() || inst.BreaksConditionally()) {
                 if (stop == DecodeStop::BASICBLOCK)
                     break;
 
-                if (instrIsJcc(inst.type))
+                if (inst.BreaksConditionally())
                     addr_queue.push_back(cur_addr + inst.len);
 
                 if (stop == DecodeStop::SUPERBLOCK)
                     break;
 
-                if ((instrIsJcc(inst.type) || inst.type == LL_INS_JMP) &&
-                        inst.ops[0].type == LL_OP_IMM)
+                if (inst.HasAbsJumpTarget() && inst.type != LL_INS_CALL)
                     addr_queue.push_back(inst.ops[0].val);
                 break;
             }

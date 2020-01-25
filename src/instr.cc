@@ -93,6 +93,78 @@ LLReg::Size() const
     }
 }
 
+bool LLInstr::BreaksAlways() const {
+    switch (type) {
+    case LL_INS_RET:
+    case LL_INS_JMP:
+    case LL_INS_CALL:
+    case LL_INS_SYSCALL:
+    case LL_INS_UD2:
+        return true;
+    default:
+        return false;
+    }
+}
+
+bool LLInstr::BreaksConditionally() const {
+    switch (type) {
+    case LL_INS_JO:
+    case LL_INS_JNO:
+    case LL_INS_JC:
+    case LL_INS_JNC:
+    case LL_INS_JZ:
+    case LL_INS_JNZ:
+    case LL_INS_JBE:
+    case LL_INS_JA:
+    case LL_INS_JS:
+    case LL_INS_JNS:
+    case LL_INS_JP:
+    case LL_INS_JNP:
+    case LL_INS_JL:
+    case LL_INS_JGE:
+    case LL_INS_JLE:
+    case LL_INS_JG:
+    case LL_INS_JCXZ:
+    case LL_INS_LOOP:
+    case LL_INS_LOOPE:
+    case LL_INS_LOOPNE:
+        return true;
+    default:
+        return false;
+    }
+}
+
+bool LLInstr::HasAbsJumpTarget() const {
+    switch (type) {
+    case LL_INS_JO:
+    case LL_INS_JNO:
+    case LL_INS_JC:
+    case LL_INS_JNC:
+    case LL_INS_JZ:
+    case LL_INS_JNZ:
+    case LL_INS_JBE:
+    case LL_INS_JA:
+    case LL_INS_JS:
+    case LL_INS_JNS:
+    case LL_INS_JP:
+    case LL_INS_JNP:
+    case LL_INS_JL:
+    case LL_INS_JGE:
+    case LL_INS_JLE:
+    case LL_INS_JG:
+    case LL_INS_JCXZ:
+    case LL_INS_LOOP:
+    case LL_INS_LOOPE:
+    case LL_INS_LOOPNE:
+        return true;
+    case LL_INS_JMP:
+    case LL_INS_CALL:
+        return ops[0].type == LL_OP_IMM;
+    default:
+        return false;
+    }
+}
+
 static LLReg
 convert_reg(int size, int idx, int type)
 {

@@ -152,6 +152,9 @@ struct LLInstr {
     int len;
 
 #if defined(__cplusplus) && defined(RELLUME_ENABLE_CPP_HEADER)
+    bool BreaksAlways() const;
+    bool BreaksConditionally() const;
+    bool HasAbsJumpTarget() const;
     static LLInstr Invalid(uintptr_t addr) {
         return LLInstr{LL_INS_Invalid, 0, 0, 0, {}, addr, 1};
     }
