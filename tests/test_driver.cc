@@ -150,20 +150,24 @@ class TestCase {
         std::istringstream argstream(argstring);
         std::string arg;
         bool fail = false;
+        bool should_pass = true;
 
         // 1. Setup initial state
         CPU initial{};
         getrandom(&initial, sizeof(initial), 0);
 
         while (argstream >> arg) {
-            if (arg == "=>")
+            if (arg == "!") {
+                should_pass = false;
+            } else if (arg == "=>") {
                 goto run_function;
-
-            auto kv = split_arg(arg);
-            if (kv.first[0] == 'm') {
-                AllocMem(kv.first, kv.second);
             } else {
-                SetReg(kv.first, kv.second, &initial);
+                auto kv = split_arg(arg);
+                if (kv.first[0] == 'm') {
+                    AllocMem(kv.first, kv.second);
+                } else {
+                    SetReg(kv.first, kv.second, &initial);
+                }
             }
         }
 
@@ -183,15 +187,21 @@ class TestCase {
         ll_config_enable_verify_ir(rlcfg, true);
         ll_config_enable_overflow_intrinsics(rlcfg, opt_overflow_intrinsics);
         LLFunc* rlfn = ll_func_new(llvm::wrap(mod.get()), rlcfg);
-        ll_func_decode(rlfn, *reinterpret_cast<uint64_t*>(&state.rip));
-        llvm::Function* fn = llvm::unwrap<llvm::Function>(ll_func_lift(rlfn));
+        bool decode_ok = !ll_func_decode(rlfn, *reinterpret_cast<uint64_t*>(&state.rip));
+        LLVMValueRef fn_wrap = decode_ok ? ll_func_lift(rlfn) : nullptr;
         ll_func_dispose(rlfn);
         ll_config_free(rlcfg);
-        if (fn == nullptr) {
+
+        if (!decode_ok) {
+            diagnostic << "# error: could not handle first instruction" << std::endl;
+            return should_pass;
+        }
+        if (!fn_wrap) {
             diagnostic << "# error during lifting" << std::endl;
-            return true;
+            return should_pass;
         }
 
+        llvm::Function* fn = llvm::unwrap<llvm::Function>(fn_wrap);
         fn->setName("test_function");
         if (opt_verbose)
             fn->print(llvm::errs());
@@ -266,7 +276,7 @@ class TestCase {
             }
         }
 
-        return fail;
+        return should_pass ? fail : !fail;
     }
 
 public:

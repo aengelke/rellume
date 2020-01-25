@@ -1,3 +1,7 @@
+! code="hlt" =>
+! code="rdtsc" =>
+! code="int 0x80" =>
+! code="syscall" =>
 code="jmp foo; hlt; foo:" =>
 code="jmp rax" rax=q:0xf000abcd12345678 => rip=q:0xf000abcd12345678
 code="jrcxz foo; hlt; foo:" rcx=q:0 =>

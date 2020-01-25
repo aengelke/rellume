@@ -27,7 +27,10 @@ class Assembler:
 def parse_case(case, asm=None):
     pre, post = [], []
     cur = pre
-    for part in shlex.split(case):
+    for i, part in enumerate(shlex.split(case)):
+        if part == "!" and i == 0:
+            pre.append("!")
+            continue
         if part == "=>":
             cur = post
             continue
