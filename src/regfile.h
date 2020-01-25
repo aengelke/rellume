@@ -25,7 +25,6 @@
 #define LL_REGFILE_H
 
 #include "facet.h"
-#include "rellume/instr.h"
 
 #include <llvm/IR/BasicBlock.h>
 #include <llvm/IR/Value.h>
@@ -34,6 +33,51 @@
 
 
 namespace rellume {
+
+class X86Reg {
+public:
+    enum class RegKind : uint8_t {
+        INVALID = 0, GP /*64-bit*/, IP /*64-bit*/, EFLAGS, VEC,
+    };
+private:
+    RegKind kind;
+    uint8_t index;
+public:
+    constexpr X86Reg()
+            : kind(RegKind::INVALID), index(0) {}
+private:
+    constexpr X86Reg(RegKind kind, uint8_t index = 0)
+            : kind(kind), index(index) {}
+public:
+    RegKind Kind() const { return kind; }
+    uint8_t Index() const { return index; }
+
+    inline bool operator==(const X86Reg& rhs) const {
+        return kind == rhs.kind && index == rhs.index;
+    }
+    bool operator<(const X86Reg& rhs) const {
+        return (static_cast<uint32_t>(kind)<<8) + index
+               < (static_cast<uint32_t>(rhs.kind)<<8) + rhs.index;
+    }
+
+    static constexpr X86Reg GP(unsigned idx) { return X86Reg(RegKind::GP, idx); }
+    static constexpr X86Reg VEC(unsigned idx) { return X86Reg(RegKind::VEC, idx); }
+    static const X86Reg RAX, RCX, RDX, RBX, RSP, RBP, RSI, RDI;
+    static const X86Reg IP;
+    static const X86Reg EFLAGS;
+};
+
+constexpr const X86Reg X86Reg::RAX = X86Reg::GP(0);
+constexpr const X86Reg X86Reg::RCX = X86Reg::GP(1);
+constexpr const X86Reg X86Reg::RDX = X86Reg::GP(2);
+constexpr const X86Reg X86Reg::RBX = X86Reg::GP(3);
+constexpr const X86Reg X86Reg::RSP = X86Reg::GP(4);
+constexpr const X86Reg X86Reg::RBP = X86Reg::GP(5);
+constexpr const X86Reg X86Reg::RSI = X86Reg::GP(6);
+constexpr const X86Reg X86Reg::RDI = X86Reg::GP(7);
+constexpr const X86Reg X86Reg::IP{X86Reg::RegKind::IP, 0};
+constexpr const X86Reg X86Reg::EFLAGS{X86Reg::RegKind::EFLAGS, 0};
+
 
 class RegFile
 {

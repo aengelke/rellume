@@ -24,7 +24,6 @@
 #include "regfile.h"
 
 #include "facet.h"
-#include "rellume/instr.h"
 #include <llvm/IR/BasicBlock.h>
 #include <llvm/IR/Constants.h>
 #include <llvm/IR/Instructions.h>
@@ -173,8 +172,8 @@ public:
 
 private:
     llvm::BasicBlock* insert_block;
-    ValueMapGp<DeferredValueBase> regs_gp[LL_RI_GPMax];
-    ValueMapSse<DeferredValueBase> regs_sse[LL_RI_XMMMax];
+    ValueMapGp<DeferredValueBase> regs_gp[16];
+    ValueMapSse<DeferredValueBase> regs_sse[16];
     DeferredValueBase reg_ip;
     ValueMapFlags<DeferredValueBase> flags;
 
@@ -183,9 +182,9 @@ private:
 };
 
 void RegFile::impl::Clear() {
-    for (unsigned i = 0; i < LL_RI_GPMax; i++)
+    for (unsigned i = 0; i < 16; i++)
         regs_gp[i].clear();
-    for (unsigned i = 0; i < LL_RI_XMMMax; i++)
+    for (unsigned i = 0; i < 16; i++)
         regs_sse[i].clear();
     flags.clear();
     reg_ip = nullptr;
@@ -204,9 +203,9 @@ void RegFile::impl::InitWithPHIs(std::vector<PhiDesc>* desc_vec) {
         }, desc_vec);
     };
 
-    for (unsigned i = 0; i < LL_RI_GPMax; i++)
+    for (unsigned i = 0; i < 16; i++)
         regs_gp[i].setAll(fn);
-    for (unsigned i = 0; i < LL_RI_XMMMax; i++)
+    for (unsigned i = 0; i < 16; i++)
         regs_sse[i].setAll(fn);
     flags.setAll(fn);
     reg_ip = fn(Facet::I64);

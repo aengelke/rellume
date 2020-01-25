@@ -24,7 +24,7 @@
 #ifndef RELLUME_FUNCTION_INFO_H
 #define RELLUME_FUNCTION_INFO_H
 
-#include "rellume/instr.h"
+#include "regfile.h"
 #include <cstdbool>
 #include <cstdint>
 #include <bitset>

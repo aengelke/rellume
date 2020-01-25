@@ -26,7 +26,6 @@
 
 #include "facet.h"
 #include "regfile.h"
-#include "rellume/instr.h"
 #include <llvm/IR/BasicBlock.h>
 #include <llvm/IR/Function.h>
 #include <tuple>

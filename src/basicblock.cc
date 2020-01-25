@@ -27,7 +27,6 @@
 #include "facet.h"
 #include "function-info.h"
 #include "regfile.h"
-#include "rellume/instr.h"
 #include <llvm/IR/BasicBlock.h>
 #include <llvm/IR/Constants.h>
 #include <llvm/IR/Instructions.h>
