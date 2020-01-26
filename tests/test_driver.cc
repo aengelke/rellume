@@ -14,9 +14,9 @@
 #include <iomanip>
 #include <iostream>
 #include <memory>
+#include <random>
 #include <sstream>
 #include <sys/mman.h>
-#include <sys/random.h>
 #include <unistd.h>
 #include <unordered_map>
 #include <unordered_set>
@@ -146,6 +146,17 @@ class TestCase {
         return std::make_pair(key_str, value_str);
     }
 
+    template<typename T>
+    void Randomize(T& t) {
+        using bytes_randomizer = std::independent_bits_engine<std::mt19937, CHAR_BIT, uint8_t>;
+        std::mt19937 engine;
+        bytes_randomizer rand_bytes(engine);
+
+        uint8_t* ptr = reinterpret_cast<uint8_t*>(&t);
+        for (size_t i = 0; i < sizeof(T); i++)
+            ptr[i] = rand_bytes();
+    }
+
     bool Run(std::string argstring) {
         std::istringstream argstream(argstring);
         std::string arg;
@@ -154,7 +165,7 @@ class TestCase {
 
         // 1. Setup initial state
         CPU initial{};
-        getrandom(&initial, sizeof(initial), 0);
+        Randomize(initial);
 
         while (argstream >> arg) {
             if (arg == "!") {
