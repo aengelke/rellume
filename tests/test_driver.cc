@@ -291,14 +291,15 @@ class TestCase {
     }
 
 public:
-    static bool Run(unsigned number, std::string caseline) {
+    static bool Run(unsigned number, std::string caseline,
+                    std::ostringstream& output) {
         std::ostringstream diagnostic;
         TestCase test_case(diagnostic);
         bool fail = test_case.Run(caseline);
         if (fail)
-            std::cout << "not ";
-        std::cout << "ok " << number << " " << caseline << std::endl;
-        std::cout << diagnostic.str();
+            output << "not ";
+        output << "ok " << number << " " << caseline << std::endl;
+        output << diagnostic.str();
         return fail;
     }
 };
@@ -329,12 +330,13 @@ usage:
         return 1;
     }
 
+    std::ostringstream output;
     unsigned count = 0;
     bool fail = false;
     for (std::string caseline; std::getline(casefile, caseline); count++)
-        fail |= TestCase::Run(count + 1, caseline);
+        fail |= TestCase::Run(count + 1, caseline, output);
 
-    std::cout << "1.." << count << std::endl;
+    std::cout << output.str() << "1.." << count << std::endl;
 
     return fail ? 1 : 0;
 }
