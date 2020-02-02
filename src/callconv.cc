@@ -36,7 +36,7 @@ namespace rellume {
 llvm::FunctionType* CallConv::FnType(llvm::LLVMContext& ctx,
                                      unsigned sptr_addrspace) const {
     llvm::Type* void_ty = llvm::Type::getVoidTy(ctx);
-    llvm::Type* i8p = llvm::Type::getInt8Ty(ctx)->getPointerTo(sptr_addrspace);
+    llvm::Type* i8p = llvm::Type::getInt8PtrTy(ctx, sptr_addrspace);
     llvm::Type* i64 = llvm::Type::getInt64Ty(ctx);
 
     switch (*this) {
@@ -70,8 +70,8 @@ unsigned CallConv::CpuStructParamIdx() const {
     }
 }
 
-static const std::tuple<unsigned, size_t, X86Reg, Facet> cpu_struct_entries[] = {
-#define RELLUME_MAPPED_REG(nameu,off,reg,facet) std::make_tuple(SptrIdx::nameu, off, reg, facet),
+static const std::tuple<unsigned, X86Reg, Facet> cpu_struct_entries[] = {
+#define RELLUME_MAPPED_REG(nameu,off,reg,facet) std::make_tuple(SptrIdx::nameu, reg, facet),
 #include <rellume/cpustruct-private.inc>
 #undef RELLUME_MAPPED_REG
 };
@@ -83,50 +83,27 @@ llvm::Value* CallConv::Pack(RegFile& regfile, FunctionInfo& fi) const {
     if (*this == CallConv::HHVM)
         ret_val = llvm::UndefValue::get(fi.fn->getReturnType());
 
-    for (auto& entry : cpu_struct_entries) {
-        unsigned sptr_idx; size_t offset; X86Reg reg; Facet facet;
-        std::tie(sptr_idx, offset, reg, facet) = entry;
-
-        bool store_in_sptr = true;
+    for (const auto& [sptr_idx, reg, facet] : cpu_struct_entries) {
         if (*this == CallConv::HHVM) {
             int ins_idx = -1;
-            if (reg == X86Reg::IP)
+            if (reg.IsGP() && reg.Index() < 12) {
+                // RAX->RAX; RCX->RCX; RDX->RDX; RBX->RBP; RSP->R15; RBP->R13;
+                // RSI->RSI; RDI->RDI; R8->R8;   R9->R9;   R10->R10; R11->R11;
+                static const uint8_t str_idx[] = {8,5,4,1,13,11,3,2,6,7,9,10};
+                ins_idx = str_idx[reg.Index()];
+            } else if (reg == X86Reg::IP) {
                 ins_idx = 0; // RIP is stored in RBX
-            else if (reg == X86Reg::GP(0))
-                ins_idx = 8; // RAX is stored in RAX
-            else if (reg == X86Reg::GP(1))
-                ins_idx = 5; // RCX is stored in RCX
-            else if (reg == X86Reg::GP(2))
-                ins_idx = 4; // RDX is stored in RDX
-            else if (reg == X86Reg::GP(3))
-                ins_idx = 1; // RBX is stored in RBP
-            else if (reg == X86Reg::GP(4))
-                ins_idx = 13; // RSP is stored in R15
-            else if (reg == X86Reg::GP(5))
-                ins_idx = 11; // RBP is stored in R13
-            else if (reg == X86Reg::GP(6))
-                ins_idx = 3; // RSI is stored in RSI
-            else if (reg == X86Reg::GP(7))
-                ins_idx = 2; // RDI is stored in RDI
-            else if (reg == X86Reg::GP(8))
-                ins_idx = 6; // R8 is stored in R8
-            else if (reg == X86Reg::GP(9))
-                ins_idx = 7; // R9 is stored in R9
-            else if (reg == X86Reg::GP(10))
-                ins_idx = 9; // R10 is stored in R10
-            else if (reg == X86Reg::GP(11))
-                ins_idx = 10; // R11 is stored in R11
+            }
 
             if (ins_idx >= 0) {
                 unsigned ins_idx_u = static_cast<unsigned>(ins_idx);
                 llvm::Value* reg_val = regfile.GetReg(reg, facet);
                 ret_val = irb.CreateInsertValue(ret_val, reg_val, {ins_idx_u});
-                store_in_sptr = false;
+                continue;
             }
         }
 
-        store_in_sptr &= !fi.modified_regs_final || fi.modified_regs[sptr_idx];
-        if (store_in_sptr) {
+        if (!fi.modified_regs_final || fi.modified_regs[sptr_idx]) {
             // GetReg moved in here to avoid generating dozens of dead PHI nodes
             irb.CreateStore(regfile.GetReg(reg, facet), fi.sptr[sptr_idx]);
         }
@@ -138,40 +115,13 @@ llvm::Value* CallConv::Pack(RegFile& regfile, FunctionInfo& fi) const {
 void CallConv::Unpack(RegFile& regfile, FunctionInfo& fi) const {
     llvm::IRBuilder<> irb(regfile.GetInsertBlock());
 
-    for (auto& entry : cpu_struct_entries) {
-        unsigned sptr_idx; size_t offset; X86Reg reg; Facet facet;
-        std::tie(sptr_idx, offset, reg, facet) = entry;
-
+    for (const auto& [sptr_idx, reg, facet] : cpu_struct_entries) {
         llvm::Value* reg_val = nullptr;
-        if (*this == CallConv::HHVM) {
-            int arg_idx = -1;
-            if (reg == X86Reg::GP(0))
-                arg_idx = 10; // RAX is stored in RAX
-            else if (reg == X86Reg::GP(1))
-                arg_idx = 7; // RCX is stored in RCX
-            else if (reg == X86Reg::GP(2))
-                arg_idx = 6; // RDX is stored in RDX
-            else if (reg == X86Reg::GP(3))
-                arg_idx = 2; // RBX is stored in RBP
-            else if (reg == X86Reg::GP(4))
-                arg_idx = 3; // RSP is stored in R15
-            else if (reg == X86Reg::GP(5))
-                arg_idx = 13; // RBP is stored in R13
-            else if (reg == X86Reg::GP(6))
-                arg_idx = 5; // RSI is stored in RSI
-            else if (reg == X86Reg::GP(7))
-                arg_idx = 4; // RDI is stored in RDI
-            else if (reg == X86Reg::GP(8))
-                arg_idx = 8; // R8 is stored in R8
-            else if (reg == X86Reg::GP(9))
-                arg_idx = 9; // R9 is stored in R9
-            else if (reg == X86Reg::GP(10))
-                arg_idx = 11; // R10 is stored in R10
-            else if (reg == X86Reg::GP(11))
-                arg_idx = 12; // R11 is stored in R11
-
-            if (arg_idx >= 0)
-                reg_val = &fi.fn->arg_begin()[arg_idx];
+        if (*this == CallConv::HHVM && reg.IsGP() && reg.Index() < 12) {
+            // RAX->RAX; RCX->RCX; RDX->RDX; RBX->RBP; RSP->R15; RBP->R13;
+            // RSI->RSI; RDI->RDI; R8->R8;   R9->R9;   R10->R10; R11->R11;
+            static const uint8_t arg_idx[] = {10,7,6,2,3,13,5,4,8,9,11,12};
+            reg_val = &fi.fn->arg_begin()[arg_idx[reg.Index()]];
         }
 
         if (reg_val == nullptr)

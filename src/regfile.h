@@ -52,6 +52,8 @@ public:
     RegKind Kind() const { return kind; }
     uint8_t Index() const { return index; }
 
+    bool IsGP() const { return kind == RegKind::GP; }
+
     inline bool operator==(const X86Reg& rhs) const {
         return kind == rhs.kind && index == rhs.index;
     }
