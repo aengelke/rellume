@@ -497,7 +497,7 @@ Lifter::LiftLea(const LLInstr& inst)
     llvm::Type* op_type = irb.getIntNTy(inst.ops[0].size * 8);
     OpStoreGp(inst.ops[0], irb.CreateZExtOrTrunc(res, op_type));
 
-    if (cfg.use_gep_ptr_arithmetic && inst.ops[0].reg.rt == LL_RT_GP64)
+    if (cfg.use_gep_ptr_arithmetic && inst.ops[0].size == 8)
         SetRegFacet(MapReg(inst.ops[0].reg), Facet::PTR, res_ptr);
 }
 
@@ -614,7 +614,7 @@ void Lifter::LiftBswap(const LLInstr& inst) {
 
 void Lifter::LiftJmp(const LLInstr& inst) {
     LLInstrOp op = inst.ops[0];
-    op.seg = LL_RI_None; // Force default segment, 3e is notrack.
+    op.seg = LL_RI_DS; // Force default segment, 3e is notrack.
     SetReg(X86Reg::IP, Facet::I64, OpLoad(op, Facet::I64));
 }
 
@@ -662,7 +662,7 @@ void Lifter::LiftCall(const LLInstr& inst) {
                       Facet::CF});
 
     LLInstrOp op = inst.ops[0];
-    op.seg = LL_RI_None; // Force default segment, 3e is notrack.
+    op.seg = LL_RI_DS; // Force default segment, 3e is notrack.
     llvm::Value* new_rip = OpLoad(op, Facet::I);
     StackPush(GetReg(X86Reg::IP, Facet::I64));
     SetReg(X86Reg::IP, Facet::I64, new_rip);

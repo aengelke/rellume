@@ -36,63 +36,6 @@
  * @{
  **/
 
-const char*
-LLReg::Name() const
-{
-    int max;
-    const char (* table)[6];
-
-#define TABLE(name, ...) \
-        case name : { \
-            static const char tab[][6] = { __VA_ARGS__ }; \
-            table = tab; max = sizeof(tab) / sizeof(*tab); break; }
-
-    switch (rt) {
-    default: return "(unk)";
-
-    TABLE(LL_RT_GP8,
-        "al","cl","dl","bl","spl","bpl","sil","dil",
-        "r8b","r9b","r10b","r11b","r12b","r13b","r14b","r15b")
-    TABLE(LL_RT_GP8Leg,
-        "al","cl","dl","bl","ah","ch","dh","bh",
-        "r8b","r9b","r10b","r11b","r12b","r13b","r14b","r15b")
-    TABLE(LL_RT_GP16,
-        "ax","cx","dx","bx","sp","bp","si","di",
-        "r8w","r9w","r10w","r11w","r12w","r13w","r14w","r15w")
-    TABLE(LL_RT_GP32,
-        "eax","ecx","edx","ebx","esp","ebp","esi","edi",
-        "r8d","r9d","r10d","r11d","r12d","r13d","r14d","r15d")
-    TABLE(LL_RT_GP64,
-        "rax","rcx","rdx","rbx","rsp","rbp","rsi","rdi",
-        "r8","r9","r10","r11","r12","r13","r14","r15")
-    TABLE(LL_RT_IP, "rip")
-    TABLE(LL_RT_XMM,
-        "xmm0","xmm1","xmm2","xmm3","xmm4","xmm5","xmm6","xmm7",
-        "xmm8","xmm9","xmm10","xmm11","xmm12","xmm13","xmm14","xmm15")
-    TABLE(LL_RT_YMM,
-        "ymm0","ymm1","ymm2","ymm3","ymm4","ymm5","ymm6","ymm7",
-        "ymm8","ymm9","ymm10","ymm11","ymm12","ymm13","ymm14","ymm15")
-
-    }
-
-    return ri < max ? table[ri] : "(inv)";
-}
-
-size_t
-LLReg::Size() const
-{
-    switch (rt) {
-    case LL_RT_GP8:     return 1;
-    case LL_RT_GP8Leg:  return 1;
-    case LL_RT_GP16:    return 2;
-    case LL_RT_GP32:    return 4;
-    case LL_RT_GP64:    return 8;
-    case LL_RT_IP:      return 8;
-    case LL_RT_XMM:     return 16;
-    default:            return 0;
-    }
-}
-
 bool LLInstr::BreaksAlways() const {
     switch (type) {
     case LL_INS_RET:
@@ -173,9 +116,9 @@ convert_reg(int size, int idx, int type)
     if (idx == FD_REG_IP && type == FD_RT_GPL)
         return LLReg{ LL_RT_IP, 0 };
     if (type == FD_RT_GPL)
-        return LLReg::Gp(size, idx, /*legacy=*/false);
+        return LLReg{ LL_RT_GP, (uint16_t) idx };
     if (type == FD_RT_GPH)
-        return LLReg::Gp(size, idx);
+        return LLReg{ LL_RT_GP8High, (uint16_t) idx };
     if (type == FD_RT_VEC && size == 32)
         return LLReg{ LL_RT_YMM, (uint16_t) idx };
     if (type == FD_RT_VEC)
@@ -310,19 +253,19 @@ end_ops:
     case FDI_IDIV: llinst.type = LL_INS_IDIV; break;
     case FDI_DIV: llinst.type = LL_INS_DIV; break;
     case FDI_SHL_IMM: llinst.type = LL_INS_SHL; break;
-    case FDI_SHL_CL: llinst.type = LL_INS_SHL; llinst.ops[1].type = LL_OP_REG; llinst.ops[1].size = 1; llinst.ops[1].reg = LLReg::Gp(1, 1); llinst.operand_count = 2; break;
+    case FDI_SHL_CL: llinst.type = LL_INS_SHL; llinst.ops[1].type = LL_OP_REG; llinst.ops[1].size = 1; llinst.ops[1].reg = LLReg{LL_RT_GP, 1}; llinst.operand_count = 2; break;
     case FDI_SHR_IMM: llinst.type = LL_INS_SHR; break;
-    case FDI_SHR_CL: llinst.type = LL_INS_SHR; llinst.ops[1].type = LL_OP_REG; llinst.ops[1].size = 1; llinst.ops[1].reg = LLReg::Gp(1, 1); llinst.operand_count = 2; break;
+    case FDI_SHR_CL: llinst.type = LL_INS_SHR; llinst.ops[1].type = LL_OP_REG; llinst.ops[1].size = 1; llinst.ops[1].reg = LLReg{LL_RT_GP, 1}; llinst.operand_count = 2; break;
     case FDI_SAR_IMM: llinst.type = LL_INS_SAR; break;
-    case FDI_SAR_CL: llinst.type = LL_INS_SAR; llinst.ops[1].type = LL_OP_REG; llinst.ops[1].size = 1; llinst.ops[1].reg = LLReg::Gp(1, 1); llinst.operand_count = 2; break;
+    case FDI_SAR_CL: llinst.type = LL_INS_SAR; llinst.ops[1].type = LL_OP_REG; llinst.ops[1].size = 1; llinst.ops[1].reg = LLReg{LL_RT_GP, 1}; llinst.operand_count = 2; break;
     case FDI_ROL_IMM: llinst.type = LL_INS_ROL; break;
-    case FDI_ROL_CL: llinst.type = LL_INS_ROL; llinst.ops[1].type = LL_OP_REG; llinst.ops[1].size = 1; llinst.ops[1].reg = LLReg::Gp(1, 1); llinst.operand_count = 2; break;
+    case FDI_ROL_CL: llinst.type = LL_INS_ROL; llinst.ops[1].type = LL_OP_REG; llinst.ops[1].size = 1; llinst.ops[1].reg = LLReg{LL_RT_GP, 1}; llinst.operand_count = 2; break;
     case FDI_ROR_IMM: llinst.type = LL_INS_ROR; break;
-    case FDI_ROR_CL: llinst.type = LL_INS_ROR; llinst.ops[1].type = LL_OP_REG; llinst.ops[1].size = 1; llinst.ops[1].reg = LLReg::Gp(1, 1); llinst.operand_count = 2; break;
+    case FDI_ROR_CL: llinst.type = LL_INS_ROR; llinst.ops[1].type = LL_OP_REG; llinst.ops[1].size = 1; llinst.ops[1].reg = LLReg{LL_RT_GP, 1}; llinst.operand_count = 2; break;
     case FDI_SHLD_IMM: llinst.type = LL_INS_SHLD; break;
-    case FDI_SHLD_CL: llinst.type = LL_INS_SHLD; llinst.ops[2].type = LL_OP_REG; llinst.ops[2].size = 1; llinst.ops[2].reg = LLReg::Gp(1, 1); llinst.operand_count = 3; break;
+    case FDI_SHLD_CL: llinst.type = LL_INS_SHLD; llinst.ops[2].type = LL_OP_REG; llinst.ops[2].size = 1; llinst.ops[2].reg = LLReg{LL_RT_GP, 1}; llinst.operand_count = 3; break;
     case FDI_SHRD_IMM: llinst.type = LL_INS_SHRD; break;
-    case FDI_SHRD_CL: llinst.type = LL_INS_SHRD; llinst.ops[2].type = LL_OP_REG; llinst.ops[2].size = 1; llinst.ops[2].reg = LLReg::Gp(1, 1); llinst.operand_count = 3; break;
+    case FDI_SHRD_CL: llinst.type = LL_INS_SHRD; llinst.ops[2].type = LL_OP_REG; llinst.ops[2].size = 1; llinst.ops[2].reg = LLReg{LL_RT_GP, 1}; llinst.operand_count = 3; break;
     case FDI_BSF: llinst.type = LL_INS_BSF; break;
     case FDI_TZCNT: llinst.type = LL_INS_TZCNT; break;
     case FDI_BSR: llinst.type = LL_INS_BSR; break;
