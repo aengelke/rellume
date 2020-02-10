@@ -132,11 +132,6 @@ struct LLInstrOp {
     int seg;
     unsigned addrsize;
     unsigned size;
-
-#if defined(__cplusplus) && defined(RELLUME_ENABLE_CPP_HEADER)
-    LLInstrOp() : type(LL_OP_NONE) {}
-    LLInstrOp(const LLReg reg) : type(LL_OP_REG), reg(reg), size(reg.Size()) {}
-#endif
 };
 
 typedef struct LLInstrOp LLInstrOp;

@@ -181,23 +181,16 @@ ll_operand_set_alignment(llvm::Instruction* value, Alignment alignment, bool sse
         store->setAlignment(alignment == ALIGN_NONE ? 1 : store->getPointerOperandType()->getPrimitiveSizeInBits() / 8);
 }
 
-llvm::Value*
-LifterBase::OpLoad(const LLInstrOp& op, Facet facet, Alignment alignment)
-{
+llvm::Value* LifterBase::OpLoad(const LLInstrOp& op, Facet facet,
+                                Alignment alignment) {
     facet = facet.Resolve(op.size * 8);
-    if (op.type == LL_OP_IMM)
-    {
-        llvm::Type* type = facet.Type(irb.getContext());
-        return llvm::ConstantInt::get(type, op.val);
-    }
-    else if (op.type == LL_OP_REG)
-    {
+    if (op.type == LL_OP_IMM) {
+        return irb.getIntN(op.size * 8, op.val);
+    } else if (op.type == LL_OP_REG) {
         if (op.reg.IsGpHigh() && facet == Facet::I8)
             facet = Facet::I8H;
         return GetReg(MapReg(op.reg), facet);
-    }
-    else if (op.type == LL_OP_MEM)
-    {
+    } else if (op.type == LL_OP_MEM) {
         llvm::Type* type = facet.Type(irb.getContext());
         llvm::Value* addr = OpAddr(op, type);
         llvm::LoadInst* result = irb.CreateLoad(type, addr);
@@ -210,63 +203,48 @@ LifterBase::OpLoad(const LLInstrOp& op, Facet facet, Alignment alignment)
     return nullptr;
 }
 
-void
-LifterBase::OpStoreGp(const LLInstrOp& op, llvm::Value* value, Alignment alignment)
-{
-    if (op.type == LL_OP_MEM)
-    {
+void LifterBase::OpStoreGp(X86Reg reg, Facet facet, llvm::Value* value) {
+    assert(reg.IsGP());
+    assert(value->getType()->isIntegerTy());
+    assert(value->getType() == facet.Type(irb.getContext()));
+
+    llvm::Value* value64 = irb.CreateZExt(value, irb.getInt64Ty());
+    if (facet == Facet::I8H)
+        value64 = irb.CreateShl(value64, 8);
+
+    uint64_t mask = 0;
+    if (facet == Facet::I16)
+        mask = 0xffffffffffff0000;
+    else if (facet == Facet::I8)
+        mask = 0xffffffffffffff00;
+    else if (facet == Facet::I8H)
+        mask = 0xffffffffffff00ff;
+    if (mask != 0) {
+        llvm::Value* prev64 = GetReg(reg, Facet::I64);
+        value64 = irb.CreateOr(value64, irb.CreateAnd(prev64, mask));
+    }
+
+    SetReg(reg, Facet::I64, value64);
+    SetRegFacet(reg, facet, value); // Store facet value as well
+}
+
+void LifterBase::OpStoreGp(const LLInstrOp& op, llvm::Value* value,
+                           Alignment alignment) {
+    if (op.type == LL_OP_MEM) {
         llvm::Value* addr = OpAddr(op, value->getType());
         llvm::StoreInst* store = irb.CreateStore(value, addr);
         ll_operand_set_alignment(store, alignment);
-        return;
-    }
+    } else if (op.type == LL_OP_REG) {
+        assert(op.reg.IsGp() && "store-gp to non-gp register");
+        assert(value->getType()->getIntegerBitWidth() == op.size * 8);
 
-    assert(op.type == LL_OP_REG && "gp-store to non-mem/non-reg");
-    assert(op.reg.IsGp() || op.reg.rt == LL_RT_IP);
-    assert(op.size == op.reg.Size());
-    assert(value->getType() == irb.getIntNTy(op.size * 8));
-
-    if (op.reg.rt == LL_RT_GP64 || op.reg.rt == LL_RT_IP)
-    {
-        SetReg(MapReg(op.reg), Facet::I64, value);
-        return;
+        Facet facet = Facet::In(value->getType()->getIntegerBitWidth());
+        if (op.reg.IsGpHigh() && facet == Facet::I8)
+            facet = Facet::I8H;
+        OpStoreGp(MapReg(op.reg), facet, value);
+    } else {
+        assert(false && "gp-store to non-mem/non-reg");
     }
-
-    llvm::Value* value64 = irb.CreateZExt(value, irb.getInt64Ty());
-
-    if (op.reg.rt == LL_RT_GP32)
-    {
-        SetReg(MapReg(op.reg), Facet::I64, value64);
-        SetRegFacet(MapReg(op.reg), Facet::I32, value);
-        return;
-    }
-
-    uint64_t mask;
-    Facet store_facet;
-    if (op.reg.IsGpHigh())
-    {
-        mask = 0xff00;
-        store_facet = Facet::I8H;
-        value64 = irb.CreateShl(value64, 8);
-    }
-    else if (op.size == 1)
-    {
-        mask = 0xff;
-        store_facet = Facet::I8;
-    }
-    else if (op.size == 2)
-    {
-        mask = 0xffff;
-        store_facet = Facet::I16;
-    }
-    else
-    {
-        assert(false);
-    }
-
-    llvm::Value* masked = irb.CreateAnd(GetReg(MapReg(op.reg), Facet::I64), ~mask);
-    SetReg(MapReg(op.reg), Facet::I64, irb.CreateOr(value64, masked));
-    SetRegFacet(MapReg(op.reg), store_facet, value);
 }
 
 void

@@ -70,6 +70,8 @@ public:
     llvm::Type* Type(llvm::LLVMContext& ctx) const;
     Facet Resolve(unsigned bits) const;
 
+    static Facet In(unsigned bits) { return Facet(I).Resolve(bits); }
+
     Facet() = default;
     constexpr Facet(Value value) : value(value) {}
     operator Value() const { return value; }

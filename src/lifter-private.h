@@ -136,6 +136,10 @@ private:
 protected:
     llvm::Value* OpAddr(const LLInstrOp& op, llvm::Type* element_type);
     llvm::Value* OpLoad(const LLInstrOp& op, Facet dataType, Alignment alignment = ALIGN_NONE);
+    void OpStoreGp(X86Reg reg, llvm::Value* v) {
+        OpStoreGp(reg, Facet::In(v->getType()->getIntegerBitWidth()), v);
+    }
+    void OpStoreGp(X86Reg reg, Facet facet, llvm::Value* value);
     void OpStoreGp(const LLInstrOp& op, llvm::Value* value, Alignment alignment = ALIGN_NONE);
     void OpStoreVec(const LLInstrOp& op, llvm::Value* value, bool avx = false, Alignment alignment = ALIGN_IMP);
     void StackPush(llvm::Value* value);
@@ -242,10 +246,10 @@ private:
     void LiftBswap(const LLInstr& inst);
 
     void LiftLahf(const LLInstr& inst) {
-        OpStoreGp(LLInstrOp(LLReg(LL_RT_GP8Leg, LL_RI_AH)), FlagAsReg(8));
+        OpStoreGp(X86Reg::RAX, Facet::I8H, FlagAsReg(8));
     }
     void LiftSahf(const LLInstr& inst) {
-        FlagFromReg(OpLoad(LLReg(LL_RT_GP8Leg, LL_RI_AH), Facet::I8));
+        FlagFromReg(GetReg(X86Reg::RAX, Facet::I8H));
     }
     void LiftPush(const LLInstr& inst) {
         StackPush(OpLoad(inst.ops[0], Facet::I));
@@ -260,8 +264,8 @@ private:
         FlagFromReg(StackPop());
     }
     void LiftLeave(const LLInstr& inst) {
-        llvm::Value* val = StackPop(X86Reg::GP(LL_RI_BP));
-        OpStoreGp(LLInstrOp(LLReg(LL_RT_GP64, LL_RI_BP)), val);
+        llvm::Value* val = StackPop(X86Reg::RBP);
+        OpStoreGp(X86Reg::RBP, val);
     }
 
     void LiftJmp(const LLInstr& inst);
