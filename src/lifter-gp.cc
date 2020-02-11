@@ -102,95 +102,25 @@ void Lifter::LiftMovgp(const LLInstr& inst, llvm::Instruction::CastOps cast) {
     OpStoreGp(inst.ops[0], irb.CreateCast(cast, val, tgt_ty));
 }
 
-void Lifter::LiftAdd(const LLInstr& inst) {
+// Implementation of ADD, ADC, SUB, SBB, CMP, and XADD
+void Lifter::LiftArith(const LLInstr& inst, bool sub) {
     llvm::Value* op1 = OpLoad(inst.ops[0], Facet::I);
     llvm::Value* op2 = OpLoad(inst.ops[1], Facet::I);
-    llvm::Value* res = irb.CreateAdd(op1, op2);
+    if (inst.type == LL_INS_ADC || inst.type == LL_INS_SBB)
+        op2 = irb.CreateAdd(op2, irb.CreateZExt(GetFlag(Facet::CF), op2->getType()));
 
-    // Compute pointer facet for 64-bit add with immediate. We can't usefully do
-    // this for reg-reg, because we can't identify the base operand.
-    if (cfg.use_gep_ptr_arithmetic && inst.ops[0].type == LL_OP_REG &&
-            inst.ops[0].size == 8 && inst.ops[1].type == LL_OP_IMM) {
-        llvm::Value* op1_ptr = GetReg(MapReg(inst.ops[0].reg), Facet::PTR);
-        op1_ptr = irb.CreatePointerCast(op1_ptr, irb.getInt8PtrTy());
-        SetReg(MapReg(inst.ops[0].reg), Facet::I64, res);
-        SetRegFacet(MapReg(inst.ops[0].reg), Facet::PTR, irb.CreateGEP(op1_ptr, op2));
-    } else {
-        // We cannot use this outside of the if-clause, otherwise we would
-        // clobber the pointer facet of the source operand.
+    auto arith_op = sub ? llvm::Instruction::Sub : llvm::Instruction::Add;
+    llvm::Value* res = irb.CreateBinOp(arith_op, op1, op2);
+
+    if (inst.type != LL_INS_CMP)
         OpStoreGp(inst.ops[0], res);
-    }
+    if (inst.type == LL_INS_XADD)
+        OpStoreGp(inst.ops[1], op1);
 
-    FlagCalcAdd(res, op1, op2);
-}
-
-void Lifter::LiftAdc(const LLInstr& inst) {
-    llvm::Value* op1 = OpLoad(inst.ops[0], Facet::I);
-    llvm::Value* op2 = OpLoad(inst.ops[1], Facet::I);
-    op2 = irb.CreateAdd(op2, irb.CreateZExt(GetFlag(Facet::CF), op2->getType()));
-    llvm::Value* res = irb.CreateAdd(op1, op2);
-
-    OpStoreGp(inst.ops[0], res);
-    FlagCalcAdd(res, op1, op2);
-}
-
-void Lifter::LiftXadd(const LLInstr& inst) {
-    llvm::Value* op1 = OpLoad(inst.ops[0], Facet::I);
-    llvm::Value* op2 = OpLoad(inst.ops[1], Facet::I);
-    llvm::Value* res = irb.CreateAdd(op1, op2);
-
-    // TODO: generate pointer facets?
-    OpStoreGp(inst.ops[0], res);
-    OpStoreGp(inst.ops[1], op1);
-    FlagCalcAdd(res, op1, op2);
-}
-
-void Lifter::LiftSub(const LLInstr& inst) {
-    llvm::Value* op1 = OpLoad(inst.ops[0], Facet::I);
-    llvm::Value* op2 = OpLoad(inst.ops[1], Facet::I);
-    llvm::Value* res = irb.CreateSub(op1, op2);
-
-    // Compute pointer facet for 64-bit additions stored in a register.
-    // TODO: handle case where the original pointer is the second operand.
-    if (cfg.use_gep_ptr_arithmetic && inst.ops[0].type == LL_OP_REG &&
-            inst.ops[0].size == 8) {
-        llvm::Value* op1_ptr = GetReg(MapReg(inst.ops[0].reg), Facet::PTR);
-        op1_ptr = irb.CreatePointerCast(op1_ptr, irb.getInt8PtrTy());
-        llvm::Value* res_ptr = irb.CreateGEP(op1_ptr, irb.CreateNeg(op2));
-        SetReg(MapReg(inst.ops[0].reg), Facet::I64, res);
-        SetRegFacet(MapReg(inst.ops[0].reg), Facet::PTR, res_ptr);
-    } else {
-        // We cannot use this outside of the if-clause, otherwise we would
-        // clobber the pointer facet of the source operand.
-        OpStoreGp(inst.ops[0], res);
-    }
-
-    FlagCalcSub(res, op1, op2);
-}
-
-void Lifter::LiftSbb(const LLInstr& inst) {
-    llvm::Value* op1 = OpLoad(inst.ops[0], Facet::I);
-    llvm::Value* op2 = OpLoad(inst.ops[1], Facet::I);
-    op2 = irb.CreateAdd(op2, irb.CreateZExt(GetFlag(Facet::CF), op2->getType()));
-    llvm::Value* res = irb.CreateSub(op1, op2);
-
-    OpStoreGp(inst.ops[0], res);
-    FlagCalcSub(res, op1, op2);
-}
-
-void Lifter::LiftCmp(const LLInstr& inst) {
-    llvm::Value* op1 = OpLoad(inst.ops[0], Facet::I);
-    llvm::Value* op2 = OpLoad(inst.ops[1], Facet::I);
-    llvm::Value* res = irb.CreateSub(op1, op2);
-    FlagCalcSub(res, op1, op2);
-
-    if (cfg.prefer_pointer_cmp && op1->getType()->getIntegerBitWidth() == 64 &&
-        inst.ops[0].type == LL_OP_REG && inst.ops[1].type == LL_OP_REG)
-    {
-        llvm::Value* ptr1 = GetReg(MapReg(inst.ops[0].reg), Facet::PTR);
-        llvm::Value* ptr2 = GetReg(MapReg(inst.ops[1].reg), Facet::PTR);
-        SetFlag(Facet::ZF, irb.CreateICmpEQ(ptr1, ptr2));
-    }
+    if (sub)
+        FlagCalcSub(res, op1, op2);
+    else
+        FlagCalcAdd(res, op1, op2);
 }
 
 void Lifter::LiftCmpxchg(const LLInstr& inst) {

@@ -216,12 +216,7 @@ private:
     void LiftOverride(const LLInstr&, llvm::Function* override);
 
     void LiftMovgp(const LLInstr&, llvm::Instruction::CastOps cast);
-    void LiftAdd(const LLInstr&);
-    void LiftAdc(const LLInstr&);
-    void LiftXadd(const LLInstr&);
-    void LiftSub(const LLInstr&);
-    void LiftSbb(const LLInstr&);
-    void LiftCmp(const LLInstr&);
+    void LiftArith(const LLInstr&, bool sub);
     void LiftCmpxchg(const LLInstr&);
     void LiftXchg(const LLInstr&);
     void LiftAndOrXor(const LLInstr& inst, llvm::Instruction::BinaryOps op,
