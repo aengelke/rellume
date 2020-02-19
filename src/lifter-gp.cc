@@ -607,23 +607,16 @@ void Lifter::LiftUnreachable(const Instr& inst) {
 
 LifterBase::RepInfo LifterBase::RepBegin(const Instr& inst) {
     RepInfo info = {};
-    bool di = false, si = false;
+    bool di = inst.type() != LL_INS_LODS;
+    bool si = inst.type() != LL_INS_STOS && inst.type() != LL_INS_SCAS;
 
-    switch (inst.type()) {
-    case LL_INS_LODS:       info.mode=RepInfo::NO_REP; di=false; si=true; break;
-    case LL_INS_REP_LODS:   info.mode=RepInfo::REP;    di=false; si=true; break;
-    case LL_INS_STOS:       info.mode=RepInfo::NO_REP; di=true; si=false; break;
-    case LL_INS_REP_STOS:   info.mode=RepInfo::REP;    di=true; si=false; break;
-    case LL_INS_MOVS:       info.mode=RepInfo::NO_REP; di=true; si=true;  break;
-    case LL_INS_REP_MOVS:   info.mode=RepInfo::REP;    di=true; si=true;  break;
-    case LL_INS_SCAS:       info.mode=RepInfo::NO_REP; di=true; si=false; break;
-    case LL_INS_REPZ_SCAS:  info.mode=RepInfo::REPZ;   di=true; si=false; break;
-    case LL_INS_REPNZ_SCAS: info.mode=RepInfo::REPNZ;  di=true; si=false; break;
-    case LL_INS_CMPS:       info.mode=RepInfo::NO_REP; di=true; si=true;  break;
-    case LL_INS_REPZ_CMPS:  info.mode=RepInfo::REPZ;   di=true; si=true;  break;
-    case LL_INS_REPNZ_CMPS: info.mode=RepInfo::REPNZ;  di=true; si=true;  break;
-    default: assert(false && "non-string instruction in RepBegin");
-    }
+    bool condrep = inst.type() == LL_INS_SCAS || inst.type() == LL_INS_CMPS;
+    if (inst.has_rep())
+        info.mode = condrep ? RepInfo::REPZ : RepInfo::REP;
+    else if (inst.has_repnz() && condrep)
+        info.mode = RepInfo::REPNZ;
+    else
+        info.mode = RepInfo::NO_REP;
 
     // Iff instruction has REP/REPZ/REPNZ, add branching logic
     if (info.mode != RepInfo::NO_REP) {

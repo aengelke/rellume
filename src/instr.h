@@ -84,6 +84,8 @@ public:
     unsigned addrsz() const { return FD_ADDRSIZE(fdi()); }
     unsigned opsz() const { return FD_OPSIZE(fdi()); }
     const Op op(unsigned idx) const { return Op{this, idx}; }
+    bool has_rep() const { return FD_HAS_REP(fdi()); }
+    bool has_repnz() const { return FD_HAS_REPNZ(fdi()); }
 
     bool BreaksAlways() const;
     bool BreaksConditionally() const;

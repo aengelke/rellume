@@ -138,11 +138,11 @@ Instr::Type Instr::type() const {
     case FDI_CMC: return LL_INS_CMC;
     case FDI_CLD: return LL_INS_CLD;
     case FDI_STD: return LL_INS_STD;
-    case FDI_LODS: return !FD_HAS_REP(fdi()) ? LL_INS_LODS : LL_INS_REP_LODS;
-    case FDI_STOS: return !FD_HAS_REP(fdi()) ? LL_INS_STOS : LL_INS_REP_STOS;
-    case FDI_MOVS: return !FD_HAS_REP(fdi()) ? LL_INS_MOVS : LL_INS_REP_MOVS;
-    case FDI_SCAS: return !FD_HAS_REP(fdi()) ? (!FD_HAS_REPNZ(fdi()) ? LL_INS_SCAS : LL_INS_REPNZ_SCAS) : LL_INS_REPZ_SCAS;
-    case FDI_CMPS: return !FD_HAS_REP(fdi()) ? (!FD_HAS_REPNZ(fdi()) ? LL_INS_CMPS : LL_INS_REPNZ_CMPS) : LL_INS_REPZ_CMPS;
+    case FDI_LODS: return LL_INS_LODS;
+    case FDI_STOS: return LL_INS_STOS;
+    case FDI_MOVS: return LL_INS_MOVS;
+    case FDI_SCAS: return LL_INS_SCAS;
+    case FDI_CMPS: return LL_INS_CMPS;
     case FDI_CMOVO: return LL_INS_CMOVO;
     case FDI_CMOVNO: return LL_INS_CMOVNO;
     case FDI_CMOVC: return LL_INS_CMOVC;
