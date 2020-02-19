@@ -203,11 +203,8 @@ void Lifter::LiftShift(const Instr& inst, llvm::Instruction::BinaryOps op) {
     else // inst.op(0).size() < 4 && (SHR || SHL)
         src_ex = irb.CreateZExt(src, irb.getInt32Ty());
 
-    llvm::Value* shift;
-    if (!inst.op(1))
-        shift = irb.getInt8(1);
-    else
-        shift = OpLoad(inst.op(1), Facet::I);
+    assert(inst.op(1) && "shift without second operand");
+    llvm::Value* shift = OpLoad(inst.op(1), Facet::I);
 
     unsigned mask = inst.op(0).size() == 8 ? 0x3f : 0x1f;
     shift = irb.CreateAnd(irb.CreateZExt(shift, src_ex->getType()), mask);
@@ -241,17 +238,14 @@ void Lifter::LiftShiftdouble(const Instr& inst) {
     llvm::Value* src1 = OpLoad(inst.op(0), Facet::I);
     llvm::Value* src2 = OpLoad(inst.op(1), Facet::I);
     llvm::Type* ty = src1->getType();
-    llvm::Value* shift;
     llvm::Value* res;
-    if (!inst.op(2)) {
-        shift = llvm::ConstantInt::get(ty, 1);
-    } else {
-        unsigned mask = inst.op(0).size() == 8 ? 0x3f : 0x1f;
-        shift = irb.CreateZExt(OpLoad(inst.op(2), Facet::I), ty);
-        // TODO: support small shifts with amount > len
-        // LLVM sets the result to poison if this occurs.
-        shift = irb.CreateAnd(shift, mask);
-    }
+
+    assert(inst.op(2) && "shld/shrd without third operand");
+    unsigned mask = inst.op(0).size() == 8 ? 0x3f : 0x1f;
+    llvm::Value* shift = irb.CreateZExt(OpLoad(inst.op(2), Facet::I), ty);
+    // TODO: support small shifts with amount > len
+    // LLVM sets the result to poison if this occurs.
+    shift = irb.CreateAnd(shift, mask);
 
     auto id = inst.type() == LL_INS_SHLD ? llvm::Intrinsic::fshl
                                        : llvm::Intrinsic::fshr;
@@ -275,16 +269,14 @@ void Lifter::LiftShiftdouble(const Instr& inst) {
 void Lifter::LiftRotate(const Instr& inst) {
     llvm::Value* src = OpLoad(inst.op(0), Facet::I);
     llvm::Type* ty = src->getType();
-    llvm::Value* shift;
-    if (!inst.op(1)) {
-        shift = llvm::ConstantInt::get(ty, 1);
-    } else {
-        unsigned mask = inst.op(0).size() == 8 ? 0x3f : 0x1f;
-        shift = irb.CreateZExt(OpLoad(inst.op(1), Facet::I), ty);
-        // TODO: support small shifts with amount > len
-        // LLVM sets the result to poison if this occurs.
-        shift = irb.CreateAnd(shift, mask);
-    }
+
+    assert(inst.op(1) && "rotate without second operand");
+
+    unsigned mask = inst.op(0).size() == 8 ? 0x3f : 0x1f;
+    llvm::Value* shift = irb.CreateZExt(OpLoad(inst.op(1), Facet::I), ty);
+    // TODO: support small shifts with amount > len
+    // LLVM sets the result to poison if this occurs.
+    shift = irb.CreateAnd(shift, mask);
 
     auto id = inst.type() == LL_INS_ROL ? llvm::Intrinsic::fshl
                                       : llvm::Intrinsic::fshr;

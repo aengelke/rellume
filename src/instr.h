@@ -34,50 +34,64 @@
 
 namespace rellume {
 
-class Instr : public LLInstr {
+class Instr : public FdInstr {
 public:
     using Type = LLInstrType;
     class Op {
-        const Instr& inst;
+        const Instr* inst;
         unsigned idx;
     public:
-        constexpr Op(const Instr& inst, unsigned idx) : inst(inst), idx(idx) {}
-        const LLInstrOp& llop() const { return inst.ops[idx]; }
+        constexpr Op(const Instr* inst, unsigned idx) : inst(inst), idx(idx) {}
         explicit operator bool() const {
-            return idx < 4 && llop().type != LL_OP_NONE;
+            return idx < 4 && FD_OP_TYPE(inst, idx) != FD_OT_NONE;
         }
-        unsigned size() const { return llop().size; }
+        unsigned size() const { return FD_OP_SIZE(inst, idx); }
         unsigned bits() const { return size() * 8; }
 
-        bool is_reg() const { return llop().type == LL_OP_REG; }
-        const LLReg& reg() const { assert(is_reg()); return llop().reg; }
+        bool is_reg() const { return FD_OP_TYPE(inst, idx) == FD_OT_REG; }
+        const LLReg reg() const {
+            assert(is_reg());
+            return MapFdReg(FD_OP_REG(inst, idx), FD_OP_REG_TYPE(inst, idx));
+        }
 
-        bool is_imm() const { return llop().type == LL_OP_IMM; }
-        int64_t imm() const { assert(is_imm()); return llop().val; }
+        bool is_imm() const { return FD_OP_TYPE(inst, idx) == FD_OT_IMM; }
+        int64_t imm() const { assert(is_imm()); return FD_OP_IMM(inst, idx); }
 
-        bool is_mem() const { return llop().type == LL_OP_MEM; }
-        const LLReg& base() const { assert(is_mem()); return llop().reg; }
-        const LLReg& index() const { assert(is_mem()); return llop().ireg; }
-        unsigned scale() const { assert(is_mem()); return llop().scale; }
-        int64_t off() const { assert(is_mem()); return llop().val; }
-        unsigned seg() const { assert(is_mem()); return llop().seg; }
-        unsigned addrsz() const { assert(is_mem()); return inst.address_size; }
+        bool is_mem() const { return FD_OP_TYPE(inst, idx) == FD_OT_MEM; }
+        const LLReg base() const {
+            assert(is_mem());
+            return MapFdReg(FD_OP_BASE(inst, idx), FD_RT_GPL);
+        }
+        const LLReg index() const {
+            assert(is_mem());
+            return MapFdReg(FD_OP_INDEX(inst, idx), FD_RT_GPL);
+        }
+        unsigned scale() const {
+            assert(is_mem());
+            if (FD_OP_INDEX(inst, idx) != FD_REG_NONE)
+                return 1 << FD_OP_SCALE(inst, idx);
+            return 0;
+        }
+        int64_t off() const { assert(is_mem()); return FD_OP_DISP(inst, idx); }
+        unsigned seg() const { assert(is_mem()); return FD_SEGMENT(inst); }
+        unsigned addrsz() const { assert(is_mem()); return inst->addrsz(); }
     };
 
-    Instr() : LLInstr(LLInstr::Invalid(0)) {}
-    Instr(const FdInstr& fdi);
-
-    unsigned len() const { return LLInstr::len; }
-    unsigned start() const { return LLInstr::addr; }
+    unsigned len() const { return FD_SIZE(fdi()); }
+    unsigned start() const { return FD_ADDRESS(fdi()); }
     unsigned end() const { return start() + len(); }
-    Type type() const { return LLInstr::type; }
-    unsigned opsz() const { return LLInstr::operand_size; }
-    unsigned addrsz() const { return LLInstr::address_size; }
-    const Op op(unsigned idx) const { return Op{*this, idx}; }
+    Type type() const;
+    unsigned addrsz() const { return FD_ADDRSIZE(fdi()); }
+    unsigned opsz() const { return FD_OPSIZE(fdi()); }
+    const Op op(unsigned idx) const { return Op{this, idx}; }
 
     bool BreaksAlways() const;
     bool BreaksConditionally() const;
     bool HasAbsJumpTarget() const;
+
+private:
+    const FdInstr* fdi() const {return static_cast<const FdInstr*>(this); }
+    static LLReg MapFdReg(unsigned idx, unsigned type);
 };
 
 } // namespace

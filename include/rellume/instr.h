@@ -82,45 +82,6 @@ struct LLReg {
 
 typedef struct LLReg LLReg;
 
-enum {
-    LL_OP_NONE = 0,
-    LL_OP_REG,
-    LL_OP_IMM,
-    LL_OP_MEM,
-};
-
-struct LLInstrOp {
-    uint64_t val;
-    int type;
-    LLReg reg;
-    LLReg ireg;
-    int scale;
-    int seg;
-    unsigned addrsize;
-    unsigned size;
-};
-
-typedef struct LLInstrOp LLInstrOp;
-
-struct LLInstr {
-    LLInstrType type;
-    int operand_count;
-    int operand_size;
-    int address_size;
-    LLInstrOp ops[4];
-
-    uintptr_t addr;
-    int len;
-
-#if defined(__cplusplus) && defined(RELLUME_ENABLE_CPP_HEADER)
-    static LLInstr Invalid(uintptr_t addr) {
-        return LLInstr{LL_INS_Invalid, 0, 0, 0, {}, addr, 1};
-    }
-#endif
-};
-
-typedef struct LLInstr LLInstr;
-
 #ifdef __cplusplus
 }
 #endif
