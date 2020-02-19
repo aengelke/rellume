@@ -40,24 +40,24 @@
 
 namespace rellume {
 
-void Lifter::LiftFence(const LLInstr& inst) {
+void Lifter::LiftFence(const Instr& inst) {
     // TODO: distinguish also lfence and sfence.
     irb.CreateFence(llvm::AtomicOrdering::SequentiallyConsistent);
 }
 
-void Lifter::LiftPrefetch(const LLInstr& inst, unsigned rw, unsigned locality) {
+void Lifter::LiftPrefetch(const Instr& inst, unsigned rw, unsigned locality) {
     llvm::Module* module = irb.GetInsertBlock()->getModule();
     auto id = llvm::Intrinsic::prefetch;
     llvm::Function* intrinsic = llvm::Intrinsic::getDeclaration(module, id, {});
 
-    llvm::Value* addr = OpAddr(inst.ops[0], irb.getInt8Ty());
+    llvm::Value* addr = OpAddr(inst.op(0), irb.getInt8Ty(), inst.op(0).seg());
     // Prefetch addr for read/write with given locality into the data cache.
     irb.CreateCall(intrinsic, {addr, irb.getInt32(rw), irb.getInt32(locality),
                                irb.getInt32(1)});
 }
 
-void Lifter::LiftFxsave(const LLInstr& inst) {
-    llvm::Value* buf = OpAddr(inst.ops[0], irb.getInt8Ty());
+void Lifter::LiftFxsave(const Instr& inst) {
+    llvm::Value* buf = OpAddr(inst.op(0), irb.getInt8Ty(), inst.op(0).seg());
     llvm::Module* mod = irb.GetInsertBlock()->getModule();
     irb.CreateAlignmentAssumption(mod->getDataLayout(), buf, 16);
 
@@ -71,8 +71,8 @@ void Lifter::LiftFxsave(const LLInstr& inst) {
     }
 }
 
-void Lifter::LiftFxrstor(const LLInstr& inst) {
-    llvm::Value* buf = OpAddr(inst.ops[0], irb.getInt8Ty());
+void Lifter::LiftFxrstor(const Instr& inst) {
+    llvm::Value* buf = OpAddr(inst.op(0), irb.getInt8Ty(), inst.op(0).seg());
     llvm::Module* mod = irb.GetInsertBlock()->getModule();
     irb.CreateAlignmentAssumption(mod->getDataLayout(), buf, 16);
 
@@ -83,53 +83,53 @@ void Lifter::LiftFxrstor(const LLInstr& inst) {
     }
 }
 
-void Lifter::LiftFstcw(const LLInstr& inst) {
-    OpStoreGp(inst.ops[0], irb.getInt16(0x37f));
+void Lifter::LiftFstcw(const Instr& inst) {
+    OpStoreGp(inst.op(0), irb.getInt16(0x37f));
 }
 
-void Lifter::LiftFstsw(const LLInstr& inst) {
-    OpStoreGp(inst.ops[0], irb.getInt16(0));
+void Lifter::LiftFstsw(const Instr& inst) {
+    OpStoreGp(inst.op(0), irb.getInt16(0));
 }
 
-void Lifter::LiftStmxcsr(const LLInstr& inst) {
-    OpStoreGp(inst.ops[0], irb.getInt32(0x1f80));
+void Lifter::LiftStmxcsr(const Instr& inst) {
+    OpStoreGp(inst.op(0), irb.getInt32(0x1f80));
 }
 
-void Lifter::LiftSseMovq(const LLInstr& inst, Facet type)
+void Lifter::LiftSseMovq(const Instr& inst, Facet type)
 {
-    llvm::Value* op1 = OpLoad(inst.ops[1], type);
-    if (inst.ops[0].type == LL_OP_REG && inst.ops[0].reg.rt == LL_RT_XMM) {
+    llvm::Value* op1 = OpLoad(inst.op(1), type);
+    if (inst.op(0).is_reg() && inst.op(0).reg().rt == LL_RT_XMM) {
         llvm::Type* el_ty = op1->getType();
         llvm::Type* vector_ty = llvm::VectorType::get(el_ty, 128 / el_ty->getPrimitiveSizeInBits());
         llvm::Value* zero = llvm::Constant::getNullValue(vector_ty);
         llvm::Value* zext = irb.CreateInsertElement(zero, op1, 0ul);
-        OpStoreVec(inst.ops[0], zext);
+        OpStoreVec(inst.op(0), zext);
     } else {
-        OpStoreGp(inst.ops[0], op1);
+        OpStoreGp(inst.op(0), op1);
     }
 }
 
-void Lifter::LiftSseMovScalar(const LLInstr& inst, Facet facet) {
-    llvm::Value* src = OpLoad(inst.ops[1], facet);
-    if (inst.ops[1].type == LL_OP_MEM) {
+void Lifter::LiftSseMovScalar(const Instr& inst, Facet facet) {
+    llvm::Value* src = OpLoad(inst.op(1), facet);
+    if (inst.op(1).is_mem()) {
         llvm::Type* el_ty = src->getType();
         llvm::Type* vector_ty = llvm::VectorType::get(el_ty, 128 / el_ty->getPrimitiveSizeInBits());
         llvm::Value* zero = llvm::Constant::getNullValue(vector_ty);
         llvm::Value* zext = irb.CreateInsertElement(zero, src, 0ul);
-        OpStoreVec(inst.ops[0], zext);
+        OpStoreVec(inst.op(0), zext);
     } else {
-        OpStoreVec(inst.ops[0], src);
+        OpStoreVec(inst.op(0), src);
     }
 }
 
-void Lifter::LiftSseMovdq(const LLInstr& inst, Facet facet,
+void Lifter::LiftSseMovdq(const Instr& inst, Facet facet,
                            Alignment alignment) {
-    OpStoreVec(inst.ops[0], OpLoad(inst.ops[1], facet, alignment), alignment);
+    OpStoreVec(inst.op(0), OpLoad(inst.op(1), facet, alignment), alignment);
 }
 
-void Lifter::LiftSseMovntStore(const LLInstr& inst, Facet facet) {
-    llvm::Value* value = OpLoad(inst.ops[1], facet, ALIGN_MAX);
-    llvm::Value* addr = OpAddr(inst.ops[0], value->getType());
+void Lifter::LiftSseMovntStore(const Instr& inst, Facet facet) {
+    llvm::Value* value = OpLoad(inst.op(1), facet, ALIGN_MAX);
+    llvm::Value* addr = OpAddr(inst.op(0), value->getType(), inst.op(0).seg());
     llvm::StoreInst* store = irb.CreateStore(value, addr);
     store->setAlignment(value->getType()->getPrimitiveSizeInBits() / 8);
     llvm::MDNode* node = llvm::MDNode::get(store->getContext(),
@@ -137,72 +137,72 @@ void Lifter::LiftSseMovntStore(const LLInstr& inst, Facet facet) {
     store->setMetadata(GetModule()->getMDKindID("nontemporal"), node);
 }
 
-void Lifter::LiftSseMovlp(const LLInstr& inst) {
-    if (inst.ops[0].type == LL_OP_REG && inst.ops[1].type == LL_OP_REG) {
+void Lifter::LiftSseMovlp(const Instr& inst) {
+    if (inst.op(0).is_reg() && inst.op(1).is_reg()) {
         // move high 64-bit from src to low 64-bit from dst
-        assert(inst.type == LL_INS_MOVLPS); // the official mnemonic is MOVHLPS.
-        llvm::Value* op2 = OpLoad(inst.ops[1], Facet::V4F32);
+        assert(inst.type() == LL_INS_MOVLPS); // the official mnemonic is MOVHLPS.
+        llvm::Value* op2 = OpLoad(inst.op(1), Facet::V4F32);
         llvm::Value* zero = llvm::Constant::getNullValue(op2->getType());
-        OpStoreVec(inst.ops[0], irb.CreateShuffleVector(op2, zero, {2, 3}));
+        OpStoreVec(inst.op(0), irb.CreateShuffleVector(op2, zero, {2, 3}));
     } else {
         // move (low) 64-bit from src to (low) 64-bit from dst
-        auto facet = inst.type == LL_INS_MOVLPS ? Facet::V2F32 : Facet::F64;
-        OpStoreVec(inst.ops[0], OpLoad(inst.ops[1], facet));
+        auto facet = inst.type() == LL_INS_MOVLPS ? Facet::V2F32 : Facet::F64;
+        OpStoreVec(inst.op(0), OpLoad(inst.op(1), facet));
     }
 }
 
-void Lifter::LiftSseMovhps(const LLInstr& inst) {
-    if (inst.ops[0].type == LL_OP_MEM) {
+void Lifter::LiftSseMovhps(const Instr& inst) {
+    if (inst.op(0).is_mem()) {
         // move high 64-bit from src to (low) 64-bit from dst (in memory)
-        llvm::Value* op2 = OpLoad(inst.ops[1], Facet::V4F32);
+        llvm::Value* op2 = OpLoad(inst.op(1), Facet::V4F32);
         llvm::Value* zero = llvm::Constant::getNullValue(op2->getType());
         llvm::Value* res = irb.CreateShuffleVector(op2, zero, {2, 3});
-        OpStoreVec(inst.ops[0], res);
+        OpStoreVec(inst.op(0), res);
     } else {
         // move low 64-bit from src to high 64-bit from dst
         // for reg-reg, the official mnemonic is MOVLHPS.
-        llvm::Value* op1 = OpLoad(inst.ops[0], Facet::V4F32);
-        llvm::Value* op2 = OpLoad(inst.ops[1], Facet::V2F32);
+        llvm::Value* op1 = OpLoad(inst.op(0), Facet::V4F32);
+        llvm::Value* op2 = OpLoad(inst.op(1), Facet::V2F32);
 
         // first, enlarge op2 to full vector width
         llvm::Value* zero_half = llvm::Constant::getNullValue(op2->getType());
         op2 = irb.CreateShuffleVector(op2, zero_half, {0, 1, 2, 3});
         // and then shuffle the two operands together
         llvm::Value* res = irb.CreateShuffleVector(op1, op2, {0, 1, 4, 5});
-        OpStoreVec(inst.ops[0], res);
+        OpStoreVec(inst.op(0), res);
     }
 }
 
-void Lifter::LiftSseMovhpd(const LLInstr& inst) {
-    if (inst.ops[0].type == LL_OP_MEM) {
+void Lifter::LiftSseMovhpd(const Instr& inst) {
+    if (inst.op(0).is_mem()) {
         // move high 64-bit from src to (low) 64-bit from dst (in memory)
-        llvm::Value* op2 = OpLoad(inst.ops[1], Facet::V2F64);
-        OpStoreVec(inst.ops[0], irb.CreateExtractElement(op2, 1u));
+        llvm::Value* op2 = OpLoad(inst.op(1), Facet::V2F64);
+        OpStoreVec(inst.op(0), irb.CreateExtractElement(op2, 1u));
     } else {
         // move low 64-bit from src to high 64-bit from dst
-        llvm::Value* op1 = OpLoad(inst.ops[0], Facet::V2F64);
-        llvm::Value* op2 = OpLoad(inst.ops[1], Facet::F64);
-        OpStoreVec(inst.ops[0], irb.CreateInsertElement(op1, op2, 1u));
+        llvm::Value* op1 = OpLoad(inst.op(0), Facet::V2F64);
+        llvm::Value* op2 = OpLoad(inst.op(1), Facet::F64);
+        OpStoreVec(inst.op(0), irb.CreateInsertElement(op1, op2, 1u));
     }
 }
 
-void Lifter::LiftSseBinOp(const LLInstr& inst, llvm::Instruction::BinaryOps op,
+void Lifter::LiftSseBinOp(const Instr& inst, llvm::Instruction::BinaryOps op,
                            Facet op_type) {
-    llvm::Value* op1 = OpLoad(inst.ops[0], op_type, ALIGN_IMP);
-    llvm::Value* op2 = OpLoad(inst.ops[1], op_type, ALIGN_IMP);
-    OpStoreVec(inst.ops[0], irb.CreateBinOp(op, op1, op2), /*avx=*/false,
+    llvm::Value* op1 = OpLoad(inst.op(0), op_type, ALIGN_IMP);
+    llvm::Value* op2 = OpLoad(inst.op(1), op_type, ALIGN_IMP);
+    OpStoreVec(inst.op(0), irb.CreateBinOp(op, op1, op2), /*avx=*/false,
                ALIGN_IMP);
 }
 
-void Lifter::LiftSseAndn(const LLInstr& inst, Facet op_type) {
-    llvm::Value* op1 = OpLoad(inst.ops[0], op_type, ALIGN_MAX);
-    llvm::Value* op2 = OpLoad(inst.ops[1], op_type, ALIGN_MAX);
-    OpStoreVec(inst.ops[0], irb.CreateAnd(irb.CreateNot(op1), op2));
+void Lifter::LiftSseAndn(const Instr& inst, Facet op_type) {
+    llvm::Value* op1 = OpLoad(inst.op(0), op_type, ALIGN_MAX);
+    llvm::Value* op2 = OpLoad(inst.op(1), op_type, ALIGN_MAX);
+    OpStoreVec(inst.op(0), irb.CreateAnd(irb.CreateNot(op1), op2));
 }
 
-void Lifter::LiftSseComis(const LLInstr& inst, Facet op_type) {
-    llvm::Value* op1 = OpLoad(inst.ops[0], op_type);
-    llvm::Value* op2 = OpLoad(inst.ops[1], op_type);
+void Lifter::LiftSseComis(const Instr& inst, Facet op_type) {
+    llvm::Value* op1 = OpLoad(inst.op(0), op_type);
+    llvm::Value* op2 = OpLoad(inst.op(1), op_type);
     SetFlag(Facet::ZF, irb.CreateFCmpUEQ(op1, op2));
     SetFlag(Facet::CF, irb.CreateFCmpULT(op1, op2));
     SetFlag(Facet::PF, irb.CreateFCmpUNO(op1, op2));
@@ -211,9 +211,9 @@ void Lifter::LiftSseComis(const LLInstr& inst, Facet op_type) {
     SetFlag(Facet::SF, irb.getFalse());
 }
 
-void Lifter::LiftSseCmp(const LLInstr& inst, Facet op_type) {
+void Lifter::LiftSseCmp(const Instr& inst, Facet op_type) {
     llvm::FCmpInst::Predicate pred;
-    switch (inst.ops[2].val) {
+    switch (inst.op(2).imm()) {
     case 0: pred = llvm::FCmpInst::FCMP_OEQ; break; // EQ_OQ
     case 1: pred = llvm::FCmpInst::FCMP_OLT; break; // LT_OS
     case 2: pred = llvm::FCmpInst::FCMP_OLE; break; // LE_OS
@@ -224,8 +224,8 @@ void Lifter::LiftSseCmp(const LLInstr& inst, Facet op_type) {
     case 7: pred = llvm::FCmpInst::FCMP_ORD; break; // ORD_Q
     default: assert(false); return;
     }
-    llvm::Value* op1 = OpLoad(inst.ops[0], op_type, ALIGN_MAX);
-    llvm::Value* op2 = OpLoad(inst.ops[1], op_type, ALIGN_MAX);
+    llvm::Value* op1 = OpLoad(inst.op(0), op_type, ALIGN_MAX);
+    llvm::Value* op2 = OpLoad(inst.op(1), op_type, ALIGN_MAX);
     llvm::Value* eq = irb.CreateFCmp(pred, op1, op2);
     llvm::Type* cmp_ty = op1->getType();
     llvm::Type* res_ty;
@@ -236,35 +236,35 @@ void Lifter::LiftSseCmp(const LLInstr& inst, Facet op_type) {
     } else {
         res_ty = irb.getIntNTy(cmp_ty->getScalarSizeInBits());
     }
-    OpStoreVec(inst.ops[0], irb.CreateSExt(eq, res_ty));
+    OpStoreVec(inst.op(0), irb.CreateSExt(eq, res_ty));
 }
 
-void Lifter::LiftSseMinmax(const LLInstr& inst, llvm::CmpInst::Predicate pred,
+void Lifter::LiftSseMinmax(const Instr& inst, llvm::CmpInst::Predicate pred,
                             Facet op_type) {
-    llvm::Value* op1 = OpLoad(inst.ops[0], op_type, ALIGN_MAX);
-    llvm::Value* op2 = OpLoad(inst.ops[1], op_type, ALIGN_MAX);
+    llvm::Value* op1 = OpLoad(inst.op(0), op_type, ALIGN_MAX);
+    llvm::Value* op2 = OpLoad(inst.op(1), op_type, ALIGN_MAX);
     llvm::Value* cmp = irb.CreateFCmp(pred, op1, op2);
-    OpStoreVec(inst.ops[0], irb.CreateSelect(cmp, op1, op2));
+    OpStoreVec(inst.op(0), irb.CreateSelect(cmp, op1, op2));
 }
 
-void Lifter::LiftSseSqrt(const LLInstr& inst, Facet op_type) {
-    llvm::Value* op1 = OpLoad(inst.ops[1], op_type);
-    OpStoreVec(inst.ops[0], CreateUnaryIntrinsic(llvm::Intrinsic::sqrt, op1));
+void Lifter::LiftSseSqrt(const Instr& inst, Facet op_type) {
+    llvm::Value* op1 = OpLoad(inst.op(1), op_type);
+    OpStoreVec(inst.op(0), CreateUnaryIntrinsic(llvm::Intrinsic::sqrt, op1));
 }
 
-void Lifter::LiftSseCvt(const LLInstr& inst, Facet src_type, Facet dst_type) {
+void Lifter::LiftSseCvt(const Instr& inst, Facet src_type, Facet dst_type) {
     if (dst_type == Facet::I)
-        dst_type = dst_type.Resolve(inst.ops[0].size * 8);
+        dst_type = dst_type.Resolve(inst.op(0).bits());
     llvm::Type* dst_ty = dst_type.Type(irb.getContext());
 
-    llvm::Value* src = OpLoad(inst.ops[1], src_type);
+    llvm::Value* src = OpLoad(inst.op(1), src_type);
     auto cast_op = llvm::CastInst::getCastOpcode(src, true, dst_ty, true);
     llvm::Value* dst = irb.CreateCast(cast_op, src, dst_ty);
 
     if (dst_ty->isIntegerTy()) {
-        OpStoreGp(inst.ops[0], dst);
+        OpStoreGp(inst.op(0), dst);
     } else if (dst_ty->isFloatingPointTy()) {
-        OpStoreVec(inst.ops[0], dst);
+        OpStoreVec(inst.op(0), dst);
     } else if (dst_ty->isVectorTy()) {
         if (dst_ty->getPrimitiveSizeInBits() == 64) {
             // Zero upper half
@@ -273,87 +273,87 @@ void Lifter::LiftSseCvt(const LLInstr& inst, Facet src_type, Facet dst_type) {
         } else {
             assert(dst_ty->getPrimitiveSizeInBits() == 128);
         }
-        OpStoreVec(inst.ops[0], dst);
+        OpStoreVec(inst.op(0), dst);
     } else {
         assert(false && "invalid cvt target type");
     }
 }
 
-void Lifter::LiftSseUnpck(const LLInstr& inst, Facet op_type) {
-    llvm::Value* op1 = OpLoad(inst.ops[0], op_type);
+void Lifter::LiftSseUnpck(const Instr& inst, Facet op_type) {
+    llvm::Value* op1 = OpLoad(inst.op(0), op_type);
     // We always fetch 128 bits, as per SDM.
-    llvm::Value* op2 = OpLoad(inst.ops[1], op_type, ALIGN_MAX);
+    llvm::Value* op2 = OpLoad(inst.op(1), op_type, ALIGN_MAX);
     llvm::Value* res = nullptr;
-    if (inst.type == LL_INS_PUNPCKLBW)
+    if (inst.type() == LL_INS_PUNPCKLBW)
         res = irb.CreateShuffleVector(op1, op2, {0, 16, 1, 17, 2, 18, 3, 19, 4, 20, 5, 21, 6, 22, 7, 23});
-    else if (inst.type == LL_INS_PUNPCKHBW)
+    else if (inst.type() == LL_INS_PUNPCKHBW)
         res = irb.CreateShuffleVector(op1, op2, {8, 24, 9, 25, 10, 26, 11, 27, 12, 28, 13, 29, 14, 30, 15, 31});
-    else if (inst.type == LL_INS_PUNPCKLWD)
+    else if (inst.type() == LL_INS_PUNPCKLWD)
         res = irb.CreateShuffleVector(op1, op2, {0, 8, 1, 9, 2, 10, 3, 11});
-    else if (inst.type == LL_INS_PUNPCKHWD)
+    else if (inst.type() == LL_INS_PUNPCKHWD)
         res = irb.CreateShuffleVector(op1, op2, {4, 12, 5, 13, 6, 14, 7, 15});
-    else if (inst.type == LL_INS_UNPCKLPS || inst.type == LL_INS_PUNPCKLDQ)
+    else if (inst.type() == LL_INS_UNPCKLPS || inst.type() == LL_INS_PUNPCKLDQ)
         res = irb.CreateShuffleVector(op1, op2, {0, 4, 1, 5});
-    else if (inst.type == LL_INS_UNPCKLPD || inst.type == LL_INS_PUNPCKLQDQ)
+    else if (inst.type() == LL_INS_UNPCKLPD || inst.type() == LL_INS_PUNPCKLQDQ)
         res = irb.CreateShuffleVector(op1, op2, {0, 2});
-    else if (inst.type == LL_INS_UNPCKHPS || inst.type == LL_INS_PUNPCKHDQ)
+    else if (inst.type() == LL_INS_UNPCKHPS || inst.type() == LL_INS_PUNPCKHDQ)
         res = irb.CreateShuffleVector(op1, op2, {2, 6, 3, 7});
-    else if (inst.type == LL_INS_UNPCKHPD || inst.type == LL_INS_PUNPCKHQDQ)
+    else if (inst.type() == LL_INS_UNPCKHPD || inst.type() == LL_INS_PUNPCKHQDQ)
         res = irb.CreateShuffleVector(op1, op2, {1, 3});
     else
         assert(0);
-    OpStoreVec(inst.ops[0], res);
+    OpStoreVec(inst.op(0), res);
 }
 
-void Lifter::LiftSseShufpd(const LLInstr& inst) {
-    uint32_t mask[2] = { inst.ops[2].val&1 ? 1u:0u, inst.ops[2].val&2 ? 3u:2u };
-    llvm::Value* op1 = OpLoad(inst.ops[0], Facet::VF64);
-    llvm::Value* op2 = OpLoad(inst.ops[1], Facet::VF64, ALIGN_MAX);
+void Lifter::LiftSseShufpd(const Instr& inst) {
+    uint32_t mask[2] = { inst.op(2).imm()&1 ? 1u:0u, inst.op(2).imm()&2 ? 3u:2u };
+    llvm::Value* op1 = OpLoad(inst.op(0), Facet::VF64);
+    llvm::Value* op2 = OpLoad(inst.op(1), Facet::VF64, ALIGN_MAX);
     llvm::Value* res = irb.CreateShuffleVector(op1, op2, mask);
-    OpStoreVec(inst.ops[0], res);
+    OpStoreVec(inst.op(0), res);
 }
 
-void Lifter::LiftSseShufps(const LLInstr& inst) {
+void Lifter::LiftSseShufps(const Instr& inst) {
     uint32_t mask[4];
     for (int i = 0; i < 4; i++)
-        mask[i] = (i < 2 ? 0 : 4) + ((inst.ops[2].val >> 2*i) & 3);
-    llvm::Value* op1 = OpLoad(inst.ops[0], Facet::VF32);
-    llvm::Value* op2 = OpLoad(inst.ops[1], Facet::VF32, ALIGN_MAX);
+        mask[i] = (i < 2 ? 0 : 4) + ((inst.op(2).imm() >> 2*i) & 3);
+    llvm::Value* op1 = OpLoad(inst.op(0), Facet::VF32);
+    llvm::Value* op2 = OpLoad(inst.op(1), Facet::VF32, ALIGN_MAX);
     llvm::Value* res = irb.CreateShuffleVector(op1, op2, mask);
-    OpStoreVec(inst.ops[0], res);
+    OpStoreVec(inst.op(0), res);
 }
 
-void Lifter::LiftSsePshufd(const LLInstr& inst) {
+void Lifter::LiftSsePshufd(const Instr& inst) {
     uint32_t mask[4];
     for (int i = 0; i < 4; i++)
-        mask[i] = ((inst.ops[2].val >> 2*i) & 3);
-    llvm::Value* src = OpLoad(inst.ops[1], Facet::VI32, ALIGN_MAX);
+        mask[i] = ((inst.op(2).imm() >> 2*i) & 3);
+    llvm::Value* src = OpLoad(inst.op(1), Facet::VI32, ALIGN_MAX);
     llvm::Value* res = irb.CreateShuffleVector(src, src, mask);
-    OpStoreVec(inst.ops[0], res);
+    OpStoreVec(inst.op(0), res);
 }
 
-void Lifter::LiftSsePshufw(const LLInstr& inst, unsigned off) {
+void Lifter::LiftSsePshufw(const Instr& inst, unsigned off) {
     uint32_t mask[8] = {0, 1, 2, 3, 4, 5, 6, 7};
     for (unsigned i = off; i < off+4; i++)
-        mask[i] = off + ((inst.ops[2].val >> 2*i) & 3);
-    llvm::Value* src = OpLoad(inst.ops[1], Facet::VI16, ALIGN_MAX);
+        mask[i] = off + ((inst.op(2).imm() >> 2*i) & 3);
+    llvm::Value* src = OpLoad(inst.op(1), Facet::VI16, ALIGN_MAX);
     llvm::Value* res = irb.CreateShuffleVector(src, src, mask);
-    OpStoreVec(inst.ops[0], res);
+    OpStoreVec(inst.op(0), res);
 }
 
-void Lifter::LiftSseInsertps(const LLInstr& inst) {
-    int count_s = (inst.ops[2].val >> 6) & 3;
-    int count_d = (inst.ops[2].val >> 4) & 3;
-    int zmask = inst.ops[2].val & 0xf;
+void Lifter::LiftSseInsertps(const Instr& inst) {
+    int count_s = (inst.op(2).imm() >> 6) & 3;
+    int count_d = (inst.op(2).imm() >> 4) & 3;
+    int zmask = inst.op(2).imm() & 0xf;
 
-    llvm::Value* dst = OpLoad(inst.ops[0], Facet::V4F32);
+    llvm::Value* dst = OpLoad(inst.op(0), Facet::V4F32);
     llvm::Value* src;
     // If src is a reg, extract element, otherwise load scalar from memory.
-    if (inst.ops[1].type == LL_OP_REG) {
-        src = OpLoad(inst.ops[1], Facet::V4F32);
+    if (inst.op(1).is_reg()) {
+        src = OpLoad(inst.op(1), Facet::V4F32);
         src = irb.CreateExtractElement(src, count_s);
     } else {
-        src = OpLoad(inst.ops[1], Facet::F32);
+        src = OpLoad(inst.op(1), Facet::F32);
     }
 
     dst = irb.CreateInsertElement(dst, src, count_d);
@@ -366,35 +366,35 @@ void Lifter::LiftSseInsertps(const LLInstr& inst) {
         dst = irb.CreateShuffleVector(dst, zero, mask);
     }
 
-    OpStoreVec(inst.ops[0], dst);
+    OpStoreVec(inst.op(0), dst);
 }
 
-void Lifter::LiftSsePinsr(const LLInstr& inst, Facet vec_op, Facet src_op,
+void Lifter::LiftSsePinsr(const Instr& inst, Facet vec_op, Facet src_op,
                           unsigned mask) {
-    llvm::Value* dst = OpLoad(inst.ops[0], vec_op);
-    llvm::Value* src = OpLoad(inst.ops[1], src_op);
-    unsigned count = inst.ops[2].val & mask;
-    OpStoreVec(inst.ops[0], irb.CreateInsertElement(dst, src, count));
+    llvm::Value* dst = OpLoad(inst.op(0), vec_op);
+    llvm::Value* src = OpLoad(inst.op(1), src_op);
+    unsigned count = inst.op(2).imm() & mask;
+    OpStoreVec(inst.op(0), irb.CreateInsertElement(dst, src, count));
 }
 
-void Lifter::LiftSsePextr(const LLInstr& inst, Facet vec_op, unsigned mask) {
-    llvm::Value* src = OpLoad(inst.ops[1], vec_op);
-    unsigned count = inst.ops[2].val & mask;
+void Lifter::LiftSsePextr(const Instr& inst, Facet vec_op, unsigned mask) {
+    llvm::Value* src = OpLoad(inst.op(1), vec_op);
+    unsigned count = inst.op(2).imm() & mask;
     llvm::Value* ext = irb.CreateExtractElement(src, count);
-    if (inst.ops[0].type == LL_OP_REG) {
-        assert(inst.ops[0].reg.rt == LL_RT_GP);
+    if (inst.op(0).is_reg()) {
+        assert(inst.op(0).reg().rt == LL_RT_GP);
         ext = irb.CreateZExt(ext, irb.getInt64Ty());
-        OpStoreGp(X86Reg::GP(inst.ops[0].reg.ri), ext);
+        OpStoreGp(X86Reg::GP(inst.op(0).reg().ri), ext);
     } else {
-        OpStoreGp(inst.ops[0], ext);
+        OpStoreGp(inst.op(0), ext);
     }
 }
 
-void Lifter::LiftSsePshiftElement(const LLInstr& inst,
+void Lifter::LiftSsePshiftElement(const Instr& inst,
                                   llvm::Instruction::BinaryOps op,
                                   Facet op_type) {
-    llvm::Value* src = OpLoad(inst.ops[0], op_type);
-    llvm::Value* shift = OpLoad(inst.ops[1], Facet::I64);
+    llvm::Value* src = OpLoad(inst.op(0), op_type);
+    llvm::Value* shift = OpLoad(inst.op(1), Facet::I64);
 
     llvm::Type* elem_ty = src->getType()->getVectorElementType();
     unsigned elem_size = elem_ty->getIntegerBitWidth();
@@ -418,26 +418,26 @@ void Lifter::LiftSsePshiftElement(const LLInstr& inst,
         res = irb.CreateSelect(cmp, res, zero);
     }
 
-    OpStoreVec(inst.ops[0], res);
+    OpStoreVec(inst.op(0), res);
 }
 
-void Lifter::LiftSsePshiftBytes(const LLInstr& inst) {
-    uint32_t shift = std::min(static_cast<uint32_t>(inst.ops[1].val), 16u);
-    bool right = inst.type == LL_INS_PSRLDQ;
+void Lifter::LiftSsePshiftBytes(const Instr& inst) {
+    uint32_t shift = std::min(static_cast<uint32_t>(inst.op(1).imm()), 16u);
+    bool right = inst.type() == LL_INS_PSRLDQ;
     uint32_t mask[16];
     for (int i = 0; i < 16; i++)
         mask[i] = i + (right ? shift : (16 - shift));
-    llvm::Value* src = OpLoad(inst.ops[0], Facet::V16I8);
+    llvm::Value* src = OpLoad(inst.op(0), Facet::V16I8);
     llvm::Value* zero = llvm::Constant::getNullValue(src->getType());
     if (right)
-        OpStoreVec(inst.ops[0], irb.CreateShuffleVector(src, zero, mask));
+        OpStoreVec(inst.op(0), irb.CreateShuffleVector(src, zero, mask));
     else
-        OpStoreVec(inst.ops[0], irb.CreateShuffleVector(zero, src, mask));
+        OpStoreVec(inst.op(0), irb.CreateShuffleVector(zero, src, mask));
 }
 
-void Lifter::LiftSsePavg(const LLInstr& inst, Facet op_type) {
-    llvm::Value* src1 = OpLoad(inst.ops[0], op_type);
-    llvm::Value* src2 = OpLoad(inst.ops[1], op_type);
+void Lifter::LiftSsePavg(const Instr& inst, Facet op_type) {
+    llvm::Value* src1 = OpLoad(inst.op(0), op_type);
+    llvm::Value* src2 = OpLoad(inst.op(1), op_type);
 
     llvm::Type* elem_ty = src1->getType()->getVectorElementType();
     unsigned elem_size = elem_ty->getIntegerBitWidth();
@@ -449,12 +449,12 @@ void Lifter::LiftSsePavg(const LLInstr& inst, Facet op_type) {
     llvm::Value* ext2 = irb.CreateZExt(src2, ext_ty);
     llvm::Value* sum = irb.CreateAdd(irb.CreateAdd(ext1, ext2), ones);
     llvm::Value* res = irb.CreateTrunc(irb.CreateLShr(sum, ones), src1->getType());
-    OpStoreVec(inst.ops[0], res);
+    OpStoreVec(inst.op(0), res);
 }
 
-void Lifter::LiftSsePmulhw(const LLInstr& inst, llvm::Instruction::CastOps cast) {
-    llvm::Value* src1 = OpLoad(inst.ops[0], Facet::VI16);
-    llvm::Value* src2 = OpLoad(inst.ops[1], Facet::VI16);
+void Lifter::LiftSsePmulhw(const Instr& inst, llvm::Instruction::CastOps cast) {
+    llvm::Value* src1 = OpLoad(inst.op(0), Facet::VI16);
+    llvm::Value* src2 = OpLoad(inst.op(1), Facet::VI16);
 
     unsigned elem_cnt = src1->getType()->getVectorNumElements();
     llvm::Type* ext_ty = llvm::VectorType::get(irb.getInt32Ty(), elem_cnt);
@@ -464,7 +464,7 @@ void Lifter::LiftSsePmulhw(const LLInstr& inst, llvm::Instruction::CastOps cast)
     llvm::Value* mul = irb.CreateMul(ext1, ext2);
     llvm::Value* shift = irb.CreateVectorSplat(elem_cnt, irb.getInt32(16));
     llvm::Value* res = irb.CreateTrunc(irb.CreateLShr(mul, shift), src1->getType());
-    OpStoreVec(inst.ops[0], res);
+    OpStoreVec(inst.op(0), res);
 }
 
 static llvm::Value* SaturateTrunc(llvm::IRBuilder<> irb, llvm::Value* val,
@@ -490,11 +490,11 @@ static llvm::Value* SaturateTrunc(llvm::IRBuilder<> irb, llvm::Value* val,
     return irb.CreateTrunc(val, dst_ty);
 }
 
-void Lifter::LiftSsePaddsubSaturate(const LLInstr& inst,
+void Lifter::LiftSsePaddsubSaturate(const Instr& inst,
                                     llvm::Instruction::BinaryOps calc_op,
                                     bool sign, Facet op_ty) {
-    llvm::Value* src1 = OpLoad(inst.ops[0], op_ty);
-    llvm::Value* src2 = OpLoad(inst.ops[1], op_ty);
+    llvm::Value* src1 = OpLoad(inst.op(0), op_ty);
+    llvm::Value* src2 = OpLoad(inst.op(1), op_ty);
     llvm::Instruction::CastOps cast = sign ? llvm::Instruction::SExt
                                            : llvm::Instruction::ZExt;
 
@@ -504,12 +504,12 @@ void Lifter::LiftSsePaddsubSaturate(const LLInstr& inst,
     llvm::Value* ext2 = irb.CreateCast(cast, src2, ext_ty);
     llvm::Value* res = irb.CreateBinOp(calc_op, ext1, ext2);
 
-    OpStoreVec(inst.ops[0], SaturateTrunc(irb, res, sign));
+    OpStoreVec(inst.op(0), SaturateTrunc(irb, res, sign));
 }
 
-void Lifter::LiftSsePack(const LLInstr& inst, Facet src_type, bool sign) {
-    llvm::Value* op1 = OpLoad(inst.ops[0], src_type, ALIGN_MAX);
-    llvm::Value* op2 = OpLoad(inst.ops[1], src_type, ALIGN_MAX);
+void Lifter::LiftSsePack(const Instr& inst, Facet src_type, bool sign) {
+    llvm::Value* op1 = OpLoad(inst.op(0), src_type, ALIGN_MAX);
+    llvm::Value* op2 = OpLoad(inst.op(1), src_type, ALIGN_MAX);
 
     op1 = SaturateTrunc(irb, op1, sign);
     op2 = SaturateTrunc(irb, op2, sign);
@@ -521,32 +521,32 @@ void Lifter::LiftSsePack(const LLInstr& inst, Facet src_type, bool sign) {
     for (unsigned i = 0; i < src_elems; i++)
         mask.push_back(i + src_elems);
 
-    OpStoreVec(inst.ops[0], irb.CreateShuffleVector(op1, op2, mask));
+    OpStoreVec(inst.op(0), irb.CreateShuffleVector(op1, op2, mask));
 }
 
-void Lifter::LiftSsePcmp(const LLInstr& inst, llvm::CmpInst::Predicate pred,
+void Lifter::LiftSsePcmp(const Instr& inst, llvm::CmpInst::Predicate pred,
                          Facet op_type) {
-    llvm::Value* op1 = OpLoad(inst.ops[0], op_type, ALIGN_MAX);
-    llvm::Value* op2 = OpLoad(inst.ops[1], op_type, ALIGN_MAX);
+    llvm::Value* op1 = OpLoad(inst.op(0), op_type, ALIGN_MAX);
+    llvm::Value* op2 = OpLoad(inst.op(1), op_type, ALIGN_MAX);
     llvm::Value* eq = irb.CreateICmp(pred, op1, op2);
-    OpStoreVec(inst.ops[0], irb.CreateSExt(eq, op1->getType()));
+    OpStoreVec(inst.op(0), irb.CreateSExt(eq, op1->getType()));
 }
 
-void Lifter::LiftSsePminmax(const LLInstr& inst, llvm::CmpInst::Predicate pred,
+void Lifter::LiftSsePminmax(const Instr& inst, llvm::CmpInst::Predicate pred,
                             Facet op_type) {
-    llvm::Value* op1 = OpLoad(inst.ops[0], op_type, ALIGN_MAX);
-    llvm::Value* op2 = OpLoad(inst.ops[1], op_type, ALIGN_MAX);
+    llvm::Value* op1 = OpLoad(inst.op(0), op_type, ALIGN_MAX);
+    llvm::Value* op2 = OpLoad(inst.op(1), op_type, ALIGN_MAX);
     llvm::Value* cmp = irb.CreateICmp(pred, op1, op2);
-    OpStoreVec(inst.ops[0], irb.CreateSelect(cmp, op1, op2));
+    OpStoreVec(inst.op(0), irb.CreateSelect(cmp, op1, op2));
 }
 
-void Lifter::LiftSseMovmsk(const LLInstr& inst, Facet op_type) {
-    llvm::Value* src = OpLoad(inst.ops[1], op_type, ALIGN_MAX);
+void Lifter::LiftSseMovmsk(const Instr& inst, Facet op_type) {
+    llvm::Value* src = OpLoad(inst.op(1), op_type, ALIGN_MAX);
     llvm::Value* zero = llvm::Constant::getNullValue(src->getType());
     llvm::Value* bitvec = irb.CreateICmpSLT(src, zero);
     unsigned bit_count = src->getType()->getVectorNumElements();
     llvm::Value* bits = irb.CreateBitCast(bitvec, irb.getIntNTy(bit_count));
-    OpStoreGp(inst.ops[0], irb.CreateZExt(bits, irb.getInt64Ty()));
+    OpStoreGp(inst.op(0), irb.CreateZExt(bits, irb.getInt64Ty()));
 }
 
 } // namespace

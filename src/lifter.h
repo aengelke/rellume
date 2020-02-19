@@ -25,15 +25,14 @@
 #define RELLUME_LIFTER_H
 
 
-struct LLInstr;
-
 namespace rellume {
 
 class ArchBasicBlock;
 class FunctionInfo;
+class Instr;
 class LLConfig;
 
-bool LiftInstruction(const LLInstr& inst, FunctionInfo& fi, const LLConfig& cfg,
+bool LiftInstruction(const Instr& inst, FunctionInfo& fi, const LLConfig& cfg,
                      ArchBasicBlock& ab) noexcept;
 
 } // namespace

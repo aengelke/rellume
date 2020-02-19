@@ -134,14 +134,14 @@ protected:
 private:
     llvm::Value* OpAddrConst(uint64_t addr, llvm::PointerType* ptr_ty);
 protected:
-    llvm::Value* OpAddr(const LLInstrOp& op, llvm::Type* element_type);
-    llvm::Value* OpLoad(const LLInstrOp& op, Facet dataType, Alignment alignment = ALIGN_NONE);
+    llvm::Value* OpAddr(const Instr::Op op, llvm::Type* element_type, unsigned seg);
+    llvm::Value* OpLoad(const Instr::Op op, Facet facet, Alignment alignment = ALIGN_NONE, unsigned force_seg = 7);
     void OpStoreGp(X86Reg reg, llvm::Value* v) {
         OpStoreGp(reg, Facet::In(v->getType()->getIntegerBitWidth()), v);
     }
     void OpStoreGp(X86Reg reg, Facet facet, llvm::Value* value);
-    void OpStoreGp(const LLInstrOp& op, llvm::Value* value, Alignment alignment = ALIGN_NONE);
-    void OpStoreVec(const LLInstrOp& op, llvm::Value* value, bool avx = false, Alignment alignment = ALIGN_IMP);
+    void OpStoreGp(const Instr::Op op, llvm::Value* value, Alignment alignment = ALIGN_NONE);
+    void OpStoreVec(const Instr::Op op, llvm::Value* value, bool avx = false, Alignment alignment = ALIGN_IMP);
     void StackPush(llvm::Value* value);
     llvm::Value* StackPop(const X86Reg sp_src_reg = X86Reg::GP(LL_RI_SP));
 
@@ -194,7 +194,7 @@ protected:
         llvm::Value* di;
         llvm::Value* si;
     };
-    RepInfo RepBegin(const LLInstr& inst);
+    RepInfo RepBegin(const Instr& inst);
     void RepEnd(RepInfo info);
 
     // Helper function for older LLVM versions
@@ -210,123 +210,123 @@ public:
             LifterBase(fi, cfg, ab) {}
 
     // llinstruction-gp.cc
-    bool Lift(const LLInstr&);
+    bool Lift(const Instr&);
 
 private:
-    void LiftOverride(const LLInstr&, llvm::Function* override);
+    void LiftOverride(const Instr&, llvm::Function* override);
 
-    void LiftMovgp(const LLInstr&, llvm::Instruction::CastOps cast);
-    void LiftArith(const LLInstr&, bool sub);
-    void LiftCmpxchg(const LLInstr&);
-    void LiftXchg(const LLInstr&);
-    void LiftAndOrXor(const LLInstr& inst, llvm::Instruction::BinaryOps op,
+    void LiftMovgp(const Instr&, llvm::Instruction::CastOps cast);
+    void LiftArith(const Instr&, bool sub);
+    void LiftCmpxchg(const Instr&);
+    void LiftXchg(const Instr&);
+    void LiftAndOrXor(const Instr& inst, llvm::Instruction::BinaryOps op,
                       bool writeback = true);
-    void LiftNot(const LLInstr&);
-    void LiftNeg(const LLInstr&);
-    void LiftIncDec(const LLInstr&);
-    void LiftShift(const LLInstr&, llvm::Instruction::BinaryOps);
-    void LiftRotate(const LLInstr&);
-    void LiftShiftdouble(const LLInstr&);
-    void LiftMul(const LLInstr&);
-    void LiftDiv(const LLInstr&);
-    void LiftLea(const LLInstr&);
-    void LiftXlat(const LLInstr&);
-    void LiftCmovcc(const LLInstr& inst, Condition cond);
-    void LiftSetcc(const LLInstr& inst, Condition cond);
-    void LiftCext(const LLInstr& inst);
-    void LiftCsep(const LLInstr& inst);
-    void LiftBitscan(const LLInstr& inst, bool trailing);
-    void LiftBittest(const LLInstr& inst);
-    void LiftMovbe(const LLInstr& inst);
-    void LiftBswap(const LLInstr& inst);
+    void LiftNot(const Instr&);
+    void LiftNeg(const Instr&);
+    void LiftIncDec(const Instr&);
+    void LiftShift(const Instr&, llvm::Instruction::BinaryOps);
+    void LiftRotate(const Instr&);
+    void LiftShiftdouble(const Instr&);
+    void LiftMul(const Instr&);
+    void LiftDiv(const Instr&);
+    void LiftLea(const Instr&);
+    void LiftXlat(const Instr&);
+    void LiftCmovcc(const Instr& inst, Condition cond);
+    void LiftSetcc(const Instr& inst, Condition cond);
+    void LiftCext(const Instr& inst);
+    void LiftCsep(const Instr& inst);
+    void LiftBitscan(const Instr& inst, bool trailing);
+    void LiftBittest(const Instr& inst);
+    void LiftMovbe(const Instr& inst);
+    void LiftBswap(const Instr& inst);
 
-    void LiftLahf(const LLInstr& inst) {
+    void LiftLahf(const Instr& inst) {
         OpStoreGp(X86Reg::RAX, Facet::I8H, FlagAsReg(8));
     }
-    void LiftSahf(const LLInstr& inst) {
+    void LiftSahf(const Instr& inst) {
         FlagFromReg(GetReg(X86Reg::RAX, Facet::I8H));
     }
-    void LiftPush(const LLInstr& inst) {
-        StackPush(OpLoad(inst.ops[0], Facet::I));
+    void LiftPush(const Instr& inst) {
+        StackPush(OpLoad(inst.op(0), Facet::I));
     }
-    void LiftPushf(const LLInstr& inst) {
-        StackPush(FlagAsReg(inst.operand_size * 8));
+    void LiftPushf(const Instr& inst) {
+        StackPush(FlagAsReg(inst.opsz() * 8));
     }
-    void LiftPop(const LLInstr& inst) {
-        OpStoreGp(inst.ops[0], StackPop());
+    void LiftPop(const Instr& inst) {
+        OpStoreGp(inst.op(0), StackPop());
     }
-    void LiftPopf(const LLInstr& inst) {
+    void LiftPopf(const Instr& inst) {
         FlagFromReg(StackPop());
     }
-    void LiftLeave(const LLInstr& inst) {
+    void LiftLeave(const Instr& inst) {
         llvm::Value* val = StackPop(X86Reg::RBP);
         OpStoreGp(X86Reg::RBP, val);
     }
 
-    void LiftJmp(const LLInstr& inst);
-    void LiftJcc(const LLInstr& inst, Condition cond);
-    void LiftJcxz(const LLInstr& inst);
-    void LiftLoop(const LLInstr& inst);
-    void LiftCall(const LLInstr& inst);
-    void LiftRet(const LLInstr& inst);
-    void LiftUnreachable(const LLInstr& inst);
+    void LiftJmp(const Instr& inst);
+    void LiftJcc(const Instr& inst, Condition cond);
+    void LiftJcxz(const Instr& inst);
+    void LiftLoop(const Instr& inst);
+    void LiftCall(const Instr& inst);
+    void LiftRet(const Instr& inst);
+    void LiftUnreachable(const Instr& inst);
 
-    void LiftClc(const LLInstr& inst) { SetFlag(Facet::CF, irb.getFalse()); }
-    void LiftStc(const LLInstr& inst) { SetFlag(Facet::CF, irb.getTrue()); }
-    void LiftCmc(const LLInstr& inst) {
+    void LiftClc(const Instr& inst) { SetFlag(Facet::CF, irb.getFalse()); }
+    void LiftStc(const Instr& inst) { SetFlag(Facet::CF, irb.getTrue()); }
+    void LiftCmc(const Instr& inst) {
         SetFlag(Facet::CF, irb.CreateNot(GetFlag(Facet::CF)));
     }
 
-    void LiftCld(const LLInstr& inst) { SetFlag(Facet::DF, irb.getFalse()); }
-    void LiftStd(const LLInstr& inst) { SetFlag(Facet::DF, irb.getTrue()); }
-    void LiftLods(const LLInstr& inst);
-    void LiftStos(const LLInstr& inst);
-    void LiftMovs(const LLInstr& inst);
-    void LiftScas(const LLInstr& inst);
-    void LiftCmps(const LLInstr& inst);
+    void LiftCld(const Instr& inst) { SetFlag(Facet::DF, irb.getFalse()); }
+    void LiftStd(const Instr& inst) { SetFlag(Facet::DF, irb.getTrue()); }
+    void LiftLods(const Instr& inst);
+    void LiftStos(const Instr& inst);
+    void LiftMovs(const Instr& inst);
+    void LiftScas(const Instr& inst);
+    void LiftCmps(const Instr& inst);
 
     // llinstruction-sse.cc
-    void LiftFence(const LLInstr&);
-    void LiftPrefetch(const LLInstr&, unsigned rw, unsigned locality);
-    void LiftFxsave(const LLInstr&);
-    void LiftFxrstor(const LLInstr&);
-    void LiftFstcw(const LLInstr&);
-    void LiftFstsw(const LLInstr&);
-    void LiftStmxcsr(const LLInstr&);
-    void LiftSseMovq(const LLInstr&, Facet type);
-    void LiftSseBinOp(const LLInstr&, llvm::Instruction::BinaryOps op,
+    void LiftFence(const Instr&);
+    void LiftPrefetch(const Instr&, unsigned rw, unsigned locality);
+    void LiftFxsave(const Instr&);
+    void LiftFxrstor(const Instr&);
+    void LiftFstcw(const Instr&);
+    void LiftFstsw(const Instr&);
+    void LiftStmxcsr(const Instr&);
+    void LiftSseMovq(const Instr&, Facet type);
+    void LiftSseBinOp(const Instr&, llvm::Instruction::BinaryOps op,
                       Facet type);
-    void LiftSseMovScalar(const LLInstr&, Facet);
-    void LiftSseMovdq(const LLInstr&, Facet, Alignment);
-    void LiftSseMovntStore(const LLInstr&, Facet);
-    void LiftSseMovlp(const LLInstr&);
-    void LiftSseMovhps(const LLInstr&);
-    void LiftSseMovhpd(const LLInstr&);
-    void LiftSseAndn(const LLInstr&, Facet op_type);
-    void LiftSseComis(const LLInstr&, Facet);
-    void LiftSseCmp(const LLInstr&, Facet op_type);
-    void LiftSseMinmax(const LLInstr&, llvm::CmpInst::Predicate, Facet);
-    void LiftSseSqrt(const LLInstr&, Facet op_type);
-    void LiftSseCvt(const LLInstr&, Facet src_type, Facet dst_type);
-    void LiftSseUnpck(const LLInstr&, Facet type);
-    void LiftSseShufpd(const LLInstr&);
-    void LiftSseShufps(const LLInstr&);
-    void LiftSsePshufd(const LLInstr&);
-    void LiftSsePshufw(const LLInstr&, unsigned off);
-    void LiftSseInsertps(const LLInstr&);
-    void LiftSsePinsr(const LLInstr&, Facet, Facet, unsigned);
-    void LiftSsePextr(const LLInstr&, Facet, unsigned);
-    void LiftSsePshiftElement(const LLInstr&, llvm::Instruction::BinaryOps op, Facet op_type);
-    void LiftSsePshiftBytes(const LLInstr&);
-    void LiftSsePavg(const LLInstr&, Facet);
-    void LiftSsePmulhw(const LLInstr&, llvm::Instruction::CastOps cast);
-    void LiftSsePaddsubSaturate(const LLInstr& inst,
+    void LiftSseMovScalar(const Instr&, Facet);
+    void LiftSseMovdq(const Instr&, Facet, Alignment);
+    void LiftSseMovntStore(const Instr&, Facet);
+    void LiftSseMovlp(const Instr&);
+    void LiftSseMovhps(const Instr&);
+    void LiftSseMovhpd(const Instr&);
+    void LiftSseAndn(const Instr&, Facet op_type);
+    void LiftSseComis(const Instr&, Facet);
+    void LiftSseCmp(const Instr&, Facet op_type);
+    void LiftSseMinmax(const Instr&, llvm::CmpInst::Predicate, Facet);
+    void LiftSseSqrt(const Instr&, Facet op_type);
+    void LiftSseCvt(const Instr&, Facet src_type, Facet dst_type);
+    void LiftSseUnpck(const Instr&, Facet type);
+    void LiftSseShufpd(const Instr&);
+    void LiftSseShufps(const Instr&);
+    void LiftSsePshufd(const Instr&);
+    void LiftSsePshufw(const Instr&, unsigned off);
+    void LiftSseInsertps(const Instr&);
+    void LiftSsePinsr(const Instr&, Facet, Facet, unsigned);
+    void LiftSsePextr(const Instr&, Facet, unsigned);
+    void LiftSsePshiftElement(const Instr&, llvm::Instruction::BinaryOps op, Facet op_type);
+    void LiftSsePshiftBytes(const Instr&);
+    void LiftSsePavg(const Instr&, Facet);
+    void LiftSsePmulhw(const Instr&, llvm::Instruction::CastOps cast);
+    void LiftSsePaddsubSaturate(const Instr& inst,
                                 llvm::Instruction::BinaryOps calc_op, bool sign,
                                 Facet op_ty);
-    void LiftSsePack(const LLInstr&, Facet, bool sign);
-    void LiftSsePcmp(const LLInstr&, llvm::CmpInst::Predicate, Facet);
-    void LiftSsePminmax(const LLInstr&, llvm::CmpInst::Predicate, Facet);
-    void LiftSseMovmsk(const LLInstr&, Facet op_type);
+    void LiftSsePack(const Instr&, Facet, bool sign);
+    void LiftSsePcmp(const Instr&, llvm::CmpInst::Predicate, Facet);
+    void LiftSsePminmax(const Instr&, llvm::CmpInst::Predicate, Facet);
+    void LiftSseMovmsk(const Instr&, Facet op_type);
 };
 
 } // namespace

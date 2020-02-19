@@ -21,6 +21,7 @@
  * \file
  **/
 
+#include "rellume/instr.h"
 #include "rellume/rellume.h"
 
 #include "callconv.h"
@@ -84,7 +85,8 @@ LLFunc* ll_func_new(LLVMModuleRef mod, LLConfig* cfg) {
 }
 
 void ll_func_add_inst(LLFunc* fn, uint64_t block_addr, LLInstr* instr) {
-    unwrap(fn)->AddInst(block_addr, *instr);
+    rellume::Instr* rli = static_cast<rellume::Instr*>(instr);
+    unwrap(fn)->AddInst(block_addr, *rli);
 }
 LLVMValueRef ll_func_lift(LLFunc* fn) {
     return llvm::wrap(unwrap(fn)->Lift());

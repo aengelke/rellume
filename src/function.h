@@ -32,11 +32,10 @@
 #include <unordered_map>
 
 
-struct LLInstr;
-
 namespace rellume {
 
 class ArchBasicBlock;
+class Instr;
 class LLConfig;
 
 class Function
@@ -51,7 +50,7 @@ public:
     Function(const Function&) = delete;
     Function& operator=(const Function&) = delete;
 
-    bool AddInst(uint64_t block_addr, const LLInstr& inst);
+    bool AddInst(uint64_t block_addr, const Instr& inst);
     llvm::Function* Lift();
 
     // Implemented in lldecoder.cc

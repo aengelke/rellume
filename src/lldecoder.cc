@@ -35,7 +35,7 @@ namespace rellume {
 
 int Function::Decode(uintptr_t addr, DecodeStop stop, MemReader memacc)
 {
-    LLInstr inst;
+    Instr inst;
     uint8_t inst_buf[15];
 
     if (memacc == nullptr) {
@@ -50,7 +50,7 @@ int Function::Decode(uintptr_t addr, DecodeStop stop, MemReader memacc)
     std::deque<uintptr_t> addr_queue;
     addr_queue.push_back(addr);
 
-    std::vector<LLInstr> insts;
+    std::vector<Instr> insts;
     // List of (start_idx,end_idx) (non-inclusive end)
     std::vector<std::pair<size_t,size_t>> blocks;
 
@@ -72,10 +72,10 @@ int Function::Decode(uintptr_t addr, DecodeStop stop, MemReader memacc)
             if (inst_buf_sz == 0 || inst_buf_sz > sizeof(inst_buf))
                 break;
 
-            inst = LLInstr::Decode(inst_buf, inst_buf_sz, cur_addr);
+            inst = Instr::Decode(inst_buf, inst_buf_sz, cur_addr);
             // If we reach an invalid instruction or an instruction we can't
             // decode, stop.
-            if (inst.type == LL_INS_Invalid)
+            if (inst.type() == LL_INS_Invalid)
                 break;
 
             addr_map[cur_addr] = std::make_pair(blocks.size(), insts.size());
@@ -89,16 +89,16 @@ int Function::Decode(uintptr_t addr, DecodeStop stop, MemReader memacc)
                     break;
 
                 if (inst.BreaksConditionally())
-                    addr_queue.push_back(cur_addr + inst.len);
+                    addr_queue.push_back(cur_addr + inst.len());
 
                 if (stop == DecodeStop::SUPERBLOCK)
                     break;
 
-                if (inst.HasAbsJumpTarget() && inst.type != LL_INS_CALL)
-                    addr_queue.push_back(inst.ops[0].val);
+                if (inst.HasAbsJumpTarget() && inst.type() != LL_INS_CALL)
+                    addr_queue.push_back(inst.op(0).imm());
                 break;
             }
-            cur_addr += inst.len;
+            cur_addr += inst.len();
             cur_addr_entry = addr_map.find(cur_addr);
         }
 
@@ -115,13 +115,13 @@ int Function::Decode(uintptr_t addr, DecodeStop stop, MemReader memacc)
             blocks.push_back(std::make_pair(split_idx, end));
             blocks[cur_addr_entry->second.first].second = split_idx;
             for (size_t j = split_idx; j < end; j++)
-                addr_map[insts[j].addr] = std::make_pair(blocks.size()-1, j);
+                addr_map[insts[j].start()] = std::make_pair(blocks.size()-1, j);
         }
     }
 
     bool first_inst = true;
     for (auto it = blocks.begin(); it != blocks.end(); it++) {
-        uint64_t block_addr = insts[it->first].addr;
+        uint64_t block_addr = insts[it->first].start();
         for (size_t j = it->first; j < it->second; j++) {
             if (!AddInst(block_addr, insts[j])) {
                 // If we fail on the first instruction, propagate error.

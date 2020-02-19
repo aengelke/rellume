@@ -36,8 +36,8 @@
  * @{
  **/
 
-bool LLInstr::BreaksAlways() const {
-    switch (type) {
+bool rellume::Instr::BreaksAlways() const {
+    switch (type()) {
     case LL_INS_RET:
     case LL_INS_JMP:
     case LL_INS_CALL:
@@ -49,8 +49,8 @@ bool LLInstr::BreaksAlways() const {
     }
 }
 
-bool LLInstr::BreaksConditionally() const {
-    switch (type) {
+bool rellume::Instr::BreaksConditionally() const {
+    switch (type()) {
     case LL_INS_JO:
     case LL_INS_JNO:
     case LL_INS_JC:
@@ -77,8 +77,8 @@ bool LLInstr::BreaksConditionally() const {
     }
 }
 
-bool LLInstr::HasAbsJumpTarget() const {
-    switch (type) {
+bool rellume::Instr::HasAbsJumpTarget() const {
+    switch (type()) {
     case LL_INS_JO:
     case LL_INS_JNO:
     case LL_INS_JC:
@@ -102,7 +102,7 @@ bool LLInstr::HasAbsJumpTarget() const {
         return true;
     case LL_INS_JMP:
     case LL_INS_CALL:
-        return ops[0].type == LL_OP_IMM;
+        return op(0).is_imm();
     default:
         return false;
     }
@@ -132,7 +132,7 @@ convert_reg(int size, int idx, int type)
     return LLReg{ LL_RT_None, LL_RI_None };
 }
 
-LLInstr LLInstr::Decode(uint8_t* buf, size_t buf_size, uint64_t addr)
+rellume::Instr rellume::Instr::Decode(uint8_t* buf, size_t buf_size, uint64_t addr)
 {
     LLInstr llinst;
     FdInstr fdi;

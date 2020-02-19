@@ -77,31 +77,31 @@ LifterBase::OpAddrConst(uint64_t addr, llvm::PointerType* ptr_ty)
 }
 
 llvm::Value*
-LifterBase::OpAddr(const LLInstrOp& op, llvm::Type* element_type)
+LifterBase::OpAddr(const Instr::Op op, llvm::Type* element_type, unsigned seg)
 {
-    if (op.seg == LL_RI_FS || op.seg == LL_RI_GS || op.addrsize != 8) {
+    if (seg == LL_RI_FS || seg == LL_RI_GS || op.addrsz() != 8) {
         // For segment offsets, use inttoptr because the pointer base is stored
         // in the segment register. (And LLVM has some problems with addrspace
         // casts between pointers.) For 32-bit address size, we can't normal
         // pointers, so use integer arithmetic directly.
-        Facet addrsz_facet = op.addrsize == 8 ? Facet::I64 : Facet::I32;
+        Facet addrsz_facet = op.addrsz() == 8 ? Facet::I64 : Facet::I32;
 
-        llvm::Value* res = irb.getIntN(8*op.addrsize, op.val);
-        if (op.reg.rt != LL_RT_None)
-            res = irb.CreateAdd(res, GetReg(MapReg(op.reg), addrsz_facet));
-        if (op.scale != 0) {
-            llvm::Value* ireg = GetReg(MapReg(op.ireg), addrsz_facet);
-            llvm::Value* scaled_val = irb.getIntN(8*op.addrsize, op.scale);
+        llvm::Value* res = irb.getIntN(8*op.addrsz(), op.off());
+        if (op.base().rt != LL_RT_None)
+            res = irb.CreateAdd(res, GetReg(MapReg(op.base()), addrsz_facet));
+        if (op.scale() != 0) {
+            llvm::Value* ireg = GetReg(MapReg(op.index()), addrsz_facet);
+            llvm::Value* scaled_val = irb.getIntN(8*op.addrsz(), op.scale());
             res = irb.CreateAdd(res, irb.CreateMul(ireg, scaled_val));
         }
 
         int addrspace = 0;
-        if (op.seg == LL_RI_FS || op.seg == LL_RI_GS) {
+        if (seg == LL_RI_FS || seg == LL_RI_GS) {
             if (cfg.use_native_segment_base) {
-                addrspace = op.seg == LL_RI_FS ? 257 : 256;
+                addrspace = seg == LL_RI_FS ? 257 : 256;
             } else {
-                unsigned idx = op.seg == LL_RI_FS ? SptrIdx::FSBASE
-                                                  : SptrIdx::GSBASE;
+                unsigned idx = seg == LL_RI_FS ? SptrIdx::FSBASE
+                                               : SptrIdx::GSBASE;
                 res = irb.CreateAdd(res, irb.CreateLoad(fi.sptr[idx]));
             }
         }
@@ -113,40 +113,40 @@ LifterBase::OpAddr(const LLInstrOp& op, llvm::Type* element_type)
     llvm::PointerType* elem_ptr_ty = element_type->getPointerTo();
 
     llvm::PointerType* scale_type = nullptr;
-    if (op.scale * 8u == element_type->getPrimitiveSizeInBits())
+    if (op.scale() * 8u == element_type->getPrimitiveSizeInBits())
         scale_type = elem_ptr_ty;
-    else if (op.scale != 0)
-        scale_type = irb.getIntNTy(op.scale*8)->getPointerTo();
+    else if (op.scale() != 0)
+        scale_type = irb.getIntNTy(op.scale()*8)->getPointerTo();
 
     llvm::Value* base;
-    if (op.reg.rt != LL_RT_None)
+    if (op.base().rt != LL_RT_None)
     {
-        base = GetReg(MapReg(op.reg), Facet::PTR);
+        base = GetReg(MapReg(op.base()), Facet::PTR);
         if (llvm::isa<llvm::Constant>(base))
         {
-            auto base_addr = llvm::cast<llvm::ConstantInt>(GetReg(MapReg(op.reg), Facet::I64));
-            base = OpAddrConst(base_addr->getZExtValue() + op.val, elem_ptr_ty);
+            auto base_addr = llvm::cast<llvm::ConstantInt>(GetReg(MapReg(op.base()), Facet::I64));
+            base = OpAddrConst(base_addr->getZExtValue() + op.off(), elem_ptr_ty);
         }
-        else if (op.val != 0)
+        else if (op.off() != 0)
         {
-            if (op.scale != 0 && (op.val % op.scale) == 0)
+            if (op.scale() != 0 && (op.off() % op.scale()) == 0)
             {
                 base = irb.CreatePointerCast(base, scale_type);
-                base = irb.CreateGEP(base, irb.getInt64(op.val/op.scale));
+                base = irb.CreateGEP(base, irb.getInt64(op.off()/op.scale()));
             }
             else
             {
                 base = irb.CreatePointerCast(base, irb.getInt8PtrTy());
-                base = irb.CreateGEP(base, irb.getInt64(op.val));
+                base = irb.CreateGEP(base, irb.getInt64(op.off()));
             }
         }
     }
     else
     {
-        base = OpAddrConst(op.val, elem_ptr_ty);
+        base = OpAddrConst(op.off(), elem_ptr_ty);
     }
 
-    if (op.scale != 0)
+    if (op.scale() != 0)
     {
         // TODO: only do GEP in some sort of performance mode, it is unsafe.
         // A GEP with base "null" always resolves to "null". The base might only
@@ -159,9 +159,9 @@ LifterBase::OpAddr(const LLInstrOp& op, llvm::Type* element_type)
         if (auto constval = llvm::dyn_cast<llvm::Constant>(base))
             use_mul = constval->isNullValue();
 
-        llvm::Value* offset = GetReg(MapReg(op.ireg), Facet::I64);
+        llvm::Value* offset = GetReg(MapReg(op.index()), Facet::I64);
         if (use_mul) {
-            base = irb.CreateMul(offset, irb.getInt64(op.scale));
+            base = irb.CreateMul(offset, irb.getInt64(op.scale()));
             base = irb.CreateIntToPtr(base, elem_ptr_ty);
         } else {
             base = irb.CreatePointerCast(base, scale_type);
@@ -183,18 +183,20 @@ ll_operand_set_alignment(llvm::Instruction* value, Alignment alignment, bool sse
         store->setAlignment(alignment == ALIGN_NONE ? 1 : store->getPointerOperandType()->getPrimitiveSizeInBits() / 8);
 }
 
-llvm::Value* LifterBase::OpLoad(const LLInstrOp& op, Facet facet,
-                                Alignment alignment) {
-    facet = facet.Resolve(op.size * 8);
-    if (op.type == LL_OP_IMM) {
-        return irb.getIntN(op.size * 8, op.val);
-    } else if (op.type == LL_OP_REG) {
-        if (facet == Facet::I8 && op.reg.rt == LL_RT_GP8High)
+llvm::Value* LifterBase::OpLoad(const Instr::Op op, Facet facet,
+                                Alignment alignment, unsigned seg) {
+    facet = facet.Resolve(op.bits());
+    if (op.is_imm()) {
+        return irb.getIntN(op.bits(), op.imm());
+    } else if (op.is_reg()) {
+        if (facet == Facet::I8 && op.reg().rt == LL_RT_GP8High)
             facet = Facet::I8H;
-        return GetReg(MapReg(op.reg), facet);
-    } else if (op.type == LL_OP_MEM) {
+        return GetReg(MapReg(op.reg()), facet);
+    } else if (op.is_mem()) {
         llvm::Type* type = facet.Type(irb.getContext());
-        llvm::Value* addr = OpAddr(op, type);
+        if (seg == 7)
+            seg = op.seg();
+        llvm::Value* addr = OpAddr(op, type, seg);
         llvm::LoadInst* result = irb.CreateLoad(type, addr);
         // FIXME: forward SSE information to increase alignment.
         ll_operand_set_alignment(result, alignment, false);
@@ -230,37 +232,37 @@ void LifterBase::OpStoreGp(X86Reg reg, Facet facet, llvm::Value* value) {
     SetRegFacet(reg, facet, value); // Store facet value as well
 }
 
-void LifterBase::OpStoreGp(const LLInstrOp& op, llvm::Value* value,
+void LifterBase::OpStoreGp(const Instr::Op op, llvm::Value* value,
                            Alignment alignment) {
-    if (op.type == LL_OP_MEM) {
-        llvm::Value* addr = OpAddr(op, value->getType());
+    if (op.is_mem()) {
+        llvm::Value* addr = OpAddr(op, value->getType(), op.seg());
         llvm::StoreInst* store = irb.CreateStore(value, addr);
         ll_operand_set_alignment(store, alignment);
-    } else if (op.type == LL_OP_REG) {
-        assert(value->getType()->getIntegerBitWidth() == op.size * 8);
+    } else if (op.is_reg()) {
+        assert(value->getType()->getIntegerBitWidth() == op.bits());
 
         Facet facet = Facet::In(value->getType()->getIntegerBitWidth());
-        if (facet == Facet::I8 && op.reg.rt == LL_RT_GP8High)
+        if (facet == Facet::I8 && op.reg().rt == LL_RT_GP8High)
             facet = Facet::I8H;
-        OpStoreGp(MapReg(op.reg), facet, value);
+        OpStoreGp(MapReg(op.reg()), facet, value);
     } else {
         assert(false && "gp-store to non-mem/non-reg");
     }
 }
 
 void
-LifterBase::OpStoreVec(const LLInstrOp& op, llvm::Value* value, bool avx,
+LifterBase::OpStoreVec(const Instr::Op op, llvm::Value* value, bool avx,
                         Alignment alignment)
 {
-    if (op.type == LL_OP_MEM)
+    if (op.is_mem())
     {
-        llvm::Value* addr = OpAddr(op, value->getType());
+        llvm::Value* addr = OpAddr(op, value->getType(), op.seg());
         llvm::StoreInst* store = irb.CreateStore(value, addr);
         ll_operand_set_alignment(store, alignment, !avx);
         return;
     }
 
-    assert(op.type == LL_OP_REG && "vec-store to non-mem/non-reg");
+    assert(op.is_reg() && "vec-store to non-mem/non-reg");
 
     size_t operandWidth = value->getType()->getPrimitiveSizeInBits();
     // assert(operandWidth == Facet::Type(dataType, state->irb.getContext())->getPrimitiveSizeInBits());
@@ -268,7 +270,7 @@ LifterBase::OpStoreVec(const LLInstrOp& op, llvm::Value* value, bool avx,
     llvm::Type* iVec = irb.getIntNTy(LL_VECTOR_REGISTER_SIZE);
     llvm::Value* current = irb.getIntN(LL_VECTOR_REGISTER_SIZE, 0);
     if (!avx)
-        current = GetReg(MapReg(op.reg), Facet::IVEC);
+        current = GetReg(MapReg(op.reg()), Facet::IVEC);
 
     llvm::Type* value_type = value->getType();
     if (value_type->isVectorTy())
@@ -294,13 +296,13 @@ LifterBase::OpStoreVec(const LLInstrOp& op, llvm::Value* value, bool avx,
             full_vec = irb.CreateShuffleVector(full_vec, current_vector, mask);
         }
 
-        SetReg(MapReg(op.reg), Facet::IVEC, irb.CreateBitCast(full_vec, iVec));
+        SetReg(MapReg(op.reg()), Facet::IVEC, irb.CreateBitCast(full_vec, iVec));
 #if LL_VECTOR_REGISTER_SIZE >= 256
         // Induce some common facets via i128 for better SSE support
         if (operandWidth == 128)
         {
             llvm::Value* sse = irb.CreateBitCast(value, irb.getInt128Ty());
-            SetRegFacet(MapReg(op.reg), Facet::I128, sse);
+            SetRegFacet(MapReg(op.reg()), Facet::I128, sse);
         }
 #endif
     }
@@ -310,7 +312,7 @@ LifterBase::OpStoreVec(const LLInstrOp& op, llvm::Value* value, bool avx,
         llvm::Type* full_type = llvm::VectorType::get(value_type, total_count);
         llvm::Value* full_vector = irb.CreateBitCast(current, full_type);
         full_vector = irb.CreateInsertElement(full_vector, value, 0ul);
-        SetReg(MapReg(op.reg), Facet::IVEC, irb.CreateBitCast(full_vector, iVec));
+        SetReg(MapReg(op.reg()), Facet::IVEC, irb.CreateBitCast(full_vector, iVec));
 
 #if LL_VECTOR_REGISTER_SIZE >= 256
         // Induce some common facets via i128 for better SSE support
@@ -318,7 +320,7 @@ LifterBase::OpStoreVec(const LLInstrOp& op, llvm::Value* value, bool avx,
         llvm::Value* sse_vector = irb.CreateBitCast(current128, sse_type);
         sse_vector = irb.CreateInsertElement(sse_vector, value, 0ul);
         llvm::Value* sse = irb.CreateBitCast(sse_vector, irb.getInt128Ty());
-        SetRegFacet(MapReg(op.reg), Facet::I128, sse);
+        SetRegFacet(MapReg(op.reg()), Facet::I128, sse);
 #endif
     }
 }

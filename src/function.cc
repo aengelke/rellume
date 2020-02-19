@@ -80,7 +80,7 @@ Function::Function(llvm::Module* mod, LLConfig* cfg) : cfg(cfg), fi{}
 
 Function::~Function() = default;
 
-bool Function::AddInst(uint64_t block_addr, const LLInstr& inst)
+bool Function::AddInst(uint64_t block_addr, const Instr& inst)
 {
     if (block_map.size() == 0)
         entry_addr = block_addr;
