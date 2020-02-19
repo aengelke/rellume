@@ -65,7 +65,6 @@ public:
     };
 
     Instr() : LLInstr(LLInstr::Invalid(0)) {}
-    Instr(const LLInstr& lli) : LLInstr(lli) {}
     Instr(const FdInstr& fdi);
 
     unsigned len() const { return LLInstr::len; }

@@ -28,6 +28,7 @@
 #include <stddef.h>
 #include <stdint.h>
 
+#include <fadec.h>
 #include <llvm-c/Core.h>
 
 #include "rellume/instr.h"
@@ -61,7 +62,7 @@ typedef struct LLFunc LLFunc;
 
 RELLUME_API LLFunc* ll_func_new(LLVMModuleRef mod, LLConfig*);
 
-RELLUME_API void ll_func_add_inst(LLFunc* fn, uint64_t block_addr, LLInstr* instr);
+RELLUME_API void ll_func_add_inst(LLFunc* fn, uint64_t block_addr, FdInstr* instr);
 RELLUME_API LLVMValueRef ll_func_lift(LLFunc* fn);
 RELLUME_API void ll_func_dispose(LLFunc*);
 

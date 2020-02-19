@@ -19,7 +19,7 @@ subdir('src')
 subdir('include/rellume')
 librellume = declare_dependency(include_directories: rellume_inc,
                                 link_with: librellume_lib,
-                                dependencies: [libllvm],
+                                dependencies: [libllvm, fadec],
                                 sources: [cpustruct_pub])
 
 subdir('tests')

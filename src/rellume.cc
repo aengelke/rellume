@@ -29,6 +29,7 @@
 #include "function.h"
 #include "instr.h"
 #include "transforms.h"
+#include <fadec.h>
 #include <llvm/IR/Module.h>
 #include <llvm/IR/Value.h>
 #include <llvm-c/Core.h>
@@ -85,9 +86,9 @@ LLFunc* ll_func_new(LLVMModuleRef mod, LLConfig* cfg) {
     return reinterpret_cast<LLFunc*>(new rellume::Function(llvm::unwrap(mod), unwrap(cfg)));
 }
 
-void ll_func_add_inst(LLFunc* fn, uint64_t block_addr, LLInstr* instr) {
-    rellume::Instr* rli = static_cast<rellume::Instr*>(instr);
-    unwrap(fn)->AddInst(block_addr, *rli);
+void ll_func_add_inst(LLFunc* fn, uint64_t block_addr, FdInstr* instr) {
+    rellume::Instr rli(*instr);
+    unwrap(fn)->AddInst(block_addr, rli);
 }
 LLVMValueRef ll_func_lift(LLFunc* fn) {
     return llvm::wrap(unwrap(fn)->Lift());
