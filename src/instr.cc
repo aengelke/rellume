@@ -135,15 +135,11 @@ convert_reg(int size, int idx, int type)
     return LLReg{ LL_RT_None, LL_RI_None };
 }
 
-Instr Instr::Decode(uint8_t* buf, size_t buf_size, uint64_t addr)
+Instr::Instr(const FdInstr& fdi)
 {
-    LLInstr llinst;
-    FdInstr fdi;
-    int ret = fd_decode(buf, buf_size, 64, addr, &fdi);
-    if (ret < 0)
-        return LLInstr::Invalid(addr);
+    LLInstr& llinst = *this;
 
-    llinst.addr = addr;
+    llinst.addr = FD_ADDRESS(&fdi);
     llinst.len = FD_SIZE(&fdi);
 
     llinst.address_size = FD_ADDRSIZE(&fdi);
@@ -192,7 +188,7 @@ end_ops:
 
     switch (FD_TYPE(&fdi))
     {
-    case FDI_INT3: return LLInstr::Invalid(addr);
+    case FDI_INT3: llinst.type = LL_INS_Invalid; break;
     case FDI_NOP: llinst.type = LL_INS_NOP; break;
     case FDI_RDSSP: llinst.type = LL_INS_RDSSP; break;
     case FDI_BNDLDX: llinst.type = LL_INS_BNDLDX; break;
@@ -540,11 +536,9 @@ end_ops:
         char fmt_buf[128];
         fd_format(&fdi, fmt_buf, sizeof(fmt_buf));
         fprintf(stderr, "cannot convert instruction %s\n", fmt_buf);
-        return LLInstr::Invalid(addr);
+        llinst.type = LL_INS_Invalid;
     }
     }
-
-    return llinst;
 }
 
 }

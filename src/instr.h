@@ -25,6 +25,9 @@
 #define RELLUME_INSTR_H
 
 #include "rellume/instr.h"
+
+#include <fadec.h>
+
 #include <cstdbool>
 #include <cstdint>
 
@@ -63,6 +66,7 @@ public:
 
     Instr() : LLInstr(LLInstr::Invalid(0)) {}
     Instr(const LLInstr& lli) : LLInstr(lli) {}
+    Instr(const FdInstr& fdi);
 
     unsigned len() const { return LLInstr::len; }
     unsigned start() const { return LLInstr::addr; }
@@ -75,7 +79,6 @@ public:
     bool BreaksAlways() const;
     bool BreaksConditionally() const;
     bool HasAbsJumpTarget() const;
-    static Instr Decode(uint8_t* buf, size_t buf_size, uintptr_t addr);
 };
 
 } // namespace
