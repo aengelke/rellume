@@ -37,7 +37,9 @@
  * @{
  **/
 
-bool rellume::Instr::BreaksAlways() const {
+namespace rellume {
+
+bool Instr::BreaksAlways() const {
     switch (type()) {
     case LL_INS_RET:
     case LL_INS_JMP:
@@ -50,7 +52,7 @@ bool rellume::Instr::BreaksAlways() const {
     }
 }
 
-bool rellume::Instr::BreaksConditionally() const {
+bool Instr::BreaksConditionally() const {
     switch (type()) {
     case LL_INS_JO:
     case LL_INS_JNO:
@@ -78,7 +80,7 @@ bool rellume::Instr::BreaksConditionally() const {
     }
 }
 
-bool rellume::Instr::HasAbsJumpTarget() const {
+bool Instr::HasAbsJumpTarget() const {
     switch (type()) {
     case LL_INS_JO:
     case LL_INS_JNO:
@@ -133,7 +135,7 @@ convert_reg(int size, int idx, int type)
     return LLReg{ LL_RT_None, LL_RI_None };
 }
 
-rellume::Instr rellume::Instr::Decode(uint8_t* buf, size_t buf_size, uint64_t addr)
+Instr Instr::Decode(uint8_t* buf, size_t buf_size, uint64_t addr)
 {
     LLInstr llinst;
     FdInstr fdi;
@@ -543,6 +545,8 @@ end_ops:
     }
 
     return llinst;
+}
+
 }
 
 /**
