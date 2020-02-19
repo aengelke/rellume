@@ -27,6 +27,7 @@
 #include "callconv.h"
 #include "config.h"
 #include "function.h"
+#include "instr.h"
 #include "transforms.h"
 #include <llvm/IR/Module.h>
 #include <llvm/IR/Value.h>

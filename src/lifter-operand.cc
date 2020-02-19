@@ -25,7 +25,7 @@
 
 #include "callconv.h"
 #include "facet.h"
-#include "rellume/instr.h"
+#include "instr.h"
 #include <llvm/IR/Constants.h>
 #include <llvm/IR/Instructions.h>
 #include <llvm/IR/IRBuilder.h>

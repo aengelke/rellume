@@ -22,6 +22,7 @@
  **/
 
 #include "rellume/instr.h"
+#include "instr.h"
 
 #include <fadec.h>
 #include <cstdint>

@@ -24,8 +24,8 @@
 #include "lifter-private.h"
 
 #include "facet.h"
+#include "instr.h"
 #include "regfile.h"
-#include "rellume/instr.h"
 #include <llvm/IR/Instruction.h>
 #include <llvm/IR/IRBuilder.h>
 #include <llvm/IR/Value.h>

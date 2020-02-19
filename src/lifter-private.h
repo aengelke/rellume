@@ -28,8 +28,8 @@
 #include "config.h"
 #include "facet.h"
 #include "function-info.h"
+#include "instr.h"
 #include "regfile.h"
-#include "rellume/instr.h"
 #include <llvm/IR/BasicBlock.h>
 #include <llvm/IR/Instruction.h>
 #include <llvm/IR/IRBuilder.h>

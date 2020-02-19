@@ -28,8 +28,8 @@
 
 #include <rellume/rellume.h>
 
-#include <rellume/instr.h>
 #include <function.h>
+#include <instr.h>
 
 namespace rellume {
 
