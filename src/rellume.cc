@@ -95,20 +95,36 @@ void ll_func_dispose(LLFunc* fn) {
     delete unwrap(fn);
 }
 
-int ll_func_decode(LLFunc* func, uintptr_t addr) {
-    return unwrap(func)->Decode(addr, rellume::Function::DecodeStop::ALL);
+static int ll_func_decode(LLFunc* func, uintptr_t addr,
+                          rellume::Function::DecodeStop stop,
+                          RellumeMemAccessCb mem_acc, void* user_arg) {
+    rellume::Function::MemReader rl_memacc;
+    if (mem_acc) {
+        rl_memacc = [=](uintptr_t maddr, uint8_t* buf, size_t buf_sz) {
+            return mem_acc(maddr, buf, buf_sz, user_arg);
+        };
+    } else {
+        rl_memacc = [](uintptr_t mem_addr, uint8_t* buf, size_t buf_sz) {
+            memcpy(buf, reinterpret_cast<uint8_t*>(mem_addr), buf_sz);
+            return buf_sz;
+        };
+    }
+    return unwrap(func)->Decode(addr, stop, rl_memacc);
 }
-int ll_func_decode2(LLFunc* func, uintptr_t addr, RellumeMemAccessCb mem_acc,
-                    void* user_arg) {
-    return ll_func_decode3(func, addr, RELLUME_DECODE_ALL, mem_acc, user_arg);
+int ll_func_decode_instr(LLFunc* func, uintptr_t addr,
+                         RellumeMemAccessCb mem_acc, void* user_arg) {
+    return ll_func_decode(func, addr, rellume::Function::DecodeStop::INSTR,
+                          mem_acc, user_arg);
 }
-int ll_func_decode3(LLFunc* func, uintptr_t addr, LLDecodeStop stop,
-                    RellumeMemAccessCb mem_acc, void* user_arg) {
-    auto memacc_l = [=](uintptr_t maddr, uint8_t* buf, size_t buf_sz) {
-        return mem_acc(maddr, buf, buf_sz, user_arg);
-    };
-    auto decode_stop = static_cast<rellume::Function::DecodeStop>(stop);
-    return unwrap(func)->Decode(addr, decode_stop, memacc_l);
+int ll_func_decode_block(LLFunc* func, uintptr_t addr,
+                         RellumeMemAccessCb mem_acc, void* user_arg) {
+    return ll_func_decode(func, addr, rellume::Function::DecodeStop::BASICBLOCK,
+                          mem_acc, user_arg);
+}
+int ll_func_decode_cfg(LLFunc* func, uintptr_t addr,
+                       RellumeMemAccessCb mem_acc, void* user_arg) {
+    return ll_func_decode(func, addr, rellume::Function::DecodeStop::ALL,
+                          mem_acc, user_arg);
 }
 
 void ll_func_fast_opt(LLVMValueRef llvm_fn) {

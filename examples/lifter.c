@@ -51,7 +51,7 @@ main(void)
     LLConfig* cfg = ll_config_new();
     LLFunc* fn = ll_func_new(mod, cfg);
     // Lift the whole function by following all direct jumps
-    ll_func_decode(fn, (uintptr_t) sample_func);
+    ll_func_decode_cfg(fn, (uintptr_t) sample_func, NULL, NULL);
     LLVMValueRef llvm_fn = ll_func_lift(fn);
     llvm_fn = ll_func_wrap_sysv(llvm_fn, fnty, mod, 128);
 

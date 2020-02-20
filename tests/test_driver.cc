@@ -198,7 +198,7 @@ class TestCase {
         ll_config_enable_verify_ir(rlcfg, true);
         ll_config_enable_overflow_intrinsics(rlcfg, opt_overflow_intrinsics);
         LLFunc* rlfn = ll_func_new(llvm::wrap(mod.get()), rlcfg);
-        bool decode_ok = !ll_func_decode(rlfn, *reinterpret_cast<uint64_t*>(&state.rip));
+        bool decode_ok = !ll_func_decode_cfg(rlfn, *reinterpret_cast<uint64_t*>(&state.rip), nullptr, nullptr);
         LLVMValueRef fn_wrap = decode_ok ? ll_func_lift(rlfn) : nullptr;
         ll_func_dispose(rlfn);
         ll_config_free(rlcfg);
