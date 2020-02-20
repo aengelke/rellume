@@ -81,10 +81,6 @@ int Function::Decode(uintptr_t addr, DecodeStop stop, MemReader memacc)
 
                 if (inst.BreaksConditionally())
                     addr_queue.push_back(cur_addr + inst.len());
-
-                if (stop == DecodeStop::SUPERBLOCK)
-                    break;
-
                 if (inst.HasAbsJumpTarget() && inst.type() != FDI_CALL)
                     addr_queue.push_back(inst.op(0).imm());
                 break;

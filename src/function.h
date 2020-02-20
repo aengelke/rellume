@@ -57,7 +57,6 @@ public:
     enum class DecodeStop {
         INSTR,
         BASICBLOCK,
-        SUPERBLOCK,
         ALL,
     };
     using MemReader = std::function<size_t(uintptr_t, uint8_t*, size_t)>;
