@@ -46,7 +46,7 @@ void Lifter::LiftMovgp(const Instr& inst, llvm::Instruction::CastOps cast) {
     // TODO: implement this for all register-register moves.
 
     llvm::Value* val = OpLoad(inst.op(1), Facet::I);
-    llvm::Type* tgt_ty = irb.getIntNTy(inst.op(1).bits());
+    llvm::Type* tgt_ty = irb.getIntNTy(inst.op(0).bits());
     OpStoreGp(inst.op(0), irb.CreateCast(cast, val, tgt_ty));
 }
 
