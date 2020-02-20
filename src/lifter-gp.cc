@@ -408,7 +408,7 @@ Lifter::LiftLea(const Instr& inst)
     assert(inst.op(1).is_mem());
 
     // Compute pointer before we overwrite any registers, but ignore segment.
-    llvm::Value* res_ptr = OpAddr(inst.op(1), irb.getInt8Ty(), LL_RI_DS);
+    llvm::Value* res_ptr = OpAddr(inst.op(1), irb.getInt8Ty(), FD_REG_DS);
 
     // Compute as integer
     unsigned addrsz = inst.op(1).addrsz() * 8;
@@ -544,7 +544,7 @@ void Lifter::LiftBswap(const Instr& inst) {
 void Lifter::LiftJmp(const Instr& inst) {
     // Force default data segment, 3e is notrack.
     SetReg(X86Reg::IP, Facet::I64, OpLoad(inst.op(0), Facet::I64, ALIGN_NONE,
-                                          LL_RI_DS));
+                                          FD_REG_DS));
 }
 
 void Lifter::LiftJcc(const Instr& inst, Condition cond) {
@@ -591,7 +591,7 @@ void Lifter::LiftCall(const Instr& inst) {
                       Facet::CF});
 
     // Force default data segment, 3e is notrack.
-    llvm::Value* new_rip = OpLoad(inst.op(0), Facet::I, ALIGN_NONE, LL_RI_DS);
+    llvm::Value* new_rip = OpLoad(inst.op(0), Facet::I, ALIGN_NONE, FD_REG_DS);
     StackPush(GetReg(X86Reg::IP, Facet::I64));
     SetReg(X86Reg::IP, Facet::I64, new_rip);
 }
@@ -655,7 +655,7 @@ void LifterBase::RepEnd(RepInfo info) {
     llvm::Value* adj = irb.CreateSelect(df, irb.getInt64(-1), irb.getInt64(1));
 
     std::pair<int, llvm::Value*> ptr_regs[] = {
-        {LL_RI_DI, info.di}, {LL_RI_SI, info.si}
+        {FD_REG_DI, info.di}, {FD_REG_SI, info.si}
     };
 
     for (auto reg : ptr_regs) {
@@ -673,9 +673,9 @@ void LifterBase::RepEnd(RepInfo info) {
         return;
 
     // Decrement count and check.
-    llvm::Value* count = GetReg(X86Reg::GP(LL_RI_C), Facet::I64);
+    llvm::Value* count = GetReg(X86Reg::GP(FD_REG_CX), Facet::I64);
     count = irb.CreateSub(count, irb.getInt64(1));
-    SetReg(X86Reg::GP(LL_RI_C), Facet::I64, count);
+    SetReg(X86Reg::GP(FD_REG_CX), Facet::I64, count);
 
     llvm::Value* zero = llvm::Constant::getNullValue(count->getType());
     llvm::Value* cond = irb.CreateICmpNE(count, zero);

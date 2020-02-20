@@ -143,7 +143,7 @@ protected:
     void OpStoreGp(const Instr::Op op, llvm::Value* value, Alignment alignment = ALIGN_NONE);
     void OpStoreVec(const Instr::Op op, llvm::Value* value, bool avx = false, Alignment alignment = ALIGN_IMP);
     void StackPush(llvm::Value* value);
-    llvm::Value* StackPop(const X86Reg sp_src_reg = X86Reg::GP(LL_RI_SP));
+    llvm::Value* StackPop(const X86Reg sp_src_reg = X86Reg::GP(FD_REG_SP));
 
     // llflags.cc
     void FlagCalcZ(llvm::Value* value) {

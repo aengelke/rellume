@@ -35,21 +35,6 @@ extern "C" {
 #endif
 
 
-// Names for register indexes. Warning: indexes for different types overlap!
-enum {
-    LL_RI_None = 100, // assume no register type has more than 100 regs
-
-    LL_RI_A = 0, LL_RI_C, LL_RI_D, LL_RI_B, LL_RI_SP, LL_RI_BP, LL_RI_SI, LL_RI_DI,
-    // for LL_RT_GP8Leg
-    LL_RI_AH = 4, LL_RI_CH, LL_RI_DH, LL_RI_BH,
-
-    LL_RI_ES = 0, LL_RI_CS, LL_RI_SS, LL_RI_DS, LL_RI_FS, LL_RI_GS,
-
-    LL_RI_GPMax = 16,
-    LL_RI_XMMMax = 16,
-
-};
-
 struct LLReg {
     uint16_t rt;
     uint16_t ri;

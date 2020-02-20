@@ -50,7 +50,7 @@ LifterBase::MapReg(const LLReg reg) {
     if (reg.rt == FD_RT_GPL)
         return reg.ri == FD_REG_IP ? X86Reg::IP : X86Reg::GP(reg.ri);
     else if (reg.rt == FD_RT_GPH)
-        return X86Reg::GP(reg.ri - LL_RI_AH);
+        return X86Reg::GP(reg.ri - FD_REG_AH);
     else if (reg.rt == FD_RT_VEC)
         return X86Reg::VEC(reg.ri);
     return X86Reg();
@@ -75,7 +75,7 @@ LifterBase::OpAddrConst(uint64_t addr, llvm::PointerType* ptr_ty)
 llvm::Value*
 LifterBase::OpAddr(const Instr::Op op, llvm::Type* element_type, unsigned seg)
 {
-    if (seg == LL_RI_FS || seg == LL_RI_GS || op.addrsz() != 8) {
+    if (seg == FD_REG_FS || seg == FD_REG_GS || op.addrsz() != 8) {
         // For segment offsets, use inttoptr because the pointer base is stored
         // in the segment register. (And LLVM has some problems with addrspace
         // casts between pointers.) For 32-bit address size, we can't normal
@@ -92,12 +92,12 @@ LifterBase::OpAddr(const Instr::Op op, llvm::Type* element_type, unsigned seg)
         }
 
         int addrspace = 0;
-        if (seg == LL_RI_FS || seg == LL_RI_GS) {
+        if (seg == FD_REG_FS || seg == FD_REG_GS) {
             if (cfg.use_native_segment_base) {
-                addrspace = seg == LL_RI_FS ? 257 : 256;
+                addrspace = seg == FD_REG_FS ? 257 : 256;
             } else {
-                unsigned idx = seg == LL_RI_FS ? SptrIdx::FSBASE
-                                               : SptrIdx::GSBASE;
+                unsigned idx = seg == FD_REG_FS ? SptrIdx::FSBASE
+                                                : SptrIdx::GSBASE;
                 res = irb.CreateAdd(res, irb.CreateLoad(fi.sptr[idx]));
             }
         }
@@ -322,14 +322,14 @@ LifterBase::OpStoreVec(const Instr::Op op, llvm::Value* value, bool avx,
 }
 
 void LifterBase::StackPush(llvm::Value* value) {
-    llvm::Value* rsp = GetReg(X86Reg::GP(LL_RI_SP), Facet::PTR);
+    llvm::Value* rsp = GetReg(X86Reg::GP(FD_REG_SP), Facet::PTR);
     rsp = irb.CreatePointerCast(rsp, value->getType()->getPointerTo());
     rsp = irb.CreateConstGEP1_64(rsp, -1);
     irb.CreateStore(value, rsp);
 
     llvm::Value* rsp_int = irb.CreatePtrToInt(rsp, irb.getInt64Ty());
-    SetReg(X86Reg::GP(LL_RI_SP), Facet::I64, rsp_int);
-    SetRegFacet(X86Reg::GP(LL_RI_SP), Facet::PTR, rsp);
+    SetReg(X86Reg::GP(FD_REG_SP), Facet::I64, rsp_int);
+    SetRegFacet(X86Reg::GP(FD_REG_SP), Facet::PTR, rsp);
 }
 
 llvm::Value* LifterBase::StackPop(const X86Reg sp_src_reg) {
@@ -338,8 +338,8 @@ llvm::Value* LifterBase::StackPop(const X86Reg sp_src_reg) {
 
     llvm::Value* new_rsp = irb.CreateConstGEP1_64(rsp, 1);
     llvm::Value* new_rsp_int = irb.CreatePtrToInt(new_rsp, irb.getInt64Ty());
-    SetReg(X86Reg::GP(LL_RI_SP), Facet::I64, new_rsp_int);
-    SetRegFacet(X86Reg::GP(LL_RI_SP), Facet::PTR, new_rsp);
+    SetReg(X86Reg::GP(FD_REG_SP), Facet::I64, new_rsp_int);
+    SetRegFacet(X86Reg::GP(FD_REG_SP), Facet::PTR, new_rsp);
 
     return irb.CreateLoad(rsp);
 }
