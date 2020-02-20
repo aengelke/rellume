@@ -33,6 +33,44 @@
 
 namespace rellume {
 
+static void InstrFlags(Instr::Type ty, bool* breaks, bool* breaks_cond,
+                       bool* has_jmp_target) {
+    switch (ty) {
+    default:          break;
+    case FDI_JO:      *breaks_cond = true; *has_jmp_target = true; break;
+    case FDI_JNO:     *breaks_cond = true; *has_jmp_target = true; break;
+    case FDI_JC:      *breaks_cond = true; *has_jmp_target = true; break;
+    case FDI_JNC:     *breaks_cond = true; *has_jmp_target = true; break;
+    case FDI_JZ:      *breaks_cond = true; *has_jmp_target = true; break;
+    case FDI_JNZ:     *breaks_cond = true; *has_jmp_target = true; break;
+    case FDI_JBE:     *breaks_cond = true; *has_jmp_target = true; break;
+    case FDI_JA:      *breaks_cond = true; *has_jmp_target = true; break;
+    case FDI_JS:      *breaks_cond = true; *has_jmp_target = true; break;
+    case FDI_JNS:     *breaks_cond = true; *has_jmp_target = true; break;
+    case FDI_JP:      *breaks_cond = true; *has_jmp_target = true; break;
+    case FDI_JNP:     *breaks_cond = true; *has_jmp_target = true; break;
+    case FDI_JL:      *breaks_cond = true; *has_jmp_target = true; break;
+    case FDI_JGE:     *breaks_cond = true; *has_jmp_target = true; break;
+    case FDI_JLE:     *breaks_cond = true; *has_jmp_target = true; break;
+    case FDI_JG:      *breaks_cond = true; *has_jmp_target = true; break;
+    case FDI_JCXZ:    *breaks_cond = true; *has_jmp_target = true; break;
+    case FDI_LOOP:    *breaks_cond = true; *has_jmp_target = true; break;
+    case FDI_LOOPZ:   *breaks_cond = true; *has_jmp_target = true; break;
+    case FDI_LOOPNZ:  *breaks_cond = true; *has_jmp_target = true; break;
+    case FDI_JMP:     *breaks = true;      *has_jmp_target = true; break;
+    case FDI_CALL:    *breaks = true;      *has_jmp_target = true; break;
+    case FDI_RET:     *breaks = true; break;
+    case FDI_SYSCALL: *breaks = true; break;
+    case FDI_INT:     *breaks = true; break;
+    case FDI_INT3:    *breaks = true; break;
+    case FDI_INTO:    *breaks = true; break;
+    case FDI_UD0:     *breaks = true; break;
+    case FDI_UD1:     *breaks = true; break;
+    case FDI_UD2:     *breaks = true; break;
+    case FDI_HLT:     *breaks = true; break;
+    }
+}
+
 int Function::Decode(uintptr_t addr, DecodeStop stop, MemReader memacc)
 {
     Instr inst;
@@ -75,13 +113,16 @@ int Function::Decode(uintptr_t addr, DecodeStop stop, MemReader memacc)
             if (stop == DecodeStop::INSTR)
                 break;
 
-            if (inst.BreaksAlways() || inst.BreaksConditionally()) {
+            bool breaks = false, breaks_cond = false, has_jmp_target = false;
+            InstrFlags(inst.type(), &breaks, &breaks_cond, &has_jmp_target);
+            if (breaks || breaks_cond) {
                 if (stop == DecodeStop::BASICBLOCK)
                     break;
 
-                if (inst.BreaksConditionally())
+                if (breaks_cond)
                     addr_queue.push_back(cur_addr + inst.len());
-                if (inst.HasAbsJumpTarget() && inst.type() != FDI_CALL)
+                if (has_jmp_target && inst.type() != FDI_CALL &&
+                        inst.op(0).is_imm())
                     addr_queue.push_back(inst.op(0).imm());
                 break;
             }

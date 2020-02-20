@@ -94,10 +94,6 @@ public:
     bool has_rep() const { return FD_HAS_REP(fdi()); }
     bool has_repnz() const { return FD_HAS_REPNZ(fdi()); }
 
-    bool BreaksAlways() const;
-    bool BreaksConditionally() const;
-    bool HasAbsJumpTarget() const;
-
 private:
     const FdInstr* fdi() const {return static_cast<const FdInstr*>(this); }
 };
