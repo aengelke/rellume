@@ -31,8 +31,6 @@
 #include <fadec.h>
 #include <llvm-c/Core.h>
 
-#include "rellume/instr.h"
-
 #ifdef __cplusplus
 extern "C" {
 #endif

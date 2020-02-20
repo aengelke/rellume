@@ -21,7 +21,6 @@
  * \file
  **/
 
-#include "rellume/instr.h"
 #include "rellume/rellume.h"
 
 #include "callconv.h"

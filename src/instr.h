@@ -24,8 +24,6 @@
 #ifndef RELLUME_INSTR_H
 #define RELLUME_INSTR_H
 
-#include "rellume/instr.h"
-
 #include <fadec.h>
 
 #include <cstdbool>
