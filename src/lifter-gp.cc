@@ -242,6 +242,7 @@ void Lifter::LiftRotate(const Instr& inst) {
 
 void Lifter::LiftMul(const Instr& inst) {
     unsigned sz = inst.op(0).bits();
+    bool sign = inst.type() == FDI_IMUL;
 
     unsigned op_cnt = inst.op(2) ? 3 : inst.op(1) ? 2 : 1;
 
@@ -259,8 +260,7 @@ void Lifter::LiftMul(const Instr& inst) {
     llvm::Value* short_res = irb.CreateMul(op1, op2);
 
     // Extend operand values and perform extended multiplication
-    auto cast_op = inst.type() == FDI_IMUL ? llvm::Instruction::SExt
-                                            : llvm::Instruction::ZExt;
+    auto cast_op = sign ? llvm::Instruction::SExt : llvm::Instruction::ZExt;
     llvm::Type* double_ty = irb.getIntNTy(sz * 2);
     llvm::Value* ext_op1 = irb.CreateCast(cast_op, op1, double_ty);
     llvm::Value* ext_op2 = irb.CreateCast(cast_op, op2, double_ty);
@@ -285,7 +285,8 @@ void Lifter::LiftMul(const Instr& inst) {
 
     llvm::Value* overflow;
     if (cfg.enableOverflowIntrinsics) {
-        llvm::Intrinsic::ID id = llvm::Intrinsic::smul_with_overflow;
+        llvm::Intrinsic::ID id = sign ? llvm::Intrinsic::smul_with_overflow
+                                      : llvm::Intrinsic::umul_with_overflow;
         llvm::Value* packed = irb.CreateBinaryIntrinsic(id, op1, op2);
         overflow = irb.CreateExtractValue(packed, 1);
     } else {

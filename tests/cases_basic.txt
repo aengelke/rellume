@@ -21,6 +21,9 @@ code="mov eax, edx" rax=q:0x8899aabbccddeeff rdx=q:0x0011223344556677 => rax=q:0
 code="mov rax, rdx" rax=q:0x8899aabbccddeeff rdx=q:0x0011223344556677 => rax=q:0x0011223344556677
 code="mov eax, edx" rax=q:0x8899aabbccddeeff rdx=q:0x0011223344556677 => rax=q:0x0000000044556677
 
+code="mul rcx" rax=q:0x10000 rcx=q:0x3 => rax=q:0x30000 rdx=q:0x0 of=00 sf=undef zf=undef af=undef pf=undef cf=00
+code="mul rcx" rax=q:0x40000000 rcx=q:0x200000000 => rax=q:0x8000000000000000 rdx=q:0x0 of=00 sf=undef zf=undef af=undef pf=undef cf=00
+code="mul rcx" rax=q:0x100000000 rcx=q:0x100000000 => rax=q:0 rdx=q:0x1 of=01 sf=undef zf=undef af=undef pf=undef cf=01
 code="div rcx" rax=q:0x10000 rdx=q:0x0 rcx=q:0x3 => rax=q:0x5555 rdx=q:0x1 of=undef sf=undef zf=undef af=undef pf=undef cf=undef
 
 code="pushfq" rsp=q:0x20000008 m20000000=q:0x0 of=01 sf=00 zf=00 af=00 pf=00 cf=00 df=00 => rsp=q:0x20000000 m20000000=q:0xa02
