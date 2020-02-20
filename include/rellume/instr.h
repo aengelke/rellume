@@ -38,7 +38,6 @@ enum {
     LL_RT_None = 0,
     LL_RT_GP8High, // AH = 4, CH = 5, DH = 6, BH = 7; others are invalid.
     LL_RT_GP,
-    LL_RT_IP,
     LL_RT_X87,
     LL_RT_MMX,
     LL_RT_XMM,
@@ -68,6 +67,11 @@ enum {
 struct LLReg {
     uint16_t rt;
     uint16_t ri;
+#if defined(__cplusplus) && defined(RELLUME_ENABLE_CPP_HEADER)
+    explicit operator bool() const {
+        return ri != LL_RI_None && rt != LL_RI_None;
+    }
+#endif
 };
 
 typedef struct LLReg LLReg;

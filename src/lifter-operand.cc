@@ -48,11 +48,9 @@ namespace rellume {
 X86Reg
 LifterBase::MapReg(const LLReg reg) {
     if (reg.rt == LL_RT_GP)
-        return X86Reg::GP(reg.ri);
+        return reg.ri == FD_REG_IP ? X86Reg::IP : X86Reg::GP(reg.ri);
     else if (reg.rt == LL_RT_GP8High)
         return X86Reg::GP(reg.ri - LL_RI_AH);
-    else if (reg.rt == LL_RT_IP)
-        return X86Reg::IP;
     else if (reg.rt == LL_RT_EFLAGS)
         return X86Reg::EFLAGS;
     else if (reg.rt == LL_RT_XMM)
@@ -87,7 +85,7 @@ LifterBase::OpAddr(const Instr::Op op, llvm::Type* element_type, unsigned seg)
         Facet addrsz_facet = op.addrsz() == 8 ? Facet::I64 : Facet::I32;
 
         llvm::Value* res = irb.getIntN(8*op.addrsz(), op.off());
-        if (op.base().rt != LL_RT_None)
+        if (op.base())
             res = irb.CreateAdd(res, GetReg(MapReg(op.base()), addrsz_facet));
         if (op.scale() != 0) {
             llvm::Value* ireg = GetReg(MapReg(op.index()), addrsz_facet);
@@ -119,7 +117,7 @@ LifterBase::OpAddr(const Instr::Op op, llvm::Type* element_type, unsigned seg)
         scale_type = irb.getIntNTy(op.scale()*8)->getPointerTo();
 
     llvm::Value* base;
-    if (op.base().rt != LL_RT_None)
+    if (op.base())
     {
         base = GetReg(MapReg(op.base()), Facet::PTR);
         if (llvm::isa<llvm::Constant>(base))

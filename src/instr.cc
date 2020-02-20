@@ -120,8 +120,6 @@ bool Instr::HasAbsJumpTarget() const {
 LLReg Instr::MapFdReg(unsigned idx, unsigned type) {
     if (idx == FD_REG_NONE)
         return LLReg{ LL_RT_None, LL_RI_None };
-    if (idx == FD_REG_IP && type == FD_RT_GPL)
-        return LLReg{ LL_RT_IP, 0 };
     if (type == FD_RT_GPL)
         return LLReg{ LL_RT_GP, (uint16_t) idx };
     if (type == FD_RT_GPH)

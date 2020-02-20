@@ -414,7 +414,7 @@ Lifter::LiftLea(const Instr& inst)
     unsigned addrsz = inst.op(1).addrsz() * 8;
     Facet facet = Facet{Facet::I}.Resolve(addrsz);
     llvm::Value* res = irb.getIntN(addrsz, inst.op(1).off());
-    if (inst.op(1).base().rt != LL_RT_None)
+    if (inst.op(1).base())
         res = irb.CreateAdd(res, GetReg(MapReg(inst.op(1).base()), facet));
     if (inst.op(1).scale() != 0) {
         llvm::Value* offset = GetReg(MapReg(inst.op(1).index()), facet);
