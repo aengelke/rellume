@@ -345,14 +345,9 @@ void Lifter::LiftDiv(const Instr& inst) {
                   Facet::CF});
 }
 
-void
-Lifter::LiftLea(const Instr& inst)
-{
+void Lifter::LiftLea(const Instr& inst) {
     assert(inst.op(0).is_reg());
     assert(inst.op(1).is_mem());
-
-    // Compute pointer before we overwrite any registers, but ignore segment.
-    llvm::Value* res_ptr = OpAddr(inst.op(1), irb.getInt8Ty(), FD_REG_DS);
 
     // Compute as integer
     unsigned addrsz = inst.op(1).addrsz() * 8;
@@ -368,9 +363,6 @@ Lifter::LiftLea(const Instr& inst)
 
     llvm::Type* op_type = irb.getIntNTy(inst.op(0).bits());
     OpStoreGp(inst.op(0), irb.CreateZExtOrTrunc(res, op_type));
-
-    if (cfg.use_gep_ptr_arithmetic && inst.op(0).size() == 8)
-        SetRegFacet(MapReg(inst.op(0).reg()), Facet::PTR, res_ptr);
 }
 
 void Lifter::LiftXlat(const Instr& inst) {
