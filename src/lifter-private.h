@@ -96,7 +96,7 @@ protected:
         return irb.GetInsertBlock()->getModule();
     }
 
-    X86Reg MapReg(const LLReg reg);
+    X86Reg MapReg(const Instr::Reg reg);
 
     llvm::Value* GetReg(X86Reg reg, Facet facet) {
         return regfile->GetReg(reg, facet);

@@ -37,6 +37,15 @@ namespace rellume {
 class Instr : public FdInstr {
 public:
     using Type = FdInstrType;
+
+    struct Reg {
+        uint16_t rt;
+        uint16_t ri;
+        Reg(unsigned rt, unsigned ri)
+            : rt(static_cast<uint16_t>(rt)), ri(static_cast<uint16_t>(ri)) {}
+        explicit operator bool() const { return ri != FD_REG_NONE; }
+    };
+
     class Op {
         const Instr* inst;
         unsigned idx;
@@ -49,22 +58,22 @@ public:
         unsigned bits() const { return size() * 8; }
 
         bool is_reg() const { return FD_OP_TYPE(inst, idx) == FD_OT_REG; }
-        const LLReg reg() const {
+        const Reg reg() const {
             assert(is_reg());
-            return MapFdReg(FD_OP_REG(inst, idx), FD_OP_REG_TYPE(inst, idx));
+            return Reg(FD_OP_REG_TYPE(inst, idx), FD_OP_REG(inst, idx));
         }
 
         bool is_imm() const { return FD_OP_TYPE(inst, idx) == FD_OT_IMM; }
         int64_t imm() const { assert(is_imm()); return FD_OP_IMM(inst, idx); }
 
         bool is_mem() const { return FD_OP_TYPE(inst, idx) == FD_OT_MEM; }
-        const LLReg base() const {
+        const Reg base() const {
             assert(is_mem());
-            return MapFdReg(FD_OP_BASE(inst, idx), FD_RT_GPL);
+            return Reg(FD_RT_GPL, FD_OP_BASE(inst, idx));
         }
-        const LLReg index() const {
+        const Reg index() const {
             assert(is_mem());
-            return MapFdReg(FD_OP_INDEX(inst, idx), FD_RT_GPL);
+            return Reg(FD_RT_GPL, FD_OP_INDEX(inst, idx));
         }
         unsigned scale() const {
             assert(is_mem());
@@ -93,9 +102,6 @@ public:
 
 private:
     const FdInstr* fdi() const {return static_cast<const FdInstr*>(this); }
-    static LLReg MapFdReg(unsigned idx, unsigned type) {
-        return LLReg{static_cast<uint16_t>(type), static_cast<uint16_t>(idx)};
-    }
 };
 
 } // namespace

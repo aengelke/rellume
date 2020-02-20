@@ -34,17 +34,6 @@
 extern "C" {
 #endif
 
-
-struct LLReg {
-    uint16_t rt;
-    uint16_t ri;
-#if defined(__cplusplus) && defined(RELLUME_ENABLE_CPP_HEADER)
-    explicit operator bool() const { return ri != FD_REG_NONE; }
-#endif
-};
-
-typedef struct LLReg LLReg;
-
 #ifdef __cplusplus
 }
 #endif

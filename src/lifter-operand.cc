@@ -46,7 +46,7 @@
 namespace rellume {
 
 X86Reg
-LifterBase::MapReg(const LLReg reg) {
+LifterBase::MapReg(const Instr::Reg reg) {
     if (reg.rt == FD_RT_GPL)
         return reg.ri == FD_REG_IP ? X86Reg::IP : X86Reg::GP(reg.ri);
     else if (reg.rt == FD_RT_GPH)
