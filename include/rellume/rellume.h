@@ -36,6 +36,7 @@ extern "C" {
 #endif
 
 #define RELLUME_API __attribute__((visibility("default")))
+#define RELLUME_DEPRECATED __attribute__((deprecated))
 
 
 typedef struct LLConfig LLConfig;
@@ -70,9 +71,10 @@ RELLUME_API int ll_func_decode_block(LLFunc* func, uintptr_t addr,
 RELLUME_API int ll_func_decode_cfg(LLFunc* func, uintptr_t addr,
                                    RellumeMemAccessCb cb, void* user_arg);
 
-RELLUME_API void ll_func_fast_opt(LLVMValueRef llvm_fn);
+RELLUME_API void ll_func_fast_opt(LLVMValueRef llvm_fn) RELLUME_DEPRECATED;
 RELLUME_API LLVMValueRef ll_func_wrap_sysv(LLVMValueRef llvm_fn, LLVMTypeRef ty,
-                                           LLVMModuleRef mod, size_t stack_sz);
+                                           LLVMModuleRef mod,
+                                           size_t stack_sz) RELLUME_DEPRECATED;
 
 #ifdef __cplusplus
 }
