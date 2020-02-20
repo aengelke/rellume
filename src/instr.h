@@ -84,9 +84,9 @@ public:
         unsigned addrsz() const { assert(is_mem()); return inst->addrsz(); }
     };
 
-    unsigned len() const { return FD_SIZE(fdi()); }
-    unsigned start() const { return FD_ADDRESS(fdi()); }
-    unsigned end() const { return start() + len(); }
+    size_t len() const { return FD_SIZE(fdi()); }
+    uintptr_t start() const { return FD_ADDRESS(fdi()); }
+    uintptr_t end() const { return start() + len(); }
     Type type() const { return FD_TYPE(fdi()); }
     unsigned addrsz() const { return FD_ADDRSIZE(fdi()); }
     unsigned opsz() const { return FD_OPSIZE(fdi()); }
