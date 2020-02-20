@@ -240,12 +240,6 @@ private:
     void LiftMovbe(const Instr& inst);
     void LiftBswap(const Instr& inst);
 
-    void LiftLahf(const Instr& inst) {
-        OpStoreGp(X86Reg::RAX, Facet::I8H, FlagAsReg(8));
-    }
-    void LiftSahf(const Instr& inst) {
-        FlagFromReg(GetReg(X86Reg::RAX, Facet::I8H));
-    }
     void LiftPush(const Instr& inst) {
         StackPush(OpLoad(inst.op(0), Facet::I));
     }
@@ -271,14 +265,6 @@ private:
     void LiftRet(const Instr& inst);
     void LiftUnreachable(const Instr& inst);
 
-    void LiftClc(const Instr& inst) { SetFlag(Facet::CF, irb.getFalse()); }
-    void LiftStc(const Instr& inst) { SetFlag(Facet::CF, irb.getTrue()); }
-    void LiftCmc(const Instr& inst) {
-        SetFlag(Facet::CF, irb.CreateNot(GetFlag(Facet::CF)));
-    }
-
-    void LiftCld(const Instr& inst) { SetFlag(Facet::DF, irb.getFalse()); }
-    void LiftStd(const Instr& inst) { SetFlag(Facet::DF, irb.getTrue()); }
     void LiftLods(const Instr& inst);
     void LiftStos(const Instr& inst);
     void LiftMovs(const Instr& inst);

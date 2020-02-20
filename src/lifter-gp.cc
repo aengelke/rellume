@@ -47,8 +47,7 @@ static llvm::Instruction* WrapNoFold(llvm::Value* v) {
 
 bool Lifter::Lift(const Instr& inst) {
     // Set new instruction pointer register
-    llvm::Value* ripValue = irb.getInt64(inst.end());
-    SetReg(X86Reg::IP, Facet::I64, ripValue);
+    SetReg(X86Reg::IP, Facet::I64, irb.getInt64(inst.end()));
 
     // Add separator for debugging.
     llvm::Module* module = irb.GetInsertBlock()->getModule();
@@ -92,10 +91,9 @@ bool Lifter::Lift(const Instr& inst) {
     // case FDI_CRC32: NOT IMPLEMENTED
     case FDI_UD2: LiftUnreachable(inst); break;
 
-    case FDI_LAHF: LiftLahf(inst); break;
-    case FDI_SAHF: LiftSahf(inst); break;
+    case FDI_LAHF: OpStoreGp(X86Reg::RAX, Facet::I8H, FlagAsReg(8)); break;
+    case FDI_SAHF: FlagFromReg(GetReg(X86Reg::RAX, Facet::I8H)); break;
 
-    // Defined in llinstruction-gp.c
     case FDI_MOV: LiftMovgp(inst, llvm::Instruction::SExt); break;
     case FDI_MOVABS: LiftMovgp(inst, llvm::Instruction::SExt); break;
     case FDI_MOVZX: LiftMovgp(inst, llvm::Instruction::ZExt); break;
@@ -144,12 +142,12 @@ bool Lifter::Lift(const Instr& inst) {
     case FDI_C_EX: LiftCext(inst); break;
     case FDI_C_SEP: LiftCsep(inst); break;
 
-    case FDI_CLC: LiftClc(inst); break;
-    case FDI_STC: LiftStc(inst); break;
-    case FDI_CMC: LiftCmc(inst); break;
+    case FDI_CLC: SetFlag(Facet::CF, irb.getFalse()); break;
+    case FDI_STC: SetFlag(Facet::CF, irb.getTrue()); break;
+    case FDI_CMC: SetFlag(Facet::CF, irb.CreateNot(GetFlag(Facet::CF))); break;
 
-    case FDI_CLD: LiftCld(inst); break;
-    case FDI_STD: LiftStd(inst); break;
+    case FDI_CLD: SetFlag(Facet::DF, irb.getFalse()); break;
+    case FDI_STD: SetFlag(Facet::DF, irb.getTrue()); break;
     case FDI_LODS: LiftLods(inst); break;
     case FDI_STOS: LiftStos(inst); break;
     case FDI_MOVS: LiftMovs(inst); break;
