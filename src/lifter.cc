@@ -92,6 +92,7 @@ bool Lifter::Lift(const Instr& inst) {
 
     case FDI_NOP: /* do nothing */ break;
     case FDI_RDSSP: /* do nothing */ break;
+    case FDI_ENDBR64: /* do nothing */ break;
     // Intel MPX, behave as NOP on processors without support (SDM Vol 1, 17.4)
     case FDI_BNDLDX: /* do nothing */ break;
     case FDI_BNDMOV: /* do nothing */ break;
