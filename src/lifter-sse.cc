@@ -98,7 +98,7 @@ void Lifter::LiftStmxcsr(const Instr& inst) {
 void Lifter::LiftSseMovq(const Instr& inst, Facet type)
 {
     llvm::Value* op1 = OpLoad(inst.op(1), type);
-    if (inst.op(0).is_reg() && inst.op(0).reg().rt == LL_RT_XMM) {
+    if (inst.op(0).is_reg() && inst.op(0).reg().rt == FD_RT_VEC) {
         llvm::Type* el_ty = op1->getType();
         llvm::Type* vector_ty = llvm::VectorType::get(el_ty, 128 / el_ty->getPrimitiveSizeInBits());
         llvm::Value* zero = llvm::Constant::getNullValue(vector_ty);
@@ -382,7 +382,7 @@ void Lifter::LiftSsePextr(const Instr& inst, Facet vec_op, unsigned mask) {
     unsigned count = inst.op(2).imm() & mask;
     llvm::Value* ext = irb.CreateExtractElement(src, count);
     if (inst.op(0).is_reg()) {
-        assert(inst.op(0).reg().rt == LL_RT_GP);
+        assert(inst.op(0).reg().rt == FD_RT_GPL);
         ext = irb.CreateZExt(ext, irb.getInt64Ty());
         OpStoreGp(X86Reg::GP(inst.op(0).reg().ri), ext);
     } else {

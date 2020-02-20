@@ -28,26 +28,12 @@
 #include <stddef.h>
 #include <stdint.h>
 
+#include <fadec.h>
+
 #ifdef __cplusplus
 extern "C" {
 #endif
 
-
-
-enum {
-    LL_RT_None = 0,
-    LL_RT_GP8High, // AH = 4, CH = 5, DH = 6, BH = 7; others are invalid.
-    LL_RT_GP,
-    LL_RT_X87,
-    LL_RT_MMX,
-    LL_RT_XMM,
-    LL_RT_YMM,
-    LL_RT_ZMM,
-    LL_RT_SEG,
-    LL_RT_BND,
-    LL_RT_EFLAGS,
-    LL_RT_Max
-};
 
 // Names for register indexes. Warning: indexes for different types overlap!
 enum {
@@ -68,9 +54,7 @@ struct LLReg {
     uint16_t rt;
     uint16_t ri;
 #if defined(__cplusplus) && defined(RELLUME_ENABLE_CPP_HEADER)
-    explicit operator bool() const {
-        return ri != LL_RI_None && rt != LL_RI_None;
-    }
+    explicit operator bool() const { return ri != FD_REG_NONE; }
 #endif
 };
 

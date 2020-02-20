@@ -47,13 +47,11 @@ namespace rellume {
 
 X86Reg
 LifterBase::MapReg(const LLReg reg) {
-    if (reg.rt == LL_RT_GP)
+    if (reg.rt == FD_RT_GPL)
         return reg.ri == FD_REG_IP ? X86Reg::IP : X86Reg::GP(reg.ri);
-    else if (reg.rt == LL_RT_GP8High)
+    else if (reg.rt == FD_RT_GPH)
         return X86Reg::GP(reg.ri - LL_RI_AH);
-    else if (reg.rt == LL_RT_EFLAGS)
-        return X86Reg::EFLAGS;
-    else if (reg.rt == LL_RT_XMM)
+    else if (reg.rt == FD_RT_VEC)
         return X86Reg::VEC(reg.ri);
     return X86Reg();
 }
@@ -187,7 +185,7 @@ llvm::Value* LifterBase::OpLoad(const Instr::Op op, Facet facet,
     if (op.is_imm()) {
         return irb.getIntN(op.bits(), op.imm());
     } else if (op.is_reg()) {
-        if (facet == Facet::I8 && op.reg().rt == LL_RT_GP8High)
+        if (facet == Facet::I8 && op.reg().rt == FD_RT_GPH)
             facet = Facet::I8H;
         return GetReg(MapReg(op.reg()), facet);
     } else if (op.is_mem()) {
@@ -240,7 +238,7 @@ void LifterBase::OpStoreGp(const Instr::Op op, llvm::Value* value,
         assert(value->getType()->getIntegerBitWidth() == op.bits());
 
         Facet facet = Facet::In(value->getType()->getIntegerBitWidth());
-        if (facet == Facet::I8 && op.reg().rt == LL_RT_GP8High)
+        if (facet == Facet::I8 && op.reg().rt == FD_RT_GPH)
             facet = Facet::I8H;
         OpStoreGp(MapReg(op.reg()), facet, value);
     } else {

@@ -93,7 +93,9 @@ public:
 
 private:
     const FdInstr* fdi() const {return static_cast<const FdInstr*>(this); }
-    static LLReg MapFdReg(unsigned idx, unsigned type);
+    static LLReg MapFdReg(unsigned idx, unsigned type) {
+        return LLReg{static_cast<uint16_t>(type), static_cast<uint16_t>(idx)};
+    }
 };
 
 } // namespace

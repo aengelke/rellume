@@ -117,24 +117,6 @@ bool Instr::HasAbsJumpTarget() const {
     }
 }
 
-LLReg Instr::MapFdReg(unsigned idx, unsigned type) {
-    if (idx == FD_REG_NONE)
-        return LLReg{ LL_RT_None, LL_RI_None };
-    if (type == FD_RT_GPL)
-        return LLReg{ LL_RT_GP, (uint16_t) idx };
-    if (type == FD_RT_GPH)
-        return LLReg{ LL_RT_GP8High, (uint16_t) idx };
-    if (type == FD_RT_VEC)
-        return LLReg{ LL_RT_XMM, (uint16_t) idx };
-    if (type == FD_RT_SEG)
-        return LLReg{ LL_RT_SEG, (uint16_t) idx };
-    if (type == FD_RT_BND)
-        return LLReg{ LL_RT_BND, (uint16_t) idx };
-
-    fprintf(stderr, "Unknown reg convert %d/%d\n", type, idx);
-    return LLReg{ LL_RT_None, LL_RI_None };
-}
-
 }
 
 /**
