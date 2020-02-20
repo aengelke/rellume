@@ -62,8 +62,6 @@ void FastOpt(llvm::Function* llvm_fn) {
     pm.add(llvm::createAggressiveDCEPass());
     // Fold some common subexpressions with MemorySSA to remove obsolete stores
     pm.add(llvm::createEarlyCSEPass(true));
-    // Combine instructions to simplify code, but avoid expensive transforms
-    pm.add(llvm::createInstructionCombiningPass(false));
 
     pm.run(*llvm_fn);
     pm.doFinalization();
@@ -174,8 +172,6 @@ llvm::Function* WrapSysVAbi(llvm::Function* orig_fn, llvm::FunctionType* fn_ty,
 
     // replace CPU struct with scalars
     pm.add(llvm::createSROAPass());
-    // instrcombine will get rid of lots of bloat from the CPU struct
-    pm.add(llvm::createInstructionCombiningPass(false));
     // Simplify CFG, removes some redundant function exists and empty blocks
     pm.add(llvm::createCFGSimplificationPass());
     // Aggressive DCE to remove phi cycles, etc.
