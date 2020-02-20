@@ -213,8 +213,6 @@ public:
     bool Lift(const Instr&);
 
 private:
-    void LiftOverride(const Instr&, llvm::Function* override);
-
     void LiftMovgp(const Instr&, llvm::Instruction::CastOps cast);
     void LiftArith(const Instr&, bool sub);
     void LiftCmpxchg(const Instr&);

@@ -58,7 +58,26 @@ bool Lifter::Lift(const Instr& inst) {
     // Check overridden implementations first.
     const auto& override = cfg.instr_overrides.find(inst.type());
     if (override != cfg.instr_overrides.end()) {
-        LiftOverride(inst, override->second);
+        if (inst.type() == FDI_SYSCALL) {
+            SetReg(X86Reg::RCX, Facet::I64, GetReg(X86Reg::IP, Facet::I64));
+            SetReg(X86Reg::GP(11), Facet::I64, FlagAsReg(64));
+        }
+
+        auto fn_type = llvm::FunctionType::get(irb.getVoidTy(), {fi.sptr_raw->getType()}, false);
+
+        // Pack all state into the CPU struct.
+        CallConv sptr_conv = CallConv::SPTR;
+        sptr_conv.Pack(*regfile, fi);
+        llvm::CallInst* call = irb.CreateCall(fn_type, override->second, {fi.sptr_raw});
+        regfile->Clear(); // Clear all facets before importing register state
+        sptr_conv.Unpack(*regfile, fi);
+
+        // Directly inline alwaysinline functions
+        if (override->second->hasFnAttribute(llvm::Attribute::AlwaysInline)) {
+            llvm::InlineFunctionInfo ifi;
+            llvm::InlineFunction(llvm::CallSite(call), ifi);
+        }
+
         return true;
     }
 
@@ -399,28 +418,6 @@ bool Lifter::Lift(const Instr& inst) {
     }
 
     return true;
-}
-
-void Lifter::LiftOverride(const Instr& inst, llvm::Function* override) {
-    if (inst.type() == FDI_SYSCALL) {
-        SetReg(X86Reg::RCX, Facet::I64, GetReg(X86Reg::IP, Facet::I64));
-        SetReg(X86Reg::GP(11), Facet::I64, FlagAsReg(64));
-    }
-
-    auto call_type = llvm::FunctionType::get(irb.getVoidTy(), {fi.sptr_raw->getType()}, false);
-
-    // Pack all state into the CPU struct.
-    CallConv sptr_conv = CallConv::SPTR;
-    sptr_conv.Pack(*regfile, fi);
-    llvm::CallInst* call = irb.CreateCall(call_type, override, {fi.sptr_raw});
-    regfile->Clear(); // Clear all facets before importing register state
-    sptr_conv.Unpack(*regfile, fi);
-
-    // Directly inline alwaysinline functions
-    if (override->hasFnAttribute(llvm::Attribute::AlwaysInline)) {
-        llvm::InlineFunctionInfo ifi;
-        llvm::InlineFunction(llvm::CallSite(call), ifi);
-    }
 }
 
 void Lifter::LiftMovgp(const Instr& inst, llvm::Instruction::CastOps cast) {
