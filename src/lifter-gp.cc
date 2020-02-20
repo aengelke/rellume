@@ -41,6 +41,10 @@
 
 namespace rellume {
 
+static llvm::Instruction* WrapNoFold(llvm::Value* v) {
+    return llvm::CastInst::Create(llvm::Instruction::BitCast, v, v->getType());
+}
+
 bool Lifter::Lift(const Instr& inst) {
     // Set new instruction pointer register
     llvm::Value* ripValue = irb.getInt64(inst.end());
@@ -59,20 +63,20 @@ bool Lifter::Lift(const Instr& inst) {
         return true;
     }
 
-    switch (inst.type())
-    {
-#define DEF_IT(opc,handler) case LL_INS_ ## opc : handler; return true;
+    switch (inst.type()) {
+    default:
+    not_implemented:
+        SetReg(X86Reg::IP, Facet::I64, irb.Insert(WrapNoFold(irb.getInt64(inst.start()))));
+        return false;
+
+#define DEF_IT(opc,handler) case FDI_ ## opc : handler; return true;
 #include "rellume/opcodes.inc"
 #undef DEF_IT
-
-        default:
-    not_implemented:
-            return false;
     }
 }
 
 void Lifter::LiftOverride(const Instr& inst, llvm::Function* override) {
-    if (inst.type() == LL_INS_SYSCALL) {
+    if (inst.type() == FDI_SYSCALL) {
         SetReg(X86Reg::RCX, Facet::I64, GetReg(X86Reg::IP, Facet::I64));
         SetReg(X86Reg::GP(11), Facet::I64, FlagAsReg(64));
     }
@@ -106,15 +110,15 @@ void Lifter::LiftMovgp(const Instr& inst, llvm::Instruction::CastOps cast) {
 void Lifter::LiftArith(const Instr& inst, bool sub) {
     llvm::Value* op1 = OpLoad(inst.op(0), Facet::I);
     llvm::Value* op2 = OpLoad(inst.op(1), Facet::I);
-    if (inst.type() == LL_INS_ADC || inst.type() == LL_INS_SBB)
+    if (inst.type() == FDI_ADC || inst.type() == FDI_SBB)
         op2 = irb.CreateAdd(op2, irb.CreateZExt(GetFlag(Facet::CF), op2->getType()));
 
     auto arith_op = sub ? llvm::Instruction::Sub : llvm::Instruction::Add;
     llvm::Value* res = irb.CreateBinOp(arith_op, op1, op2);
 
-    if (inst.type() != LL_INS_CMP)
+    if (inst.type() != FDI_CMP)
         OpStoreGp(inst.op(0), res);
-    if (inst.type() == LL_INS_XADD)
+    if (inst.type() == FDI_XADD)
         OpStoreGp(inst.op(1), op1);
 
     if (sub)
@@ -177,10 +181,10 @@ void Lifter::LiftIncDec(const Instr& inst) {
     llvm::Value* op1 = OpLoad(inst.op(0), Facet::I);
     llvm::Value* op2 = irb.getIntN(inst.op(0).bits(), 1);
     llvm::Value* res = nullptr;
-    if (inst.type() == LL_INS_INC) {
+    if (inst.type() == FDI_INC) {
         res = irb.CreateAdd(op1, op2);
         FlagCalcOAdd(res, op1, op2);
-    } else if (inst.type() == LL_INS_DEC) {
+    } else if (inst.type() == FDI_DEC) {
         res = irb.CreateSub(op1, op2);
         FlagCalcOSub(res, op1, op2);
     }
@@ -198,7 +202,7 @@ void Lifter::LiftShift(const Instr& inst, llvm::Instruction::BinaryOps op) {
     llvm::Value* src_ex;
     if (inst.op(0).size() >= 4)
         src_ex = src;
-    else if (inst.type() == LL_INS_SAR)
+    else if (inst.type() == FDI_SAR)
         src_ex = irb.CreateSExt(src, irb.getInt32Ty());
     else // inst.op(0).size() < 4 && (SHR || SHL)
         src_ex = irb.CreateZExt(src, irb.getInt32Ty());
@@ -215,7 +219,7 @@ void Lifter::LiftShift(const Instr& inst, llvm::Instruction::BinaryOps op) {
 
     // CF is the last bit shifted out
     llvm::Value* cf_big;
-    if (inst.type() == LL_INS_SHL) {
+    if (inst.type() == FDI_SHL) {
         unsigned sz = inst.op(0).bits();
         llvm::Value* max = llvm::ConstantInt::get(src_ex->getType(), sz);
         cf_big = irb.CreateLShr(src_ex, irb.CreateSub(max, shift));
@@ -247,13 +251,13 @@ void Lifter::LiftShiftdouble(const Instr& inst) {
     // LLVM sets the result to poison if this occurs.
     shift = irb.CreateAnd(shift, mask);
 
-    auto id = inst.type() == LL_INS_SHLD ? llvm::Intrinsic::fshl
+    auto id = inst.type() == FDI_SHLD ? llvm::Intrinsic::fshl
                                        : llvm::Intrinsic::fshr;
     llvm::Module* module = irb.GetInsertBlock()->getModule();
     auto intrinsic = llvm::Intrinsic::getDeclaration(module, id, {ty});
-    if (inst.type() == LL_INS_SHLD)
+    if (inst.type() == FDI_SHLD)
         res = irb.CreateCall(intrinsic, {src1, src2, shift});
-    else if (inst.type() == LL_INS_SHRD)
+    else if (inst.type() == FDI_SHRD)
         res = irb.CreateCall(intrinsic, {src2, src1, shift});
     else
         assert(false && "invalid double-shift operation");
@@ -278,7 +282,7 @@ void Lifter::LiftRotate(const Instr& inst) {
     // LLVM sets the result to poison if this occurs.
     shift = irb.CreateAnd(shift, mask);
 
-    auto id = inst.type() == LL_INS_ROL ? llvm::Intrinsic::fshl
+    auto id = inst.type() == FDI_ROL ? llvm::Intrinsic::fshl
                                       : llvm::Intrinsic::fshr;
     llvm::Module* module = irb.GetInsertBlock()->getModule();
     auto intrinsic = llvm::Intrinsic::getDeclaration(module, id, {ty});
@@ -311,7 +315,7 @@ void Lifter::LiftMul(const Instr& inst) {
     llvm::Value* short_res = irb.CreateMul(op1, op2);
 
     // Extend operand values and perform extended multiplication
-    auto cast_op = inst.type() == LL_INS_IMUL ? llvm::Instruction::SExt
+    auto cast_op = inst.type() == FDI_IMUL ? llvm::Instruction::SExt
                                             : llvm::Instruction::ZExt;
     llvm::Type* double_ty = irb.getIntNTy(sz * 2);
     llvm::Value* ext_op1 = irb.CreateCast(cast_op, op1, double_ty);
@@ -352,7 +356,7 @@ void Lifter::LiftMul(const Instr& inst) {
 
 void Lifter::LiftDiv(const Instr& inst) {
     unsigned sz = inst.op(0).bits();
-    bool sign = inst.type() == LL_INS_IDIV;
+    bool sign = inst.type() == FDI_IDIV;
     auto ext_op = sign ? llvm::Instruction::SExt : llvm::Instruction::ZExt;
     auto div_op = sign ? llvm::Instruction::SDiv : llvm::Instruction::UDiv;
     auto rem_op = sign ? llvm::Instruction::SRem : llvm::Instruction::URem;
@@ -505,13 +509,13 @@ void Lifter::LiftBittest(const Instr& inst) {
 
     llvm::Value* bit = irb.CreateAnd(val, mask);
 
-    if (inst.type() == LL_INS_BT) {
+    if (inst.type() == FDI_BT) {
         goto skip_writeback;
-    } else if (inst.type() == LL_INS_BTC) {
+    } else if (inst.type() == FDI_BTC) {
         val = irb.CreateXor(val, mask);
-    } else if (inst.type() == LL_INS_BTR) {
+    } else if (inst.type() == FDI_BTR) {
         val = irb.CreateAnd(val, irb.CreateNot(mask));
-    } else if (inst.type() == LL_INS_BTS) {
+    } else if (inst.type() == FDI_BTS) {
         val = irb.CreateOr(val, mask);
     }
 
@@ -570,9 +574,9 @@ void Lifter::LiftLoop(const Instr& inst) {
 
     // Construct condition
     llvm::Value* cond = irb.CreateICmpNE(cx, irb.getIntN(sz*8, 0));
-    if (inst.type() == LL_INS_LOOPE)
+    if (inst.type() == FDI_LOOPZ)
         cond = irb.CreateAnd(cond, GetFlag(Facet::ZF));
-    else if (inst.type() == LL_INS_LOOPNE)
+    else if (inst.type() == FDI_LOOPNZ)
         cond = irb.CreateAnd(cond, irb.CreateNot(GetFlag(Facet::ZF)));
 
     SetReg(X86Reg::IP, Facet::I64, irb.CreateSelect(cond,
@@ -607,10 +611,10 @@ void Lifter::LiftUnreachable(const Instr& inst) {
 
 LifterBase::RepInfo LifterBase::RepBegin(const Instr& inst) {
     RepInfo info = {};
-    bool di = inst.type() != LL_INS_LODS;
-    bool si = inst.type() != LL_INS_STOS && inst.type() != LL_INS_SCAS;
+    bool di = inst.type() != FDI_LODS;
+    bool si = inst.type() != FDI_STOS && inst.type() != FDI_SCAS;
 
-    bool condrep = inst.type() == LL_INS_SCAS || inst.type() == LL_INS_CMPS;
+    bool condrep = inst.type() == FDI_SCAS || inst.type() == FDI_CMPS;
     if (inst.has_rep())
         info.mode = condrep ? RepInfo::REPZ : RepInfo::REP;
     else if (inst.has_repnz() && condrep)

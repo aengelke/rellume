@@ -71,7 +71,7 @@ void ll_config_set_global_base(LLConfig* cfg, uintptr_t base, LLVMValueRef value
     unwrap(cfg)->global_base_addr = base;
     unwrap(cfg)->global_base_value = llvm::unwrap(value);
 }
-void ll_config_set_instr_impl(LLConfig* cfg, LLInstrType type, LLVMValueRef value) {
+void ll_config_set_instr_impl(LLConfig* cfg, FdInstrType type, LLVMValueRef value) {
     unwrap(cfg)->instr_overrides[type] = llvm::unwrap<llvm::Function>(value);
 }
 void ll_config_set_call_ret_clobber_flags(LLConfig* cfg, bool enable) {

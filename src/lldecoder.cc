@@ -75,7 +75,7 @@ int Function::Decode(uintptr_t addr, DecodeStop stop, MemReader memacc)
             int ret = fd_decode(inst_buf, inst_buf_sz, 64, cur_addr, &inst);
             // If we reach an invalid instruction or an instruction we can't
             // decode, stop.
-            if (ret < 0 || inst.type() == LL_INS_Invalid)
+            if (ret < 0)
                 break;
 
             addr_map[cur_addr] = std::make_pair(blocks.size(), insts.size());
@@ -94,7 +94,7 @@ int Function::Decode(uintptr_t addr, DecodeStop stop, MemReader memacc)
                 if (stop == DecodeStop::SUPERBLOCK)
                     break;
 
-                if (inst.HasAbsJumpTarget() && inst.type() != LL_INS_CALL)
+                if (inst.HasAbsJumpTarget() && inst.type() != FDI_CALL)
                     addr_queue.push_back(inst.op(0).imm());
                 break;
             }

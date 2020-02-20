@@ -36,7 +36,7 @@ namespace rellume {
 
 class Instr : public FdInstr {
 public:
-    using Type = LLInstrType;
+    using Type = FdInstrType;
     class Op {
         const Instr* inst;
         unsigned idx;
@@ -80,7 +80,7 @@ public:
     unsigned len() const { return FD_SIZE(fdi()); }
     unsigned start() const { return FD_ADDRESS(fdi()); }
     unsigned end() const { return start() + len(); }
-    Type type() const;
+    Type type() const { return FD_TYPE(fdi()); }
     unsigned addrsz() const { return FD_ADDRSIZE(fdi()); }
     unsigned opsz() const { return FD_OPSIZE(fdi()); }
     const Op op(unsigned idx) const { return Op{this, idx}; }

@@ -32,14 +32,6 @@
 extern "C" {
 #endif
 
-enum LLInstrType {
-    LL_INS_None = 0,
-    LL_INS_Invalid = 1,
-#define DEF_IT(opc,...) LL_INS_ ## opc,
-#include "rellume/opcodes.inc"
-#undef DEF_IT
-    LL_INS_Max
-};
 
 
 enum {
@@ -72,8 +64,6 @@ enum {
     LL_RI_XMMMax = 16,
 
 };
-
-typedef enum LLInstrType LLInstrType;
 
 struct LLReg {
     uint16_t rt;
