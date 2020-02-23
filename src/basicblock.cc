@@ -49,38 +49,21 @@
 
 namespace rellume {
 
-BasicBlock::BasicBlock(FunctionInfo& fi, const LLConfig& cfg, Kind kind)
+BasicBlock::BasicBlock(FunctionInfo& fi, bool no_phis)
         : regfile() {
     llvm_block = llvm::BasicBlock::Create(fi.fn->getContext(), "", fi.fn, nullptr);
     regfile.SetInsertBlock(llvm_block);
 
-    if (kind != ENTRY) {
+    if (!no_phis) {
         // Initialize all registers with a generator which adds a PHI node when
         // the value-facet combination is requested.
         empty_phis.reserve(32);
         regfile.InitWithPHIs(&empty_phis);
     }
-
-    // For ENTRY or EXIT kinds, we either need to setup all values or store them
-    // back to memory.
-    if (kind == ENTRY) {
-        regfile.Clear();
-        llvm::IRBuilder<> irb(llvm_block);
-        fi.InitSptr(irb);
-        cfg.callconv.Unpack(regfile, fi);
-    } else if (kind == EXIT) {
-        llvm::Value* ret_val = cfg.callconv.Pack(regfile, fi);
-
-        llvm::IRBuilder<> irb(llvm_block);
-        if (ret_val == nullptr)
-            irb.CreateRetVoid();
-        else
-            irb.CreateRet(ret_val);
-    }
 }
 
 void BasicBlock::BranchTo(BasicBlock& next) {
-    assert(!IsTerminated() && "attempting to add second terminator");
+    assert(!llvm_block->getTerminator() && "attempting to add second terminator");
 
     llvm::IRBuilder<> irb(llvm_block);
     irb.CreateBr(next.llvm_block);
@@ -95,7 +78,7 @@ void BasicBlock::BranchTo(llvm::Value* cond, BasicBlock& then,
         return;
     }
 
-    assert(!IsTerminated() && "attempting to add second terminator");
+    assert(!llvm_block->getTerminator() && "attempting to add second terminator");
 
     llvm::IRBuilder<> irb(llvm_block);
     irb.CreateCondBr(cond, then.llvm_block, other.llvm_block);
@@ -112,7 +95,6 @@ bool BasicBlock::FillPhis() {
         Facet facet = std::get<1>(item);
         llvm::PHINode* phi = std::get<2>(item);
         for (BasicBlock* pred : predecessors) {
-            assert(pred->IsTerminated() && "attempt to fill PHIs from open block");
             llvm::Value* value = pred->regfile.GetReg(reg, facet);
             if (facet == Facet::PTR && value->getType() != phi->getType()) {
                 llvm::IRBuilder<> irb(pred->llvm_block->getTerminator());

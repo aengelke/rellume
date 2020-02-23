@@ -113,7 +113,7 @@ bool Lifter::Lift(const Instr& inst) {
     // case FDI_CPUID: NOT IMPLEMENTED
     // case FDI_RDTSC: NOT IMPLEMENTED
     // case FDI_CRC32: NOT IMPLEMENTED
-    case FDI_UD2: LiftUnreachable(inst); break;
+    // case FDI_UD2: Intentionally not implemented.
 
     case FDI_LAHF: OpStoreGp(X86Reg::RAX, Facet::I8H, FlagAsReg(8)); break;
     case FDI_SAHF: FlagFromReg(GetReg(X86Reg::RAX, Facet::I8H)); break;

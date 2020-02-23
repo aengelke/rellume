@@ -541,11 +541,6 @@ void Lifter::LiftRet(const Instr& inst) {
     SetReg(X86Reg::IP, Facet::I64, StackPop());
 }
 
-void Lifter::LiftUnreachable(const Instr& inst) {
-    irb.CreateUnreachable();
-    SetReg(X86Reg::IP, Facet::I64, llvm::UndefValue::get(irb.getInt64Ty()));
-}
-
 LifterBase::RepInfo LifterBase::RepBegin(const Instr& inst) {
     RepInfo info = {};
     bool di = inst.type() != FDI_LODS;

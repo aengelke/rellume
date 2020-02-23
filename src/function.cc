@@ -28,6 +28,7 @@
 #include "config.h"
 #include "function-info.h"
 #include "lifter.h"
+#include "regfile.h"
 #include <llvm/ADT/DepthFirstIterator.h>
 #include <llvm/ADT/SmallVector.h>
 #include <llvm/IR/DerivedTypes.h>
@@ -51,6 +52,22 @@
 
 namespace rellume {
 
+static llvm::Value* CreateSptr(FunctionInfo& fi, llvm::IRBuilder<> irb,
+                               size_t offset, size_t bits) {
+    unsigned as = fi.sptr_raw->getType()->getPointerAddressSpace();
+    llvm::Value* ptr = irb.CreateConstGEP1_64(fi.sptr_raw, offset);
+    return irb.CreatePointerCast(ptr, irb.getIntNTy(bits)->getPointerTo(as));
+}
+
+static void CreateSptrs(FunctionInfo& fi, llvm::BasicBlock* llvm_block) {
+    llvm::IRBuilder<> irb(llvm_block);
+
+#define RELLUME_NAMED_REG(name,nameu,sz,off) \
+    fi.sptr[SptrIdx::nameu] = CreateSptr(fi, irb, off, sz == 1 ? sz : sz * 8);
+#include <rellume/cpustruct-private.inc>
+#undef RELLUME_NAMED_REG
+}
+
 Function::Function(llvm::Module* mod, LLConfig* cfg) : cfg(cfg), fi{}
 {
     llvm::LLVMContext& ctx = mod->getContext();
@@ -70,8 +87,14 @@ Function::Function(llvm::Module* mod, LLConfig* cfg) : cfg(cfg), fi{}
     fi.sptr_raw = &llvm->arg_begin()[cpu_param_idx];
 
     // Create entry basic block as first block in the function.
-    // The entry block also initializes the sptr pointers in the function info.
-    entry_block = std::make_unique<ArchBasicBlock>(fi, *cfg, BasicBlock::ENTRY);
+    entry_block = std::make_unique<ArchBasicBlock>(fi, /*no_phis=*/true);
+
+    // Initialize the sptr pointers in the function info.
+    RegFile* entry_regfile = entry_block->GetInsertBlock()->GetRegFile();
+    CreateSptrs(fi, entry_regfile->GetInsertBlock());
+    // And initially fill register file.
+    entry_regfile->Clear();
+    cfg->callconv.Unpack(*entry_regfile, fi);
 
     // The entry block doesn't modify any registers, so remove the ones set by
     // loading the registers from the sptr.
@@ -85,7 +108,7 @@ bool Function::AddInst(uint64_t block_addr, const Instr& inst)
     if (block_map.size() == 0)
         entry_addr = block_addr;
     if (block_map.find(block_addr) == block_map.end())
-        block_map[block_addr] = std::make_unique<ArchBasicBlock>(fi, *cfg);
+        block_map[block_addr] = std::make_unique<ArchBasicBlock>(fi);
 
     return LiftInstruction(inst, fi, *cfg, *block_map[block_addr]);
 }
@@ -105,14 +128,18 @@ llvm::Function* Function::Lift() {
 
     // For the exit block, no registers are modified anymore.
     fi.modified_regs_final = true;
-    exit_block = std::make_unique<ArchBasicBlock>(fi, *cfg, BasicBlock::EXIT);
+    exit_block = std::make_unique<ArchBasicBlock>(fi);
+
+    // Exit block packs values together and optionally returns something.
+    RegFile* exit_regfile = exit_block->GetInsertBlock()->GetRegFile();
+    llvm::IRBuilder<> irb(exit_regfile->GetInsertBlock());
+    irb.CreateRet(cfg->callconv.Pack(*exit_regfile, fi));
 
     entry_block->BranchTo(*block_map[entry_addr]);
 
     for (auto it = block_map.begin(); it != block_map.end(); ++it) {
-        if (it->second->IsTerminated())
-            continue;
-        llvm::Value* next_rip = it->second->NextRip();
+        RegFile* regfile = it->second->GetInsertBlock()->GetRegFile();
+        llvm::Value* next_rip = regfile->GetReg(X86Reg::IP, Facet::I64);
         if (auto select = llvm::dyn_cast<llvm::SelectInst>(next_rip)) {
             it->second->BranchTo(select->getCondition(),
                                  ResolveAddr(select->getTrueValue()),

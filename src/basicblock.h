@@ -40,10 +40,7 @@ class LLConfig;
 class BasicBlock
 {
 public:
-    enum Kind {
-        DEFAULT, ENTRY, EXIT
-    };
-    BasicBlock(FunctionInfo& fi, const LLConfig& cfg, Kind kind = DEFAULT);
+    BasicBlock(FunctionInfo& fi, bool no_phis = false);
 
     BasicBlock(BasicBlock&& rhs);
     BasicBlock& operator=(BasicBlock&& rhs);
@@ -54,14 +51,6 @@ public:
     void BranchTo(BasicBlock& next);
     void BranchTo(llvm::Value* cond, BasicBlock& then, BasicBlock& other);
     bool FillPhis();
-
-    llvm::Value* NextRip() {
-        return regfile.GetReg(X86Reg::IP, Facet::I64);
-    }
-
-    bool IsTerminated() {
-        return !!llvm_block->getTerminator();
-    }
 
     RegFile* GetRegFile() {
         return &regfile;
@@ -82,16 +71,13 @@ class ArchBasicBlock
 {
 private:
     FunctionInfo& fi;
-    const LLConfig& cfg;
 
     std::vector<std::unique_ptr<BasicBlock>> low_blocks;
     BasicBlock* insert_block;
 
 public:
-    ArchBasicBlock(FunctionInfo& fi, const LLConfig& cfg,
-                   BasicBlock::Kind kind = BasicBlock::DEFAULT)
-            : fi(fi), cfg(cfg) {
-        low_blocks.push_back(std::make_unique<BasicBlock>(fi, cfg, kind));
+    ArchBasicBlock(FunctionInfo& fi, bool no_phis = false) : fi(fi) {
+        low_blocks.push_back(std::make_unique<BasicBlock>(fi, no_phis));
         insert_block = low_blocks[0].get();
     }
 
@@ -108,7 +94,7 @@ private:
 
 public:
     BasicBlock* AddBlock() {
-        low_blocks.push_back(std::make_unique<BasicBlock>(fi, cfg, BasicBlock::DEFAULT));
+        low_blocks.push_back(std::make_unique<BasicBlock>(fi));
         return low_blocks[low_blocks.size()-1].get();
     }
     BasicBlock* GetInsertBlock() {
@@ -129,13 +115,6 @@ public:
         for (const auto& lb : low_blocks)
             res |= lb->FillPhis();
         return res;
-    }
-
-    bool IsTerminated() {
-        return insert_block->IsTerminated();
-    }
-    llvm::Value* NextRip() {
-        return insert_block->NextRip();
     }
 };
 

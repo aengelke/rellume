@@ -261,7 +261,6 @@ private:
     void LiftLoop(const Instr& inst);
     void LiftCall(const Instr& inst);
     void LiftRet(const Instr& inst);
-    void LiftUnreachable(const Instr& inst);
 
     void LiftLods(const Instr& inst);
     void LiftStos(const Instr& inst);

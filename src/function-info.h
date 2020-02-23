@@ -53,22 +53,6 @@ struct FunctionInfo {
     llvm::Value* sptr_raw;
     llvm::Value* sptr[SptrIdx::MAX];
 
-private:
-    llvm::Value* GetSptrPtr(llvm::IRBuilder<> irb, size_t offset, size_t size) {
-        unsigned addrspace = sptr_raw->getType()->getPointerAddressSpace();
-        llvm::Type* ptr_ty = irb.getIntNTy(size)->getPointerTo(addrspace);
-        llvm::Value* ptr = irb.CreateConstGEP1_64(sptr_raw, offset);
-        return irb.CreatePointerCast(ptr, ptr_ty);
-    }
-
-public:
-    void InitSptr(llvm::IRBuilder<> irb) {
-#define RELLUME_NAMED_REG(name,nameu,sz,off) \
-        sptr[SptrIdx::nameu] = GetSptrPtr(irb, off, sz == 1 ? sz : sz * 8);
-#include <rellume/cpustruct-private.inc>
-#undef RELLUME_NAMED_REG
-    }
-
     // A set of all register ever modified in the function. To prevent use of
     // this optimization for cconv packs inside a function (which would be
     // incorrect), a separate flag is set in the end.
