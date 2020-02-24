@@ -57,10 +57,6 @@ public:
     inline bool operator==(const X86Reg& rhs) const {
         return kind == rhs.kind && index == rhs.index;
     }
-    bool operator<(const X86Reg& rhs) const {
-        return (static_cast<uint32_t>(kind)<<8) + index
-               < (static_cast<uint32_t>(rhs.kind)<<8) + rhs.index;
-    }
 
     static constexpr X86Reg GP(unsigned idx) { return X86Reg(RegKind::GP, idx); }
     static constexpr X86Reg VEC(unsigned idx) { return X86Reg(RegKind::VEC, idx); }

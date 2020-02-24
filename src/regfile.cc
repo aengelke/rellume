@@ -36,20 +36,11 @@
 #include <tuple>
 #include <type_traits>
 
-
-
-/**
- * \defgroup LLRegFile Register File
- * \brief Representation of a register file
- *
- * @{
- **/
-
 namespace rellume {
 
 class DeferredValueBase {
 public:
-    using Generator = llvm::Value*(*)(X86Reg, Facet, llvm::BasicBlock*, void*);
+    using Generator = llvm::Value* (*)(X86Reg, Facet, llvm::BasicBlock*, void*);
 
 protected:
     // If value is nullptr, then the generator (unless that is null as well)
@@ -78,20 +69,21 @@ public:
         }
         return static_cast<llvm::Value*>(values[0]);
     }
-    explicit operator bool() const {
-        return generator || values[0];
-    }
+    explicit operator bool() const { return generator || values[0]; }
 };
 
 template<typename T>
 class DeferredValue : public DeferredValueBase {
 public:
-    using Generator = llvm::Value*(*)(X86Reg, Facet, llvm::BasicBlock*, T*);
+    using Generator = llvm::Value* (*)(X86Reg, Facet, llvm::BasicBlock*, T*);
     DeferredValue(Generator generator, T data)
-            : DeferredValueBase(reinterpret_cast<DeferredValueBase::Generator>(generator)) {
-        static_assert(std::is_trivially_copyable<T>::value, "invalid defer arg type");
+        : DeferredValueBase(
+              reinterpret_cast<DeferredValueBase::Generator>(generator)) {
+        static_assert(std::is_trivially_copyable<T>::value,
+                      "invalid defer arg type");
         static_assert(sizeof(T) <= sizeof(values), "defer arg type too big");
-        static_assert(alignof(T) <= alignof(void*), "defer arg type misaligned");
+        static_assert(alignof(T) <= alignof(void*),
+                      "defer arg type misaligned");
         *reinterpret_cast<T*>(values) = data;
     }
 };
@@ -114,9 +106,7 @@ class ValueMap {
     static const LookupTable<Facet::Value, sizeof...(E), Facet::MAX> table;
     R values[sizeof...(E)];
 public:
-    bool has(Facet v) const {
-        return table.b[static_cast<int>(v)] > 0;
-    }
+    bool has(Facet v) const { return table.b[static_cast<int>(v)] > 0; }
     R& operator[](Facet v) {
         assert(has(v));
         return values[table.b[static_cast<int>(v)] - 1];
@@ -157,12 +147,8 @@ class RegFile::impl {
 public:
     impl() : insert_block(nullptr) {}
 
-    llvm::BasicBlock* GetInsertBlock() {
-        return insert_block;
-    }
-    void SetInsertBlock(llvm::BasicBlock* new_block) {
-        insert_block = new_block;
-    }
+    llvm::BasicBlock* GetInsertBlock() { return insert_block; }
+    void SetInsertBlock(llvm::BasicBlock* n) { insert_block = n; }
 
     void Clear();
     void InitWithPHIs(std::vector<PhiDesc>*);
@@ -191,16 +177,17 @@ void RegFile::impl::Clear() {
 }
 
 void RegFile::impl::InitWithPHIs(std::vector<PhiDesc>* desc_vec) {
-    auto fn = [desc_vec] (Facet) {
+    auto fn = [desc_vec](Facet) {
         using DeferData = std::vector<PhiDesc>*;
-        return DeferredValue<DeferData>([](X86Reg reg, Facet facet,
-                                           llvm::BasicBlock* bb,
-                                           DeferData* defer_data) {
-            llvm::IRBuilder<> irb(bb, bb->begin());
-            auto phi = irb.CreatePHI(facet.Type(irb.getContext()), 4);
-            (*defer_data)->push_back(std::make_tuple(reg, facet, phi));
-            return llvm::cast<llvm::Value>(phi);
-        }, desc_vec);
+        return DeferredValue<DeferData>(
+            [](X86Reg reg, Facet facet, llvm::BasicBlock* bb,
+               DeferData* defer_data) {
+                llvm::IRBuilder<> irb(bb, bb->begin());
+                auto phi = irb.CreatePHI(facet.Type(irb.getContext()), 4);
+                (*defer_data)->push_back(std::make_tuple(reg, facet, phi));
+                return llvm::cast<llvm::Value>(phi);
+            },
+            desc_vec);
     };
 
     for (unsigned i = 0; i < 16; i++)
@@ -242,100 +229,79 @@ llvm::Value* RegFile::impl::GetRegFacet(X86Reg reg, Facet facet) {
     return nullptr;
 }
 
-llvm::Value*
-RegFile::impl::GetReg(X86Reg reg, Facet facet)
-{
-    DeferredValueBase* facet_entry = AccessRegFacet(reg, facet);
+llvm::Value* RegFile::impl::GetReg(X86Reg reg, Facet facet) {
     // If we store the selected facet in our register file and the facet is
     // valid, return it immediately.
     if (llvm::Value* res = GetRegFacet(reg, facet))
         return res;
 
-    llvm::LLVMContext& ctx = insert_block->getContext();
+    llvm::IRBuilder<> irb(insert_block);
+    if (llvm::Instruction* terminator = insert_block->getTerminator())
+        irb.SetInsertPoint(terminator);
 
-    llvm::IRBuilder<> builder(ctx);
-    llvm::Instruction* terminator = insert_block->getTerminator();
-    if (terminator != NULL)
-        builder.SetInsertPoint(terminator);
-    else
-        builder.SetInsertPoint(insert_block);
+    llvm::Type* facetType = facet.Type(insert_block->getContext());
 
-    llvm::Type* facetType = facet.Type(ctx);
-
-    if (reg.Kind() == X86Reg::RegKind::GP)
-    {
+    if (reg.Kind() == X86Reg::RegKind::GP) {
         llvm::Value* res = nullptr;
         llvm::Value* native = GetRegFacet(reg, Facet::I64);
         assert(native && "native gp-reg facet is null");
-        switch (facet)
-        {
+        switch (facet) {
         case Facet::I64:
         case Facet::I32:
         case Facet::I16:
         case Facet::I8:
-            res = builder.CreateTrunc(native, facetType);
+            res = irb.CreateTrunc(native, facetType);
             break;
         case Facet::I8H:
-            res = builder.CreateLShr(native, builder.getInt64(8));
-            res = builder.CreateTrunc(res, builder.getInt8Ty());
+            res = irb.CreateLShr(native, irb.getInt64(8));
+            res = irb.CreateTrunc(res, irb.getInt8Ty());
             break;
         case Facet::PTR:
             // For pointer facets, it actually only matters that the value *is*
             // a pointer -- we don't actually care about the type.
-            res = builder.CreateIntToPtr(native, builder.getInt8PtrTy());
+            res = irb.CreateIntToPtr(native, irb.getInt8PtrTy());
             break;
         default:
             assert(false && "invalid facet for gp-reg");
             break;
         }
 
-        if (facet_entry != nullptr)
+        if (DeferredValueBase* facet_entry = AccessRegFacet(reg, facet))
             *facet_entry = res;
         return res;
-    }
-    else if (reg.Kind() == X86Reg::RegKind::IP)
-    {
+    } else if (reg.Kind() == X86Reg::RegKind::IP) {
         llvm::Value* native = GetRegFacet(reg, Facet::I64);
         if (facet == Facet::I64)
             return native;
         else if (facet == Facet::PTR)
-            return builder.CreateIntToPtr(native, builder.getInt8PtrTy());
+            return irb.CreateIntToPtr(native, irb.getInt8PtrTy());
         else
             assert(false && "invalid facet for ip-reg");
-    }
-    else if (reg.Kind() == X86Reg::RegKind::VEC)
-    {
+    } else if (reg.Kind() == X86Reg::RegKind::VEC) {
         llvm::Value* res = nullptr;
         llvm::Value* native = GetRegFacet(reg, Facet::IVEC);
         assert(native && "native sse-reg facet is null");
-        switch (facet)
-        {
+        switch (facet) {
         case Facet::I128:
-            res = builder.CreateTrunc(native, facetType);
+            res = irb.CreateTrunc(native, facetType);
             break;
         case Facet::I8:
-            res = GetReg(reg, Facet::V16I8);
-            res = builder.CreateExtractElement(res, int{0});
+            res = irb.CreateExtractElement(GetReg(reg, Facet::V16I8), int{0});
             break;
         case Facet::I16:
-            res = GetReg(reg, Facet::V8I16);
-            res = builder.CreateExtractElement(res, int{0});
+            res = irb.CreateExtractElement(GetReg(reg, Facet::V8I16), int{0});
             break;
         case Facet::I32:
-            res = GetReg(reg, Facet::V4I32);
-            res = builder.CreateExtractElement(res, int{0});
+            res = irb.CreateExtractElement(GetReg(reg, Facet::V4I32), int{0});
             break;
         case Facet::I64:
-            res = GetReg(reg, Facet::V2I64);
-            res = builder.CreateExtractElement(res, int{0});
+            res = irb.CreateExtractElement(GetReg(reg, Facet::V2I64), int{0});
             break;
         case Facet::F32:
-            res = GetReg(reg, Facet::V4F32);
-            res = builder.CreateExtractElement(res, int{0});
+            res = irb.CreateExtractElement(GetReg(reg, Facet::V4F32), int{0});
             break;
         case Facet::F64:
-            res = GetReg(reg, Facet::V2F64);
-            res = builder.CreateExtractElement(res, int{0});
+            res = irb.CreateExtractElement(GetReg(reg, Facet::V2F64), int{0});
             break;
         case Facet::V1I8:
         case Facet::V2I8:
@@ -356,31 +322,29 @@ RegFile::impl::GetReg(X86Reg reg, Facet facet)
         case Facet::V4F32:
         case Facet::V1F64:
         case Facet::V2F64: {
-            int targetBits = facetType->getPrimitiveSizeInBits();
-            llvm::Type* elementType = facetType->getVectorElementType();
-            int elementBits = elementType->getPrimitiveSizeInBits();
+            llvm::Type* elem_ty = facetType->getVectorElementType();
+            int targetCnt = facetType->getVectorNumElements();
 
             // Prefer 128-bit SSE facet over full vector register.
-            if (targetBits <= 128)
+            if (facetType->getPrimitiveSizeInBits() <= 128)
                 if (llvm::Value* value_128 = GetRegFacet(reg, Facet::I128))
                     native = value_128;
-            int nativeBits = native->getType()->getPrimitiveSizeInBits();
 
-            int targetCnt = facetType->getVectorNumElements();
+            int elementBits = elem_ty->getPrimitiveSizeInBits();
+            int nativeBits = native->getType()->getPrimitiveSizeInBits();
             int nativeCnt = nativeBits / elementBits;
 
             // Cast native facet to appropriate type
-            llvm::Type* nativeVecType = llvm::VectorType::get(elementType, nativeCnt);
-            res = builder.CreateBitCast(native, nativeVecType);
+            auto native_vec_ty = llvm::VectorType::get(elem_ty, nativeCnt);
+            res = irb.CreateBitCast(native, native_vec_ty);
 
             // If a shorter vector is required, use shufflevector.
-            if (nativeCnt > targetCnt)
-            {
+            if (nativeCnt > targetCnt) {
                 llvm::SmallVector<uint32_t, 16> mask;
                 for (int i = 0; i < targetCnt; i++)
                     mask.push_back(i);
-                llvm::Value* undef = llvm::UndefValue::get(nativeVecType);
-                res = builder.CreateShuffleVector(res, undef, mask);
+                llvm::Value* undef = llvm::UndefValue::get(native_vec_ty);
+                res = irb.CreateShuffleVector(res, undef, mask);
             }
             break;
         }
@@ -389,19 +353,18 @@ RegFile::impl::GetReg(X86Reg reg, Facet facet)
             break;
         }
 
-        if (facet_entry != nullptr)
+        if (DeferredValueBase* facet_entry = AccessRegFacet(reg, facet))
             *facet_entry = res;
         return res;
+    } else {
+        assert(false && "GetReg with invalid register kind");
     }
-
-    assert(0);
 
     return nullptr;
 }
 
-void
-RegFile::impl::SetReg(X86Reg reg, Facet facet, llvm::Value* value, bool clearOthers)
-{
+void RegFile::impl::SetReg(X86Reg reg, Facet facet, llvm::Value* value,
+                           bool clearOthers) {
     if (facet == Facet::PTR)
         assert(value->getType()->isPointerTy());
     else
@@ -425,27 +388,13 @@ RegFile::impl::SetReg(X86Reg reg, Facet facet, llvm::Value* value, bool clearOth
 RegFile::RegFile() : pimpl{std::make_unique<impl>()} {}
 RegFile::~RegFile() {}
 
-llvm::BasicBlock* RegFile::GetInsertBlock() {
-    return pimpl->GetInsertBlock();
-}
-void RegFile::SetInsertBlock(llvm::BasicBlock* new_block) {
-    pimpl->SetInsertBlock(new_block);
-}
-void RegFile::Clear() {
-    pimpl->Clear();
-}
-void RegFile::InitWithPHIs(std::vector<PhiDesc>* desc_vec) {
-    pimpl->InitWithPHIs(desc_vec);
-}
-llvm::Value* RegFile::GetReg(X86Reg reg, Facet facet) {
-    return pimpl->GetReg(reg, facet);
-}
+llvm::BasicBlock* RegFile::GetInsertBlock() { return pimpl->GetInsertBlock(); }
+void RegFile::SetInsertBlock(llvm::BasicBlock* n) { pimpl->SetInsertBlock(n); }
+void RegFile::Clear() { pimpl->Clear(); }
+void RegFile::InitWithPHIs(std::vector<PhiDesc>* d) { pimpl->InitWithPHIs(d); }
+llvm::Value* RegFile::GetReg(X86Reg r, Facet f) { return pimpl->GetReg(r, f); }
 void RegFile::SetReg(X86Reg reg, Facet facet, llvm::Value* value, bool clear) {
     pimpl->SetReg(reg, facet, value, clear);
 }
 
-} // namespace
-
-/**
- * @}
- **/
+} // namespace rellume
