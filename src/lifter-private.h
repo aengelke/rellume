@@ -303,6 +303,7 @@ private:
     void LiftSsePshiftBytes(const Instr&);
     void LiftSsePavg(const Instr&, Facet);
     void LiftSsePmulhw(const Instr&, llvm::Instruction::CastOps cast);
+    void LiftSsePmuludq(const Instr&);
     void LiftSsePaddsubSaturate(const Instr& inst,
                                 llvm::Instruction::BinaryOps calc_op, bool sign,
                                 Facet op_ty);

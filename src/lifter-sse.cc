@@ -467,6 +467,17 @@ void Lifter::LiftSsePmulhw(const Instr& inst, llvm::Instruction::CastOps cast) {
     OpStoreVec(inst.op(0), res);
 }
 
+void Lifter::LiftSsePmuludq(const Instr& inst) {
+    llvm::Value* src1 = OpLoad(inst.op(0), Facet::VI32);
+    llvm::Value* src2 = OpLoad(inst.op(1), Facet::VI32);
+
+    llvm::Type* ext_ty = llvm::VectorType::get(irb.getInt64Ty(), 2);
+    src1 = irb.CreateZExt(irb.CreateShuffleVector(src1, src1, {0, 2}), ext_ty);
+    src2 = irb.CreateZExt(irb.CreateShuffleVector(src2, src2, {0, 2}), ext_ty);
+
+    OpStoreVec(inst.op(0), irb.CreateMul(src1, src2));
+}
+
 static llvm::Value* SaturateTrunc(llvm::IRBuilder<> irb, llvm::Value* val,
                                   bool sign) {
     llvm::VectorType* src_ty = llvm::cast<llvm::VectorType>(val->getType());

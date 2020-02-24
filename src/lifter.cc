@@ -374,6 +374,7 @@ bool Lifter::Lift(const Instr& inst) {
     case FDI_SSE_PAVGW: LiftSsePavg(inst, Facet::VI16); break;
     case FDI_SSE_PMULHW: LiftSsePmulhw(inst, llvm::Instruction::SExt); break;
     case FDI_SSE_PMULHUW: LiftSsePmulhw(inst, llvm::Instruction::ZExt); break;
+    case FDI_SSE_PMULUDQ: LiftSsePmuludq(inst); break;
     case FDI_SSE_PCMPEQB: LiftSsePcmp(inst, llvm::CmpInst::ICMP_EQ, Facet::VI8); break;
     case FDI_SSE_PCMPEQW: LiftSsePcmp(inst, llvm::CmpInst::ICMP_EQ, Facet::VI16); break;
     case FDI_SSE_PCMPEQD: LiftSsePcmp(inst, llvm::CmpInst::ICMP_EQ, Facet::VI32); break;
