@@ -96,6 +96,8 @@ Function::Function(llvm::Module* mod, LLConfig* cfg) : cfg(cfg), fi{}
     entry_regfile->Clear();
     cfg->callconv.Unpack(*entry_regfile, fi);
 
+    fi.entry_ip_value = entry_regfile->GetReg(X86Reg::IP, Facet::I64);
+
     // The entry block doesn't modify any registers, so remove the ones set by
     // loading the registers from the sptr.
     fi.modified_regs.reset();
@@ -106,9 +108,11 @@ Function::~Function() = default;
 bool Function::AddInst(uint64_t block_addr, const Instr& inst)
 {
     if (block_map.size() == 0) {
-        llvm::Type* i64 = llvm::Type::getInt64Ty(llvm->getContext());
         fi.entry_ip = block_addr;
-        fi.entry_ip_value = llvm::ConstantInt::get(i64, fi.entry_ip);
+        if (!cfg->position_independent_code) {
+            llvm::Type* i64 = llvm::Type::getInt64Ty(llvm->getContext());
+            fi.entry_ip_value = llvm::ConstantInt::get(i64, fi.entry_ip);
+        }
     }
     if (block_map.find(block_addr) == block_map.end())
         block_map[block_addr] = std::make_unique<ArchBasicBlock>(fi);
@@ -117,8 +121,19 @@ bool Function::AddInst(uint64_t block_addr, const Instr& inst)
 }
 
 ArchBasicBlock& Function::ResolveAddr(llvm::Value* addr) {
+    uint64_t addr_skew = 0;
+    if (cfg->position_independent_code) {
+        addr_skew = fi.entry_ip;
+        // Strip off the base_rip from the expression.
+        auto binop = llvm::dyn_cast<llvm::BinaryOperator>(addr);
+        if (!binop || binop->getOpcode() != llvm::Instruction::Add ||
+            binop->getOperand(0) != fi.entry_ip_value)
+            return *exit_block;
+        addr = binop->getOperand(1);
+    }
+
     if (auto const_addr = llvm::dyn_cast<llvm::ConstantInt>(addr)) {
-        auto block_it = block_map.find(const_addr->getZExtValue());
+        auto block_it = block_map.find(addr_skew + const_addr->getZExtValue());
         if (block_it != block_map.end())
             return *(block_it->second);
     }

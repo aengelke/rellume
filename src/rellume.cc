@@ -66,6 +66,9 @@ void ll_config_enable_fast_math(LLConfig* cfg, bool enable) {
 void ll_config_enable_verify_ir(LLConfig* cfg, bool enable) {
     unwrap(cfg)->verify_ir = enable;
 }
+void ll_config_set_position_independent_code(LLConfig* cfg, bool enable) {
+    unwrap(cfg)->position_independent_code = enable;
+}
 void ll_config_set_global_base(LLConfig* cfg, uintptr_t base, LLVMValueRef value) {
     unwrap(cfg)->global_base_addr = base;
     unwrap(cfg)->global_base_value = llvm::unwrap(value);

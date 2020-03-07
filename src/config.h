@@ -51,6 +51,9 @@ struct LLConfig {
     bool use_native_segment_base = false;
     /// Verify the IR after lifting.
     bool verify_ir = false;
+    /// Don't use absolute instruction addresses to set RIP. The actual RIP is
+    /// supplied as in the RIP register field of the CPU struct.
+    bool position_independent_code = false;
 
     /// Optimize generated IR for the HHVM calling convention.
     CallConv callconv = CallConv::SPTR;
