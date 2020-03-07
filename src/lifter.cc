@@ -45,13 +45,19 @@ bool LiftInstruction(const Instr& inst, FunctionInfo& fi, const LLConfig& cfg,
     return Lifter(fi, cfg, ab).Lift(inst);
 }
 
-static llvm::Instruction* WrapNoFold(llvm::Value* v) {
-    return llvm::CastInst::Create(llvm::Instruction::BitCast, v, v->getType());
+void LifterBase::SetIP(uint64_t inst_addr, bool nofold) {
+    llvm::Value* off = irb.getInt64(inst_addr - fi.entry_ip);
+    llvm::Value* rip = irb.CreateAdd(fi.entry_ip_value, off);
+    if (nofold) {
+        auto bitcast = llvm::Instruction::BitCast;
+        rip = irb.Insert(llvm::CastInst::Create(bitcast, rip, rip->getType()));
+    }
+    SetReg(X86Reg::IP, Facet::I64, rip);
 }
 
 bool Lifter::Lift(const Instr& inst) {
     // Set new instruction pointer register
-    SetReg(X86Reg::IP, Facet::I64, irb.getInt64(inst.end()));
+    SetIP(inst.end());
 
     // Add separator for debugging.
     llvm::Module* module = irb.GetInsertBlock()->getModule();
@@ -87,7 +93,7 @@ bool Lifter::Lift(const Instr& inst) {
 
     switch (inst.type()) {
     default:
-        SetReg(X86Reg::IP, Facet::I64, irb.Insert(WrapNoFold(irb.getInt64(inst.start()))));
+        SetIP(inst.start(), /*nofold=*/true);
         return false;
 
     case FDI_NOP: /* do nothing */ break;

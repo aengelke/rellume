@@ -127,6 +127,7 @@ protected:
         for (const auto facet : facets)
             SetRegFacet(X86Reg::EFLAGS, facet, undef);
     }
+    void SetIP(uint64_t inst_addr, bool nofold = false);
 
     void SetInsertBlock(BasicBlock* block) {
         ablock.SetInsertBlock(block);
