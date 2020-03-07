@@ -112,6 +112,10 @@ protected:
         fi.ModifyReg(reg);
         regfile->SetReg(reg, facet, value, false);
     }
+    void SetRegPtr(X86Reg reg, llvm::Value* value) {
+        SetReg(reg, Facet::I64, irb.CreatePtrToInt(value, irb.getInt64Ty()));
+        SetRegFacet(reg, Facet::PTR, value);
+    }
     llvm::Value* GetFlag(Facet facet) {
         return GetReg(X86Reg::EFLAGS, facet);
     }
@@ -143,7 +147,7 @@ protected:
     void OpStoreGp(const Instr::Op op, llvm::Value* value, Alignment alignment = ALIGN_NONE);
     void OpStoreVec(const Instr::Op op, llvm::Value* value, bool avx = false, Alignment alignment = ALIGN_IMP);
     void StackPush(llvm::Value* value);
-    llvm::Value* StackPop(const X86Reg sp_src_reg = X86Reg::GP(FD_REG_SP));
+    llvm::Value* StackPop(const X86Reg sp_src_reg = X86Reg::RSP);
 
     // llflags.cc
     void FlagCalcZ(llvm::Value* value) {

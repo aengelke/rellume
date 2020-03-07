@@ -543,8 +543,6 @@ void Lifter::LiftRet(const Instr& inst) {
 
 LifterBase::RepInfo LifterBase::RepBegin(const Instr& inst) {
     RepInfo info = {};
-    bool di = inst.type() != FDI_LODS;
-    bool si = inst.type() != FDI_STOS && inst.type() != FDI_SCAS;
 
     bool condrep = inst.type() == FDI_SCAS || inst.type() == FDI_CMPS;
     if (inst.has_rep())
@@ -568,15 +566,11 @@ LifterBase::RepInfo LifterBase::RepBegin(const Instr& inst) {
         SetInsertBlock(info.loop_block);
     }
 
-    llvm::Type* op_ty = irb.getIntNTy(inst.opsz() * 8);
-    if (di) {
-        llvm::Value* ptr = GetReg(X86Reg::RDI, Facet::PTR);
-        info.di = irb.CreatePointerCast(ptr, op_ty->getPointerTo());
-    }
-    if (si) {
-        llvm::Value* ptr = GetReg(X86Reg::RSI, Facet::PTR);
-        info.si = irb.CreatePointerCast(ptr, op_ty->getPointerTo());
-    }
+    llvm::Type* op_ty = irb.getIntNTy(inst.opsz() * 8)->getPointerTo();
+    if (inst.type() != FDI_LODS)
+        info.di = irb.CreatePointerCast(GetReg(X86Reg::RDI, Facet::PTR), op_ty);
+    if (inst.type() != FDI_STOS && inst.type() != FDI_SCAS)
+        info.si = irb.CreatePointerCast(GetReg(X86Reg::RSI, Facet::PTR), op_ty);
 
     return info;
 }
@@ -586,28 +580,19 @@ void LifterBase::RepEnd(RepInfo info) {
     llvm::Value* df = GetFlag(Facet::DF);
     llvm::Value* adj = irb.CreateSelect(df, irb.getInt64(-1), irb.getInt64(1));
 
-    std::pair<int, llvm::Value*> ptr_regs[] = {
-        {FD_REG_DI, info.di}, {FD_REG_SI, info.si}
-    };
-
-    for (auto reg : ptr_regs) {
-        if (reg.second == nullptr)
-            continue;
-
-        llvm::Value* ptr = irb.CreateGEP(reg.second, adj);
-        llvm::Value* int_val = irb.CreatePtrToInt(ptr, irb.getInt64Ty());
-        SetReg(X86Reg::GP(reg.first), Facet::I64, int_val);
-        SetRegFacet(X86Reg::GP(reg.first), Facet::PTR, ptr);
-    }
+    if (info.di)
+        SetRegPtr(X86Reg::RDI, irb.CreateGEP(info.di, adj));
+    if (info.si)
+        SetRegPtr(X86Reg::RSI, irb.CreateGEP(info.si, adj));
 
     // If instruction has REP/REPZ/REPNZ, add branching logic
     if (info.mode == RepInfo::NO_REP)
         return;
 
     // Decrement count and check.
-    llvm::Value* count = GetReg(X86Reg::GP(FD_REG_CX), Facet::I64);
+    llvm::Value* count = GetReg(X86Reg::RCX, Facet::I64);
     count = irb.CreateSub(count, irb.getInt64(1));
-    SetReg(X86Reg::GP(FD_REG_CX), Facet::I64, count);
+    SetReg(X86Reg::RCX, Facet::I64, count);
 
     llvm::Value* zero = llvm::Constant::getNullValue(count->getType());
     llvm::Value* cond = irb.CreateICmpNE(count, zero);

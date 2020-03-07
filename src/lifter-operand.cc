@@ -322,24 +322,19 @@ LifterBase::OpStoreVec(const Instr::Op op, llvm::Value* value, bool avx,
 }
 
 void LifterBase::StackPush(llvm::Value* value) {
-    llvm::Value* rsp = GetReg(X86Reg::GP(FD_REG_SP), Facet::PTR);
+    llvm::Value* rsp = GetReg(X86Reg::RSP, Facet::PTR);
     rsp = irb.CreatePointerCast(rsp, value->getType()->getPointerTo());
     rsp = irb.CreateConstGEP1_64(rsp, -1);
     irb.CreateStore(value, rsp);
 
-    llvm::Value* rsp_int = irb.CreatePtrToInt(rsp, irb.getInt64Ty());
-    SetReg(X86Reg::GP(FD_REG_SP), Facet::I64, rsp_int);
-    SetRegFacet(X86Reg::GP(FD_REG_SP), Facet::PTR, rsp);
+    SetRegPtr(X86Reg::RSP, rsp);
 }
 
 llvm::Value* LifterBase::StackPop(const X86Reg sp_src_reg) {
     llvm::Value* rsp = GetReg(sp_src_reg, Facet::PTR);
     rsp = irb.CreatePointerCast(rsp, irb.getInt64Ty()->getPointerTo());
 
-    llvm::Value* new_rsp = irb.CreateConstGEP1_64(rsp, 1);
-    llvm::Value* new_rsp_int = irb.CreatePtrToInt(new_rsp, irb.getInt64Ty());
-    SetReg(X86Reg::GP(FD_REG_SP), Facet::I64, new_rsp_int);
-    SetRegFacet(X86Reg::GP(FD_REG_SP), Facet::PTR, new_rsp);
+    SetRegPtr(X86Reg::RSP, irb.CreateConstGEP1_64(rsp, 1));
 
     return irb.CreateLoad(rsp);
 }
