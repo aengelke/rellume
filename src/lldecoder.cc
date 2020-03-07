@@ -100,11 +100,12 @@ int Function::Decode(uintptr_t addr, DecodeStop stop, MemReader memacc)
             if (inst_buf_sz == 0 || inst_buf_sz > sizeof(inst_buf))
                 break;
 
-            int ret = fd_decode(inst_buf, inst_buf_sz, 64, cur_addr, &inst);
+            int ret = fd_decode(inst_buf, inst_buf_sz, 64, /*addr=*/0, &inst);
             // If we reach an invalid instruction or an instruction we can't
             // decode, stop.
             if (ret < 0)
                 break;
+            inst.address = cur_addr;
 
             addr_map[cur_addr] = std::make_pair(blocks.size(), insts.size());
             insts.push_back(inst);
@@ -121,8 +122,8 @@ int Function::Decode(uintptr_t addr, DecodeStop stop, MemReader memacc)
                 if (breaks_cond)
                     addr_queue.push_back(cur_addr + inst.len());
                 if (has_jmp_target && inst.type() != FDI_CALL &&
-                        inst.op(0).is_imm())
-                    addr_queue.push_back(inst.op(0).imm());
+                        inst.op(0).is_pcrel())
+                    addr_queue.push_back(inst.end() + inst.op(0).pcrel());
                 break;
             }
             cur_addr += inst.len();

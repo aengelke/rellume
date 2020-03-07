@@ -184,6 +184,10 @@ llvm::Value* LifterBase::OpLoad(const Instr::Op op, Facet facet,
     facet = facet.Resolve(op.bits());
     if (op.is_imm()) {
         return irb.getIntN(op.bits(), op.imm());
+    } else if (op.is_pcrel()) {
+        llvm::Value* rip = GetReg(X86Reg::IP, facet);
+        llvm::Value* rip_off = irb.getIntN(op.bits(), op.pcrel());
+        return irb.CreateAdd(rip, rip_off);
     } else if (op.is_reg()) {
         if (facet == Facet::I8 && op.reg().rt == FD_RT_GPH)
             facet = Facet::I8H;

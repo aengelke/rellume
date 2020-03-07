@@ -64,6 +64,9 @@ public:
         bool is_imm() const { return FD_OP_TYPE(inst, idx) == FD_OT_IMM; }
         int64_t imm() const { assert(is_imm()); return FD_OP_IMM(inst, idx); }
 
+        bool is_pcrel() const { return FD_OP_TYPE(inst, idx) == FD_OT_OFF; }
+        int64_t pcrel() const { assert(is_pcrel()); return FD_OP_IMM(inst, idx); }
+
         bool is_mem() const { return FD_OP_TYPE(inst, idx) == FD_OT_MEM; }
         const Reg base() const {
             assert(is_mem());
