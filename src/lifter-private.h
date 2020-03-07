@@ -161,30 +161,10 @@ protected:
     }
     void FlagCalcP(llvm::Value* value);
     void FlagCalcA(llvm::Value* res, llvm::Value* lhs, llvm::Value* rhs);
-    void FlagCalcCAdd(llvm::Value* res, llvm::Value* lhs, llvm::Value* rhs) {
-        SetFlag(Facet::CF, irb.CreateICmpULT(res, lhs));
-    }
-    void FlagCalcCSub(llvm::Value* res, llvm::Value* lhs, llvm::Value* rhs) {
-        SetFlag(Facet::CF, irb.CreateICmpULT(lhs, rhs));
-    }
-    void FlagCalcOAdd(llvm::Value* res, llvm::Value* lhs, llvm::Value* rhs);
-    void FlagCalcOSub(llvm::Value* res, llvm::Value* lhs, llvm::Value* rhs);
-    void FlagCalcAdd(llvm::Value* res, llvm::Value* lhs, llvm::Value* rhs) {
-        FlagCalcZ(res);
-        FlagCalcS(res);
-        FlagCalcP(res);
-        FlagCalcA(res, lhs, rhs);
-        FlagCalcCAdd(res, lhs, rhs);
-        FlagCalcOAdd(res, lhs, rhs);
-    }
-    void FlagCalcSub(llvm::Value* res, llvm::Value* lhs, llvm::Value* rhs) {
-        SetFlag(Facet::ZF, irb.CreateICmpEQ(lhs, rhs));
-        FlagCalcS(res);
-        FlagCalcP(res);
-        FlagCalcA(res, lhs, rhs);
-        FlagCalcCSub(res, lhs, rhs);
-        FlagCalcOSub(res, lhs, rhs);
-    }
+    void FlagCalcAdd(llvm::Value* res, llvm::Value* lhs, llvm::Value* rhs,
+                     bool skip_carry = false);
+    void FlagCalcSub(llvm::Value* res, llvm::Value* lhs, llvm::Value* rhs,
+                     bool skip_carry = false);
 
     llvm::Value* FlagCond(Condition cond);
     llvm::Value* FlagAsReg(unsigned size);

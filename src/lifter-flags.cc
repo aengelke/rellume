@@ -103,39 +103,41 @@ LifterBase::FlagCalcA(llvm::Value* res, llvm::Value* lhs, llvm::Value* rhs)
     SetFlag(Facet::AF, irb.CreateICmpNE(masked, llvm::Constant::getNullValue(res->getType())));
 }
 
-void
-LifterBase::FlagCalcOAdd(llvm::Value* res, llvm::Value* lhs, llvm::Value* rhs)
-{
-    if (cfg.enableOverflowIntrinsics)
-    {
+void LifterBase::FlagCalcAdd(llvm::Value* res, llvm::Value* lhs,
+                             llvm::Value* rhs, bool skip_carry) {
+    auto zero = llvm::Constant::getNullValue(res->getType());
+    SetFlag(Facet::ZF, irb.CreateICmpEQ(res, zero));
+    SetFlag(Facet::SF, irb.CreateICmpSLT(res, zero));
+    FlagCalcP(res);
+    FlagCalcA(res, lhs, rhs);
+    if (!skip_carry)
+        SetFlag(Facet::CF, irb.CreateICmpULT(res, lhs));
+
+    if (cfg.enableOverflowIntrinsics) {
         llvm::Intrinsic::ID id = llvm::Intrinsic::sadd_with_overflow;
         llvm::Value* packed = irb.CreateBinaryIntrinsic(id, lhs, rhs);
         SetFlag(Facet::OF, irb.CreateExtractValue(packed, 1));
-    }
-    else
-    {
+    } else {
         llvm::Value* tmp1 = irb.CreateNot(irb.CreateXor(lhs, rhs));
         llvm::Value* tmp2 = irb.CreateAnd(tmp1, irb.CreateXor(res, lhs));
-        SetFlag(Facet::OF, irb.CreateICmpSLT(tmp2, llvm::Constant::getNullValue(res->getType())));
+        SetFlag(Facet::OF, irb.CreateICmpSLT(tmp2, zero));
     }
 }
 
-void
-LifterBase::FlagCalcOSub(llvm::Value* res, llvm::Value* lhs, llvm::Value* rhs)
-{
-    if (cfg.enableOverflowIntrinsics)
-    {
-        llvm::Intrinsic::ID id = llvm::Intrinsic::ssub_with_overflow;
-        llvm::Value* packed = irb.CreateBinaryIntrinsic(id, lhs, rhs);
-        SetFlag(Facet::OF, irb.CreateExtractValue(packed, 1));
-    }
-    else
-    {
-        auto zero = llvm::Constant::getNullValue(res->getType());
-        llvm::Value* sf = irb.CreateICmpSLT(res, zero);
-        llvm::Value* lt = irb.CreateICmpSLT(lhs, rhs);
-        SetFlag(Facet::OF, irb.CreateICmpNE(sf, lt));
-    }
+void LifterBase::FlagCalcSub(llvm::Value* res, llvm::Value* lhs,
+                             llvm::Value* rhs, bool skip_carry) {
+    auto zero = llvm::Constant::getNullValue(res->getType());
+    llvm::Value* sf = irb.CreateICmpSLT(res, zero);  // also used for OF
+
+    SetFlag(Facet::ZF, irb.CreateICmpEQ(lhs, rhs));
+    SetFlag(Facet::SF, sf);
+    FlagCalcP(res);
+    FlagCalcA(res, lhs, rhs);
+    if (!skip_carry)
+        SetFlag(Facet::CF, irb.CreateICmpULT(lhs, rhs));
+
+    // Set overflow flag using arithmetic comparisons
+    SetFlag(Facet::OF, irb.CreateICmpNE(sf, irb.CreateICmpSLT(lhs, rhs)));
 }
 
 } // namespace

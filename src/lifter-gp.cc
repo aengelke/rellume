@@ -127,17 +127,11 @@ void Lifter::LiftIncDec(const Instr& inst) {
     llvm::Value* res = nullptr;
     if (inst.type() == FDI_INC) {
         res = irb.CreateAdd(op1, op2);
-        FlagCalcOAdd(res, op1, op2);
+        FlagCalcAdd(res, op1, op2, /*skip_carry=*/true);
     } else if (inst.type() == FDI_DEC) {
         res = irb.CreateSub(op1, op2);
-        FlagCalcOSub(res, op1, op2);
+        FlagCalcSub(res, op1, op2, /*skip_carry=*/true);
     }
-
-    // Carry flag is _not_ updated.
-    FlagCalcZ(res);
-    FlagCalcS(res);
-    FlagCalcP(res);
-    FlagCalcA(res, op1, op2);
     OpStoreGp(inst.op(0), res);
 }
 
