@@ -117,11 +117,15 @@ void CallConv::Unpack(RegFile& regfile, FunctionInfo& fi) const {
 
     for (const auto& [sptr_idx, reg, facet] : cpu_struct_entries) {
         llvm::Value* reg_val = nullptr;
-        if (*this == CallConv::HHVM && reg.IsGP() && reg.Index() < 12) {
-            // RAX->RAX; RCX->RCX; RDX->RDX; RBX->RBP; RSP->R15; RBP->R13;
-            // RSI->RSI; RDI->RDI; R8->R8;   R9->R9;   R10->R10; R11->R11;
-            static const uint8_t arg_idx[] = {10,7,6,2,3,13,5,4,8,9,11,12};
-            reg_val = &fi.fn->arg_begin()[arg_idx[reg.Index()]];
+        if (*this == CallConv::HHVM) {
+            if (reg.IsGP() && reg.Index() < 12) {
+                // RAX->RAX; RCX->RCX; RDX->RDX; RBX->RBP; RSP->R15; RBP->R13;
+                // RSI->RSI; RDI->RDI; R8->R8;   R9->R9;   R10->R10; R11->R11;
+                static const uint8_t arg_idx[] = {10,7,6,2,3,13,5,4,8,9,11,12};
+                reg_val = &fi.fn->arg_begin()[arg_idx[reg.Index()]];
+            } else if (reg == X86Reg::IP) {
+                reg_val = &fi.fn->arg_begin()[0]; // RIP->RBX
+            }
         }
 
         if (reg_val == nullptr)
