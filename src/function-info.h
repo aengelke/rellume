@@ -53,6 +53,9 @@ struct FunctionInfo {
     llvm::Value* sptr_raw;
     llvm::Value* sptr[SptrIdx::MAX];
 
+    uint64_t entry_ip;
+    llvm::Value* entry_ip_value;
+
     // A set of all register ever modified in the function. To prevent use of
     // this optimization for cconv packs inside a function (which would be
     // incorrect), a separate flag is set in the end.

@@ -105,8 +105,11 @@ Function::~Function() = default;
 
 bool Function::AddInst(uint64_t block_addr, const Instr& inst)
 {
-    if (block_map.size() == 0)
-        entry_addr = block_addr;
+    if (block_map.size() == 0) {
+        llvm::Type* i64 = llvm::Type::getInt64Ty(llvm->getContext());
+        fi.entry_ip = block_addr;
+        fi.entry_ip_value = llvm::ConstantInt::get(i64, fi.entry_ip);
+    }
     if (block_map.find(block_addr) == block_map.end())
         block_map[block_addr] = std::make_unique<ArchBasicBlock>(fi);
 
@@ -135,7 +138,7 @@ llvm::Function* Function::Lift() {
     llvm::IRBuilder<> irb(exit_regfile->GetInsertBlock());
     irb.CreateRet(cfg->callconv.Pack(*exit_regfile, fi));
 
-    entry_block->BranchTo(*block_map[entry_addr]);
+    entry_block->BranchTo(*block_map[fi.entry_ip]);
 
     for (auto it = block_map.begin(); it != block_map.end(); ++it) {
         RegFile* regfile = it->second->GetInsertBlock()->GetRegFile();
