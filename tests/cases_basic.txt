@@ -12,6 +12,10 @@ code="mov eax, fs:[0]" fsbase=q:0x20000000 m20000000=11223344 => rax=q:0x4433221
 code="mov eax, 0; test eax, eax; jz 1f; nop; 1:" => rax=q:0 of=00 sf=00 zf=01 af=undef pf=01 cf=00
 code="mov eax, [rip+1f]; jmp 2f; 1: .int 0x12345678; 2:" => rax=q:0x12345678
 
+code="ret" rsp=q:0x20000000 m20000000=1011121314151617 => rip=q:0x1716151413121110 rsp=q:0x20000008
+code="ret 8" rsp=q:0x20000000 m20000000=1011121314151617 => rip=q:0x1716151413121110 rsp=q:0x20000010
+code="ret -8" rsp=q:0x20000000 m20000000=1011121314151617 => rip=q:0x1716151413121110 rsp=q:0x20000000
+
 code="mov al, dl" rax=q:0x8899aabbccddeeff rdx=q:0x0011223344556677 => rax=q:0x8899aabbccddee77
 code="mov al, dh" rax=q:0x8899aabbccddeeff rdx=q:0x0011223344556677 => rax=q:0x8899aabbccddee66
 code="mov ah, dl" rax=q:0x8899aabbccddeeff rdx=q:0x0011223344556677 => rax=q:0x8899aabbccdd77ff

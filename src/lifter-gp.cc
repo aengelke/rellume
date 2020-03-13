@@ -528,11 +528,19 @@ void Lifter::LiftCall(const Instr& inst) {
 }
 
 void Lifter::LiftRet(const Instr& inst) {
+    // TODO: support 16-bit address size override
     if (cfg.call_ret_clobber_flags)
         SetFlagUndef({Facet::OF, Facet::SF, Facet::ZF, Facet::AF, Facet::PF,
                       Facet::CF});
 
     SetReg(X86Reg::IP, Facet::I64, StackPop());
+
+    if (inst.op(0)) {
+        llvm::Value* rsp = GetReg(X86Reg::RSP, Facet::PTR);
+        rsp = irb.CreatePointerCast(rsp, irb.getInt8PtrTy());
+        rsp = irb.CreateConstGEP1_64(rsp, inst.op(0).imm());
+        SetRegPtr(X86Reg::RSP, rsp);
+    }
 }
 
 LifterBase::RepInfo LifterBase::RepBegin(const Instr& inst) {
