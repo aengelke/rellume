@@ -168,15 +168,16 @@ LifterBase::OpAddr(const Instr::Op op, llvm::Type* element_type, unsigned seg)
     return irb.CreatePointerCast(base, elem_ptr_ty);
 }
 
-static void
-ll_operand_set_alignment(llvm::Instruction* value, Alignment alignment, bool sse = false)
-{
+static void ll_operand_set_alignment(llvm::Instruction* value, llvm::Type* type,
+                                     Alignment alignment, bool sse = false) {
     if (alignment == ALIGN_IMP)
         alignment = sse ? ALIGN_MAX : ALIGN_NONE;
+    unsigned bytes =
+        alignment == ALIGN_NONE ? 1 : type->getPrimitiveSizeInBits() / 8;
     if (llvm::LoadInst* load = llvm::dyn_cast<llvm::LoadInst>(value))
-        load->setAlignment(alignment == ALIGN_NONE ? 1 : load->getPointerOperandType()->getPrimitiveSizeInBits() / 8);
+        load->setAlignment(bytes);
     else if (llvm::StoreInst* store = llvm::dyn_cast<llvm::StoreInst>(value))
-        store->setAlignment(alignment == ALIGN_NONE ? 1 : store->getPointerOperandType()->getPrimitiveSizeInBits() / 8);
+        store->setAlignment(bytes);
 }
 
 llvm::Value* LifterBase::OpLoad(const Instr::Op op, Facet facet,
@@ -209,7 +210,7 @@ llvm::Value* LifterBase::OpLoad(const Instr::Op op, Facet facet,
         llvm::Value* addr = OpAddr(op, type, seg);
         llvm::LoadInst* result = irb.CreateLoad(type, addr);
         // FIXME: forward SSE information to increase alignment.
-        ll_operand_set_alignment(result, alignment, false);
+        ll_operand_set_alignment(result, type, alignment, false);
         return result;
     }
 
@@ -247,7 +248,7 @@ void LifterBase::OpStoreGp(const Instr::Op op, llvm::Value* value,
     if (op.is_mem()) {
         llvm::Value* addr = OpAddr(op, value->getType(), op.seg());
         llvm::StoreInst* store = irb.CreateStore(value, addr);
-        ll_operand_set_alignment(store, alignment);
+        ll_operand_set_alignment(store, value->getType(), alignment);
     } else if (op.is_reg()) {
         assert(value->getType()->getIntegerBitWidth() == op.bits());
 
@@ -268,7 +269,7 @@ LifterBase::OpStoreVec(const Instr::Op op, llvm::Value* value, bool avx,
     {
         llvm::Value* addr = OpAddr(op, value->getType(), op.seg());
         llvm::StoreInst* store = irb.CreateStore(value, addr);
-        ll_operand_set_alignment(store, alignment, !avx);
+        ll_operand_set_alignment(store, value->getType(), alignment, !avx);
         return;
     }
 
