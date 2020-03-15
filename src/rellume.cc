@@ -79,6 +79,12 @@ void ll_config_set_instr_impl(LLConfig* cfg, FdInstrType type, LLVMValueRef valu
 void ll_config_set_syscall_impl(LLConfig* cfg, LLVMValueRef value) {
     unwrap(cfg)->syscall_implementation = llvm::unwrap<llvm::Function>(value);
 }
+void ll_config_set_instr_marker(LLConfig* cfg, LLVMValueRef value) {
+    if (value)
+        unwrap(cfg)->instr_marker = llvm::unwrap<llvm::Function>(value);
+    else
+        unwrap(cfg)->instr_marker = nullptr;
+}
 void ll_config_set_call_ret_clobber_flags(LLConfig* cfg, bool enable) {
     unwrap(cfg)->call_ret_clobber_flags = enable;
 }

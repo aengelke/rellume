@@ -77,11 +77,14 @@ bool Lifter::Lift(const Instr& inst) {
     // Set new instruction pointer register
     SetIP(inst.end());
 
-    // Add separator for debugging.
-    llvm::Module* module = irb.GetInsertBlock()->getModule();
-    irb.CreateCall(llvm::Intrinsic::getDeclaration(module,
-                                                   llvm::Intrinsic::donothing,
-                                                   {}));
+    // Add instruction marker
+    if (cfg.instr_marker) {
+        llvm::Value* rip = GetReg(X86Reg::IP, Facet::I64);
+        llvm::StringRef str_ref{reinterpret_cast<const char*>(&inst), sizeof(FdInstr)};
+        llvm::MDString* md = llvm::MDString::get(irb.getContext(), str_ref);
+        llvm::Value* md_val = llvm::MetadataAsValue::get(irb.getContext(), md);
+        irb.CreateCall(cfg.instr_marker, {rip, md_val});
+    }
 
     // Check overridden implementations first.
     const auto& override = cfg.instr_overrides.find(inst.type());

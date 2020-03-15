@@ -53,6 +53,7 @@ RELLUME_API void ll_config_set_position_independent_code(LLConfig*, bool);
 RELLUME_API void ll_config_set_global_base(LLConfig*, uintptr_t, LLVMValueRef);
 RELLUME_API void ll_config_set_instr_impl(LLConfig*, FdInstrType, LLVMValueRef);
 RELLUME_API void ll_config_set_syscall_impl(LLConfig*, LLVMValueRef);
+RELLUME_API void ll_config_set_instr_marker(LLConfig*, LLVMValueRef);
 RELLUME_API void ll_config_set_call_ret_clobber_flags(LLConfig*, bool);
 RELLUME_API void ll_config_set_use_native_segment_base(LLConfig*, bool);
 

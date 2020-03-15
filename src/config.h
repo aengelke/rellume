@@ -74,6 +74,11 @@ struct LLConfig {
     /// as a no-op. The function must take a pointer to the CPU state as a
     /// single argument.
     llvm::Function* syscall_implementation = nullptr;
+
+    /// Function which is called before the instruction code is lifted. The
+    /// function takes the value of RIP (which points at the end of the
+    /// instruction) and a metadata containing an MDString with the FdInstr.
+    llvm::Function* instr_marker = nullptr;
 };
 
 } // namespace
