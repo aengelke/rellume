@@ -69,6 +69,11 @@ struct LLConfig {
     /// Overridden implementations for specific instruction. The function must
     /// take a pointer to the CPU state as a single argument.
     std::unordered_map<uint32_t, llvm::Function*> instr_overrides;
+
+    /// Implementation of syscall semantics. If not specified, a syscall behaves
+    /// as a no-op. The function must take a pointer to the CPU state as a
+    /// single argument.
+    llvm::Function* syscall_implementation = nullptr;
 };
 
 } // namespace

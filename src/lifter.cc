@@ -86,13 +86,7 @@ bool Lifter::Lift(const Instr& inst) {
     // Check overridden implementations first.
     const auto& override = cfg.instr_overrides.find(inst.type());
     if (override != cfg.instr_overrides.end()) {
-        if (inst.type() == FDI_SYSCALL) {
-            SetReg(X86Reg::RCX, Facet::I64, GetReg(X86Reg::IP, Facet::I64));
-            SetReg(X86Reg::GP(11), Facet::I64, FlagAsReg(64));
-        }
-
         CallExternalFunction(override->second);
-
         return true;
     }
 
@@ -120,7 +114,7 @@ bool Lifter::Lift(const Instr& inst) {
     case FDI_LEAVE: LiftLeave(inst); break;
     case FDI_CALL: LiftCall(inst); break;
     case FDI_RET: LiftRet(inst); break;
-    // case FDI_SYSCALL: NOT IMPLEMENTED
+    case FDI_SYSCALL: LiftSyscall(inst); break;
     // case FDI_CPUID: NOT IMPLEMENTED
     // case FDI_RDTSC: NOT IMPLEMENTED
     // case FDI_CRC32: NOT IMPLEMENTED

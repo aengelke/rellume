@@ -543,6 +543,14 @@ void Lifter::LiftRet(const Instr& inst) {
     }
 }
 
+void Lifter::LiftSyscall(const Instr& inst) {
+    SetReg(X86Reg::RCX, Facet::I64, GetReg(X86Reg::IP, Facet::I64));
+    SetReg(X86Reg::GP(11), Facet::I64, FlagAsReg(64));
+
+    if (cfg.syscall_implementation)
+        CallExternalFunction(cfg.syscall_implementation);
+}
+
 LifterBase::RepInfo LifterBase::RepBegin(const Instr& inst) {
     RepInfo info = {};
 
