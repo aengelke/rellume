@@ -187,6 +187,8 @@ protected:
         // TODO: remove this helper function
         return irb.CreateUnaryIntrinsic(id, v);
     }
+
+    void CallExternalFunction(llvm::Function* fn);
 };
 
 class Lifter : public LifterBase {

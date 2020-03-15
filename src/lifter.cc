@@ -55,6 +55,24 @@ void LifterBase::SetIP(uint64_t inst_addr, bool nofold) {
     SetReg(X86Reg::IP, Facet::I64, rip);
 }
 
+void LifterBase::CallExternalFunction(llvm::Function* fn) {
+    llvm::Type* sptr_ty = fi.sptr_raw->getType();
+    auto fn_type = llvm::FunctionType::get(irb.getVoidTy(), {sptr_ty}, false);
+
+    // Pack all state into the CPU struct.
+    CallConv sptr_conv = CallConv::SPTR;
+    sptr_conv.Pack(*regfile, fi);
+    llvm::CallInst* call = irb.CreateCall(fn_type, fn, {fi.sptr_raw});
+    regfile->Clear(); // Clear all facets before importing register state
+    sptr_conv.Unpack(*regfile, fi);
+
+    // Directly inline alwaysinline functions
+    if (fn->hasFnAttribute(llvm::Attribute::AlwaysInline)) {
+        llvm::InlineFunctionInfo ifi;
+        llvm::InlineFunction(llvm::CallSite(call), ifi);
+    }
+}
+
 bool Lifter::Lift(const Instr& inst) {
     // Set new instruction pointer register
     SetIP(inst.end());
@@ -73,20 +91,7 @@ bool Lifter::Lift(const Instr& inst) {
             SetReg(X86Reg::GP(11), Facet::I64, FlagAsReg(64));
         }
 
-        auto fn_type = llvm::FunctionType::get(irb.getVoidTy(), {fi.sptr_raw->getType()}, false);
-
-        // Pack all state into the CPU struct.
-        CallConv sptr_conv = CallConv::SPTR;
-        sptr_conv.Pack(*regfile, fi);
-        llvm::CallInst* call = irb.CreateCall(fn_type, override->second, {fi.sptr_raw});
-        regfile->Clear(); // Clear all facets before importing register state
-        sptr_conv.Unpack(*regfile, fi);
-
-        // Directly inline alwaysinline functions
-        if (override->second->hasFnAttribute(llvm::Attribute::AlwaysInline)) {
-            llvm::InlineFunctionInfo ifi;
-            llvm::InlineFunction(llvm::CallSite(call), ifi);
-        }
+        CallExternalFunction(override->second);
 
         return true;
     }
