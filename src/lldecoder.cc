@@ -17,18 +17,19 @@
  * along with Rellume.  If not, see <http://www.gnu.org/licenses/>.
  */
 
+#include "function.h"
+
+#include "basicblock.h"
+#include "config.h"
+#include "instr.h"
+#include "lifter.h"
+
 #include <stdbool.h>
 #include <stdlib.h>
 #include <stdint.h>
-
 #include <deque>
 #include <unordered_map>
 #include <vector>
-
-#include <rellume/rellume.h>
-
-#include <function.h>
-#include <instr.h>
 
 namespace rellume {
 

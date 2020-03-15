@@ -23,7 +23,6 @@
 
 #include "basicblock.h"
 
-#include "config.h"
 #include "facet.h"
 #include "function-info.h"
 #include "regfile.h"

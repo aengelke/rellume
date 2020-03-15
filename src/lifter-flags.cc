@@ -45,8 +45,7 @@ llvm::Value*
 LifterBase::FlagCond(Condition cond)
 {
     llvm::Value* result = nullptr;
-    switch (static_cast<Condition>(static_cast<int>(cond) & ~1))
-    {
+    switch (static_cast<Condition>(static_cast<int>(cond) & ~1)) {
     case Condition::O:  result = GetFlag(Facet::OF); break;
     case Condition::C:  result = GetFlag(Facet::CF); break;
     case Condition::Z:  result = GetFlag(Facet::ZF); break;
@@ -91,8 +90,7 @@ LifterBase::FlagCalcP(llvm::Value* value)
 {
     llvm::Value* trunc = irb.CreateTruncOrBitCast(value, irb.getInt8Ty());
     llvm::Value* count = CreateUnaryIntrinsic(llvm::Intrinsic::ctpop, trunc);
-    llvm::Value* bit = irb.CreateTruncOrBitCast(count, irb.getInt1Ty());
-    SetFlag(Facet::PF, irb.CreateNot(bit));
+    SetFlag(Facet::PF, irb.CreateNot(irb.CreateTrunc(count, irb.getInt1Ty())));
 }
 
 void

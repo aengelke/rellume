@@ -35,7 +35,6 @@
 namespace rellume {
 
 class FunctionInfo;
-class LLConfig;
 
 class BasicBlock
 {
