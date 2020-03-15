@@ -292,7 +292,7 @@ class TestCase {
 
 public:
     static bool Run(unsigned number, std::string caseline,
-                    std::ostringstream& output) {
+                    std::ostream& output) {
         std::ostringstream diagnostic;
         TestCase test_case(diagnostic);
         bool fail = test_case.Run(caseline);
