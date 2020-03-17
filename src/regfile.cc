@@ -30,6 +30,7 @@
 #include <llvm/IR/Constants.h>
 #include <llvm/IR/IRBuilder.h>
 #include <llvm/IR/Instructions.h>
+#include <llvm/IR/Intrinsics.h>
 
 #include <cassert>
 #include <cstdint>
@@ -415,6 +416,11 @@ void RegFile::impl::SetReg(X86Reg reg, Facet facet, llvm::Value* value,
             assert(facet == Facet::IVEC);
             regs_sse[reg.Index()].clear();
         }
+    }
+
+    if (llvm::isa<llvm::PHINode>(value)) {
+        llvm::IRBuilder<> irb(insert_block);
+        value = irb.CreateUnaryIntrinsic(llvm::Intrinsic::ssa_copy, value);
     }
 
     DeferredValueBase* facet_entry = AccessRegFacet(reg, facet);

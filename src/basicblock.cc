@@ -93,6 +93,7 @@ bool BasicBlock::FillPhis() {
         X86Reg reg = std::get<0>(item);
         Facet facet = std::get<1>(item);
         llvm::PHINode* phi = std::get<2>(item);
+        assert(!phi->user_empty() && "PHI without users!");
         for (BasicBlock* pred : predecessors) {
             llvm::Value* value = pred->regfile.GetReg(reg, facet);
             if (facet == Facet::PTR && value->getType() != phi->getType()) {

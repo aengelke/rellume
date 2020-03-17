@@ -34,6 +34,7 @@
 #include <llvm/IR/DerivedTypes.h>
 #include <llvm/IR/Function.h>
 #include <llvm/IR/GlobalValue.h>
+#include <llvm/IR/InstIterator.h>
 #include <llvm/IR/Type.h>
 #include <llvm/IR/Verifier.h>
 #include <llvm/Transforms/Utils/BasicBlockUtils.h>
@@ -176,6 +177,18 @@ llvm::Function* Function::Lift() {
         for (auto& item : block_map)
             changed |= item.second->FillPhis();
         changed |= exit_block->FillPhis();
+    }
+
+    // Remove calls to llvm.ssa_copy, which got inserted to avoid PHI nodes in
+    // the register file.
+    for (auto it = llvm::inst_begin(llvm), e = llvm::inst_end(llvm); it != e;) {
+        llvm::Instruction* inst = &*it++;
+        auto* intr = llvm::dyn_cast<llvm::IntrinsicInst>(inst);
+        if (!intr || intr->getIntrinsicID() != llvm::Intrinsic::ssa_copy)
+          continue;
+
+        inst->replaceAllUsesWith(intr->getOperand(0));
+        inst->eraseFromParent();
     }
 
     // Remove blocks without predecessors. This can happen if constants get
