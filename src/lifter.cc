@@ -27,18 +27,17 @@
 #include "facet.h"
 #include "instr.h"
 #include "regfile.h"
-#include <llvm/IR/Instruction.h>
+
 #include <llvm/IR/IRBuilder.h>
+#include <llvm/IR/Instruction.h>
 #include <llvm/IR/Value.h>
 #include <llvm/Transforms/Utils/Cloning.h>
-
 
 /**
  * @{
  **/
 
 namespace rellume {
-
 
 bool LiftInstruction(const Instr& inst, FunctionInfo& fi, const LLConfig& cfg,
                      ArchBasicBlock& ab) noexcept {
@@ -80,7 +79,8 @@ bool Lifter::Lift(const Instr& inst) {
     // Add instruction marker
     if (cfg.instr_marker) {
         llvm::Value* rip = GetReg(X86Reg::IP, Facet::I64);
-        llvm::StringRef str_ref{reinterpret_cast<const char*>(&inst), sizeof(FdInstr)};
+        llvm::StringRef str_ref{reinterpret_cast<const char*>(&inst),
+                                sizeof(FdInstr)};
         llvm::MDString* md = llvm::MDString::get(irb.getContext(), str_ref);
         llvm::Value* md_val = llvm::MetadataAsValue::get(irb.getContext(), md);
         irb.CreateCall(cfg.instr_marker, {rip, md_val});
@@ -434,7 +434,7 @@ bool Lifter::Lift(const Instr& inst) {
     return true;
 }
 
-} // namespace
+} // namespace rellume
 
 /**
  * @}

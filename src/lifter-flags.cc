@@ -41,9 +41,7 @@
 
 namespace rellume {
 
-llvm::Value*
-LifterBase::FlagCond(Condition cond)
-{
+llvm::Value* LifterBase::FlagCond(Condition cond) {
     llvm::Value* result = nullptr;
     switch (static_cast<Condition>(static_cast<int>(cond) & ~1)) {
     case Condition::O:  result = GetFlag(Facet::OF); break;
@@ -85,17 +83,14 @@ void LifterBase::FlagFromReg(llvm::Value* val) {
     }
 }
 
-void
-LifterBase::FlagCalcP(llvm::Value* value)
-{
+void LifterBase::FlagCalcP(llvm::Value* value) {
     llvm::Value* trunc = irb.CreateTruncOrBitCast(value, irb.getInt8Ty());
     llvm::Value* count = CreateUnaryIntrinsic(llvm::Intrinsic::ctpop, trunc);
     SetFlag(Facet::PF, irb.CreateNot(irb.CreateTrunc(count, irb.getInt1Ty())));
 }
 
-void
-LifterBase::FlagCalcA(llvm::Value* res, llvm::Value* lhs, llvm::Value* rhs)
-{
+void LifterBase::FlagCalcA(llvm::Value* res, llvm::Value* lhs,
+                           llvm::Value* rhs) {
     llvm::Value* tmp = irb.CreateXor(irb.CreateXor(lhs, rhs), res);
     llvm::Value* masked = irb.CreateAnd(tmp, llvm::ConstantInt::get(res->getType(), 16));
     SetFlag(Facet::AF, irb.CreateICmpNE(masked, llvm::Constant::getNullValue(res->getType())));

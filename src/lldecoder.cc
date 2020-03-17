@@ -24,9 +24,7 @@
 #include "instr.h"
 #include "lifter.h"
 
-#include <stdbool.h>
-#include <stdlib.h>
-#include <stdint.h>
+#include <cstdint>
 #include <deque>
 #include <unordered_map>
 #include <vector>
@@ -71,8 +69,7 @@ static void InstrFlags(Instr::Type ty, bool* breaks, bool* breaks_cond,
     }
 }
 
-int Function::Decode(uintptr_t addr, DecodeStop stop, MemReader memacc)
-{
+int Function::Decode(uintptr_t addr, DecodeStop stop, MemReader memacc) {
     Instr inst;
     uint8_t inst_buf[15];
 
@@ -81,21 +78,19 @@ int Function::Decode(uintptr_t addr, DecodeStop stop, MemReader memacc)
 
     std::vector<Instr> insts;
     // List of (start_idx,end_idx) (non-inclusive end)
-    std::vector<std::pair<size_t,size_t>> blocks;
+    std::vector<std::pair<size_t, size_t>> blocks;
 
     // Mapping from address to (block_idx, instr_idx)
-    std::unordered_map<uintptr_t, std::pair<size_t,size_t>> addr_map;
+    std::unordered_map<uintptr_t, std::pair<size_t, size_t>> addr_map;
 
-    while (!addr_queue.empty())
-    {
+    while (!addr_queue.empty()) {
         uintptr_t cur_addr = addr_queue.front();
         addr_queue.pop_front();
 
         size_t cur_block_start = insts.size();
 
         auto cur_addr_entry = addr_map.find(cur_addr);
-        while (cur_addr_entry == addr_map.end())
-        {
+        while (cur_addr_entry == addr_map.end()) {
             size_t inst_buf_sz = memacc(cur_addr, inst_buf, sizeof(inst_buf));
             // Sanity check.
             if (inst_buf_sz == 0 || inst_buf_sz > sizeof(inst_buf))
@@ -123,7 +118,7 @@ int Function::Decode(uintptr_t addr, DecodeStop stop, MemReader memacc)
                 if (breaks_cond)
                     addr_queue.push_back(cur_addr + inst.len());
                 if (has_jmp_target && inst.type() != FDI_CALL &&
-                        inst.op(0).is_pcrel())
+                    inst.op(0).is_pcrel())
                     addr_queue.push_back(inst.end() + inst.op(0).pcrel());
                 break;
             }
@@ -134,8 +129,7 @@ int Function::Decode(uintptr_t addr, DecodeStop stop, MemReader memacc)
         if (insts.size() != cur_block_start)
             blocks.push_back(std::make_pair(cur_block_start, insts.size()));
 
-        if (cur_addr_entry != addr_map.end())
-        {
+        if (cur_addr_entry != addr_map.end()) {
             auto& other_blk = blocks[cur_addr_entry->second.first];
             size_t split_idx = cur_addr_entry->second.second;
             if (other_blk.first == split_idx)
@@ -143,8 +137,9 @@ int Function::Decode(uintptr_t addr, DecodeStop stop, MemReader memacc)
             size_t end = other_blk.second;
             blocks.push_back(std::make_pair(split_idx, end));
             blocks[cur_addr_entry->second.first].second = split_idx;
+            size_t new_block_idx = blocks.size() - 1;
             for (size_t j = split_idx; j < end; j++)
-                addr_map[insts[j].start()] = std::make_pair(blocks.size()-1, j);
+                addr_map[insts[j].start()] = std::make_pair(new_block_idx, j);
         }
     }
 
@@ -170,4 +165,4 @@ int Function::Decode(uintptr_t addr, DecodeStop stop, MemReader memacc)
     return 0;
 }
 
-} // namespace
+} // namespace rellume

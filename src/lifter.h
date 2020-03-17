@@ -24,7 +24,6 @@
 #ifndef RELLUME_LIFTER_H
 #define RELLUME_LIFTER_H
 
-
 namespace rellume {
 
 class ArchBasicBlock;
@@ -35,6 +34,6 @@ class LLConfig;
 bool LiftInstruction(const Instr& inst, FunctionInfo& fi, const LLConfig& cfg,
                      ArchBasicBlock& ab) noexcept;
 
-} // namespace
+} // namespace rellume
 
 #endif

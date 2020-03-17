@@ -24,11 +24,13 @@
 #include "regfile.h"
 
 #include "facet.h"
+
+#include <llvm-c/Core.h>
 #include <llvm/IR/BasicBlock.h>
 #include <llvm/IR/Constants.h>
-#include <llvm/IR/Instructions.h>
 #include <llvm/IR/IRBuilder.h>
-#include <llvm-c/Core.h>
+#include <llvm/IR/Instructions.h>
+
 #include <cassert>
 #include <cstdint>
 #include <cstring>
@@ -133,6 +135,7 @@ class ValueMap {
 
     static const LookupTable<Facet::Value, sizeof...(E), Facet::MAX> table;
     R values[sizeof...(E)];
+
 public:
     bool has(Facet v) const { return table.b[static_cast<int>(v)] > 0; }
     R& operator[](Facet v) {
@@ -149,7 +152,9 @@ public:
     }
 };
 template<typename R, Facet::Value... E>
-const typename ValueMap<R, E...>::template LookupTable<Facet::Value, sizeof...(E), Facet::MAX> ValueMap<R, E...>::table({E...});
+const typename ValueMap<R, E...>::template LookupTable<Facet::Value,
+                                                       sizeof...(E), Facet::MAX>
+    ValueMap<R, E...>::table({E...});
 
 template<typename R>
 using ValueMapGp = ValueMap<R, Facet::I64, Facet::I32, Facet::I16, Facet::I8, Facet::I8H, Facet::PTR>;
@@ -184,9 +189,7 @@ public:
     llvm::Value* GetReg(X86Reg reg, Facet facet);
     void SetReg(X86Reg reg, Facet facet, llvm::Value*, bool clear_facets);
 
-    const RegisterSet& ModifiedRegs() const {
-        return modified_regs;
-    }
+    const RegisterSet& ModifiedRegs() const { return modified_regs; }
 
 private:
     llvm::BasicBlock* insert_block;

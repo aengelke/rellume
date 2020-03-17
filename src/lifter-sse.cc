@@ -25,11 +25,11 @@
 
 #include "facet.h"
 #include "instr.h"
+
 #include <llvm/IR/IRBuilder.h>
 #include <llvm/IR/Value.h>
+
 #include <algorithm>
-
-
 
 /**
  * \defgroup LLInstructionSSE SSE Instructions
@@ -65,7 +65,7 @@ void Lifter::LiftFxsave(const Instr& inst) {
     // TODO: FCW=0x37f, MXCSR=0x1f80, MXCSR_MASK=0xffff
     irb.CreateMemSet(buf, irb.getInt8(0), 0xa0, 16);
     for (unsigned i = 0; i < 16; i++) {
-        llvm::Value* ptr = irb.CreateConstGEP1_32(buf, 0xa0 + 0x10*i);
+        llvm::Value* ptr = irb.CreateConstGEP1_32(buf, 0xa0 + 0x10 * i);
         ptr = irb.CreatePointerCast(ptr, irb.getIntNTy(128)->getPointerTo());
         irb.CreateStore(GetReg(X86Reg::VEC(i), Facet::I128), ptr);
     }
@@ -77,7 +77,7 @@ void Lifter::LiftFxrstor(const Instr& inst) {
     irb.CreateAlignmentAssumption(mod->getDataLayout(), buf, 16);
 
     for (unsigned i = 0; i < 16; i++) {
-        llvm::Value* ptr = irb.CreateConstGEP1_32(buf, 0xa0 + 0x10*i);
+        llvm::Value* ptr = irb.CreateConstGEP1_32(buf, 0xa0 + 0x10 * i);
         ptr = irb.CreatePointerCast(ptr, irb.getIntNTy(128)->getPointerTo());
         SetReg(X86Reg::VEC(i), Facet::I128, irb.CreateLoad(ptr));
     }
@@ -95,12 +95,12 @@ void Lifter::LiftStmxcsr(const Instr& inst) {
     OpStoreGp(inst.op(0), irb.getInt32(0x1f80));
 }
 
-void Lifter::LiftSseMovq(const Instr& inst, Facet type)
-{
+void Lifter::LiftSseMovq(const Instr& inst, Facet type) {
     llvm::Value* op1 = OpLoad(inst.op(1), type);
     if (inst.op(0).is_reg() && inst.op(0).reg().rt == FD_RT_VEC) {
         llvm::Type* el_ty = op1->getType();
-        llvm::Type* vector_ty = llvm::VectorType::get(el_ty, 128 / el_ty->getPrimitiveSizeInBits());
+        unsigned el_sz = el_ty->getPrimitiveSizeInBits();
+        llvm::Type* vector_ty = llvm::VectorType::get(el_ty, 128 / el_sz);
         llvm::Value* zero = llvm::Constant::getNullValue(vector_ty);
         llvm::Value* zext = irb.CreateInsertElement(zero, op1, 0ul);
         OpStoreVec(inst.op(0), zext);
@@ -113,7 +113,8 @@ void Lifter::LiftSseMovScalar(const Instr& inst, Facet facet) {
     llvm::Value* src = OpLoad(inst.op(1), facet);
     if (inst.op(1).is_mem()) {
         llvm::Type* el_ty = src->getType();
-        llvm::Type* vector_ty = llvm::VectorType::get(el_ty, 128 / el_ty->getPrimitiveSizeInBits());
+        unsigned el_sz = el_ty->getPrimitiveSizeInBits();
+        llvm::Type* vector_ty = llvm::VectorType::get(el_ty, 128 / el_sz);
         llvm::Value* zero = llvm::Constant::getNullValue(vector_ty);
         llvm::Value* zext = irb.CreateInsertElement(zero, src, 0ul);
         OpStoreVec(inst.op(0), zext);
@@ -122,8 +123,7 @@ void Lifter::LiftSseMovScalar(const Instr& inst, Facet facet) {
     }
 }
 
-void Lifter::LiftSseMovdq(const Instr& inst, Facet facet,
-                           Alignment alignment) {
+void Lifter::LiftSseMovdq(const Instr& inst, Facet facet, Alignment alignment) {
     OpStoreVec(inst.op(0), OpLoad(inst.op(1), facet, alignment), alignment);
 }
 
@@ -132,8 +132,9 @@ void Lifter::LiftSseMovntStore(const Instr& inst, Facet facet) {
     llvm::Value* addr = OpAddr(inst.op(0), value->getType(), inst.op(0).seg());
     llvm::StoreInst* store = irb.CreateStore(value, addr);
     store->setAlignment(value->getType()->getPrimitiveSizeInBits() / 8);
-    llvm::MDNode* node = llvm::MDNode::get(store->getContext(),
-            llvm::ConstantAsMetadata::get(irb.getInt32(1)));
+
+    llvm::Metadata* const_1 = llvm::ConstantAsMetadata::get(irb.getInt32(1));
+    llvm::MDNode* node = llvm::MDNode::get(store->getContext(), const_1);
     store->setMetadata(GetModule()->getMDKindID("nontemporal"), node);
 }
 

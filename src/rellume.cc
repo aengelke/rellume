@@ -28,13 +28,15 @@
 #include "function.h"
 #include "instr.h"
 #include "transforms.h"
-#include <fadec.h>
+
+#include <llvm-c/Core.h>
 #include <llvm/IR/Module.h>
 #include <llvm/IR/Value.h>
-#include <llvm-c/Core.h>
+
+#include <fadec.h>
+
 #include <cstdbool>
 #include <cstdint>
-
 
 namespace {
 static rellume::LLConfig* unwrap(LLConfig* fn) {
@@ -43,16 +45,15 @@ static rellume::LLConfig* unwrap(LLConfig* fn) {
 static rellume::Function* unwrap(LLFunc* fn) {
     return reinterpret_cast<rellume::Function*>(fn);
 }
-}
+} // namespace
 
 LLConfig* ll_config_new(void) {
     return reinterpret_cast<LLConfig*>(new rellume::LLConfig());
 }
-void ll_config_free(LLConfig* cfg) {
-    delete unwrap(cfg);
-}
+void ll_config_free(LLConfig* cfg) { delete unwrap(cfg); }
 void ll_config_set_hhvm(LLConfig* cfg, bool hhvm) {
-    unwrap(cfg)->callconv = hhvm ? rellume::CallConv::HHVM : rellume::CallConv::SPTR;
+    rellume::LLConfig* rlcfg = unwrap(cfg);
+    rlcfg->callconv = hhvm ? rellume::CallConv::HHVM : rellume::CallConv::SPTR;
 }
 void ll_config_set_sptr_addrspace(LLConfig* cfg, unsigned addrspace) {
     unwrap(cfg)->sptr_addrspace = addrspace;
@@ -69,11 +70,13 @@ void ll_config_enable_verify_ir(LLConfig* cfg, bool enable) {
 void ll_config_set_position_independent_code(LLConfig* cfg, bool enable) {
     unwrap(cfg)->position_independent_code = enable;
 }
-void ll_config_set_global_base(LLConfig* cfg, uintptr_t base, LLVMValueRef value) {
+void ll_config_set_global_base(LLConfig* cfg, uintptr_t base,
+                               LLVMValueRef value) {
     unwrap(cfg)->global_base_addr = base;
     unwrap(cfg)->global_base_value = llvm::unwrap(value);
 }
-void ll_config_set_instr_impl(LLConfig* cfg, FdInstrType type, LLVMValueRef value) {
+void ll_config_set_instr_impl(LLConfig* cfg, FdInstrType type,
+                              LLVMValueRef value) {
     unwrap(cfg)->instr_overrides[type] = llvm::unwrap<llvm::Function>(value);
 }
 void ll_config_set_syscall_impl(LLConfig* cfg, LLVMValueRef value) {
@@ -92,20 +95,18 @@ void ll_config_set_use_native_segment_base(LLConfig* cfg, bool enable) {
     unwrap(cfg)->use_native_segment_base = enable;
 }
 
+// Rellume Function API
 
 LLFunc* ll_func_new(LLVMModuleRef mod, LLConfig* cfg) {
-    return reinterpret_cast<LLFunc*>(new rellume::Function(llvm::unwrap(mod), unwrap(cfg)));
+    return reinterpret_cast<LLFunc*>(
+        new rellume::Function(llvm::unwrap(mod), unwrap(cfg)));
 }
 
 void ll_func_add_inst(LLFunc* fn, uint64_t block_addr, FdInstr* instr) {
     unwrap(fn)->AddInst(block_addr, *static_cast<const rellume::Instr*>(instr));
 }
-LLVMValueRef ll_func_lift(LLFunc* fn) {
-    return llvm::wrap(unwrap(fn)->Lift());
-}
-void ll_func_dispose(LLFunc* fn) {
-    delete unwrap(fn);
-}
+LLVMValueRef ll_func_lift(LLFunc* fn) { return llvm::wrap(unwrap(fn)->Lift()); }
+void ll_func_dispose(LLFunc* fn) { delete unwrap(fn); }
 
 static int ll_func_decode(LLFunc* func, uintptr_t addr,
                           rellume::Function::DecodeStop stop,
@@ -133,8 +134,8 @@ int ll_func_decode_block(LLFunc* func, uintptr_t addr,
     return ll_func_decode(func, addr, rellume::Function::DecodeStop::BASICBLOCK,
                           mem_acc, user_arg);
 }
-int ll_func_decode_cfg(LLFunc* func, uintptr_t addr,
-                       RellumeMemAccessCb mem_acc, void* user_arg) {
+int ll_func_decode_cfg(LLFunc* func, uintptr_t addr, RellumeMemAccessCb mem_acc,
+                       void* user_arg) {
     return ll_func_decode(func, addr, rellume::Function::DecodeStop::ALL,
                           mem_acc, user_arg);
 }

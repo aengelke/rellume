@@ -28,26 +28,33 @@
 
 #include <llvm/IR/BasicBlock.h>
 #include <llvm/IR/Value.h>
+
 #include <tuple>
 #include <vector>
-
 
 namespace rellume {
 
 class X86Reg {
 public:
     enum class RegKind : uint8_t {
-        INVALID = 0, GP /*64-bit*/, IP /*64-bit*/, EFLAGS, VEC,
+        INVALID = 0,
+        GP,     // 64-bit
+        IP,     // 64-bit
+        EFLAGS, // 7 x 1-bit
+        VEC,    // >= 128-bit
     };
+
 private:
     RegKind kind;
     uint8_t index;
+
 public:
-    constexpr X86Reg()
-            : kind(RegKind::INVALID), index(0) {}
+    constexpr X86Reg() : kind(RegKind::INVALID), index(0) {}
+
 private:
     constexpr X86Reg(RegKind kind, uint8_t index = 0)
-            : kind(kind), index(index) {}
+        : kind(kind), index(index) {}
+
 public:
     RegKind Kind() const { return kind; }
     uint8_t Index() const { return index; }
@@ -58,8 +65,12 @@ public:
         return kind == rhs.kind && index == rhs.index;
     }
 
-    static constexpr X86Reg GP(unsigned idx) { return X86Reg(RegKind::GP, idx); }
-    static constexpr X86Reg VEC(unsigned idx) { return X86Reg(RegKind::VEC, idx); }
+    static constexpr X86Reg GP(unsigned idx) {
+        return X86Reg(RegKind::GP, idx);
+    }
+    static constexpr X86Reg VEC(unsigned idx) {
+        return X86Reg(RegKind::VEC, idx);
+    }
     static const X86Reg RAX, RCX, RDX, RBX, RSP, RBP, RSI, RDI;
     static const X86Reg IP;
     static const X86Reg EFLAGS;
@@ -99,8 +110,7 @@ public:
     }
 };
 
-class RegFile
-{
+class RegFile {
 public:
     RegFile();
     ~RegFile();
@@ -128,6 +138,6 @@ private:
     std::unique_ptr<impl> pimpl;
 };
 
-} // namespace
+} // namespace rellume
 
 #endif
