@@ -76,7 +76,8 @@ static const std::tuple<unsigned, X86Reg, Facet> cpu_struct_entries[] = {
 #undef RELLUME_MAPPED_REG
 };
 
-llvm::Value* CallConv::Pack(RegFile& regfile, FunctionInfo& fi) const {
+llvm::Value* CallConv::Pack(RegFile& regfile, FunctionInfo& fi,
+                            RegisterSet* modified_regs) const {
     llvm::IRBuilder<> irb(regfile.GetInsertBlock());
 
     llvm::Value* ret_val = nullptr;
@@ -103,7 +104,7 @@ llvm::Value* CallConv::Pack(RegFile& regfile, FunctionInfo& fi) const {
             }
         }
 
-        if (!fi.modified_regs_final || fi.modified_regs[sptr_idx]) {
+        if (!modified_regs || modified_regs->Get(reg, facet)) {
             // GetReg moved in here to avoid generating dozens of dead PHI nodes
             irb.CreateStore(regfile.GetReg(reg, facet), fi.sptr[sptr_idx]);
         }
@@ -131,7 +132,11 @@ void CallConv::Unpack(RegFile& regfile, FunctionInfo& fi) const {
         if (reg_val == nullptr)
             reg_val = irb.CreateLoad(fi.sptr[sptr_idx]);
 
-        fi.modified_regs.set(sptr_idx);
+        // This also marks the register as modified. This is necessary, because
+        // a SPTR-function may call a HHVM-function, in which case the modified
+        // values need to be written back to the CPU structure.
+        //
+        // TODO: optimize for cases where the calling convention is identical.
         regfile.SetReg(reg, facet, reg_val, false);
     }
 }

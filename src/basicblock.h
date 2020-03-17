@@ -115,6 +115,13 @@ public:
             res |= lb->FillPhis();
         return res;
     }
+
+    RegisterSet ModifiedRegs() {
+        RegisterSet res;
+        for (const auto& lb : low_blocks)
+            res.Add(lb->GetRegFile()->ModifiedRegs());
+        return res;
+    }
 };
 
 }

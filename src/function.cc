@@ -97,10 +97,6 @@ Function::Function(llvm::Module* mod, LLConfig* cfg) : cfg(cfg), fi{}
     cfg->callconv.Unpack(*entry_regfile, fi);
 
     fi.entry_ip_value = entry_regfile->GetReg(X86Reg::IP, Facet::I64);
-
-    // The entry block doesn't modify any registers, so remove the ones set by
-    // loading the registers from the sptr.
-    fi.modified_regs.reset();
 }
 
 Function::~Function() = default;
@@ -144,14 +140,17 @@ llvm::Function* Function::Lift() {
     if (block_map.size() == 0)
         return nullptr;
 
-    // For the exit block, no registers are modified anymore.
-    fi.modified_regs_final = true;
+    // Merge modified registers from all generated basic blocks.
+    RegisterSet modified_regs;
+    for (auto& item : block_map)
+        modified_regs.Add(item.second->ModifiedRegs());
+
     exit_block = std::make_unique<ArchBasicBlock>(fi);
 
     // Exit block packs values together and optionally returns something.
     RegFile* exit_regfile = exit_block->GetInsertBlock()->GetRegFile();
     llvm::IRBuilder<> irb(exit_regfile->GetInsertBlock());
-    irb.CreateRet(cfg->callconv.Pack(*exit_regfile, fi));
+    irb.CreateRet(cfg->callconv.Pack(*exit_regfile, fi, &modified_regs));
 
     entry_block->BranchTo(*block_map[fi.entry_ip]);
 

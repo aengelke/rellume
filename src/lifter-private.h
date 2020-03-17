@@ -102,14 +102,9 @@ protected:
         return regfile->GetReg(reg, facet);
     }
     void SetReg(X86Reg reg, Facet facet, llvm::Value* value) {
-        fi.ModifyReg(reg);
         regfile->SetReg(reg, facet, value, true); // clear all other facets
     }
     void SetRegFacet(X86Reg reg, Facet facet, llvm::Value* value) {
-        // TODO: be more accurate about flags
-        // Currently, when a single flag is modified, all other flags are marked
-        // as modified as well.
-        fi.ModifyReg(reg);
         regfile->SetReg(reg, facet, value, false);
     }
     void SetRegPtr(X86Reg reg, llvm::Value* value) {
@@ -125,7 +120,7 @@ protected:
     void SetFlagUndef(std::initializer_list<Facet> facets) {
         llvm::Value* undef = llvm::UndefValue::get(irb.getInt1Ty());
         for (const auto facet : facets)
-            SetRegFacet(X86Reg::EFLAGS, facet, undef);
+            SetFlag(facet, undef);
     }
     void SetIP(uint64_t inst_addr, bool nofold = false);
 

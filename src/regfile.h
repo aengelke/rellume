@@ -76,6 +76,28 @@ constexpr const X86Reg X86Reg::RDI = X86Reg::GP(7);
 constexpr const X86Reg X86Reg::IP{X86Reg::RegKind::IP, 0};
 constexpr const X86Reg X86Reg::EFLAGS{X86Reg::RegKind::EFLAGS, 0};
 
+class RegisterSet {
+private:
+    uint16_t gp;
+    uint8_t flags;
+    uint16_t vec;
+
+public:
+    RegisterSet() : gp(0), flags(0), vec(0) {}
+
+private:
+    bool TestSet(X86Reg reg, Facet facet, unsigned set);
+
+public:
+    bool Get(X86Reg reg, Facet facet) { return TestSet(reg, facet, 0); }
+    void Set(X86Reg reg, Facet facet) { TestSet(reg, facet, 1); }
+
+    void Add(const RegisterSet& other) {
+        gp |= other.gp;
+        flags |= other.flags;
+        vec |= other.vec;
+    }
+};
 
 class RegFile
 {
@@ -98,6 +120,8 @@ public:
 
     llvm::Value* GetReg(X86Reg reg, Facet facet);
     void SetReg(X86Reg reg, Facet facet, llvm::Value*, bool clear_facets);
+
+    const RegisterSet& ModifiedRegs() const;
 
 private:
     class impl;

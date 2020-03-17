@@ -55,20 +55,6 @@ struct FunctionInfo {
 
     uint64_t entry_ip;
     llvm::Value* entry_ip_value;
-
-    // A set of all register ever modified in the function. To prevent use of
-    // this optimization for cconv packs inside a function (which would be
-    // incorrect), a separate flag is set in the end.
-    bool modified_regs_final;
-    std::bitset<SptrIdx::MAX> modified_regs;
-    // Mark all stored facets of a register as modified
-    void ModifyReg(X86Reg reg_rq) {
-#define RELLUME_MAPPED_REG(nameu,off,reg,facet) \
-        if (reg_rq == reg) \
-            modified_regs.set(SptrIdx::nameu);
-#include <rellume/cpustruct-private.inc>
-#undef RELLUME_MAPPED_REG
-    }
 };
 
 

@@ -34,6 +34,7 @@ namespace rellume {
 
 class FunctionInfo;
 class RegFile;
+class RegisterSet;
 
 class CallConv {
 public:
@@ -48,7 +49,8 @@ public:
 
     // Pack values from regfile into the CPU struct. The return value for the
     // function is returned (or NULL for void).
-    llvm::Value* Pack(RegFile& regfile, FunctionInfo& fi) const;
+    llvm::Value* Pack(RegFile& regfile, FunctionInfo& fi,
+                      RegisterSet* modified_regs = nullptr) const;
     // Unpack values from val (usually the function) into the register file. For
     // SPTR, val can also be the CPU struct pointer directly.
     void Unpack(RegFile& regfile, FunctionInfo& fi) const;

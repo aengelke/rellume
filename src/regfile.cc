@@ -38,6 +38,34 @@
 
 namespace rellume {
 
+bool RegisterSet::TestSet(X86Reg reg, Facet facet, unsigned set) {
+    unsigned idx = reg.Index();
+    switch (reg.Kind()) {
+    case X86Reg::RegKind::GP:
+        return ((gp |= (set << idx)) >> idx) & 1;
+    case X86Reg::RegKind::IP:
+        return true;
+    case X86Reg::RegKind::EFLAGS:
+        idx = 7;
+        switch (facet) {
+        case Facet::OF: idx = 0; break;
+        case Facet::SF: idx = 1; break;
+        case Facet::ZF: idx = 2; break;
+        case Facet::AF: idx = 3; break;
+        case Facet::PF: idx = 4; break;
+        case Facet::CF: idx = 5; break;
+        case Facet::DF: idx = 6; break;
+        default: assert(false && "invalid facet for EFLAGS register");
+        }
+        return ((flags |= (set << idx)) >> idx) & 1;
+    case X86Reg::RegKind::VEC:
+        return ((vec |= (set << idx)) >> idx) & 1;
+    default:
+        assert(false && "invalid register kind");
+    }
+    return false;
+}
+
 class DeferredValueBase {
 public:
     using Generator = llvm::Value* (*)(X86Reg, Facet, llvm::BasicBlock*, void*);
@@ -145,7 +173,7 @@ using ValueMapFlags = ValueMap<R, Facet::ZF, Facet::SF, Facet::PF, Facet::CF, Fa
 
 class RegFile::impl {
 public:
-    impl() : insert_block(nullptr) {}
+    impl() : insert_block(nullptr), modified_regs() {}
 
     llvm::BasicBlock* GetInsertBlock() { return insert_block; }
     void SetInsertBlock(llvm::BasicBlock* n) { insert_block = n; }
@@ -156,12 +184,18 @@ public:
     llvm::Value* GetReg(X86Reg reg, Facet facet);
     void SetReg(X86Reg reg, Facet facet, llvm::Value*, bool clear_facets);
 
+    const RegisterSet& ModifiedRegs() const {
+        return modified_regs;
+    }
+
 private:
     llvm::BasicBlock* insert_block;
     ValueMapGp<DeferredValueBase> regs_gp[16];
     ValueMapSse<DeferredValueBase> regs_sse[16];
     DeferredValueBase reg_ip;
     ValueMapFlags<DeferredValueBase> flags;
+
+    RegisterSet modified_regs;
 
     DeferredValueBase* AccessRegFacet(X86Reg reg, Facet facet);
     llvm::Value* GetRegFacet(X86Reg reg, Facet facet);
@@ -383,6 +417,8 @@ void RegFile::impl::SetReg(X86Reg reg, Facet facet, llvm::Value* value,
     DeferredValueBase* facet_entry = AccessRegFacet(reg, facet);
     assert(facet_entry && "attempt to store invalid facet");
     *facet_entry = value;
+
+    modified_regs.Set(reg, facet);
 }
 
 RegFile::RegFile() : pimpl{std::make_unique<impl>()} {}
@@ -395,6 +431,9 @@ void RegFile::InitWithPHIs(std::vector<PhiDesc>* d) { pimpl->InitWithPHIs(d); }
 llvm::Value* RegFile::GetReg(X86Reg r, Facet f) { return pimpl->GetReg(r, f); }
 void RegFile::SetReg(X86Reg reg, Facet facet, llvm::Value* value, bool clear) {
     pimpl->SetReg(reg, facet, value, clear);
+}
+const RegisterSet& RegFile::ModifiedRegs() const {
+    return pimpl->ModifiedRegs();
 }
 
 } // namespace rellume
