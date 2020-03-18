@@ -60,10 +60,10 @@ void LifterBase::CallExternalFunction(llvm::Function* fn) {
 
     // Pack all state into the CPU struct.
     CallConv sptr_conv = CallConv::SPTR;
-    sptr_conv.Pack(*regfile, fi);
+    sptr_conv.Pack(ablock.GetInsertBlock(), fi);
     llvm::CallInst* call = irb.CreateCall(fn_type, fn, {fi.sptr_raw});
     regfile->Clear(); // Clear all facets before importing register state
-    sptr_conv.Unpack(*regfile, fi);
+    sptr_conv.Unpack(ablock.GetInsertBlock(), fi);
 
     // Directly inline alwaysinline functions
     if (fn->hasFnAttribute(llvm::Attribute::AlwaysInline)) {

@@ -95,7 +95,7 @@ Function::Function(llvm::Module* mod, LLConfig* cfg) : cfg(cfg), fi{}
     CreateSptrs(fi, entry_regfile->GetInsertBlock());
     // And initially fill register file.
     entry_regfile->Clear();
-    cfg->callconv.Unpack(*entry_regfile, fi);
+    cfg->callconv.Unpack(entry_block->GetInsertBlock(), fi);
 
     fi.entry_ip_value = entry_regfile->GetReg(X86Reg::IP, Facet::I64);
 }
@@ -141,17 +141,12 @@ llvm::Function* Function::Lift() {
     if (block_map.size() == 0)
         return nullptr;
 
-    // Merge modified registers from all generated basic blocks.
-    RegisterSet modified_regs;
-    for (auto& item : block_map)
-        modified_regs |= item.second->ModifiedRegs();
-
     exit_block = std::make_unique<ArchBasicBlock>(llvm);
 
     // Exit block packs values together and optionally returns something.
     RegFile* exit_regfile = exit_block->GetInsertBlock()->GetRegFile();
     llvm::IRBuilder<> irb(exit_regfile->GetInsertBlock());
-    irb.CreateRet(cfg->callconv.Pack(*exit_regfile, fi, &modified_regs));
+    irb.CreateRet(cfg->callconv.Pack(exit_block->GetInsertBlock(), fi));
 
     entry_block->BranchTo(*block_map[fi.entry_ip]);
 
@@ -166,6 +161,8 @@ llvm::Function* Function::Lift() {
             it->second->BranchTo(ResolveAddr(next_rip));
         }
     }
+
+    CallConv::OptimizePacks(fi, entry_block->GetInsertBlock());
 
     // Walk over blocks as long as phi nodes could have been added. We stop when
     // alls phis are filled.

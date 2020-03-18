@@ -23,6 +23,7 @@
 
 #include "callconv.h"
 
+#include "basicblock.h"
 #include "function-info.h"
 #include "regfile.h"
 #include <llvm/IR/Function.h>
@@ -76,15 +77,21 @@ static const std::tuple<unsigned, X86Reg, Facet> cpu_struct_entries[] = {
 #undef RELLUME_MAPPED_REG
 };
 
-llvm::Value* CallConv::Pack(RegFile& regfile, FunctionInfo& fi,
-                            RegisterSet* modified_regs) const {
+llvm::Value* CallConv::Pack(BasicBlock* bb, FunctionInfo& fi) const {
+    RegFile& regfile = *bb->GetRegFile();
     llvm::IRBuilder<> irb(regfile.GetInsertBlock());
 
     llvm::Value* ret_val = nullptr;
     if (*this == CallConv::HHVM)
         ret_val = llvm::UndefValue::get(fi.fn->getReturnType());
 
+    CallConvPack& pack_info = fi.call_conv_packs.emplace_back();
+    pack_info.block_dirty_regs = regfile.DirtyRegs();
+    pack_info.bb = bb;
+
     for (const auto& [sptr_idx, reg, facet] : cpu_struct_entries) {
+        llvm::Value* reg_val = regfile.GetReg(reg, facet);
+
         if (*this == CallConv::HHVM) {
             int ins_idx = -1;
             if (reg.IsGP() && reg.Index() < 12) {
@@ -98,23 +105,22 @@ llvm::Value* CallConv::Pack(RegFile& regfile, FunctionInfo& fi,
 
             if (ins_idx >= 0) {
                 unsigned ins_idx_u = static_cast<unsigned>(ins_idx);
-                llvm::Value* reg_val = regfile.GetReg(reg, facet);
                 ret_val = irb.CreateInsertValue(ret_val, reg_val, {ins_idx_u});
                 continue;
             }
         }
 
         unsigned regset_idx = RegisterSetBitIdx(reg, facet);
-        if (!modified_regs || modified_regs->test(regset_idx)) {
-            // GetReg moved in here to avoid generating dozens of dead PHI nodes
-            irb.CreateStore(regfile.GetReg(reg, facet), fi.sptr[sptr_idx]);
-        }
+        regfile.DirtyRegs()[regset_idx] = false;
+        regfile.CleanedRegs()[regset_idx] = true;
+        pack_info.stores[sptr_idx] = irb.CreateStore(reg_val, fi.sptr[sptr_idx]);
     }
 
     return ret_val;
 }
 
-void CallConv::Unpack(RegFile& regfile, FunctionInfo& fi) const {
+void CallConv::Unpack(BasicBlock* bb, FunctionInfo& fi) const {
+    RegFile& regfile = *bb->GetRegFile();
     llvm::IRBuilder<> irb(regfile.GetInsertBlock());
 
     for (const auto& [sptr_idx, reg, facet] : cpu_struct_entries) {
@@ -130,15 +136,63 @@ void CallConv::Unpack(RegFile& regfile, FunctionInfo& fi) const {
             }
         }
 
-        if (reg_val == nullptr)
+        bool load_from_sptr = reg_val == nullptr;
+        if (load_from_sptr)
             reg_val = irb.CreateLoad(fi.sptr[sptr_idx]);
 
-        // This also marks the register as modified. This is necessary, because
-        // a SPTR-function may call a HHVM-function, in which case the modified
-        // values need to be written back to the CPU structure.
-        //
-        // TODO: optimize for cases where the calling convention is identical.
+        // Mark register only as modified if it didn't come from the sptr.
         regfile.SetReg(reg, facet, reg_val, false);
+        if (load_from_sptr)
+            regfile.DirtyRegs()[RegisterSetBitIdx(reg, facet)] = false;
+    }
+}
+
+void CallConv::OptimizePacks(FunctionInfo& fi, BasicBlock* entry) {
+    // Map of basic block to dirty register at (beginning, end) of the block.
+    llvm::DenseMap<BasicBlock*, std::pair<RegisterSet, RegisterSet>> bb_map;
+
+    llvm::SmallPtrSet<BasicBlock*, 16> queue;
+    llvm::SmallVector<BasicBlock*, 16> queue_vec;
+    queue.insert(entry);
+    queue_vec.push_back(entry);
+
+    while (!queue.empty()) {
+        llvm::SmallVector<BasicBlock*, 16> new_queue_vec;
+        for (BasicBlock* bb : queue_vec) {
+            queue.erase(bb);
+            RegisterSet pre;
+            for (BasicBlock* pred : bb->Predecessors())
+                pre |= bb_map.lookup(pred).second;
+
+            RegFile* rf = bb->GetRegFile();
+            RegisterSet post = (pre & ~rf->CleanedRegs()) | rf->DirtyRegs();
+            auto new_regsets = std::make_pair(pre, post);
+
+            auto [it, inserted] = bb_map.try_emplace(bb, new_regsets);
+            // If it is the first time we look at bb, or the set of dirty
+            // registers changed, look at successors (again).
+            if (inserted || it->second.second != post) {
+                for (BasicBlock* succ : bb->Successors()) {
+                    // If user not in the set, then add it to the vector.
+                    if (queue.insert(succ).second)
+                        new_queue_vec.push_back(succ);
+                }
+            }
+
+            // Ensure that we store the new value.
+            if (!inserted)
+                it->second = new_regsets;
+        }
+        queue_vec = std::move(new_queue_vec);
+    }
+
+    for (const auto& pack : fi.call_conv_packs) {
+        RegisterSet regset = bb_map.lookup(pack.bb).first | pack.block_dirty_regs;
+        for (const auto& [sptr_idx, reg, facet] : cpu_struct_entries) {
+            if (pack.stores[sptr_idx] && !regset[RegisterSetBitIdx(reg, facet)]) {
+                pack.stores[sptr_idx]->eraseFromParent();
+            }
+        }
     }
 }
 

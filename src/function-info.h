@@ -27,7 +27,7 @@
 #include "regfile.h"
 #include <cstdbool>
 #include <cstdint>
-#include <bitset>
+#include <vector>
 
 
 namespace llvm {
@@ -46,6 +46,14 @@ namespace SptrIdx {
     };
 }
 
+class BasicBlock;
+
+struct CallConvPack {
+    RegisterSet block_dirty_regs;
+    BasicBlock* bb;
+    llvm::StoreInst* stores[SptrIdx::MAX];
+};
+
 struct FunctionInfo {
     /// The function itself
     llvm::Function* fn;
@@ -55,6 +63,8 @@ struct FunctionInfo {
 
     uint64_t entry_ip;
     llvm::Value* entry_ip_value;
+
+    std::vector<CallConvPack> call_conv_packs;
 };
 
 

@@ -52,6 +52,13 @@ public:
         return &regfile;
     }
 
+    const std::vector<BasicBlock*>& Predecessors() const {
+        return predecessors;
+    }
+    const std::vector<BasicBlock*>& Successors() const {
+        return successors;
+    }
+
 private:
     /// First LLVM basic block for the x86 basic block.
     llvm::BasicBlock* llvm_block;
@@ -111,13 +118,6 @@ public:
         bool res = false;
         for (const auto& lb : low_blocks)
             res |= lb->FillPhis();
-        return res;
-    }
-
-    RegisterSet ModifiedRegs() {
-        RegisterSet res;
-        for (const auto& lb : low_blocks)
-            res |= lb->GetRegFile()->ModifiedRegs();
         return res;
     }
 };

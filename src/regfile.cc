@@ -178,7 +178,7 @@ using ValueMapFlags = ValueMap<R, Facet::ZF, Facet::SF, Facet::PF, Facet::CF, Fa
 
 class RegFile::impl {
 public:
-    impl() : insert_block(nullptr), modified_regs() {}
+    impl() : insert_block(nullptr), dirty_regs(), cleaned_regs() {}
 
     llvm::BasicBlock* GetInsertBlock() { return insert_block; }
     void SetInsertBlock(llvm::BasicBlock* n) { insert_block = n; }
@@ -189,7 +189,8 @@ public:
     llvm::Value* GetReg(X86Reg reg, Facet facet);
     void SetReg(X86Reg reg, Facet facet, llvm::Value*, bool clear_facets);
 
-    const RegisterSet& ModifiedRegs() const { return modified_regs; }
+    RegisterSet& DirtyRegs() { return dirty_regs; }
+    RegisterSet& CleanedRegs() { return cleaned_regs; }
 
 private:
     llvm::BasicBlock* insert_block;
@@ -198,7 +199,8 @@ private:
     DeferredValueBase reg_ip;
     ValueMapFlags<DeferredValueBase> flags;
 
-    RegisterSet modified_regs;
+    RegisterSet dirty_regs;
+    RegisterSet cleaned_regs;
 
     DeferredValueBase* AccessRegFacet(X86Reg reg, Facet facet);
     llvm::Value* GetRegFacet(X86Reg reg, Facet facet);
@@ -426,7 +428,7 @@ void RegFile::impl::SetReg(X86Reg reg, Facet facet, llvm::Value* value,
     assert(facet_entry && "attempt to store invalid facet");
     *facet_entry = value;
 
-    modified_regs[RegisterSetBitIdx(reg, facet)] = true;
+    dirty_regs[RegisterSetBitIdx(reg, facet)] = true;
 }
 
 RegFile::RegFile() : pimpl{std::make_unique<impl>()} {}
@@ -440,8 +442,7 @@ llvm::Value* RegFile::GetReg(X86Reg r, Facet f) { return pimpl->GetReg(r, f); }
 void RegFile::SetReg(X86Reg reg, Facet facet, llvm::Value* value, bool clear) {
     pimpl->SetReg(reg, facet, value, clear);
 }
-const RegisterSet& RegFile::ModifiedRegs() const {
-    return pimpl->ModifiedRegs();
-}
+RegisterSet& RegFile::DirtyRegs() { return pimpl->DirtyRegs(); }
+RegisterSet& RegFile::CleanedRegs() { return pimpl->CleanedRegs(); }
 
 } // namespace rellume

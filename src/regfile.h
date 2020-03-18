@@ -112,7 +112,8 @@ public:
     llvm::Value* GetReg(X86Reg reg, Facet facet);
     void SetReg(X86Reg reg, Facet facet, llvm::Value*, bool clear_facets);
 
-    const RegisterSet& ModifiedRegs() const;
+    RegisterSet& DirtyRegs();
+    RegisterSet& CleanedRegs();
 
 private:
     class impl;
