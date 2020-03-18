@@ -63,6 +63,7 @@ private:
     RegFile regfile;
 
     std::vector<BasicBlock*> predecessors;
+    std::vector<BasicBlock*> successors;
     std::vector<std::tuple<X86Reg, Facet, llvm::PHINode*>> empty_phis;
 };
 

@@ -67,6 +67,7 @@ void BasicBlock::BranchTo(BasicBlock& next) {
     llvm::IRBuilder<> irb(llvm_block);
     irb.CreateBr(next.llvm_block);
     next.predecessors.push_back(this);
+    successors.push_back(&next);
 }
 
 void BasicBlock::BranchTo(llvm::Value* cond, BasicBlock& then,
@@ -83,6 +84,8 @@ void BasicBlock::BranchTo(llvm::Value* cond, BasicBlock& then,
     irb.CreateCondBr(cond, then.llvm_block, other.llvm_block);
     then.predecessors.push_back(this);
     other.predecessors.push_back(this);
+    successors.push_back(&then);
+    successors.push_back(&other);
 }
 
 bool BasicBlock::FillPhis() {
