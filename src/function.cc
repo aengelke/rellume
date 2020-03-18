@@ -88,7 +88,7 @@ Function::Function(llvm::Module* mod, LLConfig* cfg) : cfg(cfg), fi{}
     fi.sptr_raw = &llvm->arg_begin()[cpu_param_idx];
 
     // Create entry basic block as first block in the function.
-    entry_block = std::make_unique<ArchBasicBlock>(fi, /*no_phis=*/true);
+    entry_block = std::make_unique<ArchBasicBlock>(llvm, /*no_phis=*/true);
 
     // Initialize the sptr pointers in the function info.
     RegFile* entry_regfile = entry_block->GetInsertBlock()->GetRegFile();
@@ -112,7 +112,7 @@ bool Function::AddInst(uint64_t block_addr, const Instr& inst)
         }
     }
     if (block_map.find(block_addr) == block_map.end())
-        block_map[block_addr] = std::make_unique<ArchBasicBlock>(fi);
+        block_map[block_addr] = std::make_unique<ArchBasicBlock>(llvm);
 
     return LiftInstruction(inst, fi, *cfg, *block_map[block_addr]);
 }
@@ -146,7 +146,7 @@ llvm::Function* Function::Lift() {
     for (auto& item : block_map)
         modified_regs |= item.second->ModifiedRegs();
 
-    exit_block = std::make_unique<ArchBasicBlock>(fi);
+    exit_block = std::make_unique<ArchBasicBlock>(llvm);
 
     // Exit block packs values together and optionally returns something.
     RegFile* exit_regfile = exit_block->GetInsertBlock()->GetRegFile();

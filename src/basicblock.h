@@ -34,12 +34,9 @@
 
 namespace rellume {
 
-class FunctionInfo;
-
-class BasicBlock
-{
+class BasicBlock {
 public:
-    BasicBlock(FunctionInfo& fi, bool no_phis = false);
+    BasicBlock(llvm::Function* fn, bool no_phis = false);
 
     BasicBlock(BasicBlock&& rhs);
     BasicBlock& operator=(BasicBlock&& rhs);
@@ -70,14 +67,14 @@ private:
 class ArchBasicBlock
 {
 private:
-    FunctionInfo& fi;
+    llvm::Function* fn;
 
     std::vector<std::unique_ptr<BasicBlock>> low_blocks;
     BasicBlock* insert_block;
 
 public:
-    ArchBasicBlock(FunctionInfo& fi, bool no_phis = false) : fi(fi) {
-        low_blocks.push_back(std::make_unique<BasicBlock>(fi, no_phis));
+    ArchBasicBlock(llvm::Function* fn, bool no_phis = false) : fn(fn) {
+        low_blocks.push_back(std::make_unique<BasicBlock>(fn, no_phis));
         insert_block = low_blocks[0].get();
     }
 
@@ -94,7 +91,7 @@ private:
 
 public:
     BasicBlock* AddBlock() {
-        low_blocks.push_back(std::make_unique<BasicBlock>(fi));
+        low_blocks.push_back(std::make_unique<BasicBlock>(fn));
         return low_blocks[low_blocks.size()-1].get();
     }
     BasicBlock* GetInsertBlock() {

@@ -24,7 +24,6 @@
 #include "basicblock.h"
 
 #include "facet.h"
-#include "function-info.h"
 #include "regfile.h"
 #include <llvm/IR/BasicBlock.h>
 #include <llvm/IR/Constants.h>
@@ -48,9 +47,9 @@
 
 namespace rellume {
 
-BasicBlock::BasicBlock(FunctionInfo& fi, bool no_phis)
+BasicBlock::BasicBlock(llvm::Function* fn, bool no_phis)
         : regfile() {
-    llvm_block = llvm::BasicBlock::Create(fi.fn->getContext(), "", fi.fn, nullptr);
+    llvm_block = llvm::BasicBlock::Create(fn->getContext(), "", fn, nullptr);
     regfile.SetInsertBlock(llvm_block);
 
     if (!no_phis) {
