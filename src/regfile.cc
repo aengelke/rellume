@@ -41,32 +41,31 @@
 
 namespace rellume {
 
-bool RegisterSet::TestSet(X86Reg reg, Facet facet, unsigned set) {
-    unsigned idx = reg.Index();
+unsigned RegisterSetBitIdx(X86Reg reg, Facet facet) {
     switch (reg.Kind()) {
     case X86Reg::RegKind::GP:
-        return ((gp |= (set << idx)) >> idx) & 1;
+        return 0 + reg.Index();
     case X86Reg::RegKind::IP:
-        return true;
+        return 16;
     case X86Reg::RegKind::EFLAGS:
-        idx = 7;
         switch (facet) {
-        case Facet::OF: idx = 0; break;
-        case Facet::SF: idx = 1; break;
-        case Facet::ZF: idx = 2; break;
-        case Facet::AF: idx = 3; break;
-        case Facet::PF: idx = 4; break;
-        case Facet::CF: idx = 5; break;
-        case Facet::DF: idx = 6; break;
+        // clang-format off
+        case Facet::OF: return 17 + 0; break;
+        case Facet::SF: return 17 + 1; break;
+        case Facet::ZF: return 17 + 2; break;
+        case Facet::AF: return 17 + 3; break;
+        case Facet::PF: return 17 + 4; break;
+        case Facet::CF: return 17 + 5; break;
+        case Facet::DF: return 17 + 6; break;
         default: assert(false && "invalid facet for EFLAGS register");
         }
-        return ((flags |= (set << idx)) >> idx) & 1;
+        // clang-format on
     case X86Reg::RegKind::VEC:
-        return ((vec |= (set << idx)) >> idx) & 1;
+        return 24 + reg.Index();
     default:
         assert(false && "invalid register kind");
     }
-    return false;
+    return 0xffffffff;
 }
 
 class DeferredValueBase {
@@ -427,7 +426,7 @@ void RegFile::impl::SetReg(X86Reg reg, Facet facet, llvm::Value* value,
     assert(facet_entry && "attempt to store invalid facet");
     *facet_entry = value;
 
-    modified_regs.Set(reg, facet);
+    modified_regs[RegisterSetBitIdx(reg, facet)] = true;
 }
 
 RegFile::RegFile() : pimpl{std::make_unique<impl>()} {}

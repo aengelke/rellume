@@ -144,7 +144,7 @@ llvm::Function* Function::Lift() {
     // Merge modified registers from all generated basic blocks.
     RegisterSet modified_regs;
     for (auto& item : block_map)
-        modified_regs.Add(item.second->ModifiedRegs());
+        modified_regs |= item.second->ModifiedRegs();
 
     exit_block = std::make_unique<ArchBasicBlock>(fi);
 

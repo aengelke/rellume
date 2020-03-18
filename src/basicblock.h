@@ -120,7 +120,7 @@ public:
     RegisterSet ModifiedRegs() {
         RegisterSet res;
         for (const auto& lb : low_blocks)
-            res.Add(lb->GetRegFile()->ModifiedRegs());
+            res |= lb->GetRegFile()->ModifiedRegs();
         return res;
     }
 };

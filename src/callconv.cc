@@ -104,7 +104,8 @@ llvm::Value* CallConv::Pack(RegFile& regfile, FunctionInfo& fi,
             }
         }
 
-        if (!modified_regs || modified_regs->Get(reg, facet)) {
+        unsigned regset_idx = RegisterSetBitIdx(reg, facet);
+        if (!modified_regs || modified_regs->test(regset_idx)) {
             // GetReg moved in here to avoid generating dozens of dead PHI nodes
             irb.CreateStore(regfile.GetReg(reg, facet), fi.sptr[sptr_idx]);
         }

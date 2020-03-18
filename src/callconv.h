@@ -24,6 +24,8 @@
 #ifndef RELLUME_CALLCONV_H
 #define RELLUME_CALLCONV_H
 
+#include "regfile.h"
+
 #include <llvm/IR/Type.h>
 #include <llvm/IR/Value.h>
 #include <cstddef>
@@ -33,8 +35,6 @@
 namespace rellume {
 
 class FunctionInfo;
-class RegFile;
-class RegisterSet;
 
 class CallConv {
 public:
