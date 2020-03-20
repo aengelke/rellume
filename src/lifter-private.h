@@ -173,6 +173,7 @@ protected:
 
         llvm::Value* di;
         llvm::Value* si;
+        llvm::Value* ip;
     };
     RepInfo RepBegin(const Instr& inst);
     void RepEnd(RepInfo info);

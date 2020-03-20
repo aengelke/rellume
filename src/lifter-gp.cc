@@ -566,6 +566,7 @@ LifterBase::RepInfo LifterBase::RepBegin(const Instr& inst) {
     if (info.mode != RepInfo::NO_REP) {
         info.loop_block = ablock.AddBlock();
         info.cont_block = ablock.AddBlock();
+        info.ip = GetReg(X86Reg::IP, Facet::I64);
 
         llvm::Value* count = GetReg(X86Reg::RCX, Facet::I64);
         llvm::Value* zero = llvm::Constant::getNullValue(count->getType());
@@ -613,6 +614,10 @@ void LifterBase::RepEnd(RepInfo info) {
 
     ablock.GetInsertBlock()->BranchTo(cond, *info.loop_block, *info.cont_block);
     SetInsertBlock(info.cont_block);
+
+    // Ensure that we don't generate an unused PHI node which may end up in the
+    // register file if the REP is at the end of a basic block.
+    SetReg(X86Reg::IP, Facet::I64, info.ip);
 }
 
 void Lifter::LiftLods(const Instr& inst) {
