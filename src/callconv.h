@@ -50,10 +50,12 @@ public:
 
     // Pack values from regfile into the CPU struct. The return value for the
     // function is returned (or NULL for void).
-    llvm::Value* Pack(BasicBlock* bb, FunctionInfo& fi) const;
+    llvm::ReturnInst* Return(BasicBlock* bb, FunctionInfo& fi) const;
     // Unpack values from val (usually the function) into the register file. For
     // SPTR, val can also be the CPU struct pointer directly.
-    void Unpack(BasicBlock* bb, FunctionInfo& fi) const;
+    void UnpackParams(BasicBlock* bb, FunctionInfo& fi) const;
+
+    llvm::CallInst* Call(llvm::Function* fn, BasicBlock* bb, FunctionInfo& fi);
 
     static void OptimizePacks(FunctionInfo& fi, BasicBlock* entry);
 

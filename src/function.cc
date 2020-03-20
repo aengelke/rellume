@@ -94,8 +94,7 @@ Function::Function(llvm::Module* mod, LLConfig* cfg) : cfg(cfg), fi{}
     RegFile* entry_regfile = entry_block->GetInsertBlock()->GetRegFile();
     CreateSptrs(fi, entry_regfile->GetInsertBlock());
     // And initially fill register file.
-    entry_regfile->Clear();
-    cfg->callconv.Unpack(entry_block->GetInsertBlock(), fi);
+    cfg->callconv.UnpackParams(entry_block->GetInsertBlock(), fi);
 
     fi.entry_ip_value = entry_regfile->GetReg(X86Reg::IP, Facet::I64);
 }
@@ -144,9 +143,7 @@ llvm::Function* Function::Lift() {
     exit_block = std::make_unique<ArchBasicBlock>(llvm);
 
     // Exit block packs values together and optionally returns something.
-    RegFile* exit_regfile = exit_block->GetInsertBlock()->GetRegFile();
-    llvm::IRBuilder<> irb(exit_regfile->GetInsertBlock());
-    irb.CreateRet(cfg->callconv.Pack(exit_block->GetInsertBlock(), fi));
+    cfg->callconv.Return(exit_block->GetInsertBlock(), fi);
 
     entry_block->BranchTo(*block_map[fi.entry_ip]);
 

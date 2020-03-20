@@ -77,13 +77,28 @@ static const std::tuple<unsigned, X86Reg, Facet> cpu_struct_entries[] = {
 #undef RELLUME_MAPPED_REG
 };
 
-llvm::Value* CallConv::Pack(BasicBlock* bb, FunctionInfo& fi) const {
+// Mapping of GP registers to HHVM parameters and return struct indices.
+//     RAX->RAX; RCX->RCX; RDX->RDX; RBX->RBP; RSP->R15; RBP->R13;
+//     RSI->RSI; RDI->RDI; R8->R8;   R9->R9;   R10->R10; R11->R11;
+//     RIP->RBX; (not encoded here)
+static bool hhvm_is_host_reg(X86Reg reg) {
+    return reg == X86Reg::IP || (reg.IsGP() && reg.Index() < 12);
+}
+static uint8_t hhvm_arg_index(X86Reg reg) {
+    static const uint8_t indices[] = {10, 7, 6, 2, 3, 13, 5, 4, 8, 9, 11, 12};
+    assert(hhvm_is_host_reg(reg));
+    return (reg.IsGP() && reg.Index() < 12) ? indices[reg.Index()] : 0;
+}
+static uint8_t hhvm_ret_index(X86Reg reg) {
+    static const uint8_t indices[] = {8, 5, 4, 1, 13, 11, 3, 2, 6, 7, 9, 10};
+    assert(hhvm_is_host_reg(reg));
+    return (reg.IsGP() && reg.Index() < 12) ? indices[reg.Index()] : 0;
+}
+
+template<typename F>
+static void Pack(CallConv cconv, BasicBlock* bb, FunctionInfo& fi, F hhvm_fn) {
     RegFile& regfile = *bb->GetRegFile();
     llvm::IRBuilder<> irb(regfile.GetInsertBlock());
-
-    llvm::Value* ret_val = nullptr;
-    if (*this == CallConv::HHVM)
-        ret_val = llvm::UndefValue::get(fi.fn->getReturnType());
 
     CallConvPack& pack_info = fi.call_conv_packs.emplace_back();
     pack_info.block_dirty_regs = regfile.DirtyRegs();
@@ -92,22 +107,9 @@ llvm::Value* CallConv::Pack(BasicBlock* bb, FunctionInfo& fi) const {
     for (const auto& [sptr_idx, reg, facet] : cpu_struct_entries) {
         llvm::Value* reg_val = regfile.GetReg(reg, facet);
 
-        if (*this == CallConv::HHVM) {
-            int ins_idx = -1;
-            if (reg.IsGP() && reg.Index() < 12) {
-                // RAX->RAX; RCX->RCX; RDX->RDX; RBX->RBP; RSP->R15; RBP->R13;
-                // RSI->RSI; RDI->RDI; R8->R8;   R9->R9;   R10->R10; R11->R11;
-                static const uint8_t str_idx[] = {8,5,4,1,13,11,3,2,6,7,9,10};
-                ins_idx = str_idx[reg.Index()];
-            } else if (reg == X86Reg::IP) {
-                ins_idx = 0; // RIP is stored in RBX
-            }
-
-            if (ins_idx >= 0) {
-                unsigned ins_idx_u = static_cast<unsigned>(ins_idx);
-                ret_val = irb.CreateInsertValue(ret_val, reg_val, {ins_idx_u});
-                continue;
-            }
+        if (cconv == CallConv::HHVM && hhvm_is_host_reg(reg)) {
+            hhvm_fn(reg, reg_val);
+            continue;
         }
 
         unsigned regset_idx = RegisterSetBitIdx(reg, facet);
@@ -115,36 +117,78 @@ llvm::Value* CallConv::Pack(BasicBlock* bb, FunctionInfo& fi) const {
         regfile.CleanedRegs()[regset_idx] = true;
         pack_info.stores[sptr_idx] = irb.CreateStore(reg_val, fi.sptr[sptr_idx]);
     }
-
-    return ret_val;
 }
 
-void CallConv::Unpack(BasicBlock* bb, FunctionInfo& fi) const {
+template<typename F>
+static void Unpack(CallConv cconv, BasicBlock* bb, FunctionInfo& fi, F hhvm_fn) {
     RegFile& regfile = *bb->GetRegFile();
     llvm::IRBuilder<> irb(regfile.GetInsertBlock());
 
+    // Clear all facets before entering new values.
+    regfile.Clear();
     for (const auto& [sptr_idx, reg, facet] : cpu_struct_entries) {
-        llvm::Value* reg_val = nullptr;
-        if (*this == CallConv::HHVM) {
-            if (reg.IsGP() && reg.Index() < 12) {
-                // RAX->RAX; RCX->RCX; RDX->RDX; RBX->RBP; RSP->R15; RBP->R13;
-                // RSI->RSI; RDI->RDI; R8->R8;   R9->R9;   R10->R10; R11->R11;
-                static const uint8_t arg_idx[] = {10,7,6,2,3,13,5,4,8,9,11,12};
-                reg_val = &fi.fn->arg_begin()[arg_idx[reg.Index()]];
-            } else if (reg == X86Reg::IP) {
-                reg_val = &fi.fn->arg_begin()[0]; // RIP->RBX
-            }
+        if (cconv == CallConv::HHVM && hhvm_is_host_reg(reg)) {
+            regfile.SetReg(reg, facet, hhvm_fn(reg), false);
+            continue;
         }
 
-        bool load_from_sptr = reg_val == nullptr;
-        if (load_from_sptr)
-            reg_val = irb.CreateLoad(fi.sptr[sptr_idx]);
-
-        // Mark register only as modified if it didn't come from the sptr.
+        llvm::Value* reg_val = irb.CreateLoad(fi.sptr[sptr_idx]);
+        // Mark register as clean if it was loaded from the sptr.
         regfile.SetReg(reg, facet, reg_val, false);
-        if (load_from_sptr)
-            regfile.DirtyRegs()[RegisterSetBitIdx(reg, facet)] = false;
+        regfile.DirtyRegs()[RegisterSetBitIdx(reg, facet)] = false;
     }
+}
+
+llvm::ReturnInst* CallConv::Return(BasicBlock* bb, FunctionInfo& fi) const {
+    llvm::IRBuilder<> irb(bb->GetRegFile()->GetInsertBlock());
+
+    llvm::SmallVector<llvm::Value*, 16> hhvm_ret;
+    if (*this == CallConv::HHVM) {
+        hhvm_ret.resize(14);
+        hhvm_ret[12] = llvm::UndefValue::get(irb.getInt64Ty());
+    }
+
+    Pack(*this, bb, fi, [&hhvm_ret] (X86Reg reg, llvm::Value* reg_val) {
+        hhvm_ret[hhvm_ret_index(reg)] = reg_val;
+    });
+
+    if (*this == CallConv::HHVM)
+        return irb.CreateAggregateRet(hhvm_ret.data(), hhvm_ret.size());
+    return irb.CreateRetVoid();
+}
+
+void CallConv::UnpackParams(BasicBlock* bb, FunctionInfo& fi) const {
+    Unpack(*this, bb, fi, [&fi] (X86Reg reg) {
+        return &fi.fn->arg_begin()[hhvm_arg_index(reg)];
+    });
+}
+
+llvm::CallInst* CallConv::Call(llvm::Function* fn, BasicBlock* bb,
+                               FunctionInfo& fi) {
+    llvm::SmallVector<llvm::Value*, 16> call_args;
+    call_args.resize(fn->arg_size());
+    call_args[CpuStructParamIdx()] = fi.sptr_raw;
+
+    Pack(*this, bb, fi, [&call_args] (X86Reg reg, llvm::Value* reg_val) {
+        call_args[hhvm_arg_index(reg)] = reg_val;
+    });
+
+    llvm::IRBuilder<> irb(bb->GetRegFile()->GetInsertBlock());
+
+    llvm::CallInst* call = irb.CreateCall(fn, call_args);
+    call->setCallingConv(FnCallConv());
+
+    llvm::SmallVector<llvm::Value*, 14> hhvm_ret;
+    if (*this == CallConv::HHVM) {
+        for (unsigned i = 0; i < 14; i++)
+            hhvm_ret.push_back(irb.CreateExtractValue(call, {i}));
+    }
+
+    Unpack(*this, bb, fi, [&hhvm_ret] (X86Reg reg) {
+        return hhvm_ret[hhvm_ret_index(reg)];
+    });
+
+    return call;
 }
 
 void CallConv::OptimizePacks(FunctionInfo& fi, BasicBlock* entry) {
