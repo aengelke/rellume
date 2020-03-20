@@ -34,6 +34,26 @@
 
 namespace rellume {
 
+CallConv CallConv::FromFunction(llvm::Function* fn) {
+    auto fn_cconv = fn->getCallingConv();
+    auto fn_ty = llvm::cast<llvm::FunctionType>(fn->getType()->getPointerElementType());
+    CallConv hunch = fn_cconv == llvm::CallingConv::HHVM ? HHVM : SPTR;
+
+    // Verify hunch.
+    if (hunch.FnCallConv() != fn_cconv)
+        return INVALID;
+    unsigned sptr_idx = hunch.CpuStructParamIdx();
+    if (sptr_idx >= fn->arg_size())
+        return INVALID;
+    llvm::Type* sptr_ty = fn->arg_begin()[sptr_idx].getType();
+    if (!sptr_ty->isPointerTy())
+        return INVALID;
+    unsigned sptr_addrspace = sptr_ty->getPointerAddressSpace();
+    if (fn_ty != hunch.FnType(fn->getContext(), sptr_addrspace))
+        return INVALID;
+    return hunch;
+}
+
 llvm::FunctionType* CallConv::FnType(llvm::LLVMContext& ctx,
                                      unsigned sptr_addrspace) const {
     llvm::Type* void_ty = llvm::Type::getVoidTy(ctx);

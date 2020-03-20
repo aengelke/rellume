@@ -40,8 +40,10 @@ class FunctionInfo;
 class CallConv {
 public:
     enum Value {
-        SPTR, HHVM,
+        INVALID, SPTR, HHVM,
     };
+
+    static CallConv FromFunction(llvm::Function* fn);
 
     llvm::FunctionType* FnType(llvm::LLVMContext& ctx,
                                unsigned sptr_addrspace) const;

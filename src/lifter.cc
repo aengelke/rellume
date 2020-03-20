@@ -55,7 +55,7 @@ void LifterBase::SetIP(uint64_t inst_addr, bool nofold) {
 }
 
 void LifterBase::CallExternalFunction(llvm::Function* fn) {
-    CallConv cconv = CallConv::SPTR;
+    CallConv cconv = CallConv::FromFunction(fn);
     llvm::CallInst* call = cconv.Call(fn, ablock.GetInsertBlock(), fi);
     assert(call && "failed to create call for external function");
 
