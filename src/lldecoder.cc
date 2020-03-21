@@ -115,7 +115,10 @@ int Function::Decode(uintptr_t addr, DecodeStop stop, MemReader memacc) {
                 if (stop == DecodeStop::BASICBLOCK)
                     break;
 
-                if (breaks_cond)
+                // If we want explicit call/ret semantics, assume that a call
+                // actually returns to the same place.
+                if (breaks_cond ||
+                    (inst.type() == FDI_CALL && cfg->call_function))
                     addr_queue.push_back(cur_addr + inst.len());
                 if (has_jmp_target && inst.type() != FDI_CALL &&
                     inst.op(0).is_pcrel())

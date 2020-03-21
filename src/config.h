@@ -70,6 +70,17 @@ struct LLConfig {
     /// take a pointer to the CPU state as a single argument.
     std::unordered_map<uint32_t, llvm::Function*> instr_overrides;
 
+    /// If non-null, this function is called as a tail-call instead of
+    /// returning.
+    llvm::Function* tail_function = nullptr;
+
+    /// If non-null, this function is called on a call instruction. Decoding
+    /// continues after the CALL instruction as if the instruction did not
+    /// modify control flow (albeit checking that the RIP matches). A return
+    /// will be lifted as a ret instruction, regardless of the value of
+    /// tail_function.
+    llvm::Function* call_function = nullptr;
+
     /// Implementation of syscall semantics. If not specified, a syscall behaves
     /// as a no-op. The function must take a pointer to the CPU state as a
     /// single argument.

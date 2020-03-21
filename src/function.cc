@@ -143,12 +143,20 @@ llvm::Function* Function::Lift() {
     exit_block = std::make_unique<ArchBasicBlock>(llvm);
 
     // Exit block packs values together and optionally returns something.
-    cfg->callconv.Return(exit_block->GetInsertBlock(), fi);
+    if (cfg->tail_function) {
+        CallConv cconv = CallConv::FromFunction(cfg->tail_function);
+        // Force a tail call to the specified function.
+        cconv.Call(cfg->tail_function, exit_block->GetInsertBlock(), fi, true);
+    } else {
+        cfg->callconv.Return(exit_block->GetInsertBlock(), fi);
+    }
 
     entry_block->BranchTo(*block_map[fi.entry_ip]);
 
     for (auto it = block_map.begin(); it != block_map.end(); ++it) {
         RegFile* regfile = it->second->GetInsertBlock()->GetRegFile();
+        if (regfile->GetInsertBlock()->getTerminator())
+            continue;
         llvm::Value* next_rip = regfile->GetReg(X86Reg::IP, Facet::I64);
         if (auto select = llvm::dyn_cast<llvm::SelectInst>(next_rip)) {
             it->second->BranchTo(select->getCondition(),

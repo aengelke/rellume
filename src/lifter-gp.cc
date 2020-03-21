@@ -523,8 +523,23 @@ void Lifter::LiftCall(const Instr& inst) {
 
     // Force default data segment, 3e is notrack.
     llvm::Value* new_rip = OpLoad(inst.op(0), Facet::I, ALIGN_NONE, FD_REG_DS);
-    StackPush(GetReg(X86Reg::IP, Facet::I64));
+    llvm::Value* ret_addr = GetReg(X86Reg::IP, Facet::I64);
+    StackPush(ret_addr);
     SetReg(X86Reg::IP, Facet::I64, new_rip);
+
+    if (cfg.call_function) {
+        CallExternalFunction(cfg.call_function);
+        // Note that is not possible to have a "no-evil-rets" optimization which
+        // would just continue execution: things like setjmp/longjmp and
+        // exceptions skip some return addresses by modifying the stack pointer.
+        // We will continue with the tail_function (if specified) and enlarge
+        // our shadow stack; and things will be slow. If someone uses such
+        // constructs often or on a critical path, they get what they deserve.
+        llvm::Value* cont_addr = GetReg(X86Reg::IP, Facet::I64);
+        llvm::Value* eq = irb.CreateICmpEQ(cont_addr, ret_addr);
+        // This allows for optimization of the common case (equality).
+        SetReg(X86Reg::IP, Facet::I64, irb.CreateSelect(eq, ret_addr, cont_addr));
+    }
 }
 
 void Lifter::LiftRet(const Instr& inst) {
@@ -540,6 +555,12 @@ void Lifter::LiftRet(const Instr& inst) {
         rsp = irb.CreatePointerCast(rsp, irb.getInt8PtrTy());
         rsp = irb.CreateConstGEP1_64(rsp, inst.op(0).imm());
         SetRegPtr(X86Reg::RSP, rsp);
+    }
+
+    if (cfg.call_function) {
+        // If we are in call-ret-lifting mode, forcefully return. Otherwise, we
+        // might end up using tail_function, which we don't want here.
+        cfg.callconv.Return(ablock.GetInsertBlock(), fi);
     }
 }
 

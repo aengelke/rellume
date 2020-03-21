@@ -184,7 +184,7 @@ void CallConv::UnpackParams(BasicBlock* bb, FunctionInfo& fi) const {
 }
 
 llvm::CallInst* CallConv::Call(llvm::Function* fn, BasicBlock* bb,
-                               FunctionInfo& fi) {
+                               FunctionInfo& fi, bool tail_call) {
     llvm::SmallVector<llvm::Value*, 16> call_args;
     call_args.resize(fn->arg_size());
     call_args[CpuStructParamIdx()] = fi.sptr_raw;
@@ -195,8 +195,18 @@ llvm::CallInst* CallConv::Call(llvm::Function* fn, BasicBlock* bb,
 
     llvm::IRBuilder<> irb(bb->GetRegFile()->GetInsertBlock());
 
-    llvm::CallInst* call = irb.CreateCall(fn, call_args);
-    call->setCallingConv(FnCallConv());
+    llvm::CallInst* call = irb.CreateCall(fn->getFunctionType(), fn, call_args);
+    call->setCallingConv(fn->getCallingConv());
+    call->setAttributes(fn->getAttributes());
+
+    if (tail_call) {
+        call->setTailCallKind(llvm::CallInst::TCK_MustTail);
+        if (call->getType()->isVoidTy())
+            irb.CreateRetVoid();
+        else
+            irb.CreateRet(call);
+        return call;
+    }
 
     llvm::SmallVector<llvm::Value*, 14> hhvm_ret;
     if (*this == CallConv::HHVM) {

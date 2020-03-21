@@ -82,7 +82,6 @@ public:
 protected:
     FunctionInfo& fi;
     const LLConfig& cfg;
-private:
     ArchBasicBlock& ablock;
 
 protected:

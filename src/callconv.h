@@ -57,7 +57,8 @@ public:
     // SPTR, val can also be the CPU struct pointer directly.
     void UnpackParams(BasicBlock* bb, FunctionInfo& fi) const;
 
-    llvm::CallInst* Call(llvm::Function* fn, BasicBlock* bb, FunctionInfo& fi);
+    llvm::CallInst* Call(llvm::Function* fn, BasicBlock* bb, FunctionInfo& fi,
+                         bool tail_call = false);
 
     static void OptimizePacks(FunctionInfo& fi, BasicBlock* entry);
 

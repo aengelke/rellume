@@ -79,6 +79,14 @@ void ll_config_set_instr_impl(LLConfig* cfg, FdInstrType type,
                               LLVMValueRef value) {
     unwrap(cfg)->instr_overrides[type] = llvm::unwrap<llvm::Function>(value);
 }
+void ll_config_set_tail_func(LLConfig* cfg, LLVMValueRef value) {
+    llvm::Value* uw_value = llvm::unwrap(value);
+    unwrap(cfg)->tail_function = llvm::cast_or_null<llvm::Function>(uw_value);
+}
+void ll_config_set_call_func(LLConfig* cfg, LLVMValueRef value) {
+    llvm::Value* uw_value = llvm::unwrap(value);
+    unwrap(cfg)->call_function = llvm::cast_or_null<llvm::Function>(uw_value);
+}
 void ll_config_set_syscall_impl(LLConfig* cfg, LLVMValueRef value) {
     unwrap(cfg)->syscall_implementation = llvm::unwrap<llvm::Function>(value);
 }
