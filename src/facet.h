@@ -38,39 +38,30 @@ namespace rellume {
 class Facet {
 public:
     enum Value {
-        I64,
-        I32, I16, I8, I8H, PTR,
+#define SCALAR_INT_FACET(fc, sz, ty) fc,
+#define SCALAR_FP_FACET(fc, sz, ty) fc,
+#define SPECIAL_FACET(fc, sz, ty) fc,
+#define VECTOR_FACET(fc, num, sc) fc,
+#define PSEUDO_INT_FACET(fc) fc,
+#define PSEUDO_VECTOR_FACET(fc, sc) fc,
+#include "facet.inc"
+#undef SCALAR_INT_FACET
+#undef SCALAR_FP_FACET
+#undef SPECIAL_FACET
+#undef VECTOR_FACET
+#undef PSEUDO_INT_FACET
+#undef PSEUDO_VECTOR_FACET
 
-        I128,
-        V1I8, V2I8, V4I8, V8I8, V16I8,
-        V1I16, V2I16, V4I16, V8I16,
-        V1I32, V2I32, V4I32,
-        V1I64, V2I64,
-        V1F32, V2F32, V4F32,
-        V1F64, V2F64,
-        F32, F64,
-#if LL_VECTOR_REGISTER_SIZE >= 256
-        I256,
-#endif
-
-        // Flags
-        ZF, SF, PF, CF, OF, AF, DF,
-
-        // Pseudo-facets
-        I, VI8, VI16, VI32, VI64, VF32, VF64,
         MAX,
-
-#if LL_VECTOR_REGISTER_SIZE == 128
         IVEC = I128,
-#elif LL_VECTOR_REGISTER_SIZE == 256
-        IVEC = I256,
-#endif
     };
 
+    static Facet In(unsigned bits);
+    static Facet Vnt(unsigned num, Facet scalar);
+
+    unsigned Size() const;
     llvm::Type* Type(llvm::LLVMContext& ctx) const;
     Facet Resolve(unsigned bits) const;
-
-    static Facet In(unsigned bits) { return Facet(I).Resolve(bits); }
 
     Facet() = default;
     constexpr Facet(Value value) : value(value) {}

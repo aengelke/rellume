@@ -29,106 +29,70 @@
 
 namespace rellume {
 
-Facet Facet::Resolve(unsigned bits) const
-{
-    switch (*this)
-    {
-    case Facet::I:
-        if (bits == 8) return Facet::I8;
-        if (bits == 16) return Facet::I16;
-        if (bits == 32) return Facet::I32;
-        if (bits == 64) return Facet::I64;
-        assert(false && "invalid bits for integer facet");
-        break;
-    case Facet::VI8:
-        if (bits == 8) return Facet::V1I8;
-        if (bits == 16) return Facet::V2I8;
-        if (bits == 32) return Facet::V4I8;
-        if (bits == 64) return Facet::V8I8;
-        if (bits == 128) return Facet::V16I8;
-        assert(false && "invalid bits for integer facet");
-        break;
-    case Facet::VI16:
-        if (bits == 16) return Facet::V1I16;
-        if (bits == 32) return Facet::V2I16;
-        if (bits == 64) return Facet::V4I16;
-        if (bits == 128) return Facet::V8I16;
-        assert(false && "invalid bits for integer facet");
-        break;
-    case Facet::VI32:
-        if (bits == 32) return Facet::V1I32;
-        if (bits == 64) return Facet::V2I32;
-        if (bits == 128) return Facet::V4I32;
-        assert(false && "invalid bits for integer facet");
-        break;
-    case Facet::VI64:
-        if (bits == 64) return Facet::V1I64;
-        if (bits == 128) return Facet::V2I64;
-        assert(false && "invalid bits for integer facet");
-        break;
-    case Facet::VF32:
-        if (bits == 32) return Facet::V1F32;
-        if (bits == 64) return Facet::V2F32;
-        if (bits == 128) return Facet::V4F32;
-        assert(false && "invalid bits for integer facet");
-        break;
-    case Facet::VF64:
-        if (bits == 64) return Facet::V1F64;
-        if (bits == 128) return Facet::V2F64;
-        assert(false && "invalid bits for integer facet");
-        break;
+Facet Facet::In(unsigned size) {
+    switch (size) {
+#define SCALAR_INT_FACET(fc, sz, ty) case sz: return fc;
+#include "facet.inc"
+#undef SCALAR_INT_FACET
+    }
+    assert(false && "invalid bits for integer facet");
+    return MAX;
+}
+
+Facet Facet::Vnt(unsigned num_i, Facet scalar) {
+#define VECTOR_FACET(fc, num, sc) if (num == num_i && sc == scalar) return fc;
+#include "facet.inc"
+#undef VECTOR_FACET
+    assert(false && "invalid count/type for vector facet");
+    return MAX;
+}
+
+unsigned Facet::Size() const {
+    switch (*this) {
+#define SCALAR_INT_FACET(fc, sz, ty) case Facet::fc: return sz;
+#define SCALAR_FP_FACET(fc, sz, ty) case Facet::fc: return sz;
+#define SPECIAL_FACET(fc, sz, ty) case Facet::fc: return sz;
+#define VECTOR_FACET(fc, num, sc) case Facet::fc: return num * Facet{sc}.Size();
+#include "facet.inc"
+#undef SCALAR_INT_FACET
+#undef SCALAR_FP_FACET
+#undef SPECIAL_FACET
+#undef VECTOR_FACET
     default:
-        return *this;
+        assert(false && "Size() called on pseudo-facet");
+        return 0;
     }
 }
 
-llvm::Type* Facet::Type(llvm::LLVMContext& ctx) const
-{
-    switch (*this)
-    {
-    case Facet::I64: return llvm::Type::getInt64Ty(ctx);
-    case Facet::I32: return llvm::Type::getInt32Ty(ctx);
-    case Facet::I16: return llvm::Type::getInt16Ty(ctx);
-    case Facet::I8: return llvm::Type::getInt8Ty(ctx);
-    case Facet::I8H: return llvm::Type::getInt8Ty(ctx);
-    // Type used for PHI nodes
-    case Facet::PTR: return llvm::Type::getInt8PtrTy(ctx);
-    case Facet::I128: return llvm::Type::getInt128Ty(ctx);
-#if LL_VECTOR_REGISTER_SIZE >= 256
-    case Facet::I256: return llvm::Type::getIntNTy(ctx, 256);
-#endif
-    case Facet::F32: return llvm::Type::getFloatTy(ctx);
-    case Facet::F64: return llvm::Type::getDoubleTy(ctx);
-    case Facet::V1I8: return llvm::VectorType::get(llvm::Type::getInt8Ty(ctx), 1);
-    case Facet::V2I8: return llvm::VectorType::get(llvm::Type::getInt8Ty(ctx), 2);
-    case Facet::V4I8: return llvm::VectorType::get(llvm::Type::getInt8Ty(ctx), 4);
-    case Facet::V8I8: return llvm::VectorType::get(llvm::Type::getInt8Ty(ctx), 8);
-    case Facet::V16I8: return llvm::VectorType::get(llvm::Type::getInt8Ty(ctx), 16);
-    case Facet::V1I16: return llvm::VectorType::get(llvm::Type::getInt16Ty(ctx), 1);
-    case Facet::V2I16: return llvm::VectorType::get(llvm::Type::getInt16Ty(ctx), 2);
-    case Facet::V4I16: return llvm::VectorType::get(llvm::Type::getInt16Ty(ctx), 4);
-    case Facet::V8I16: return llvm::VectorType::get(llvm::Type::getInt16Ty(ctx), 8);
-    case Facet::V1I32: return llvm::VectorType::get(llvm::Type::getInt32Ty(ctx), 1);
-    case Facet::V2I32: return llvm::VectorType::get(llvm::Type::getInt32Ty(ctx), 2);
-    case Facet::V4I32: return llvm::VectorType::get(llvm::Type::getInt32Ty(ctx), 4);
-    case Facet::V1I64: return llvm::VectorType::get(llvm::Type::getInt64Ty(ctx), 1);
-    case Facet::V2I64: return llvm::VectorType::get(llvm::Type::getInt64Ty(ctx), 2);
-    case Facet::V1F32: return llvm::VectorType::get(llvm::Type::getFloatTy(ctx), 1);
-    case Facet::V2F32: return llvm::VectorType::get(llvm::Type::getFloatTy(ctx), 2);
-    case Facet::V4F32: return llvm::VectorType::get(llvm::Type::getFloatTy(ctx), 4);
-    case Facet::V1F64: return llvm::VectorType::get(llvm::Type::getDoubleTy(ctx), 1);
-    case Facet::V2F64: return llvm::VectorType::get(llvm::Type::getDoubleTy(ctx), 2);
-    case Facet::ZF:
-    case Facet::SF:
-    case Facet::PF:
-    case Facet::CF:
-    case Facet::OF:
-    case Facet::AF:
-    case Facet::DF: return llvm::Type::getInt1Ty(ctx);
-    default: assert(0);
+llvm::Type* Facet::Type(llvm::LLVMContext& ctx) const {
+    switch (*this) {
+#define SCALAR_INT_FACET(fc, sz, ty) case fc: return ty;
+#define SCALAR_FP_FACET(fc, sz, ty) case fc: return ty;
+#define SPECIAL_FACET(fc, sz, ty) case fc: return ty;
+#define VECTOR_FACET(fc, num, sc) \
+        case fc: return llvm::VectorType::get(Facet{sc}.Type(ctx), num);
+#include "facet.inc"
+#undef SCALAR_INT_FACET
+#undef SCALAR_FP_FACET
+#undef SPECIAL_FACET
+#undef VECTOR_FACET
+    default:
+        assert(false && "Type() called on pseudo-facet");
+        return nullptr;
     }
+}
 
-    return nullptr;
+Facet Facet::Resolve(unsigned bits) const {
+    switch (*this) {
+#define PSEUDO_INT_FACET(fc) case fc: return In(bits);
+#define PSEUDO_VECTOR_FACET(fc, sc) \
+        case fc: return Vnt(bits / Facet{sc}.Size(), sc);
+#include "facet.inc"
+#undef PSEUDO_INT_FACET
+#undef PSEUDO_VECTOR_FACET
+    default:
+        return *this;
+    }
 }
 
 } // namespace
