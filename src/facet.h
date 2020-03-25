@@ -58,6 +58,7 @@ public:
 
     static Facet In(unsigned bits);
     static Facet Vnt(unsigned num, Facet scalar);
+    static Facet FromType(llvm::Type*);
 
     unsigned Size() const;
     llvm::Type* Type(llvm::LLVMContext& ctx) const;

@@ -47,6 +47,22 @@ Facet Facet::Vnt(unsigned num_i, Facet scalar) {
     return MAX;
 }
 
+Facet Facet::FromType(llvm::Type* type) {
+    if (type->isVectorTy()) {
+        unsigned num = type->getVectorNumElements();
+        return Vnt(num, FromType(type->getVectorElementType()));
+    } else if (type->isIntegerTy()) {
+        return In(type->getIntegerBitWidth());
+    } else if (type->isFloatTy()) {
+        return F32;
+    } else if (type->isDoubleTy()) {
+        return F64;
+    } else {
+        assert(false && "invalid type for facet");
+        return MAX;
+    }
+}
+
 unsigned Facet::Size() const {
     switch (*this) {
 #define SCALAR_INT_FACET(fc, sz, ty) case Facet::fc: return sz;

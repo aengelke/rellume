@@ -261,6 +261,7 @@ void LifterBase::OpStoreVec(const Instr::Op op, llvm::Value* value, bool avx,
     // Handle case where the value fills the entire register.
     if (value_ty->getPrimitiveSizeInBits() == ivec_sz) {
         SetReg(reg, Facet::IVEC, irb.CreateBitCast(value, ivec_ty));
+        SetRegFacet(reg, Facet::FromType(value_ty), value);
         return;
     }
 
@@ -269,10 +270,11 @@ void LifterBase::OpStoreVec(const Instr::Op op, llvm::Value* value, bool avx,
         value_ty->isVectorTy() ? value_ty->getVectorElementType() : value_ty;
     unsigned full_num = ivec_sz / element_ty->getPrimitiveSizeInBits();
     llvm::VectorType* full_ty = llvm::VectorType::get(element_ty, full_num);
+    Facet full_facet = Facet::Vnt(full_num, Facet::FromType(element_ty));
 
     llvm::Value* full = llvm::Constant::getNullValue(full_ty);
     if (!avx)
-        full = irb.CreateBitCast(GetReg(reg, Facet::IVEC), full_ty);
+        full = GetReg(reg, full_facet);
 
     if (!value_ty->isVectorTy()) {
         // Handle scalar values with an insertelement instruction
@@ -294,6 +296,8 @@ void LifterBase::OpStoreVec(const Instr::Op op, llvm::Value* value, bool avx,
     }
 
     SetReg(reg, Facet::IVEC, irb.CreateBitCast(full, ivec_ty));
+    SetRegFacet(reg, full_facet, full);
+    SetRegFacet(reg, Facet::FromType(value_ty), value);
 }
 
 void LifterBase::StackPush(llvm::Value* value) {

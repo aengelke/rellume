@@ -425,6 +425,8 @@ void RegFile::impl::SetReg(X86Reg reg, Facet facet, llvm::Value* value,
     }
 
     DeferredValueBase* facet_entry = AccessRegFacet(reg, facet);
+    if (!clearOthers && !facet_entry)
+        return; // It's an optional facet we don't keep in the regfile.
     assert(facet_entry && "attempt to store invalid facet");
     *facet_entry = value;
 
