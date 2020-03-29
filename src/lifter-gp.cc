@@ -560,7 +560,7 @@ void Lifter::LiftRet(const Instr& inst) {
     if (cfg.call_function) {
         // If we are in call-ret-lifting mode, forcefully return. Otherwise, we
         // might end up using tail_function, which we don't want here.
-        cfg.callconv.Return(ablock.GetInsertBlock(), fi);
+        ForceReturn();
     }
 }
 

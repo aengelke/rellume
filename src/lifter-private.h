@@ -59,11 +59,20 @@ enum class Condition {
  * \brief The LLVM state of the back-end.
  **/
 class LifterBase {
+private:
+    FunctionInfo& fi;
+    ArchBasicBlock& ablock;
+
+    /// Current register file
+    RegFile* regfile;
+
 protected:
+    llvm::IRBuilder<> irb;
+    const LLConfig& cfg;
+
     LifterBase(FunctionInfo& fi, const LLConfig& cfg, ArchBasicBlock& ab)
-            : fi(fi), cfg(cfg), ablock(ab),
-              regfile(ablock.GetInsertBlock()->GetRegFile()),
-              irb(regfile->GetInsertBlock()) {
+            : fi(fi), ablock(ab),regfile(ab.GetInsertBlock()->GetRegFile()),
+              irb(regfile->GetInsertBlock()), cfg(cfg) {
         // Set fast-math flags. Newer LLVM supports FastMathFlags::getFast().
         if (cfg.enableFastMath) {
             llvm::FastMathFlags fmf;
@@ -72,24 +81,11 @@ protected:
         }
     }
 
-public:
     LifterBase(LifterBase&& rhs);
     LifterBase& operator=(LifterBase&& rhs);
 
     LifterBase(const LifterBase&) = delete;
     LifterBase& operator=(const LifterBase&) = delete;
-
-protected:
-    FunctionInfo& fi;
-    const LLConfig& cfg;
-    ArchBasicBlock& ablock;
-
-protected:
-    /// Current register file
-    RegFile* regfile;
-
-    llvm::IRBuilder<> irb;
-
 
     llvm::Module* GetModule() {
         return irb.GetInsertBlock()->getModule();
@@ -123,14 +119,13 @@ protected:
     }
     void SetIP(uint64_t inst_addr, bool nofold = false);
 
+private:
     void SetInsertBlock(BasicBlock* block) {
         ablock.SetInsertBlock(block);
         regfile = block->GetRegFile();
         irb.SetInsertPoint(regfile->GetInsertBlock());
     }
 
-    // Operand handling implemented in lloperand.cc
-private:
     llvm::Value* OpAddrConst(uint64_t addr, llvm::PointerType* ptr_ty);
 protected:
     llvm::Value* OpAddr(const Instr::Op op, llvm::Type* element_type, unsigned seg);
@@ -184,6 +179,10 @@ protected:
     }
 
     void CallExternalFunction(llvm::Function* fn);
+
+    void ForceReturn() {
+        cfg.callconv.Return(ablock.GetInsertBlock(), fi);
+    }
 };
 
 class Lifter : public LifterBase {
