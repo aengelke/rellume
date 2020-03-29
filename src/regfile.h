@@ -107,7 +107,7 @@ public:
 
     void Clear();
     using PhiDesc = std::tuple<X86Reg, Facet, llvm::PHINode*>;
-    void InitWithPHIs(std::vector<PhiDesc>*);
+    void InitWithPHIs(std::vector<PhiDesc>*, bool all_facets);
 
     llvm::Value* GetReg(X86Reg reg, Facet facet);
     void SetReg(X86Reg reg, Facet facet, llvm::Value*, bool clear_facets);

@@ -47,16 +47,16 @@
 
 namespace rellume {
 
-BasicBlock::BasicBlock(llvm::Function* fn, bool no_phis)
+BasicBlock::BasicBlock(llvm::Function* fn, Phis phi_mode)
         : regfile() {
     llvm_block = llvm::BasicBlock::Create(fn->getContext(), "", fn, nullptr);
     regfile.SetInsertBlock(llvm_block);
 
-    if (!no_phis) {
+    if (phi_mode != Phis::NONE) {
         // Initialize all registers with a generator which adds a PHI node when
         // the value-facet combination is requested.
         empty_phis.reserve(32);
-        regfile.InitWithPHIs(&empty_phis);
+        regfile.InitWithPHIs(&empty_phis, /*all=*/phi_mode == Phis::ALL);
     }
 }
 

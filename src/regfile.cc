@@ -178,13 +178,14 @@ using ValueMapFlags = ValueMap<R, Facet::ZF, Facet::SF, Facet::PF, Facet::CF, Fa
 
 class RegFile::impl {
 public:
-    impl() : insert_block(nullptr), dirty_regs(), cleaned_regs() {}
+    impl() : insert_block(nullptr), regs_gp{}, regs_sse{}, reg_ip(), flags(),
+             dirty_regs(), cleaned_regs() {}
 
     llvm::BasicBlock* GetInsertBlock() { return insert_block; }
     void SetInsertBlock(llvm::BasicBlock* n) { insert_block = n; }
 
     void Clear();
-    void InitWithPHIs(std::vector<PhiDesc>*);
+    void InitWithPHIs(std::vector<PhiDesc>*, bool all_facets);
 
     llvm::Value* GetReg(X86Reg reg, Facet facet);
     void SetReg(X86Reg reg, Facet facet, llvm::Value*, bool clear_facets);
@@ -215,7 +216,8 @@ void RegFile::impl::Clear() {
     reg_ip = nullptr;
 }
 
-void RegFile::impl::InitWithPHIs(std::vector<PhiDesc>* desc_vec) {
+void RegFile::impl::InitWithPHIs(std::vector<PhiDesc>* desc_vec,
+                                 bool all_facets) {
     auto fn = [desc_vec](Facet) {
         using DeferData = std::vector<PhiDesc>*;
         return DeferredValue<DeferData>(
@@ -229,10 +231,18 @@ void RegFile::impl::InitWithPHIs(std::vector<PhiDesc>* desc_vec) {
             desc_vec);
     };
 
-    for (unsigned i = 0; i < 16; i++)
-        regs_gp[i].setAll(fn);
-    for (unsigned i = 0; i < 16; i++)
-        regs_sse[i].setAll(fn);
+    if (all_facets) {
+        for (auto& reg : regs_gp)
+            reg.setAll(fn);
+        for (auto& reg : regs_sse)
+            reg.setAll(fn);
+    } else {
+        for (auto& reg : regs_gp)
+            reg[Facet::I64] = fn(Facet::I64);
+        for (auto& reg : regs_sse)
+            reg[Facet::IVEC] = fn(Facet::IVEC);
+    }
+
     flags.setAll(fn);
     reg_ip = fn(Facet::I64);
 }
@@ -439,7 +449,9 @@ RegFile::~RegFile() {}
 llvm::BasicBlock* RegFile::GetInsertBlock() { return pimpl->GetInsertBlock(); }
 void RegFile::SetInsertBlock(llvm::BasicBlock* n) { pimpl->SetInsertBlock(n); }
 void RegFile::Clear() { pimpl->Clear(); }
-void RegFile::InitWithPHIs(std::vector<PhiDesc>* d) { pimpl->InitWithPHIs(d); }
+void RegFile::InitWithPHIs(std::vector<PhiDesc>* desc_vec, bool all_facets) {
+    pimpl->InitWithPHIs(desc_vec, all_facets);
+}
 llvm::Value* RegFile::GetReg(X86Reg r, Facet f) { return pimpl->GetReg(r, f); }
 void RegFile::SetReg(X86Reg reg, Facet facet, llvm::Value* value, bool clear) {
     pimpl->SetReg(reg, facet, value, clear);

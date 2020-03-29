@@ -102,6 +102,9 @@ void ll_config_set_call_ret_clobber_flags(LLConfig* cfg, bool enable) {
 void ll_config_set_use_native_segment_base(LLConfig* cfg, bool enable) {
     unwrap(cfg)->use_native_segment_base = enable;
 }
+void ll_config_enable_full_facets(LLConfig* cfg, bool enable) {
+    unwrap(cfg)->full_facets = enable;
+}
 
 // Rellume Function API
 

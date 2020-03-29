@@ -58,6 +58,7 @@ RELLUME_API void ll_config_set_syscall_impl(LLConfig*, LLVMValueRef);
 RELLUME_API void ll_config_set_instr_marker(LLConfig*, LLVMValueRef);
 RELLUME_API void ll_config_set_call_ret_clobber_flags(LLConfig*, bool);
 RELLUME_API void ll_config_set_use_native_segment_base(LLConfig*, bool);
+RELLUME_API void ll_config_enable_full_facets(LLConfig*, bool);
 
 
 typedef struct LLFunc LLFunc;
