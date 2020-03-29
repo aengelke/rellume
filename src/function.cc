@@ -185,7 +185,7 @@ llvm::Function* Function::Lift() {
     // the register file.
     for (auto it = llvm::inst_begin(llvm), e = llvm::inst_end(llvm); it != e;) {
         llvm::Instruction* inst = &*it++;
-        auto* intr = llvm::dyn_cast<llvm::IntrinsicInst>(inst);
+        auto* intr = llvm::dyn_cast<llvm::CallInst>(inst);
         if (!intr || intr->getIntrinsicID() != llvm::Intrinsic::ssa_copy)
           continue;
 
