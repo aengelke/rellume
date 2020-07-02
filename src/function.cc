@@ -100,7 +100,12 @@ Function::Function(llvm::Module* mod, LLConfig* cfg) : cfg(cfg), fi{}
     fi.entry_ip_value = entry_regfile->GetReg(X86Reg::IP, Facet::I64);
 }
 
-Function::~Function() = default;
+Function::~Function() {
+    // If the function was never passed to the caller in with Lift(), erase it
+    // from the module -- it is probably invalid LLVM-IR.
+    if (llvm)
+        llvm->eraseFromParent();
+}
 
 bool Function::AddInst(uint64_t block_addr, const Instr& inst)
 {
@@ -217,7 +222,11 @@ llvm::Function* Function::Lift() {
     if (cfg->verify_ir && llvm::verifyFunction(*(llvm), &llvm::errs()))
         return nullptr;
 
-    return llvm;
+    // Set llvm to null if we passed the function to the caller.
+    llvm::Function* res = llvm;
+    llvm = nullptr;
+
+    return res;
 }
 
 }
