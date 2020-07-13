@@ -153,7 +153,7 @@ protected:
     void FlagCalcAdd(llvm::Value* res, llvm::Value* lhs, llvm::Value* rhs,
                      bool skip_carry = false);
     void FlagCalcSub(llvm::Value* res, llvm::Value* lhs, llvm::Value* rhs,
-                     bool skip_carry = false);
+                     bool skip_carry = false, bool alt_zf = false);
 
     llvm::Value* FlagCond(Condition cond);
     llvm::Value* FlagAsReg(unsigned size);

@@ -118,11 +118,14 @@ void LifterBase::FlagCalcAdd(llvm::Value* res, llvm::Value* lhs,
 }
 
 void LifterBase::FlagCalcSub(llvm::Value* res, llvm::Value* lhs,
-                             llvm::Value* rhs, bool skip_carry) {
+                             llvm::Value* rhs, bool skip_carry, bool alt_zf) {
     auto zero = llvm::Constant::getNullValue(res->getType());
     llvm::Value* sf = irb.CreateICmpSLT(res, zero);  // also used for OF
 
-    SetFlag(Facet::ZF, irb.CreateICmpEQ(lhs, rhs));
+    if (alt_zf)
+        SetFlag(Facet::ZF, irb.CreateICmpEQ(lhs, rhs));
+    else
+        SetFlag(Facet::ZF, irb.CreateICmpEQ(res, zero));
     SetFlag(Facet::SF, sf);
     FlagCalcP(res);
     FlagCalcA(res, lhs, rhs);

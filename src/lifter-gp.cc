@@ -66,7 +66,7 @@ void Lifter::LiftArith(const Instr& inst, bool sub) {
         OpStoreGp(inst.op(1), op1);
 
     if (sub)
-        FlagCalcSub(res, op1, op2);
+        FlagCalcSub(res, op1, op2, /*skip_carry=*/false, /*alt_zf=*/inst.type() == FDI_CMP);
     else
         FlagCalcAdd(res, op1, op2);
 }
