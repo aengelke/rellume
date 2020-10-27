@@ -29,12 +29,12 @@
 #include <cstdbool>
 #include <cstdint>
 
-
 namespace rellume {
 
-class Instr : public FdInstr {
+class Instr {
 public:
     using Type = FdInstrType;
+    FdInstr x86_64;
 
     struct Reg {
         uint16_t rt;
@@ -45,60 +45,58 @@ public:
     };
 
     class Op {
-        const Instr* inst;
+        const FdInstr* fdi;
         unsigned idx;
+
     public:
-        constexpr Op(const Instr* inst, unsigned idx) : inst(inst), idx(idx) {}
+        constexpr Op(const FdInstr* fdi, unsigned idx) : fdi(fdi), idx(idx) {}
         explicit operator bool() const {
-            return idx < 4 && FD_OP_TYPE(inst, idx) != FD_OT_NONE;
+            return idx < 4 && FD_OP_TYPE(fdi, idx) != FD_OT_NONE;
         }
-        unsigned size() const { return FD_OP_SIZE(inst, idx); }
+        unsigned size() const { return FD_OP_SIZE(fdi, idx); }
         unsigned bits() const { return size() * 8; }
 
-        bool is_reg() const { return FD_OP_TYPE(inst, idx) == FD_OT_REG; }
+        bool is_reg() const { return FD_OP_TYPE(fdi, idx) == FD_OT_REG; }
         const Reg reg() const {
             assert(is_reg());
-            return Reg(FD_OP_REG_TYPE(inst, idx), FD_OP_REG(inst, idx));
+            return Reg(FD_OP_REG_TYPE(fdi, idx), FD_OP_REG(fdi, idx));
         }
 
-        bool is_imm() const { return FD_OP_TYPE(inst, idx) == FD_OT_IMM; }
-        int64_t imm() const { assert(is_imm()); return FD_OP_IMM(inst, idx); }
+        bool is_imm() const { return FD_OP_TYPE(fdi, idx) == FD_OT_IMM; }
+        int64_t imm() const { assert(is_imm()); return FD_OP_IMM(fdi, idx); }
 
-        bool is_pcrel() const { return FD_OP_TYPE(inst, idx) == FD_OT_OFF; }
-        int64_t pcrel() const { assert(is_pcrel()); return FD_OP_IMM(inst, idx); }
+        bool is_pcrel() const { return FD_OP_TYPE(fdi, idx) == FD_OT_OFF; }
+        int64_t pcrel() const { assert(is_pcrel()); return FD_OP_IMM(fdi, idx); }
 
-        bool is_mem() const { return FD_OP_TYPE(inst, idx) == FD_OT_MEM; }
+        bool is_mem() const { return FD_OP_TYPE(fdi, idx) == FD_OT_MEM; }
         const Reg base() const {
             assert(is_mem());
-            return Reg(FD_RT_GPL, FD_OP_BASE(inst, idx));
+            return Reg(FD_RT_GPL, FD_OP_BASE(fdi, idx));
         }
         const Reg index() const {
             assert(is_mem());
-            return Reg(FD_RT_GPL, FD_OP_INDEX(inst, idx));
+            return Reg(FD_RT_GPL, FD_OP_INDEX(fdi, idx));
         }
         unsigned scale() const {
             assert(is_mem());
-            if (FD_OP_INDEX(inst, idx) != FD_REG_NONE)
-                return 1 << FD_OP_SCALE(inst, idx);
+            if (FD_OP_INDEX(fdi, idx) != FD_REG_NONE)
+                return 1 << FD_OP_SCALE(fdi, idx);
             return 0;
         }
-        int64_t off() const { assert(is_mem()); return FD_OP_DISP(inst, idx); }
-        unsigned seg() const { assert(is_mem()); return FD_SEGMENT(inst); }
-        unsigned addrsz() const { assert(is_mem()); return inst->addrsz(); }
+        int64_t off() const { assert(is_mem()); return FD_OP_DISP(fdi, idx); }
+        unsigned seg() const { assert(is_mem()); return FD_SEGMENT(fdi); }
+        unsigned addrsz() const { assert(is_mem()); return FD_ADDRSIZE(fdi); }
     };
 
-    size_t len() const { return FD_SIZE(fdi()); }
-    uintptr_t start() const { return FD_ADDRESS(fdi()); }
+    size_t len() const { return FD_SIZE(&x86_64); }
+    uintptr_t start() const { return FD_ADDRESS(&x86_64); }
     uintptr_t end() const { return start() + len(); }
-    Type type() const { return FD_TYPE(fdi()); }
-    unsigned addrsz() const { return FD_ADDRSIZE(fdi()); }
-    unsigned opsz() const { return FD_OPSIZE(fdi()); }
-    const Op op(unsigned idx) const { return Op{this, idx}; }
-    bool has_rep() const { return FD_HAS_REP(fdi()); }
-    bool has_repnz() const { return FD_HAS_REPNZ(fdi()); }
-
-private:
-    const FdInstr* fdi() const {return static_cast<const FdInstr*>(this); }
+    Type type() const { return FD_TYPE(&x86_64); }
+    unsigned addrsz() const { return FD_ADDRSIZE(&x86_64); }
+    unsigned opsz() const { return FD_OPSIZE(&x86_64); }
+    const Op op(unsigned idx) const { return Op{&x86_64, idx}; }
+    bool has_rep() const { return FD_HAS_REP(&x86_64); }
+    bool has_repnz() const { return FD_HAS_REPNZ(&x86_64); }
 };
 
 } // namespace

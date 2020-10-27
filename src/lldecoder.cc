@@ -96,12 +96,12 @@ int Function::Decode(uintptr_t addr, DecodeStop stop, MemReader memacc) {
             if (inst_buf_sz == 0 || inst_buf_sz > sizeof(inst_buf))
                 break;
 
-            int ret = fd_decode(inst_buf, inst_buf_sz, 64, /*addr=*/0, &inst);
+            int ret = fd_decode(inst_buf, inst_buf_sz, 64, /*addr=*/0, &inst.x86_64);
             // If we reach an invalid instruction or an instruction we can't
             // decode, stop.
             if (ret < 0)
                 break;
-            inst.address = cur_addr;
+            inst.x86_64.address = cur_addr;
 
             addr_map[cur_addr] = std::make_pair(blocks.size(), insts.size());
             insts.push_back(inst);
