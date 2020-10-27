@@ -19,6 +19,7 @@
 
 #include "function.h"
 
+#include "arch.h"
 #include "basicblock.h"
 #include "config.h"
 #include "instr.h"
@@ -96,12 +97,9 @@ int Function::Decode(uintptr_t addr, DecodeStop stop, MemReader memacc) {
             if (inst_buf_sz == 0 || inst_buf_sz > sizeof(inst_buf))
                 break;
 
-            int ret = fd_decode(inst_buf, inst_buf_sz, 64, /*addr=*/0, &inst.x86_64);
-            // If we reach an invalid instruction or an instruction we can't
-            // decode, stop.
-            if (ret < 0)
+            int ret = inst.DecodeFrom(Arch::X86_64, inst_buf, inst_buf_sz, cur_addr);
+            if (ret < 0) // invalid or unknown instruction
                 break;
-            inst.x86_64.address = cur_addr;
 
             addr_map[cur_addr] = std::make_pair(blocks.size(), insts.size());
             insts.push_back(inst);

@@ -29,12 +29,22 @@
 #include <cstdbool>
 #include <cstdint>
 
+#include "arch.h"
+
 namespace rellume {
 
 class Instr {
+    Arch arch;
+    union {
+        FdInstr x86_64;
+    };
+
 public:
     using Type = FdInstrType;
-    FdInstr x86_64;
+
+    // Constructors needed for deprecated ll_func_add_inst
+    Instr() {}
+    Instr(FdInstr* fdi) : arch(Arch::X86_64), x86_64(*fdi) {}
 
     struct Reg {
         uint16_t rt;
@@ -97,6 +107,23 @@ public:
     const Op op(unsigned idx) const { return Op{&x86_64, idx}; }
     bool has_rep() const { return FD_HAS_REP(&x86_64); }
     bool has_repnz() const { return FD_HAS_REPNZ(&x86_64); }
+
+    /// Fill Instr with the instruction at buf and return number of consumed
+    /// bytes (or negative on error). addr is the virtual address of the
+    /// instruction.
+    int DecodeFrom(Arch a, uint8_t* buf, size_t len, uintptr_t addr) {
+        int ret = -1;
+        arch = a;
+        switch (arch) {
+        case Arch::X86_64:
+            ret = fd_decode(buf, len, /*mode=*/64, /*addr=*/0, &x86_64);
+            x86_64.address = addr;
+            break;
+        default:
+            return -1;
+        }
+        return ret;
+    }
 };
 
 } // namespace
