@@ -91,26 +91,26 @@ protected:
         return irb.GetInsertBlock()->getModule();
     }
 
-    X86Reg MapReg(const Instr::Reg reg);
+    ArchReg MapReg(const Instr::Reg reg);
 
-    llvm::Value* GetReg(X86Reg reg, Facet facet) {
+    llvm::Value* GetReg(ArchReg reg, Facet facet) {
         return regfile->GetReg(reg, facet);
     }
-    void SetReg(X86Reg reg, Facet facet, llvm::Value* value) {
+    void SetReg(ArchReg reg, Facet facet, llvm::Value* value) {
         regfile->SetReg(reg, facet, value, true); // clear all other facets
     }
-    void SetRegFacet(X86Reg reg, Facet facet, llvm::Value* value) {
+    void SetRegFacet(ArchReg reg, Facet facet, llvm::Value* value) {
         regfile->SetReg(reg, facet, value, false);
     }
-    void SetRegPtr(X86Reg reg, llvm::Value* value) {
+    void SetRegPtr(ArchReg reg, llvm::Value* value) {
         SetReg(reg, Facet::I64, irb.CreatePtrToInt(value, irb.getInt64Ty()));
         SetRegFacet(reg, Facet::PTR, value);
     }
     llvm::Value* GetFlag(Facet facet) {
-        return GetReg(X86Reg::EFLAGS, facet);
+        return GetReg(ArchReg::EFLAGS, facet);
     }
     void SetFlag(Facet facet, llvm::Value* value) {
-        SetRegFacet(X86Reg::EFLAGS, facet, value);
+        SetRegFacet(ArchReg::EFLAGS, facet, value);
     }
     void SetFlagUndef(std::initializer_list<Facet> facets) {
         llvm::Value* undef = llvm::UndefValue::get(irb.getInt1Ty());
@@ -130,14 +130,14 @@ private:
 protected:
     llvm::Value* OpAddr(const Instr::Op op, llvm::Type* element_type, unsigned seg);
     llvm::Value* OpLoad(const Instr::Op op, Facet facet, Alignment alignment = ALIGN_NONE, unsigned force_seg = 7);
-    void OpStoreGp(X86Reg reg, llvm::Value* v) {
+    void OpStoreGp(ArchReg reg, llvm::Value* v) {
         OpStoreGp(reg, Facet::In(v->getType()->getIntegerBitWidth()), v);
     }
-    void OpStoreGp(X86Reg reg, Facet facet, llvm::Value* value);
+    void OpStoreGp(ArchReg reg, Facet facet, llvm::Value* value);
     void OpStoreGp(const Instr::Op op, llvm::Value* value, Alignment alignment = ALIGN_NONE);
     void OpStoreVec(const Instr::Op op, llvm::Value* value, bool avx = false, Alignment alignment = ALIGN_IMP);
     void StackPush(llvm::Value* value);
-    llvm::Value* StackPop(const X86Reg sp_src_reg = X86Reg::RSP);
+    llvm::Value* StackPop(const ArchReg sp_src_reg = ArchReg::RSP);
 
     // llflags.cc
     void FlagCalcZ(llvm::Value* value) {
@@ -232,8 +232,8 @@ private:
         FlagFromReg(StackPop());
     }
     void LiftLeave(const Instr& inst) {
-        llvm::Value* val = StackPop(X86Reg::RBP);
-        OpStoreGp(X86Reg::RBP, val);
+        llvm::Value* val = StackPop(ArchReg::RBP);
+        OpStoreGp(ArchReg::RBP, val);
     }
 
     void LiftJmp(const Instr& inst);

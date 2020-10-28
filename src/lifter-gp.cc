@@ -72,7 +72,7 @@ void Lifter::LiftArith(const Instr& inst, bool sub) {
 }
 
 void Lifter::LiftCmpxchg(const Instr& inst) {
-    auto acc = GetReg(X86Reg::RAX, Facet::In(inst.op(0).bits()));
+    auto acc = GetReg(ArchReg::RAX, Facet::In(inst.op(0).bits()));
     auto dst = OpLoad(inst.op(0), Facet::I);
     auto src = OpLoad(inst.op(1), Facet::I);
 
@@ -83,7 +83,7 @@ void Lifter::LiftCmpxchg(const Instr& inst) {
     // Store SRC if DST=ACC, else store DST again (i.e. don't change memory).
     OpStoreGp(inst.op(0), irb.CreateSelect(GetFlag(Facet::ZF), src, dst));
     // ACC gets the value from memory.
-    OpStoreGp(X86Reg::RAX, dst);
+    OpStoreGp(ArchReg::RAX, dst);
 }
 
 void Lifter::LiftXchg(const Instr& inst) {
@@ -244,7 +244,7 @@ void Lifter::LiftMul(const Instr& inst) {
     llvm::Value* op2;
     if (op_cnt == 1) {
         op1 = OpLoad(inst.op(0), Facet::I);
-        op2 = GetReg(X86Reg::RAX, Facet::In(sz));
+        op2 = GetReg(ArchReg::RAX, Facet::In(sz));
     } else {
         op1 = OpLoad(inst.op(op_cnt - 2), Facet::I);
         op2 = OpLoad(inst.op(op_cnt - 1), Facet::I);
@@ -262,7 +262,7 @@ void Lifter::LiftMul(const Instr& inst) {
 
     if (op_cnt == 1) {
         if (sz == 8) {
-            OpStoreGp(X86Reg::RAX, ext_res);
+            OpStoreGp(ArchReg::RAX, ext_res);
         } else {
             // Don't use short_res to avoid having two multiplications.
             // TODO: is this concern still valid?
@@ -270,8 +270,8 @@ void Lifter::LiftMul(const Instr& inst) {
             llvm::Value* res_a = irb.CreateTrunc(ext_res, value_ty);
             llvm::Value* high = irb.CreateLShr(ext_res, sz);
             llvm::Value* res_d = irb.CreateTrunc(high, value_ty);
-            OpStoreGp(X86Reg::RAX, res_a);
-            OpStoreGp(X86Reg::RDX, res_d);
+            OpStoreGp(ArchReg::RAX, res_a);
+            OpStoreGp(ArchReg::RDX, res_d);
         }
     } else {
         OpStoreGp(inst.op(0), short_res);
@@ -307,11 +307,11 @@ void Lifter::LiftDiv(const Instr& inst) {
     llvm::Value* dividend;
     if (sz == 8) {
         // Dividend is AX
-        dividend = GetReg(X86Reg::RAX, Facet::I16);
+        dividend = GetReg(ArchReg::RAX, Facet::I16);
     } else {
         // Dividend is DX:AX/EDX:EAX/RDX:RAX
-        auto low = GetReg(X86Reg::RAX, Facet::In(sz));
-        auto high = GetReg(X86Reg::RDX, Facet::In(sz));
+        auto low = GetReg(ArchReg::RAX, Facet::In(sz));
+        auto high = GetReg(ArchReg::RDX, Facet::In(sz));
         high = irb.CreateShl(irb.CreateZExt(high, ex_ty), sz);
         dividend = irb.CreateOr(irb.CreateZExt(low, ex_ty), high);
     }
@@ -328,12 +328,12 @@ void Lifter::LiftDiv(const Instr& inst) {
 
     if (sz == 8) {
         // Quotient is AL, remainder is AH
-        OpStoreGp(X86Reg::RAX, Facet::I8, quot);
-        OpStoreGp(X86Reg::RAX, Facet::I8H, rem);
+        OpStoreGp(ArchReg::RAX, Facet::I8, quot);
+        OpStoreGp(ArchReg::RAX, Facet::I8H, rem);
     } else {
         // Quotient is AX/EAX/RAX, remainer is DX/EDX/RDX
-        OpStoreGp(X86Reg::RAX, quot);
-        OpStoreGp(X86Reg::RDX, rem);
+        OpStoreGp(ArchReg::RAX, quot);
+        OpStoreGp(ArchReg::RDX, rem);
     }
 
     SetFlagUndef({Facet::OF, Facet::SF, Facet::ZF, Facet::AF, Facet::PF,
@@ -361,19 +361,19 @@ void Lifter::LiftLea(const Instr& inst) {
 }
 
 void Lifter::LiftXlat(const Instr& inst) {
-    llvm::Value* al = GetReg(X86Reg::RAX, Facet::I8);
+    llvm::Value* al = GetReg(ArchReg::RAX, Facet::I8);
     llvm::Value* bx;
     if (inst.addrsz() == 8) {
-        bx = GetReg(X86Reg::RBX, Facet::PTR);
+        bx = GetReg(ArchReg::RBX, Facet::PTR);
         bx = irb.CreatePointerCast(bx, irb.getInt8PtrTy());
     } else {
-        bx = GetReg(X86Reg::RBX, Facet::I32);
+        bx = GetReg(ArchReg::RBX, Facet::I32);
         bx = irb.CreateZExt(bx, irb.getInt64Ty());
         bx = irb.CreateIntToPtr(bx, irb.getInt8PtrTy());
     }
 
     llvm::Value* ptr = irb.CreateGEP(bx, irb.CreateZExt(al, irb.getInt32Ty()));
-    OpStoreGp(X86Reg::RAX, irb.CreateLoad(irb.getInt8Ty(), ptr));
+    OpStoreGp(ArchReg::RAX, irb.CreateLoad(irb.getInt8Ty(), ptr));
 }
 
 void Lifter::LiftCmovcc(const Instr& inst, Condition cond) {
@@ -389,14 +389,14 @@ void Lifter::LiftSetcc(const Instr& inst, Condition cond) {
 
 void Lifter::LiftCext(const Instr& inst) {
     unsigned sz = inst.opsz() * 8;
-    llvm::Value* ax = GetReg(X86Reg::RAX, Facet::In(sz / 2));
-    OpStoreGp(X86Reg::RAX, irb.CreateSExt(ax, irb.getIntNTy(sz)));
+    llvm::Value* ax = GetReg(ArchReg::RAX, Facet::In(sz / 2));
+    OpStoreGp(ArchReg::RAX, irb.CreateSExt(ax, irb.getIntNTy(sz)));
 }
 
 void Lifter::LiftCsep(const Instr& inst) {
     unsigned sz = inst.opsz() * 8;
-    llvm::Value* ax = GetReg(X86Reg::RAX, Facet::In(sz));
-    OpStoreGp(X86Reg::RDX, irb.CreateAShr(ax, sz - 1));
+    llvm::Value* ax = GetReg(ArchReg::RAX, Facet::In(sz));
+    OpStoreGp(ArchReg::RDX, irb.CreateAShr(ax, sz - 1));
 }
 
 void Lifter::LiftBitscan(const Instr& inst, bool trailing) {
@@ -474,24 +474,24 @@ void Lifter::LiftBswap(const Instr& inst) {
 
 void Lifter::LiftJmp(const Instr& inst) {
     // Force default data segment, 3e is notrack.
-    SetReg(X86Reg::IP, Facet::I64, OpLoad(inst.op(0), Facet::I64, ALIGN_NONE,
+    SetReg(ArchReg::IP, Facet::I64, OpLoad(inst.op(0), Facet::I64, ALIGN_NONE,
                                           FD_REG_DS));
 }
 
 void Lifter::LiftJcc(const Instr& inst, Condition cond) {
-    SetReg(X86Reg::IP, Facet::I64, irb.CreateSelect(FlagCond(cond),
+    SetReg(ArchReg::IP, Facet::I64, irb.CreateSelect(FlagCond(cond),
         OpLoad(inst.op(0), Facet::I64),
-        GetReg(X86Reg::IP, Facet::I64)
+        GetReg(ArchReg::IP, Facet::I64)
     ));
 }
 
 void Lifter::LiftJcxz(const Instr& inst) {
     unsigned sz = inst.addrsz();
-    llvm::Value* cx = GetReg(X86Reg::RCX, Facet::In(sz * 8));
+    llvm::Value* cx = GetReg(ArchReg::RCX, Facet::In(sz * 8));
     llvm::Value* cond = irb.CreateICmpEQ(cx, irb.getIntN(sz*8, 0));
-    SetReg(X86Reg::IP, Facet::I64, irb.CreateSelect(cond,
+    SetReg(ArchReg::IP, Facet::I64, irb.CreateSelect(cond,
         OpLoad(inst.op(0), Facet::I64),
-        GetReg(X86Reg::IP, Facet::I64)
+        GetReg(ArchReg::IP, Facet::I64)
     ));
 }
 
@@ -499,9 +499,9 @@ void Lifter::LiftLoop(const Instr& inst) {
     unsigned sz = inst.addrsz();
 
     // Decrement RCX/ECX
-    llvm::Value* cx = GetReg(X86Reg::RCX, Facet::In(sz * 8));
+    llvm::Value* cx = GetReg(ArchReg::RCX, Facet::In(sz * 8));
     cx = irb.CreateSub(cx, irb.getIntN(sz * 8, 1));
-    OpStoreGp(X86Reg::RCX, cx);
+    OpStoreGp(ArchReg::RCX, cx);
 
     // Construct condition
     llvm::Value* cond = irb.CreateICmpNE(cx, irb.getIntN(sz*8, 0));
@@ -510,9 +510,9 @@ void Lifter::LiftLoop(const Instr& inst) {
     else if (inst.type() == FDI_LOOPNZ)
         cond = irb.CreateAnd(cond, irb.CreateNot(GetFlag(Facet::ZF)));
 
-    SetReg(X86Reg::IP, Facet::I64, irb.CreateSelect(cond,
+    SetReg(ArchReg::IP, Facet::I64, irb.CreateSelect(cond,
         OpLoad(inst.op(0), Facet::I64),
-        GetReg(X86Reg::IP, Facet::I64)
+        GetReg(ArchReg::IP, Facet::I64)
     ));
 }
 
@@ -523,9 +523,9 @@ void Lifter::LiftCall(const Instr& inst) {
 
     // Force default data segment, 3e is notrack.
     llvm::Value* new_rip = OpLoad(inst.op(0), Facet::I, ALIGN_NONE, FD_REG_DS);
-    llvm::Value* ret_addr = GetReg(X86Reg::IP, Facet::I64);
+    llvm::Value* ret_addr = GetReg(ArchReg::IP, Facet::I64);
     StackPush(ret_addr);
-    SetReg(X86Reg::IP, Facet::I64, new_rip);
+    SetReg(ArchReg::IP, Facet::I64, new_rip);
 
     if (cfg.call_function) {
         CallExternalFunction(cfg.call_function);
@@ -535,10 +535,10 @@ void Lifter::LiftCall(const Instr& inst) {
         // We will continue with the tail_function (if specified) and enlarge
         // our shadow stack; and things will be slow. If someone uses such
         // constructs often or on a critical path, they get what they deserve.
-        llvm::Value* cont_addr = GetReg(X86Reg::IP, Facet::I64);
+        llvm::Value* cont_addr = GetReg(ArchReg::IP, Facet::I64);
         llvm::Value* eq = irb.CreateICmpEQ(cont_addr, ret_addr);
         // This allows for optimization of the common case (equality).
-        SetReg(X86Reg::IP, Facet::I64, irb.CreateSelect(eq, ret_addr, cont_addr));
+        SetReg(ArchReg::IP, Facet::I64, irb.CreateSelect(eq, ret_addr, cont_addr));
     }
 }
 
@@ -548,13 +548,13 @@ void Lifter::LiftRet(const Instr& inst) {
         SetFlagUndef({Facet::OF, Facet::SF, Facet::ZF, Facet::AF, Facet::PF,
                       Facet::CF});
 
-    SetReg(X86Reg::IP, Facet::I64, StackPop());
+    SetReg(ArchReg::IP, Facet::I64, StackPop());
 
     if (inst.op(0)) {
-        llvm::Value* rsp = GetReg(X86Reg::RSP, Facet::PTR);
+        llvm::Value* rsp = GetReg(ArchReg::RSP, Facet::PTR);
         rsp = irb.CreatePointerCast(rsp, irb.getInt8PtrTy());
         rsp = irb.CreateConstGEP1_64(rsp, inst.op(0).imm());
-        SetRegPtr(X86Reg::RSP, rsp);
+        SetRegPtr(ArchReg::RSP, rsp);
     }
 
     if (cfg.call_function) {
@@ -565,8 +565,8 @@ void Lifter::LiftRet(const Instr& inst) {
 }
 
 void Lifter::LiftSyscall(const Instr& inst) {
-    SetReg(X86Reg::RCX, Facet::I64, GetReg(X86Reg::IP, Facet::I64));
-    SetReg(X86Reg::GP(11), Facet::I64, FlagAsReg(64));
+    SetReg(ArchReg::RCX, Facet::I64, GetReg(ArchReg::IP, Facet::I64));
+    SetReg(ArchReg::GP(11), Facet::I64, FlagAsReg(64));
 
     if (cfg.syscall_implementation)
         CallExternalFunction(cfg.syscall_implementation);
@@ -587,9 +587,9 @@ LifterBase::RepInfo LifterBase::RepBegin(const Instr& inst) {
     if (info.mode != RepInfo::NO_REP) {
         info.loop_block = ablock.AddBlock();
         info.cont_block = ablock.AddBlock();
-        info.ip = GetReg(X86Reg::IP, Facet::I64);
+        info.ip = GetReg(ArchReg::IP, Facet::I64);
 
-        llvm::Value* count = GetReg(X86Reg::RCX, Facet::I64);
+        llvm::Value* count = GetReg(ArchReg::RCX, Facet::I64);
         llvm::Value* zero = llvm::Constant::getNullValue(count->getType());
         llvm::Value* enter_loop = irb.CreateICmpNE(count, zero);
         ablock.GetInsertBlock()->BranchTo(enter_loop, *info.loop_block,
@@ -600,9 +600,9 @@ LifterBase::RepInfo LifterBase::RepBegin(const Instr& inst) {
 
     llvm::Type* op_ty = irb.getIntNTy(inst.opsz() * 8)->getPointerTo();
     if (inst.type() != FDI_LODS)
-        info.di = irb.CreatePointerCast(GetReg(X86Reg::RDI, Facet::PTR), op_ty);
+        info.di = irb.CreatePointerCast(GetReg(ArchReg::RDI, Facet::PTR), op_ty);
     if (inst.type() != FDI_STOS && inst.type() != FDI_SCAS)
-        info.si = irb.CreatePointerCast(GetReg(X86Reg::RSI, Facet::PTR), op_ty);
+        info.si = irb.CreatePointerCast(GetReg(ArchReg::RSI, Facet::PTR), op_ty);
 
     return info;
 }
@@ -613,18 +613,18 @@ void LifterBase::RepEnd(RepInfo info) {
     llvm::Value* adj = irb.CreateSelect(df, irb.getInt64(-1), irb.getInt64(1));
 
     if (info.di)
-        SetRegPtr(X86Reg::RDI, irb.CreateGEP(info.di, adj));
+        SetRegPtr(ArchReg::RDI, irb.CreateGEP(info.di, adj));
     if (info.si)
-        SetRegPtr(X86Reg::RSI, irb.CreateGEP(info.si, adj));
+        SetRegPtr(ArchReg::RSI, irb.CreateGEP(info.si, adj));
 
     // If instruction has REP/REPZ/REPNZ, add branching logic
     if (info.mode == RepInfo::NO_REP)
         return;
 
     // Decrement count and check.
-    llvm::Value* count = GetReg(X86Reg::RCX, Facet::I64);
+    llvm::Value* count = GetReg(ArchReg::RCX, Facet::I64);
     count = irb.CreateSub(count, irb.getInt64(1));
-    SetReg(X86Reg::RCX, Facet::I64, count);
+    SetReg(ArchReg::RCX, Facet::I64, count);
 
     llvm::Value* zero = llvm::Constant::getNullValue(count->getType());
     llvm::Value* cond = irb.CreateICmpNE(count, zero);
@@ -638,14 +638,14 @@ void LifterBase::RepEnd(RepInfo info) {
 
     // Ensure that we don't generate an unused PHI node which may end up in the
     // register file if the REP is at the end of a basic block.
-    SetReg(X86Reg::IP, Facet::I64, info.ip);
+    SetReg(ArchReg::IP, Facet::I64, info.ip);
 }
 
 void Lifter::LiftLods(const Instr& inst) {
     RepInfo rep_info = RepBegin(inst); // NOTE: this modifies control flow!
 
     unsigned size = inst.opsz();
-    OpStoreGp(X86Reg::RAX, irb.CreateLoad(irb.getIntNTy(size), rep_info.di));
+    OpStoreGp(ArchReg::RAX, irb.CreateLoad(irb.getIntNTy(size), rep_info.di));
 
     RepEnd(rep_info); // NOTE: this modifies control flow!
 }
@@ -655,7 +655,7 @@ void Lifter::LiftStos(const Instr& inst) {
     // memset intrinsic.
     RepInfo rep_info = RepBegin(inst); // NOTE: this modifies control flow!
 
-    auto ax = GetReg(X86Reg::RAX, Facet::In(inst.opsz() * 8));
+    auto ax = GetReg(ArchReg::RAX, Facet::In(inst.opsz() * 8));
     irb.CreateStore(ax, rep_info.di);
 
     RepEnd(rep_info); // NOTE: this modifies control flow!
@@ -673,7 +673,7 @@ void Lifter::LiftMovs(const Instr& inst) {
 void Lifter::LiftScas(const Instr& inst) {
     RepInfo rep_info = RepBegin(inst); // NOTE: this modifies control flow!
 
-    auto src = GetReg(X86Reg::RAX, Facet::In(inst.opsz() * 8));
+    auto src = GetReg(ArchReg::RAX, Facet::In(inst.opsz() * 8));
     llvm::Value* dst = irb.CreateLoad(rep_info.di);
     // Perform a normal CMP operation.
     FlagCalcSub(irb.CreateSub(src, dst), src, dst);

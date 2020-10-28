@@ -35,7 +35,7 @@
 
 namespace rellume {
 
-class X86Reg {
+class ArchReg {
 public:
     enum class RegKind : uint8_t {
         INVALID = 0,
@@ -50,10 +50,10 @@ private:
     uint8_t index;
 
 public:
-    constexpr X86Reg() : kind(RegKind::INVALID), index(0) {}
+    constexpr ArchReg() : kind(RegKind::INVALID), index(0) {}
 
 private:
-    constexpr X86Reg(RegKind kind, uint8_t index = 0)
+    constexpr ArchReg(RegKind kind, uint8_t index = 0)
         : kind(kind), index(index) {}
 
 public:
@@ -62,34 +62,36 @@ public:
 
     bool IsGP() const { return kind == RegKind::GP; }
 
-    inline bool operator==(const X86Reg& rhs) const {
+    inline bool operator==(const ArchReg& rhs) const {
         return kind == rhs.kind && index == rhs.index;
     }
 
-    static constexpr X86Reg GP(unsigned idx) {
-        return X86Reg(RegKind::GP, idx);
+    static constexpr ArchReg GP(unsigned idx) {
+        return ArchReg(RegKind::GP, idx);
     }
-    static constexpr X86Reg VEC(unsigned idx) {
-        return X86Reg(RegKind::VEC, idx);
+    static constexpr ArchReg VEC(unsigned idx) {
+        return ArchReg(RegKind::VEC, idx);
     }
-    static const X86Reg RAX, RCX, RDX, RBX, RSP, RBP, RSI, RDI;
-    static const X86Reg IP;
-    static const X86Reg EFLAGS;
+
+    static const ArchReg IP;
+    static const ArchReg EFLAGS;
+    // x86-64-specific names ignored by other archs
+    static const ArchReg RAX, RCX, RDX, RBX, RSP, RBP, RSI, RDI;
 };
 
-constexpr const X86Reg X86Reg::RAX = X86Reg::GP(0);
-constexpr const X86Reg X86Reg::RCX = X86Reg::GP(1);
-constexpr const X86Reg X86Reg::RDX = X86Reg::GP(2);
-constexpr const X86Reg X86Reg::RBX = X86Reg::GP(3);
-constexpr const X86Reg X86Reg::RSP = X86Reg::GP(4);
-constexpr const X86Reg X86Reg::RBP = X86Reg::GP(5);
-constexpr const X86Reg X86Reg::RSI = X86Reg::GP(6);
-constexpr const X86Reg X86Reg::RDI = X86Reg::GP(7);
-constexpr const X86Reg X86Reg::IP{X86Reg::RegKind::IP, 0};
-constexpr const X86Reg X86Reg::EFLAGS{X86Reg::RegKind::EFLAGS, 0};
+constexpr const ArchReg ArchReg::IP{ArchReg::RegKind::IP, 0};
+constexpr const ArchReg ArchReg::EFLAGS{ArchReg::RegKind::EFLAGS, 0};
+constexpr const ArchReg ArchReg::RAX = ArchReg::GP(0);
+constexpr const ArchReg ArchReg::RCX = ArchReg::GP(1);
+constexpr const ArchReg ArchReg::RDX = ArchReg::GP(2);
+constexpr const ArchReg ArchReg::RBX = ArchReg::GP(3);
+constexpr const ArchReg ArchReg::RSP = ArchReg::GP(4);
+constexpr const ArchReg ArchReg::RBP = ArchReg::GP(5);
+constexpr const ArchReg ArchReg::RSI = ArchReg::GP(6);
+constexpr const ArchReg ArchReg::RDI = ArchReg::GP(7);
 
 using RegisterSet = std::bitset<40>;
-unsigned RegisterSetBitIdx(X86Reg reg, Facet facet);
+unsigned RegisterSetBitIdx(ArchReg reg, Facet facet);
 
 class RegFile {
 public:
@@ -106,11 +108,11 @@ public:
     void SetInsertBlock(llvm::BasicBlock* new_block);
 
     void Clear();
-    using PhiDesc = std::tuple<X86Reg, Facet, llvm::PHINode*>;
+    using PhiDesc = std::tuple<ArchReg, Facet, llvm::PHINode*>;
     void InitWithPHIs(std::vector<PhiDesc>*, bool all_facets);
 
-    llvm::Value* GetReg(X86Reg reg, Facet facet);
-    void SetReg(X86Reg reg, Facet facet, llvm::Value*, bool clear_facets);
+    llvm::Value* GetReg(ArchReg reg, Facet facet);
+    void SetReg(ArchReg reg, Facet facet, llvm::Value*, bool clear_facets);
 
     RegisterSet& DirtyRegs();
     RegisterSet& CleanedRegs();

@@ -91,7 +91,7 @@ unsigned CallConv::CpuStructParamIdx() const {
     }
 }
 
-static const std::tuple<unsigned, X86Reg, Facet> cpu_struct_entries[] = {
+static const std::tuple<unsigned, ArchReg, Facet> cpu_struct_entries[] = {
 #define RELLUME_MAPPED_REG(nameu,off,reg,facet) std::make_tuple(SptrIdx::nameu, reg, facet),
 #include <rellume/cpustruct-private.inc>
 #undef RELLUME_MAPPED_REG
@@ -101,15 +101,15 @@ static const std::tuple<unsigned, X86Reg, Facet> cpu_struct_entries[] = {
 //     RAX->RAX; RCX->RCX; RDX->RDX; RBX->RBP; RSP->R15; RBP->R13;
 //     RSI->RSI; RDI->RDI; R8->R8;   R9->R9;   R10->R10; R11->R11;
 //     RIP->RBX; (not encoded here)
-static bool hhvm_is_host_reg(X86Reg reg) {
-    return reg == X86Reg::IP || (reg.IsGP() && reg.Index() < 12);
+static bool hhvm_is_host_reg(ArchReg reg) {
+    return reg == ArchReg::IP || (reg.IsGP() && reg.Index() < 12);
 }
-static uint8_t hhvm_arg_index(X86Reg reg) {
+static uint8_t hhvm_arg_index(ArchReg reg) {
     static const uint8_t indices[] = {10, 7, 6, 2, 3, 13, 5, 4, 8, 9, 11, 12};
     assert(hhvm_is_host_reg(reg));
     return (reg.IsGP() && reg.Index() < 12) ? indices[reg.Index()] : 0;
 }
-static uint8_t hhvm_ret_index(X86Reg reg) {
+static uint8_t hhvm_ret_index(ArchReg reg) {
     static const uint8_t indices[] = {8, 5, 4, 1, 13, 11, 3, 2, 6, 7, 9, 10};
     assert(hhvm_is_host_reg(reg));
     return (reg.IsGP() && reg.Index() < 12) ? indices[reg.Index()] : 0;
@@ -168,7 +168,7 @@ llvm::ReturnInst* CallConv::Return(BasicBlock* bb, FunctionInfo& fi) const {
         hhvm_ret[12] = llvm::UndefValue::get(irb.getInt64Ty());
     }
 
-    Pack(*this, bb, fi, [&hhvm_ret] (X86Reg reg, llvm::Value* reg_val) {
+    Pack(*this, bb, fi, [&hhvm_ret] (ArchReg reg, llvm::Value* reg_val) {
         hhvm_ret[hhvm_ret_index(reg)] = reg_val;
     });
 
@@ -178,7 +178,7 @@ llvm::ReturnInst* CallConv::Return(BasicBlock* bb, FunctionInfo& fi) const {
 }
 
 void CallConv::UnpackParams(BasicBlock* bb, FunctionInfo& fi) const {
-    Unpack(*this, bb, fi, [&fi] (X86Reg reg) {
+    Unpack(*this, bb, fi, [&fi] (ArchReg reg) {
         return &fi.fn->arg_begin()[hhvm_arg_index(reg)];
     });
 }
@@ -189,7 +189,7 @@ llvm::CallInst* CallConv::Call(llvm::Function* fn, BasicBlock* bb,
     call_args.resize(fn->arg_size());
     call_args[CpuStructParamIdx()] = fi.sptr_raw;
 
-    Pack(*this, bb, fi, [&call_args] (X86Reg reg, llvm::Value* reg_val) {
+    Pack(*this, bb, fi, [&call_args] (ArchReg reg, llvm::Value* reg_val) {
         call_args[hhvm_arg_index(reg)] = reg_val;
     });
 
@@ -214,7 +214,7 @@ llvm::CallInst* CallConv::Call(llvm::Function* fn, BasicBlock* bb,
             hhvm_ret.push_back(irb.CreateExtractValue(call, {i}));
     }
 
-    Unpack(*this, bb, fi, [&hhvm_ret] (X86Reg reg) {
+    Unpack(*this, bb, fi, [&hhvm_ret] (ArchReg reg) {
         return hhvm_ret[hhvm_ret_index(reg)];
     });
 

@@ -41,13 +41,13 @@
 
 namespace rellume {
 
-unsigned RegisterSetBitIdx(X86Reg reg, Facet facet) {
+unsigned RegisterSetBitIdx(ArchReg reg, Facet facet) {
     switch (reg.Kind()) {
-    case X86Reg::RegKind::GP:
+    case ArchReg::RegKind::GP:
         return 0 + reg.Index();
-    case X86Reg::RegKind::IP:
+    case ArchReg::RegKind::IP:
         return 16;
-    case X86Reg::RegKind::EFLAGS:
+    case ArchReg::RegKind::EFLAGS:
         switch (facet) {
         // clang-format off
         case Facet::OF: return 17 + 0; break;
@@ -60,7 +60,7 @@ unsigned RegisterSetBitIdx(X86Reg reg, Facet facet) {
         default: assert(false && "invalid facet for EFLAGS register");
         }
         // clang-format on
-    case X86Reg::RegKind::VEC:
+    case ArchReg::RegKind::VEC:
         return 24 + reg.Index();
     default:
         assert(false && "invalid register kind");
@@ -70,7 +70,7 @@ unsigned RegisterSetBitIdx(X86Reg reg, Facet facet) {
 
 class DeferredValueBase {
 public:
-    using Generator = llvm::Value* (*)(X86Reg, Facet, llvm::BasicBlock*, void*);
+    using Generator = llvm::Value* (*)(ArchReg, Facet, llvm::BasicBlock*, void*);
 
 protected:
     // If value is nullptr, then the generator (unless that is null as well)
@@ -91,7 +91,7 @@ public:
     DeferredValueBase(DeferredValueBase const&) = delete;
     DeferredValueBase& operator=(const DeferredValueBase&) = delete;
 
-    llvm::Value* get(X86Reg reg, Facet facet, llvm::BasicBlock* bb) {
+    llvm::Value* get(ArchReg reg, Facet facet, llvm::BasicBlock* bb) {
         if (generator) {
             values[0] = generator(reg, facet, bb, values);
             assert(values[0] != nullptr && "generator returned nullptr");
@@ -105,7 +105,7 @@ public:
 template<typename T>
 class DeferredValue : public DeferredValueBase {
 public:
-    using Generator = llvm::Value* (*)(X86Reg, Facet, llvm::BasicBlock*, T*);
+    using Generator = llvm::Value* (*)(ArchReg, Facet, llvm::BasicBlock*, T*);
     DeferredValue(Generator generator, T data)
         : DeferredValueBase(
               reinterpret_cast<DeferredValueBase::Generator>(generator)) {
@@ -187,8 +187,8 @@ public:
     void Clear();
     void InitWithPHIs(std::vector<PhiDesc>*, bool all_facets);
 
-    llvm::Value* GetReg(X86Reg reg, Facet facet);
-    void SetReg(X86Reg reg, Facet facet, llvm::Value*, bool clear_facets);
+    llvm::Value* GetReg(ArchReg reg, Facet facet);
+    void SetReg(ArchReg reg, Facet facet, llvm::Value*, bool clear_facets);
 
     RegisterSet& DirtyRegs() { return dirty_regs; }
     RegisterSet& CleanedRegs() { return cleaned_regs; }
@@ -203,8 +203,8 @@ private:
     RegisterSet dirty_regs;
     RegisterSet cleaned_regs;
 
-    DeferredValueBase* AccessRegFacet(X86Reg reg, Facet facet);
-    llvm::Value* GetRegFacet(X86Reg reg, Facet facet);
+    DeferredValueBase* AccessRegFacet(ArchReg reg, Facet facet);
+    llvm::Value* GetRegFacet(ArchReg reg, Facet facet);
 };
 
 void RegFile::impl::Clear() {
@@ -221,7 +221,7 @@ void RegFile::impl::InitWithPHIs(std::vector<PhiDesc>* desc_vec,
     auto fn = [desc_vec](Facet) {
         using DeferData = std::vector<PhiDesc>*;
         return DeferredValue<DeferData>(
-            [](X86Reg reg, Facet facet, llvm::BasicBlock* bb,
+            [](ArchReg reg, Facet facet, llvm::BasicBlock* bb,
                DeferData* defer_data) {
                 llvm::IRBuilder<> irb(bb, bb->begin());
                 auto phi = irb.CreatePHI(facet.Type(irb.getContext()), 4);
@@ -247,22 +247,22 @@ void RegFile::impl::InitWithPHIs(std::vector<PhiDesc>* desc_vec,
     reg_ip = fn(Facet::I64);
 }
 
-DeferredValueBase* RegFile::impl::AccessRegFacet(X86Reg reg, Facet facet) {
+DeferredValueBase* RegFile::impl::AccessRegFacet(ArchReg reg, Facet facet) {
     unsigned idx = reg.Index();
     switch (reg.Kind()) {
-    case X86Reg::RegKind::GP:
+    case ArchReg::RegKind::GP:
         if (regs_gp[idx].has(facet))
             return &regs_gp[idx][facet];
         return nullptr;
-    case X86Reg::RegKind::IP:
+    case ArchReg::RegKind::IP:
         if (facet == Facet::I64)
             return &reg_ip;
         return nullptr;
-    case X86Reg::RegKind::EFLAGS:
+    case ArchReg::RegKind::EFLAGS:
         if (flags.has(facet))
             return &flags[facet];
         return nullptr;
-    case X86Reg::RegKind::VEC:
+    case ArchReg::RegKind::VEC:
         if (regs_sse[idx].has(facet))
             return &regs_sse[idx][facet];
         return nullptr;
@@ -271,14 +271,14 @@ DeferredValueBase* RegFile::impl::AccessRegFacet(X86Reg reg, Facet facet) {
     }
 }
 
-llvm::Value* RegFile::impl::GetRegFacet(X86Reg reg, Facet facet) {
+llvm::Value* RegFile::impl::GetRegFacet(ArchReg reg, Facet facet) {
     DeferredValueBase* def_val = AccessRegFacet(reg, facet);
     if (def_val)
         return def_val->get(reg, facet, insert_block);
     return nullptr;
 }
 
-llvm::Value* RegFile::impl::GetReg(X86Reg reg, Facet facet) {
+llvm::Value* RegFile::impl::GetReg(ArchReg reg, Facet facet) {
     // If we store the selected facet in our register file and the facet is
     // valid, return it immediately.
     if (llvm::Value* res = GetRegFacet(reg, facet))
@@ -290,7 +290,7 @@ llvm::Value* RegFile::impl::GetReg(X86Reg reg, Facet facet) {
 
     llvm::Type* facetType = facet.Type(insert_block->getContext());
 
-    if (reg.Kind() == X86Reg::RegKind::GP) {
+    if (reg.Kind() == ArchReg::RegKind::GP) {
         llvm::Value* res = nullptr;
         llvm::Value* native = GetRegFacet(reg, Facet::I64);
         assert(native && "native gp-reg facet is null");
@@ -318,7 +318,7 @@ llvm::Value* RegFile::impl::GetReg(X86Reg reg, Facet facet) {
         if (DeferredValueBase* facet_entry = AccessRegFacet(reg, facet))
             *facet_entry = res;
         return res;
-    } else if (reg.Kind() == X86Reg::RegKind::IP) {
+    } else if (reg.Kind() == ArchReg::RegKind::IP) {
         llvm::Value* native = GetRegFacet(reg, Facet::I64);
         if (facet == Facet::I64)
             return native;
@@ -326,7 +326,7 @@ llvm::Value* RegFile::impl::GetReg(X86Reg reg, Facet facet) {
             return irb.CreateIntToPtr(native, irb.getInt8PtrTy());
         else
             assert(false && "invalid facet for ip-reg");
-    } else if (reg.Kind() == X86Reg::RegKind::VEC) {
+    } else if (reg.Kind() == ArchReg::RegKind::VEC) {
         llvm::Value* res = nullptr;
         llvm::Value* native = GetRegFacet(reg, Facet::IVEC);
         assert(native && "native sse-reg facet is null");
@@ -412,7 +412,7 @@ llvm::Value* RegFile::impl::GetReg(X86Reg reg, Facet facet) {
     return nullptr;
 }
 
-void RegFile::impl::SetReg(X86Reg reg, Facet facet, llvm::Value* value,
+void RegFile::impl::SetReg(ArchReg reg, Facet facet, llvm::Value* value,
                            bool clearOthers) {
     if (facet == Facet::PTR)
         assert(value->getType()->isPointerTy());
@@ -420,10 +420,10 @@ void RegFile::impl::SetReg(X86Reg reg, Facet facet, llvm::Value* value,
         assert(value->getType() == facet.Type(insert_block->getContext()));
 
     if (clearOthers) {
-        if (reg.Kind() == X86Reg::RegKind::GP) {
+        if (reg.Kind() == ArchReg::RegKind::GP) {
             assert(facet == Facet::I64);
             regs_gp[reg.Index()].clear();
-        } else if (reg.Kind() == X86Reg::RegKind::VEC) {
+        } else if (reg.Kind() == ArchReg::RegKind::VEC) {
             assert(facet == Facet::IVEC);
             regs_sse[reg.Index()].clear();
         }
@@ -452,8 +452,8 @@ void RegFile::Clear() { pimpl->Clear(); }
 void RegFile::InitWithPHIs(std::vector<PhiDesc>* desc_vec, bool all_facets) {
     pimpl->InitWithPHIs(desc_vec, all_facets);
 }
-llvm::Value* RegFile::GetReg(X86Reg r, Facet f) { return pimpl->GetReg(r, f); }
-void RegFile::SetReg(X86Reg reg, Facet facet, llvm::Value* value, bool clear) {
+llvm::Value* RegFile::GetReg(ArchReg r, Facet f) { return pimpl->GetReg(r, f); }
+void RegFile::SetReg(ArchReg reg, Facet facet, llvm::Value* value, bool clear) {
     pimpl->SetReg(reg, facet, value, clear);
 }
 RegisterSet& RegFile::DirtyRegs() { return pimpl->DirtyRegs(); }

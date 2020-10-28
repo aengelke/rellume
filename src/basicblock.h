@@ -70,7 +70,7 @@ private:
 
     std::vector<BasicBlock*> predecessors;
     std::vector<BasicBlock*> successors;
-    std::vector<std::tuple<X86Reg, Facet, llvm::PHINode*>> empty_phis;
+    std::vector<std::tuple<ArchReg, Facet, llvm::PHINode*>> empty_phis;
 };
 
 class ArchBasicBlock

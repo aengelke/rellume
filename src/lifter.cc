@@ -51,7 +51,7 @@ void LifterBase::SetIP(uint64_t inst_addr, bool nofold) {
         auto bitcast = llvm::Instruction::BitCast;
         rip = irb.Insert(llvm::CastInst::Create(bitcast, rip, rip->getType()));
     }
-    SetReg(X86Reg::IP, Facet::I64, rip);
+    SetReg(ArchReg::IP, Facet::I64, rip);
 }
 
 void LifterBase::CallExternalFunction(llvm::Function* fn) {
@@ -72,7 +72,7 @@ bool Lifter::Lift(const Instr& inst) {
 
     // Add instruction marker
     if (cfg.instr_marker) {
-        llvm::Value* rip = GetReg(X86Reg::IP, Facet::I64);
+        llvm::Value* rip = GetReg(ArchReg::IP, Facet::I64);
         llvm::StringRef str_ref{reinterpret_cast<const char*>(&inst),
                                 sizeof(FdInstr)};
         llvm::MDString* md = llvm::MDString::get(irb.getContext(), str_ref);
@@ -117,8 +117,8 @@ bool Lifter::Lift(const Instr& inst) {
     // case FDI_CRC32: NOT IMPLEMENTED
     // case FDI_UD2: Intentionally not implemented.
 
-    case FDI_LAHF: OpStoreGp(X86Reg::RAX, Facet::I8H, FlagAsReg(8)); break;
-    case FDI_SAHF: FlagFromReg(GetReg(X86Reg::RAX, Facet::I8H)); break;
+    case FDI_LAHF: OpStoreGp(ArchReg::RAX, Facet::I8H, FlagAsReg(8)); break;
+    case FDI_SAHF: FlagFromReg(GetReg(ArchReg::RAX, Facet::I8H)); break;
 
     case FDI_MOV: LiftMovgp(inst, llvm::Instruction::SExt); break;
     case FDI_MOVABS: LiftMovgp(inst, llvm::Instruction::SExt); break;

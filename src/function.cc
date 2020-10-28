@@ -97,7 +97,7 @@ Function::Function(llvm::Module* mod, LLConfig* cfg) : cfg(cfg), fi{}
     // And initially fill register file.
     cfg->callconv.UnpackParams(entry_block->GetInsertBlock(), fi);
 
-    fi.entry_ip_value = entry_regfile->GetReg(X86Reg::IP, Facet::I64);
+    fi.entry_ip_value = entry_regfile->GetReg(ArchReg::IP, Facet::I64);
 }
 
 Function::~Function() {
@@ -168,7 +168,7 @@ llvm::Function* Function::Lift() {
         RegFile* regfile = it->second->GetInsertBlock()->GetRegFile();
         if (regfile->GetInsertBlock()->getTerminator())
             continue;
-        llvm::Value* next_rip = regfile->GetReg(X86Reg::IP, Facet::I64);
+        llvm::Value* next_rip = regfile->GetReg(ArchReg::IP, Facet::I64);
         if (auto select = llvm::dyn_cast<llvm::SelectInst>(next_rip)) {
             it->second->BranchTo(select->getCondition(),
                                  ResolveAddr(select->getTrueValue()),

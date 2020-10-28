@@ -45,14 +45,14 @@
 
 namespace rellume {
 
-X86Reg LifterBase::MapReg(const Instr::Reg reg) {
+ArchReg LifterBase::MapReg(const Instr::Reg reg) {
     if (reg.rt == FD_RT_GPL)
-        return reg.ri == FD_REG_IP ? X86Reg::IP : X86Reg::GP(reg.ri);
+        return reg.ri == FD_REG_IP ? ArchReg::IP : ArchReg::GP(reg.ri);
     else if (reg.rt == FD_RT_GPH)
-        return X86Reg::GP(reg.ri - FD_REG_AH);
+        return ArchReg::GP(reg.ri - FD_REG_AH);
     else if (reg.rt == FD_RT_VEC)
-        return X86Reg::VEC(reg.ri);
-    return X86Reg();
+        return ArchReg::VEC(reg.ri);
+    return ArchReg();
 }
 
 llvm::Value* LifterBase::OpAddrConst(uint64_t addr, llvm::PointerType* ptr_ty) {
@@ -166,7 +166,7 @@ llvm::Value* LifterBase::OpLoad(const Instr::Op op, Facet facet,
     if (op.is_imm()) {
         return irb.getIntN(op.bits(), op.imm());
     } else if (op.is_pcrel()) {
-        llvm::Value* rip = GetReg(X86Reg::IP, facet);
+        llvm::Value* rip = GetReg(ArchReg::IP, facet);
         llvm::Value* rip_off = irb.getIntN(op.bits(), op.pcrel());
 
         // For position independent code, RIP has the structure "base_rip + off"
@@ -198,7 +198,7 @@ llvm::Value* LifterBase::OpLoad(const Instr::Op op, Facet facet,
     return nullptr;
 }
 
-void LifterBase::OpStoreGp(X86Reg reg, Facet facet, llvm::Value* value) {
+void LifterBase::OpStoreGp(ArchReg reg, Facet facet, llvm::Value* value) {
     assert(reg.IsGP());
     assert(value->getType()->isIntegerTy());
     assert(value->getType() == facet.Type(irb.getContext()));
@@ -252,7 +252,7 @@ void LifterBase::OpStoreVec(const Instr::Op op, llvm::Value* value, bool avx,
 
     assert(op.is_reg() && "vec-store to non-mem/non-reg");
 
-    X86Reg reg = MapReg(op.reg());
+    ArchReg reg = MapReg(op.reg());
 
     llvm::Type* ivec_ty = Facet{Facet::IVEC}.Type(irb.getContext());
     unsigned ivec_sz = ivec_ty->getIntegerBitWidth();
@@ -301,19 +301,19 @@ void LifterBase::OpStoreVec(const Instr::Op op, llvm::Value* value, bool avx,
 }
 
 void LifterBase::StackPush(llvm::Value* value) {
-    llvm::Value* rsp = GetReg(X86Reg::RSP, Facet::PTR);
+    llvm::Value* rsp = GetReg(ArchReg::RSP, Facet::PTR);
     rsp = irb.CreatePointerCast(rsp, value->getType()->getPointerTo());
     rsp = irb.CreateConstGEP1_64(rsp, -1);
     irb.CreateStore(value, rsp);
 
-    SetRegPtr(X86Reg::RSP, rsp);
+    SetRegPtr(ArchReg::RSP, rsp);
 }
 
-llvm::Value* LifterBase::StackPop(const X86Reg sp_src_reg) {
+llvm::Value* LifterBase::StackPop(const ArchReg sp_src_reg) {
     llvm::Value* rsp = GetReg(sp_src_reg, Facet::PTR);
     rsp = irb.CreatePointerCast(rsp, irb.getInt64Ty()->getPointerTo());
 
-    SetRegPtr(X86Reg::RSP, irb.CreateConstGEP1_64(rsp, 1));
+    SetRegPtr(ArchReg::RSP, irb.CreateConstGEP1_64(rsp, 1));
 
     return irb.CreateLoad(rsp);
 }
