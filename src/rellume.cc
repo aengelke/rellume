@@ -37,6 +37,7 @@
 
 #include <cstdbool>
 #include <cstdint>
+#include <cstring>
 
 namespace {
 static rellume::LLConfig* unwrap(LLConfig* fn) {
@@ -104,6 +105,15 @@ void ll_config_set_use_native_segment_base(LLConfig* cfg, bool enable) {
 }
 void ll_config_enable_full_facets(LLConfig* cfg, bool enable) {
     unwrap(cfg)->full_facets = enable;
+}
+bool ll_config_set_architecture(LLConfig* cfg, const char *s) {
+    if (!strcmp(s, "x86-64")) {
+        unwrap(cfg)->arch = rellume::Arch::X86_64;
+        unwrap(cfg)->callconv = rellume::CallConv::X86_64_SPTR;
+    } else {
+        return false;
+    }
+    return true;
 }
 
 // Rellume Function API

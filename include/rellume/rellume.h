@@ -44,7 +44,9 @@ typedef struct LLConfig LLConfig;
 RELLUME_API LLConfig* ll_config_new(void);
 RELLUME_API void ll_config_free(LLConfig*);
 
-RELLUME_API void ll_config_set_hhvm(LLConfig*, bool);
+/// Set the architecture to x86-64 and use HHVM (true) or SPTR (false) calling
+/// convention. Deprecated: avoid using the HHVM calling convention.
+RELLUME_API void ll_config_set_hhvm(LLConfig*, bool) RELLUME_DEPRECATED;
 RELLUME_API void ll_config_set_sptr_addrspace(LLConfig*, unsigned);
 RELLUME_API void ll_config_enable_overflow_intrinsics(LLConfig*, bool);
 RELLUME_API void ll_config_enable_fast_math(LLConfig*, bool);
@@ -60,6 +62,9 @@ RELLUME_API void ll_config_set_call_ret_clobber_flags(LLConfig*, bool);
 RELLUME_API void ll_config_set_use_native_segment_base(LLConfig*, bool);
 RELLUME_API void ll_config_enable_full_facets(LLConfig*, bool);
 
+/// Sets the architecture. Currently the only valid options is "x86-64", which
+/// is also default. Return true, if the architecture is supported.
+RELLUME_API bool ll_config_set_architecture(LLConfig*, const char*);
 
 typedef struct LLFunc LLFunc;
 
