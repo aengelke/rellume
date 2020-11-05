@@ -2,6 +2,7 @@
  * This file is part of Rellume.
  *
  * (c) 2016-2019, Alexis Engelke <alexis.engelke@googlemail.com>
+ * (c) 2020, Dominik Okwieka <dominik.okwieka@t-online.de>
  *
  * Rellume is free software: you can redistribute it and/or modify
  * it under the terms of the GNU Lesser General Public License (LGPL)
@@ -93,7 +94,15 @@ constexpr const ArchReg ArchReg::RBP = ArchReg::GP(5);
 constexpr const ArchReg ArchReg::RSI = ArchReg::GP(6);
 constexpr const ArchReg ArchReg::RDI = ArchReg::GP(7);
 
-using RegisterSet = std::bitset<40>;
+// The calling convention code uses RegisterSet to record which registers
+// are used by the basic blocks of a function, in order to generate loads
+// and stores for calls and returns. Which bit represents which register
+// depends on the architecture and is defined by RegisterSetBitIdx.
+//
+// Unlike vector<bool>, bitset allows helpful bit operations and needs no
+// initialisation, but is fixed in size. Many bits are unused (x64 uses
+// merely 40 registers, aarch64 uses 68).
+using RegisterSet = std::bitset<128>;
 unsigned RegisterSetBitIdx(ArchReg reg, Facet facet);
 
 class RegFile {
@@ -117,7 +126,10 @@ public:
     llvm::Value* GetReg(ArchReg reg, Facet facet);
     void SetReg(ArchReg reg, Facet facet, llvm::Value*, bool clear_facets);
 
+    /// Modified registers not yet recorded in a CallConvPack in the FunctionInfo.
     RegisterSet& DirtyRegs();
+
+    /// Registers that have been packed into a CallConvPack.
     RegisterSet& CleanedRegs();
 
 private:
