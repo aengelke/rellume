@@ -47,8 +47,8 @@
 
 namespace rellume {
 
-BasicBlock::BasicBlock(llvm::Function* fn, Phis phi_mode)
-        : regfile() {
+BasicBlock::BasicBlock(llvm::Function* fn, Phis phi_mode, Arch arch)
+        : regfile(arch) {
     llvm_block = llvm::BasicBlock::Create(fn->getContext(), "", fn, nullptr);
     regfile.SetInsertBlock(llvm_block);
 

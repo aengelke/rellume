@@ -24,6 +24,7 @@
 #ifndef LL_REGFILE_H
 #define LL_REGFILE_H
 
+#include "arch.h"
 #include "facet.h"
 
 #include <llvm/IR/BasicBlock.h>
@@ -95,7 +96,7 @@ unsigned RegisterSetBitIdx(ArchReg reg, Facet facet);
 
 class RegFile {
 public:
-    RegFile();
+    RegFile(Arch arch);
     ~RegFile();
 
     RegFile(RegFile&& rhs);

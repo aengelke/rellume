@@ -24,6 +24,7 @@
 #ifndef LL_BASIC_BLOCK_H
 #define LL_BASIC_BLOCK_H
 
+#include "arch.h"
 #include "facet.h"
 #include "regfile.h"
 #include <llvm/IR/BasicBlock.h>
@@ -38,7 +39,7 @@ class BasicBlock {
 public:
     enum class Phis { NONE, NATIVE, ALL };
 
-    BasicBlock(llvm::Function* fn, Phis phi_mode);
+    BasicBlock(llvm::Function* fn, Phis phi_mode, Arch arch);
 
     BasicBlock(BasicBlock&& rhs);
     BasicBlock& operator=(BasicBlock&& rhs);
@@ -78,14 +79,15 @@ class ArchBasicBlock
 private:
     llvm::Function* fn;
     BasicBlock::Phis phi_mode;
+    Arch arch;
 
     std::vector<std::unique_ptr<BasicBlock>> low_blocks;
     BasicBlock* insert_block;
 
 public:
-    ArchBasicBlock(llvm::Function* fn, BasicBlock::Phis phi_mode)
-            : fn(fn), phi_mode(phi_mode) {
-        low_blocks.push_back(std::make_unique<BasicBlock>(fn, phi_mode));
+    ArchBasicBlock(llvm::Function* fn, BasicBlock::Phis phi_mode, Arch arch)
+            : fn(fn), phi_mode(phi_mode), arch(arch) {
+        low_blocks.push_back(std::make_unique<BasicBlock>(fn, phi_mode, arch));
         insert_block = low_blocks[0].get();
     }
 
@@ -102,7 +104,7 @@ private:
 
 public:
     BasicBlock* AddBlock() {
-        low_blocks.push_back(std::make_unique<BasicBlock>(fn, phi_mode));
+        low_blocks.push_back(std::make_unique<BasicBlock>(fn, phi_mode, arch));
         return low_blocks[low_blocks.size()-1].get();
     }
     BasicBlock* GetInsertBlock() {

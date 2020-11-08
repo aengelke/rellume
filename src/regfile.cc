@@ -2,6 +2,7 @@
  * This file is part of Rellume.
  *
  * (c) 2016-2019, Alexis Engelke <alexis.engelke@googlemail.com>
+ * (c) 2020, Dominik Okwieka <dominik.okwieka@t-online.de>
  *
  * Rellume is free software: you can redistribute it and/or modify
  * it under the terms of the GNU Lesser General Public License (LGPL)
@@ -178,8 +179,16 @@ using ValueMapFlags = ValueMap<R, Facet::ZF, Facet::SF, Facet::PF, Facet::CF, Fa
 
 class RegFile::impl {
 public:
-    impl() : insert_block(nullptr), regs_gp{}, regs_sse{}, reg_ip(), flags(),
-             dirty_regs(), cleaned_regs() {}
+    impl(Arch arch) : insert_block(nullptr), reg_ip(), flags(), dirty_regs(),
+                      cleaned_regs() {
+        unsigned ngp, nvec;
+        switch (arch) {
+        case Arch::X86_64: ngp = 16; nvec = 16; break;
+        default: assert(false);
+        }
+        regs_gp.resize(ngp);
+        regs_sse.resize(nvec);
+    }
 
     llvm::BasicBlock* GetInsertBlock() { return insert_block; }
     void SetInsertBlock(llvm::BasicBlock* n) { insert_block = n; }
@@ -195,8 +204,8 @@ public:
 
 private:
     llvm::BasicBlock* insert_block;
-    ValueMapGp<DeferredValueBase> regs_gp[16];
-    ValueMapSse<DeferredValueBase> regs_sse[16];
+    std::vector<ValueMapGp<DeferredValueBase>> regs_gp;
+    std::vector<ValueMapSse<DeferredValueBase>> regs_sse;
     DeferredValueBase reg_ip;
     ValueMapFlags<DeferredValueBase> flags;
 
@@ -208,12 +217,12 @@ private:
 };
 
 void RegFile::impl::Clear() {
-    for (unsigned i = 0; i < 16; i++)
-        regs_gp[i].clear();
-    for (unsigned i = 0; i < 16; i++)
-        regs_sse[i].clear();
-    flags.clear();
+    for (auto& reg : regs_gp)
+        reg.clear();
+    for (auto& reg : regs_sse)
+        reg.clear();
     reg_ip = nullptr;
+    flags.clear();
 }
 
 void RegFile::impl::InitWithPHIs(std::vector<PhiDesc>* desc_vec,
@@ -443,7 +452,7 @@ void RegFile::impl::SetReg(ArchReg reg, Facet facet, llvm::Value* value,
     dirty_regs[RegisterSetBitIdx(reg, facet)] = true;
 }
 
-RegFile::RegFile() : pimpl{std::make_unique<impl>()} {}
+RegFile::RegFile(Arch arch) : pimpl{std::make_unique<impl>(arch)} {}
 RegFile::~RegFile() {}
 
 llvm::BasicBlock* RegFile::GetInsertBlock() { return pimpl->GetInsertBlock(); }

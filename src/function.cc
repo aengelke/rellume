@@ -90,7 +90,7 @@ Function::Function(llvm::Module* mod, LLConfig* cfg) : cfg(cfg), fi{}
 
     // Create entry basic block as first block in the function.
     entry_block = std::make_unique<ArchBasicBlock>(llvm,
-                                                   BasicBlock::Phis::NONE);
+                                                   BasicBlock::Phis::NONE, cfg->arch);
 
     // Initialize the sptr pointers in the function info.
     RegFile* entry_regfile = entry_block->GetInsertBlock()->GetRegFile();
@@ -120,7 +120,8 @@ bool Function::AddInst(uint64_t block_addr, const Instr& inst)
     if (block_map.find(block_addr) == block_map.end()) {
         auto phi_mode =
             cfg->full_facets ? BasicBlock::Phis::ALL : BasicBlock::Phis::NATIVE;
-        block_map[block_addr] = std::make_unique<ArchBasicBlock>(llvm, phi_mode);
+        block_map[block_addr] = std::make_unique<ArchBasicBlock>(llvm, phi_mode,
+                                                                 cfg->arch);
     }
 
     ArchBasicBlock& ab = *block_map[block_addr];
@@ -156,7 +157,7 @@ llvm::Function* Function::Lift() {
 
     auto phi_mode =
         cfg->full_facets ? BasicBlock::Phis::ALL : BasicBlock::Phis::NATIVE;
-    exit_block = std::make_unique<ArchBasicBlock>(llvm, phi_mode);
+    exit_block = std::make_unique<ArchBasicBlock>(llvm, phi_mode, cfg->arch);
 
     // Exit block packs values together and optionally returns something.
     if (cfg->tail_function) {
