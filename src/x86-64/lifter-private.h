@@ -2,6 +2,7 @@
  * This file is part of Rellume.
  *
  * (c) 2016-2019, Alexis Engelke <alexis.engelke@googlemail.com>
+ * (c) 2020, Dominik Okwieka <dominik.okwieka@t-online.de>
  *
  * Rellume is free software: you can redistribute it and/or modify
  * it under the terms of the GNU Lesser General Public License (LGPL)
@@ -21,14 +22,15 @@
  * \file
  **/
 
-#ifndef RELLUME_LIFTER_PRIVATE_H
-#define RELLUME_LIFTER_PRIVATE_H
+#ifndef RELLUME_X64_LIFTER_PRIVATE_H
+#define RELLUME_X64_LIFTER_PRIVATE_H
 
 #include "basicblock.h"
 #include "config.h"
 #include "facet.h"
 #include "function-info.h"
 #include "instr.h"
+#include "lifter-base.h"
 #include "regfile.h"
 #include <llvm/IR/BasicBlock.h>
 #include <llvm/IR/Instruction.h>
@@ -53,100 +55,6 @@ enum Alignment {
 enum class Condition {
     O = 0, NO = 1, C = 2, NC = 3, Z = 4, NZ = 5, BE = 6, A = 7,
     S = 8, NS = 9, P = 10, NP = 11, L = 12, GE = 13, LE = 14, G = 15,
-};
-
-/**
- * \brief The LLVM state of the back-end.
- **/
-class LifterBase {
-protected:
-    ArchBasicBlock& ablock;
-    RegFile* regfile;
-    llvm::IRBuilder<> irb;
-    FunctionInfo& fi;
-    const LLConfig& cfg;
-
-    LifterBase(FunctionInfo& fi, const LLConfig& cfg, ArchBasicBlock& ab)
-            : ablock(ab), regfile(ab.GetInsertBlock()->GetRegFile()), irb(regfile->GetInsertBlock()),
-               fi(fi), cfg(cfg) {
-        // Set fast-math flags. Newer LLVM supports FastMathFlags::getFast().
-        if (cfg.enableFastMath) {
-            llvm::FastMathFlags fmf;
-            fmf.setFast();
-            irb.setFastMathFlags(fmf);
-        }
-    }
-
-    LifterBase(LifterBase&& rhs);
-    LifterBase& operator=(LifterBase&& rhs);
-
-    LifterBase(const LifterBase&) = delete;
-    LifterBase& operator=(const LifterBase&) = delete;
-
-    llvm::Module* GetModule() {
-        return irb.GetInsertBlock()->getModule();
-    }
-
-    llvm::Value* GetReg(ArchReg reg, Facet facet) {
-        return regfile->GetReg(reg, facet);
-    }
-    void SetReg(ArchReg reg, Facet facet, llvm::Value* value) {
-        regfile->SetReg(reg, facet, value, true); // clear all other facets
-    }
-    void SetRegFacet(ArchReg reg, Facet facet, llvm::Value* value) {
-        regfile->SetReg(reg, facet, value, false);
-    }
-    void SetRegPtr(ArchReg reg, llvm::Value* value) {
-        SetReg(reg, Facet::I64, irb.CreatePtrToInt(value, irb.getInt64Ty()));
-        SetRegFacet(reg, Facet::PTR, value);
-    }
-    llvm::Value* GetFlag(Facet facet) {
-        return GetReg(ArchReg::EFLAGS, facet);
-    }
-    void SetFlag(Facet facet, llvm::Value* value) {
-        SetRegFacet(ArchReg::EFLAGS, facet, value);
-    }
-    void SetFlagUndef(std::initializer_list<Facet> facets) {
-        llvm::Value* undef = llvm::UndefValue::get(irb.getInt1Ty());
-        for (const auto facet : facets)
-            SetFlag(facet, undef);
-    }
-    void SetIP(uint64_t inst_addr, bool nofold = false);
-
-    void SetInsertBlock(BasicBlock* block) {
-        ablock.SetInsertBlock(block);
-        regfile = block->GetRegFile();
-        irb.SetInsertPoint(regfile->GetInsertBlock());
-    }
-
-    llvm::Value* AddrConst(uint64_t addr, llvm::PointerType* ptr_ty);
-
-    // Helper function for older LLVM versions
-    llvm::Value* CreateUnaryIntrinsic(llvm::Intrinsic::ID id, llvm::Value* v) {
-        // TODO: remove this helper function
-        return irb.CreateUnaryIntrinsic(id, v);
-    }
-
-    void FlagCalcZ(llvm::Value* value) {
-        auto zero = llvm::Constant::getNullValue(value->getType());
-        SetFlag(Facet::ZF, irb.CreateICmpEQ(value, zero));
-    }
-    void FlagCalcS(llvm::Value* value) {
-        auto zero = llvm::Constant::getNullValue(value->getType());
-        SetFlag(Facet::SF, irb.CreateICmpSLT(value, zero));
-    }
-    void FlagCalcP(llvm::Value* value);
-    void FlagCalcA(llvm::Value* res, llvm::Value* lhs, llvm::Value* rhs);
-    void FlagCalcAdd(llvm::Value* res, llvm::Value* lhs, llvm::Value* rhs,
-                     bool skip_carry = false);
-    void FlagCalcSub(llvm::Value* res, llvm::Value* lhs, llvm::Value* rhs,
-                     bool skip_carry = false, bool alt_zf = false);
-
-    void CallExternalFunction(llvm::Function* fn);
-
-    void ForceReturn() {
-        cfg.callconv.Return(ablock.GetInsertBlock(), fi);
-    }
 };
 
 class Lifter : public LifterBase {

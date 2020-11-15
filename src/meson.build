@@ -5,6 +5,7 @@ sources = [
   'facet.cc',
   'function.cc',
   'lldecoder.cc',
+  'lifter-base.cc',
   'x86-64/lifter.cc',
   'x86-64/lifter-flags.cc',
   'x86-64/lifter-gp.cc',

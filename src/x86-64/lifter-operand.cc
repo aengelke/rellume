@@ -55,19 +55,6 @@ ArchReg Lifter::MapReg(const Instr::Reg reg) {
     return ArchReg();
 }
 
-llvm::Value* LifterBase::AddrConst(uint64_t addr, llvm::PointerType* ptr_ty) {
-    if (addr == 0)
-        return llvm::ConstantPointerNull::get(ptr_ty);
-
-    if (cfg.global_base_value) {
-        uintptr_t offset = addr - cfg.global_base_addr;
-        auto ptr = irb.CreateGEP(cfg.global_base_value, irb.getInt64(offset));
-        return irb.CreatePointerCast(ptr, ptr_ty);
-    }
-
-    return irb.CreateIntToPtr(irb.getInt64(addr), ptr_ty);
-}
-
 llvm::Value* Lifter::OpAddr(const Instr::Op op, llvm::Type* element_type,
                                 unsigned seg) {
     if (seg == FD_REG_FS || seg == FD_REG_GS || op.addrsz() != 8) {
@@ -160,7 +147,6 @@ static void ll_operand_set_alignment(llvm::Instruction* value, llvm::Type* type,
         store->setAlignment(bytes);
 }
 
-// XXX put back in LifterBase?
 llvm::Value* Lifter::OpLoad(const Instr::Op op, Facet facet,
                                 Alignment alignment, unsigned seg) {
     facet = facet.Resolve(op.bits());

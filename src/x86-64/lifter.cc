@@ -44,28 +44,6 @@ bool LiftInstruction(const Instr& inst, FunctionInfo& fi, const LLConfig& cfg,
     return Lifter(fi, cfg, ab).Lift(inst);
 }
 
-void LifterBase::SetIP(uint64_t inst_addr, bool nofold) {
-    llvm::Value* off = irb.getInt64(inst_addr - fi.entry_ip);
-    llvm::Value* rip = irb.CreateAdd(fi.entry_ip_value, off);
-    if (nofold) {
-        auto bitcast = llvm::Instruction::BitCast;
-        rip = irb.Insert(llvm::CastInst::Create(bitcast, rip, rip->getType()));
-    }
-    SetReg(ArchReg::IP, Facet::I64, rip);
-}
-
-void LifterBase::CallExternalFunction(llvm::Function* fn) {
-    CallConv cconv = CallConv::FromFunction(fn);
-    llvm::CallInst* call = cconv.Call(fn, ablock.GetInsertBlock(), fi);
-    assert(call && "failed to create call for external function");
-
-    // Directly inline alwaysinline functions
-    if (fn->hasFnAttribute(llvm::Attribute::AlwaysInline)) {
-        llvm::InlineFunctionInfo ifi;
-        llvm::InlineFunction(llvm::CallSite(call), ifi);
-    }
-}
-
 bool Lifter::Lift(const Instr& inst) {
     // Set new instruction pointer register
     SetIP(inst.end());
