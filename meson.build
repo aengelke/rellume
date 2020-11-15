@@ -33,6 +33,11 @@ if get_option('with_rv64')
                          fallback: ['frvdec', 'frvdec'])
   architectures += 'rv64'
 endif
+if get_option('with_aarch64')
+  archdeps += dependency('farmdec', static: true,
+                         fallback: ['farmdec', 'farmdec'])
+  architectures += 'aarch64'
+endif
 
 foreach arch : architectures
   add_project_arguments(['-DRELLUME_WITH_@0@'.format(arch.to_upper())], language: 'cpp')
