@@ -23,7 +23,6 @@
 #include "basicblock.h"
 #include "config.h"
 #include "instr.h"
-#include "lifter.h"
 
 #include <cstdint>
 #include <deque>

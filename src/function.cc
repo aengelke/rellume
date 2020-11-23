@@ -28,7 +28,7 @@
 #include "callconv.h"
 #include "config.h"
 #include "function-info.h"
-#include "lifter.h"
+#include "x86-64/lifter.h"
 #include "regfile.h"
 #include <llvm/ADT/DepthFirstIterator.h>
 #include <llvm/ADT/SmallVector.h>

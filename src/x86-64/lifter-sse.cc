@@ -21,7 +21,7 @@
  * \file
  **/
 
-#include "lifter-private.h"
+#include "x86-64/lifter-private.h"
 
 #include "facet.h"
 #include "instr.h"
