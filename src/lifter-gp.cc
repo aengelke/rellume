@@ -39,7 +39,7 @@
  * @{
  **/
 
-namespace rellume {
+namespace rellume::x86_64 {
 
 void Lifter::LiftMovgp(const Instr& inst, llvm::Instruction::CastOps cast) {
     // TODO: if the instruction moves the whole register, keep all facets.
@@ -692,7 +692,7 @@ void Lifter::LiftCmps(const Instr& inst) {
     RepEnd(rep_info); // NOTE: this modifies control flow!
 }
 
-} // namespace
+} // namespace::x86_64
 
 /**
  * @}

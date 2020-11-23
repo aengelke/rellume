@@ -39,7 +39,7 @@
  * @{
  **/
 
-namespace rellume {
+namespace rellume::x86_64 {
 
 llvm::Value* LifterBase::FlagCond(Condition cond) {
     llvm::Value* result = nullptr;
@@ -136,7 +136,7 @@ void LifterBase::FlagCalcSub(llvm::Value* res, llvm::Value* lhs,
     SetFlag(Facet::OF, irb.CreateICmpNE(sf, irb.CreateICmpSLT(lhs, rhs)));
 }
 
-} // namespace
+} // namespace::x86_64
 
 /**
  * @}

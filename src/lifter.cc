@@ -37,7 +37,7 @@
  * @{
  **/
 
-namespace rellume {
+namespace rellume::x86_64 {
 
 bool LiftInstruction(const Instr& inst, FunctionInfo& fi, const LLConfig& cfg,
                      ArchBasicBlock& ab) noexcept {
@@ -428,7 +428,7 @@ bool Lifter::Lift(const Instr& inst) {
     return true;
 }
 
-} // namespace rellume
+} // namespace rellume::x86_64
 
 /**
  * @}

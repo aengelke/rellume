@@ -23,6 +23,7 @@
 
 #include "function.h"
 
+#include "arch.h"
 #include "basicblock.h"
 #include "callconv.h"
 #include "config.h"
@@ -122,7 +123,11 @@ bool Function::AddInst(uint64_t block_addr, const Instr& inst)
         block_map[block_addr] = std::make_unique<ArchBasicBlock>(llvm, phi_mode);
     }
 
-    return LiftInstruction(inst, fi, *cfg, *block_map[block_addr]);
+    ArchBasicBlock& ab = *block_map[block_addr];
+    switch (cfg->arch) {
+    case Arch::X86_64: return x86_64::LiftInstruction(inst, fi, *cfg, ab);
+    default: return false;
+    }
 }
 
 ArchBasicBlock& Function::ResolveAddr(llvm::Value* addr) {

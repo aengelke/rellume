@@ -43,7 +43,7 @@
  * @{
  **/
 
-namespace rellume {
+namespace rellume::x86_64 {
 
 ArchReg LifterBase::MapReg(const Instr::Reg reg) {
     if (reg.rt == FD_RT_GPL)
@@ -318,7 +318,7 @@ llvm::Value* LifterBase::StackPop(const ArchReg sp_src_reg) {
     return irb.CreateLoad(rsp);
 }
 
-} // namespace rellume
+} // namespace rellume::x86_64
 
 /**
  * @}

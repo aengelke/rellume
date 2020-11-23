@@ -37,7 +37,7 @@
 #include <vector>
 
 
-namespace rellume {
+namespace rellume::x86_64 {
 
 enum Alignment {
     /// Implicit alignment -- MAX for SSE operand, 1 otherwise
@@ -295,6 +295,6 @@ private:
     void LiftSseMovmsk(const Instr&, Facet op_type);
 };
 
-} // namespace
+} // namespace::x86_64
 
 #endif

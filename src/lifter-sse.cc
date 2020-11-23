@@ -38,7 +38,7 @@
  * @{
  **/
 
-namespace rellume {
+namespace rellume::x86_64 {
 
 void Lifter::LiftFence(const Instr& inst) {
     // TODO: distinguish also lfence and sfence.
@@ -561,7 +561,7 @@ void Lifter::LiftSseMovmsk(const Instr& inst, Facet op_type) {
     OpStoreGp(inst.op(0), irb.CreateZExt(bits, irb.getInt64Ty()));
 }
 
-} // namespace
+} // namespace::x86_64
 
 /**
  * @}

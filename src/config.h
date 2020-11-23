@@ -24,6 +24,7 @@
 #ifndef RELLUME_CONFIG_H
 #define RELLUME_CONFIG_H
 
+#include "arch.h"
 #include "callconv.h"
 #include <cstdbool>
 #include <cstdint>
@@ -56,6 +57,9 @@ struct LLConfig {
     /// Don't use absolute instruction addresses to set RIP. The actual RIP is
     /// supplied as in the RIP register field of the CPU struct.
     bool position_independent_code = false;
+
+    /// Instruction Set Architecture of the code to lift.
+    Arch arch = Arch::X86_64;
 
     /// Optimize generated IR for the HHVM calling convention.
     CallConv callconv = CallConv::SPTR;
