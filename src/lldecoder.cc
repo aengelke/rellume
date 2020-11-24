@@ -31,44 +31,6 @@
 
 namespace rellume {
 
-static void InstrFlags(Instr::Type ty, bool* breaks, bool* breaks_cond,
-                       bool* has_jmp_target) {
-    switch (ty) {
-    default:          break;
-    case FDI_JO:      *breaks_cond = true; *has_jmp_target = true; break;
-    case FDI_JNO:     *breaks_cond = true; *has_jmp_target = true; break;
-    case FDI_JC:      *breaks_cond = true; *has_jmp_target = true; break;
-    case FDI_JNC:     *breaks_cond = true; *has_jmp_target = true; break;
-    case FDI_JZ:      *breaks_cond = true; *has_jmp_target = true; break;
-    case FDI_JNZ:     *breaks_cond = true; *has_jmp_target = true; break;
-    case FDI_JBE:     *breaks_cond = true; *has_jmp_target = true; break;
-    case FDI_JA:      *breaks_cond = true; *has_jmp_target = true; break;
-    case FDI_JS:      *breaks_cond = true; *has_jmp_target = true; break;
-    case FDI_JNS:     *breaks_cond = true; *has_jmp_target = true; break;
-    case FDI_JP:      *breaks_cond = true; *has_jmp_target = true; break;
-    case FDI_JNP:     *breaks_cond = true; *has_jmp_target = true; break;
-    case FDI_JL:      *breaks_cond = true; *has_jmp_target = true; break;
-    case FDI_JGE:     *breaks_cond = true; *has_jmp_target = true; break;
-    case FDI_JLE:     *breaks_cond = true; *has_jmp_target = true; break;
-    case FDI_JG:      *breaks_cond = true; *has_jmp_target = true; break;
-    case FDI_JCXZ:    *breaks_cond = true; *has_jmp_target = true; break;
-    case FDI_LOOP:    *breaks_cond = true; *has_jmp_target = true; break;
-    case FDI_LOOPZ:   *breaks_cond = true; *has_jmp_target = true; break;
-    case FDI_LOOPNZ:  *breaks_cond = true; *has_jmp_target = true; break;
-    case FDI_JMP:     *breaks = true;      *has_jmp_target = true; break;
-    case FDI_CALL:    *breaks = true;      *has_jmp_target = true; break;
-    case FDI_RET:     *breaks = true; break;
-    case FDI_SYSCALL: *breaks = true; break;
-    case FDI_INT:     *breaks = true; break;
-    case FDI_INT3:    *breaks = true; break;
-    case FDI_INTO:    *breaks = true; break;
-    case FDI_UD0:     *breaks = true; break;
-    case FDI_UD1:     *breaks = true; break;
-    case FDI_UD2:     *breaks = true; break;
-    case FDI_HLT:     *breaks = true; break;
-    }
-}
-
 int Function::Decode(uintptr_t addr, DecodeStop stop, MemReader memacc) {
     Instr inst;
     uint8_t inst_buf[15];
@@ -96,7 +58,7 @@ int Function::Decode(uintptr_t addr, DecodeStop stop, MemReader memacc) {
             if (inst_buf_sz == 0 || inst_buf_sz > sizeof(inst_buf))
                 break;
 
-            int ret = inst.DecodeFrom(Arch::X86_64, inst_buf, inst_buf_sz, cur_addr);
+            int ret = inst.DecodeFrom(cfg->arch, inst_buf, inst_buf_sz, cur_addr);
             if (ret < 0) // invalid or unknown instruction
                 break;
 
@@ -106,25 +68,29 @@ int Function::Decode(uintptr_t addr, DecodeStop stop, MemReader memacc) {
             if (stop == DecodeStop::INSTR)
                 break;
 
-            bool breaks = false, breaks_cond = false, has_jmp_target = false;
-            InstrFlags(inst.type(), &breaks, &breaks_cond, &has_jmp_target);
-            if (breaks || breaks_cond) {
-                if (stop == DecodeStop::BASICBLOCK)
-                    break;
-
-                // If we want explicit call/ret semantics, assume that a call
-                // actually returns to the same place.
-                if (breaks_cond ||
-                    (inst.type() == FDI_CALL && cfg->call_function))
+            switch (inst.Kind()) {
+            case Instr::Kind::COND_BRANCH:
+                addr_queue.push_back(cur_addr + inst.len());
+                /* FALLTHROUGH */
+            case Instr::Kind::BRANCH:
+                if (auto jmp_target = inst.JumpTarget())
+                    addr_queue.push_back(jmp_target.value());
+                /* FALLTHROUGH */
+            case Instr::Kind::UNKNOWN:
+                goto end_block;
+            case Instr::Kind::CALL:
+                if (cfg->call_function)
                     addr_queue.push_back(cur_addr + inst.len());
-                if (has_jmp_target && inst.type() != FDI_CALL &&
-                    inst.op(0).is_pcrel())
-                    addr_queue.push_back(inst.end() + inst.op(0).pcrel());
+                // A call still ends a block, because we don't *know* that the
+                // execution continues after the call.
+                goto end_block;
+            default:
                 break;
             }
             cur_addr += inst.len();
             cur_addr_entry = addr_map.find(cur_addr);
         }
+    end_block:
 
         if (insts.size() != cur_block_start)
             blocks.push_back(std::make_pair(cur_block_start, insts.size()));
@@ -141,6 +107,9 @@ int Function::Decode(uintptr_t addr, DecodeStop stop, MemReader memacc) {
             for (size_t j = split_idx; j < end; j++)
                 addr_map[insts[j].start()] = std::make_pair(new_block_idx, j);
         }
+
+        if (stop == DecodeStop::BASICBLOCK)
+            addr_queue.clear();
     }
 
     bool first_inst = true;
