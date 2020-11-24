@@ -35,6 +35,7 @@ namespace rellume {
 
 class Instr {
     Arch arch;
+    uint64_t addr;
     union {
         FdInstr x86_64;
     };
@@ -44,7 +45,8 @@ public:
 
     // Constructors needed for deprecated ll_func_add_inst
     Instr() {}
-    Instr(FdInstr* fdi) : arch(Arch::X86_64), x86_64(*fdi) {}
+    Instr(FdInstr* fdi)
+        : arch(Arch::X86_64), addr(FD_ADDRESS(fdi)), x86_64(*fdi) {}
 
     struct Reg {
         uint16_t rt;
@@ -99,7 +101,7 @@ public:
     };
 
     size_t len() const { return FD_SIZE(&x86_64); }
-    uintptr_t start() const { return FD_ADDRESS(&x86_64); }
+    uintptr_t start() const { return addr; }
     uintptr_t end() const { return start() + len(); }
     Type type() const { return FD_TYPE(&x86_64); }
     unsigned addrsz() const { return FD_ADDRSIZE(&x86_64); }
@@ -111,18 +113,15 @@ public:
     /// Fill Instr with the instruction at buf and return number of consumed
     /// bytes (or negative on error). addr is the virtual address of the
     /// instruction.
-    int DecodeFrom(Arch a, uint8_t* buf, size_t len, uintptr_t addr) {
-        int ret = -1;
-        arch = a;
+    int DecodeFrom(Arch arch, const uint8_t* buf, size_t len, uintptr_t addr) {
+        this->arch = arch;
+        this->addr = addr;
         switch (arch) {
         case Arch::X86_64:
-            ret = fd_decode(buf, len, /*mode=*/64, /*addr=*/0, &x86_64);
-            x86_64.address = addr;
-            break;
+            return fd_decode(buf, len, /*mode=*/64, /*addr=*/0, &x86_64);
         default:
             return -1;
         }
-        return ret;
     }
 };
 
