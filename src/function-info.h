@@ -40,7 +40,7 @@ namespace rellume {
 namespace SptrIdx::x86_64 {
     enum {
 #define RELLUME_NAMED_REG(name,nameu,sz,off) nameu,
-#include <rellume/cpustruct-private.inc>
+#include <rellume/cpustruct-x86_64-private.inc>
 #undef RELLUME_NAMED_REG
     };
 }

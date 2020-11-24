@@ -111,7 +111,7 @@ static span<const CPUStructEntry> CPUStructEntries(CallConv cconv) {
     static const CPUStructEntry cpu_struct_entries_x86_64[] = {
 #define RELLUME_MAPPED_REG(nameu,off,reg,facet) \
             std::make_tuple(SptrIdx::x86_64::nameu, off, reg, facet),
-#include <rellume/cpustruct-private.inc>
+#include <rellume/cpustruct-x86_64-private.inc>
 #undef RELLUME_MAPPED_REG
     };
 

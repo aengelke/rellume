@@ -50,7 +50,7 @@ struct RegEntry {
 
 static std::unordered_map<std::string,RegEntry> regs = {
 #define RELLUME_NAMED_REG(name,nameu,sz,off) {#name, {sz, off}},
-#include <rellume/cpustruct-private.inc>
+#include <rellume/cpustruct-x86_64-private.inc>
 #undef RELLUME_NAMED_REG
 };
 
