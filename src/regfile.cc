@@ -44,25 +44,26 @@ namespace rellume {
 
 unsigned RegisterSetBitIdx(ArchReg reg, Facet facet) {
     switch (reg.Kind()) {
-    case ArchReg::RegKind::GP:
-        return 0 + reg.Index();
     case ArchReg::RegKind::IP:
-        return 16;
+        return 0;
     case ArchReg::RegKind::EFLAGS:
         switch (facet) {
         // clang-format off
-        case Facet::OF: return 17 + 0; break;
-        case Facet::SF: return 17 + 1; break;
-        case Facet::ZF: return 17 + 2; break;
-        case Facet::AF: return 17 + 3; break;
-        case Facet::PF: return 17 + 4; break;
-        case Facet::CF: return 17 + 5; break;
-        case Facet::DF: return 17 + 6; break;
+        case Facet::OF: return 1; break;
+        case Facet::SF: return 2; break;
+        case Facet::ZF: return 3; break;
+        case Facet::AF: return 4; break;
+        case Facet::PF: return 5; break;
+        case Facet::CF: return 6; break;
+        case Facet::DF: return 7; break;
         default: assert(false && "invalid facet for EFLAGS register");
         }
         // clang-format on
+    case ArchReg::RegKind::GP:
+        return 8 + reg.Index();
     case ArchReg::RegKind::VEC:
-        return 24 + reg.Index();
+        // Leave space for 32 GP registers
+        return 40 + reg.Index();
     default:
         assert(false && "invalid register kind");
     }
