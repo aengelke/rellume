@@ -46,6 +46,7 @@ private:
     void SetGp(farmdec::Reg, bool w32, llvm::Value* val);
 
     void FlagCalcAdd(llvm::Value* res, llvm::Value* lhs, llvm::Value* rhs);
+    void FlagCalcSub(llvm::Value* res, llvm::Value* lhs, llvm::Value* rhs);
 
     llvm::Value* Shift(llvm::Value* v, farmdec::Shift sh, uint32_t amount);
     llvm::Value* Extend(llvm::Value* v, farmdec::ExtendType ext, uint32_t lsl);

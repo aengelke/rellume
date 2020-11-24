@@ -75,7 +75,8 @@ bool Lifter::Lift(const Instr& inst) {
     default:
         SetIP(inst.start(), /*nofold=*/true);
         return false;
-    case farmdec::A64_ADD_IMM: {
+    case farmdec::A64_ADD_IMM:
+    case farmdec::A64_CMN_IMM: {
         auto lhs = GetGp(a64.rn, w32);
         auto rhs = irb.getIntN(bits, a64.imm);
         auto val = irb.CreateAdd(lhs, rhs);
@@ -85,7 +86,25 @@ bool Lifter::Lift(const Instr& inst) {
         }
         break;
     }
-    case farmdec::A64_ADD_SHIFTED: {
+    case farmdec::A64_SUB_IMM:
+    case farmdec::A64_CMP_IMM: {
+        auto lhs = GetGp(a64.rn, w32);
+        auto rhs = irb.getIntN(bits, a64.imm);
+        auto val = irb.CreateSub(lhs, rhs);
+        SetGp(a64.rd, w32, val);
+        if (set_flags) {
+            FlagCalcSub(val, lhs, rhs);
+        }
+        break;
+    }
+    case farmdec::A64_MOV_IMM:
+        SetGp(a64.rd, w32, irb.getIntN(bits, a64.imm));
+        break;
+    case farmdec::A64_MOV_REG:
+        SetGp(a64.rd, w32, GetGp(a64.rm, w32)); // rd := rm
+        break;
+    case farmdec::A64_ADD_SHIFTED:
+    case farmdec::A64_CMN_SHIFTED: {
         auto lhs = GetGp(a64.rn, w32);
         auto rhs = Shift(GetGp(a64.rm, w32), static_cast<farmdec::Shift>(a64.shift.type), a64.shift.amount);
         auto val = irb.CreateAdd(lhs, rhs);
@@ -95,13 +114,37 @@ bool Lifter::Lift(const Instr& inst) {
         }
         break;
     }
-    case farmdec::A64_ADD_EXT: {
+    case farmdec::A64_SUB_SHIFTED:
+    case farmdec::A64_NEG:
+    case farmdec::A64_CMP_SHIFTED: {
+        auto lhs = GetGp(a64.rn, w32);
+        auto rhs = Shift(GetGp(a64.rm, w32), static_cast<farmdec::Shift>(a64.shift.type), a64.shift.amount);
+        auto val = irb.CreateSub(lhs, rhs);
+        SetGp(a64.rd, w32, val);
+        if (set_flags) {
+            FlagCalcSub(val, lhs, rhs);
+        }
+        break;
+    }
+    case farmdec::A64_ADD_EXT:
+    case farmdec::A64_CMN_EXT: {
         auto lhs = GetGp(a64.rn, w32);
         auto rhs = Extend(GetGp(a64.rm, w32), static_cast<farmdec::ExtendType>(a64.extend.type), a64.extend.lsl);
         auto val = irb.CreateAdd(lhs, rhs);
         SetGp(a64.rd, w32, val);
         if (set_flags) {
             FlagCalcAdd(val, lhs, rhs);
+        }
+        break;
+    }
+    case farmdec::A64_SUB_EXT:
+    case farmdec::A64_CMP_EXT: {
+        auto lhs = GetGp(a64.rn, w32);
+        auto rhs = Extend(GetGp(a64.rm, w32), static_cast<farmdec::ExtendType>(a64.extend.type), a64.extend.lsl);
+        auto val = irb.CreateSub(lhs, rhs);
+        SetGp(a64.rd, w32, val);
+        if (set_flags) {
+            FlagCalcSub(val, lhs, rhs);
         }
         break;
     }
@@ -212,6 +255,15 @@ void Lifter::FlagCalcAdd(llvm::Value* res, llvm::Value* lhs, llvm::Value* rhs) {
         llvm::Value* tmp2 = irb.CreateAnd(tmp1, irb.CreateXor(res, lhs));
         SetFlag(Facet::OF, irb.CreateICmpSLT(tmp2, zero));
     }
+}
+
+void Lifter::FlagCalcSub(llvm::Value* res, llvm::Value* lhs, llvm::Value* rhs) {
+    auto zero = llvm::Constant::getNullValue(res->getType());
+    llvm::Value* sf = irb.CreateICmpSLT(res, zero);  // also used for OF
+    SetFlag(Facet::ZF, irb.CreateICmpEQ(lhs, rhs));
+    SetFlag(Facet::SF, sf);
+    SetFlag(Facet::CF, irb.CreateICmpUGE(lhs, rhs));
+    SetFlag(Facet::OF, irb.CreateICmpNE(sf, irb.CreateICmpSLT(lhs, rhs)));
 }
 
 // Shift or rotate the value v. No spurious instruction is generated if the shift

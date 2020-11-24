@@ -1,6 +1,34 @@
-code="add x1, x2, x3"           x1=q:0x0        x2=q:0x12345678 x3=q:0x76543210 => x1=q:0x88888888
-code="add x1, x2, x3, lsl #8"   x1=q:0x0        x2=q:0x0        x3=q:0xff       => x1=q:0xff00
-code="add x1, x2, x3, lsr #8"   x1=q:0x0        x2=q:0x0        x3=q:0xff00     => x1=q:0x00ff
-code="add x1, x2, x4, asr #8"   x1=q:0x0        x2=q:0x0        x4=q:0xff00     => x1=q:0x00ff
-code="add sp, x4, #48"          sp=q:0x0        x4=q:0x0                        => sp=q:0x30
-code="adds x0, x1, #1, lsl #12" x0=q:0x0        x1=q:0x1    n=00 z=00 c=00 v=00 => x0=q:0x1001 n=00 z=00 c=00 v=00
+code="add x1, x2, x3"           x1=q:0x0 x2=q:0x12345678 x3=q:0x76543210 => x1=q:0x88888888
+code="add x1, x2, x3, lsl #8"   x1=q:0x0 x2=q:0x0        x3=q:0xff       => x1=q:0xff00
+code="add x1, x2, x3, lsr #8"   x1=q:0x0 x2=q:0x0        x3=q:0xff00     => x1=q:0x00ff
+code="add x1, x2, x3, asr #8"   x1=q:0x0 x2=q:0x0        x3=q:0xff00     => x1=q:0x00ff
+code="add sp, x4, #48"          sp=q:0x0 x4=q:0x0                        => sp=q:0x30
+
+code="adds x0, x1, #1, lsl #12" x0=q:0x0 x1=q:0x1                   n=00 z=00 c=00 v=00 => x0=q:0x1001         n=00 z=00 c=00 v=00
+code="adds w0, w1, w2"          x0=q:0x0 x1=q:2147483647  x2=q:1    n=00 z=00 c=00 v=00 => x0=0000008000000000 n=01 z=00 c=00 v=01
+
+code="sub x1, x2, x3"           x1=q:0x0 x2=q:100 x3=q:90       => x1=q:10
+code="sub x1, x2, x3, lsl #8"   x1=q:0x0 x2=q:257 x3=q:1        => x1=q:1
+code="sub x1, x2, x3, lsr #8"   x1=q:0x0 x2=q:2   x3=q:256      => x1=q:1
+code="sub x1, x2, x3, asr #8"   x1=q:0x0 x2=q:0   x3=q:-1024    => x1=q:4
+code="sub sp, x4, #48"          sp=q:0x0 x4=q:64                => sp=q:16
+
+code="cmp x1, x2" x1=q:0  x2=q:0 n=00 z=00 c=00 v=00 => n=00 z=01 c=01 v=00
+code="cmp x1, x2" x1=q:0  x2=q:1 n=00 z=00 c=00 v=00 => n=01 z=00 c=00 v=00
+code="cmp x1, x2" x1=q:1  x2=q:0 n=00 z=00 c=00 v=00 => n=00 z=00 c=01 v=00
+code="cmp x1, x2" x1=q:-1 x2=q:0 n=00 z=00 c=00 v=00 => n=01 z=00 c=01 v=00
+code="cmp x1, x2" x1=q:-1 x2=q:1 n=00 z=00 c=00 v=00 => n=01 z=00 c=01 v=00
+
+code="cmn x1, x2" x1=q:0  x2=q:0 n=00 z=00 c=00 v=00 => n=00 z=01 c=00 v=00
+code="cmn x1, x2" x1=q:0  x2=q:1 n=00 z=00 c=00 v=00 => n=00 z=00 c=00 v=00
+code="cmn x1, x2" x1=q:1  x2=q:0 n=00 z=00 c=00 v=00 => n=00 z=00 c=00 v=00
+code="cmn x1, x2" x1=q:-1 x2=q:0 n=00 z=00 c=00 v=00 => n=01 z=00 c=00 v=00
+code="cmn x1, x2" x1=q:-1 x2=q:1 n=00 z=00 c=00 v=00 => n=00 z=01 c=01 v=00
+
+code="mov w0, w1" x0=q:0x0 x1=aabbccddffffffff => x0=aabbccdd00000000
+code="mov x0, x1" x0=q:0x0 x1=ffffffffffffffff => x0=ffffffffffffffff
+
+code="mov w0, #1234"   x0=q:0x0            => x0=q:1234
+code="mov w0, #0xffff" x0=q:0x0            => x0=ffff000000000000
+code="mov w0, #0xffff" x0=f0f0f0f0f0f0f0f0 => x0=ffff000000000000
+code="mov x0, #0xffff" x0=f0f0f0f0f0f0f0f0 => x0=ffff000000000000
