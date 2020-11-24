@@ -62,7 +62,7 @@ struct LLConfig {
     Arch arch = Arch::X86_64;
 
     /// Optimize generated IR for the HHVM calling convention.
-    CallConv callconv = CallConv::SPTR;
+    CallConv callconv = CallConv::X86_64_SPTR;
     /// Address space for CPU struct pointer parameter
     unsigned sptr_addrspace = 0;
 

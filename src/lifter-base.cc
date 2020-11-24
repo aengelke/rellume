@@ -108,7 +108,7 @@ void LifterBase::FlagCalcSub(llvm::Value* res, llvm::Value* lhs,
 }
 
 void LifterBase::CallExternalFunction(llvm::Function* fn) {
-    CallConv cconv = CallConv::FromFunction(fn);
+    CallConv cconv = CallConv::FromFunction(fn, cfg.arch);
     llvm::CallInst* call = cconv.Call(fn, ablock.GetInsertBlock(), fi);
     assert(call && "failed to create call for external function");
 

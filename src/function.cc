@@ -145,7 +145,7 @@ llvm::Function* Function::Lift() {
 
     // Exit block packs values together and optionally returns something.
     if (cfg->tail_function) {
-        CallConv cconv = CallConv::FromFunction(cfg->tail_function);
+        CallConv cconv = CallConv::FromFunction(cfg->tail_function, cfg->arch);
         // Force a tail call to the specified function.
         cconv.Call(cfg->tail_function, exit_block->GetInsertBlock(), fi, true);
     } else {
