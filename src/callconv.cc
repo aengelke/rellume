@@ -92,7 +92,8 @@ unsigned CallConv::CpuStructParamIdx() const {
 }
 
 static const std::tuple<unsigned, unsigned, ArchReg, Facet> cpu_struct_entries[] = {
-#define RELLUME_MAPPED_REG(nameu,off,reg,facet) std::make_tuple(SptrIdx::nameu, off, reg, facet),
+#define RELLUME_MAPPED_REG(nameu,off,reg,facet) \
+            std::make_tuple(SptrIdx::x86_64::nameu, off, reg, facet),
 #include <rellume/cpustruct-private.inc>
 #undef RELLUME_MAPPED_REG
 };

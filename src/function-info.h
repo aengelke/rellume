@@ -37,8 +37,8 @@ class Value;
 
 namespace rellume {
 
-namespace SptrIdx {
-    enum Idx {
+namespace SptrIdx::x86_64 {
+    enum {
 #define RELLUME_NAMED_REG(name,nameu,sz,off) nameu,
 #include <rellume/cpustruct-private.inc>
 #undef RELLUME_NAMED_REG
@@ -51,7 +51,7 @@ class BasicBlock;
 struct CallConvPack {
     RegisterSet block_dirty_regs;
     BasicBlock* bb;
-    llvm::StoreInst* stores[SptrIdx::MAX];
+    llvm::StoreInst* stores[SptrIdx::x86_64::MAX];
 };
 
 struct FunctionInfo {

@@ -78,8 +78,8 @@ llvm::Value* Lifter::OpAddr(const Instr::Op op, llvm::Type* element_type,
             if (cfg.use_native_segment_base) {
                 addrspace = seg == FD_REG_FS ? 257 : 256;
             } else {
-                unsigned idx =
-                    seg == FD_REG_FS ? SptrIdx::FSBASE : SptrIdx::GSBASE;
+                unsigned idx = seg == FD_REG_FS ? SptrIdx::x86_64::FSBASE
+                                                : SptrIdx::x86_64::GSBASE;
                 res = irb.CreateAdd(res, irb.CreateLoad(fi.sptr[idx]));
             }
         }
