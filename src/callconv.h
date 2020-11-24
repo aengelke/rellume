@@ -62,7 +62,7 @@ public:
     llvm::CallInst* Call(llvm::Function* fn, BasicBlock* bb, FunctionInfo& fi,
                          bool tail_call = false);
 
-    static void OptimizePacks(FunctionInfo& fi, BasicBlock* entry);
+    void OptimizePacks(FunctionInfo& fi, BasicBlock* entry);
 
     CallConv() = default;
     constexpr CallConv(Value value) : value(value) {}

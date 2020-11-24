@@ -91,18 +91,46 @@ unsigned CallConv::CpuStructParamIdx() const {
     }
 }
 
-static const std::tuple<unsigned, unsigned, ArchReg, Facet> cpu_struct_entries[] = {
+using CPUStructEntry = std::tuple<unsigned, unsigned, ArchReg, Facet>;
+
+// Note: replace with C++20 std::span.
+template<typename T>
+class span {
+    T* ptr;
+    std::size_t len;
+public:
+    constexpr span() : ptr(nullptr), len(0) {}
+    template<std::size_t N>
+    constexpr span(T (&arr)[N]) : ptr(arr), len(N) {}
+    constexpr std::size_t size() const { return len; }
+    constexpr T* begin() const { return &ptr[0]; }
+    constexpr T* end() const { return &ptr[len]; }
+};
+
+static span<const CPUStructEntry> CPUStructEntries(CallConv cconv) {
+    static const CPUStructEntry cpu_struct_entries_x86_64[] = {
 #define RELLUME_MAPPED_REG(nameu,off,reg,facet) \
             std::make_tuple(SptrIdx::x86_64::nameu, off, reg, facet),
 #include <rellume/cpustruct-private.inc>
 #undef RELLUME_MAPPED_REG
-};
+    };
+
+    switch (cconv) {
+    default:
+        return span<const CPUStructEntry>();
+    case CallConv::SPTR:
+    case CallConv::HHVM:
+        return cpu_struct_entries_x86_64;
+    }
+}
+
 
 void CallConv::InitSptrs(BasicBlock* bb, FunctionInfo& fi) {
     llvm::IRBuilder<> irb(bb->GetRegFile()->GetInsertBlock());
     unsigned as = fi.sptr_raw->getType()->getPointerAddressSpace();
 
-    fi.sptr.resize(sizeof cpu_struct_entries / sizeof cpu_struct_entries[0]);
+    const auto& cpu_struct_entries = CPUStructEntries(*this);
+    fi.sptr.resize(cpu_struct_entries.size());
     for (const auto& [sptr_idx, off, reg, facet] : cpu_struct_entries) {
         llvm::Value* ptr = irb.CreateConstGEP1_64(fi.sptr_raw, off);
         llvm::Type* ty = facet.Type(irb.getContext())->getPointerTo(as);
@@ -133,10 +161,12 @@ static void Pack(CallConv cconv, BasicBlock* bb, FunctionInfo& fi, F hhvm_fn) {
     RegFile& regfile = *bb->GetRegFile();
     llvm::IRBuilder<> irb(regfile.GetInsertBlock());
 
+    const auto& cpu_struct_entries = CPUStructEntries(cconv);
+
     CallConvPack& pack_info = fi.call_conv_packs.emplace_back();
     pack_info.block_dirty_regs = regfile.DirtyRegs();
     pack_info.bb = bb;
-    pack_info.stores.resize(sizeof cpu_struct_entries / sizeof cpu_struct_entries[0]);
+    pack_info.stores.resize(cpu_struct_entries.size());
 
     for (const auto& [sptr_idx, off, reg, facet] : cpu_struct_entries) {
         if (reg.Kind() == ArchReg::RegKind::INVALID)
@@ -163,7 +193,7 @@ static void Unpack(CallConv cconv, BasicBlock* bb, FunctionInfo& fi, F hhvm_fn) 
 
     // Clear all facets before entering new values.
     regfile.Clear();
-    for (const auto& [sptr_idx, off, reg, facet] : cpu_struct_entries) {
+    for (const auto& [sptr_idx, off, reg, facet] : CPUStructEntries(cconv)) {
         if (reg.Kind() == ArchReg::RegKind::INVALID)
             continue;
         if (cconv == CallConv::HHVM && hhvm_is_host_reg(reg)) {
@@ -281,7 +311,7 @@ void CallConv::OptimizePacks(FunctionInfo& fi, BasicBlock* entry) {
 
     for (const auto& pack : fi.call_conv_packs) {
         RegisterSet regset = bb_map.lookup(pack.bb).first | pack.block_dirty_regs;
-        for (const auto& [sptr_idx, off, reg, facet] : cpu_struct_entries) {
+        for (const auto& [sptr_idx, off, reg, facet] : CPUStructEntries(*this)) {
             if (reg.Kind() == ArchReg::RegKind::INVALID)
                 continue;
             if (pack.stores[sptr_idx] && !regset[RegisterSetBitIdx(reg, facet)]) {

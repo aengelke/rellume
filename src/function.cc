@@ -168,7 +168,7 @@ llvm::Function* Function::Lift() {
         }
     }
 
-    CallConv::OptimizePacks(fi, entry_block->GetInsertBlock());
+    cfg->callconv.OptimizePacks(fi, entry_block->GetInsertBlock());
 
     // Walk over blocks as long as phi nodes could have been added. We stop when
     // alls phis are filled.
