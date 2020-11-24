@@ -50,6 +50,8 @@ public:
     llvm::CallingConv::ID FnCallConv() const;
     unsigned CpuStructParamIdx() const;
 
+    void InitSptrs(BasicBlock* bb, FunctionInfo& fi);
+
     // Pack values from regfile into the CPU struct. The return value for the
     // function is returned (or NULL for void).
     llvm::ReturnInst* Return(BasicBlock* bb, FunctionInfo& fi) const;

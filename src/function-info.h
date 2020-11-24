@@ -59,7 +59,7 @@ struct FunctionInfo {
     llvm::Function* fn;
     /// The sptr argument, and its elements
     llvm::Value* sptr_raw;
-    llvm::Value* sptr[SptrIdx::MAX];
+    std::vector<llvm::Value*> sptr;
 
     uint64_t entry_ip;
     llvm::Value* entry_ip_value;

@@ -91,11 +91,23 @@ unsigned CallConv::CpuStructParamIdx() const {
     }
 }
 
-static const std::tuple<unsigned, ArchReg, Facet> cpu_struct_entries[] = {
-#define RELLUME_MAPPED_REG(nameu,off,reg,facet) std::make_tuple(SptrIdx::nameu, reg, facet),
+static const std::tuple<unsigned, unsigned, ArchReg, Facet> cpu_struct_entries[] = {
+#define RELLUME_MAPPED_REG(nameu,off,reg,facet) std::make_tuple(SptrIdx::nameu, off, reg, facet),
 #include <rellume/cpustruct-private.inc>
 #undef RELLUME_MAPPED_REG
 };
+
+void CallConv::InitSptrs(BasicBlock* bb, FunctionInfo& fi) {
+    llvm::IRBuilder<> irb(bb->GetRegFile()->GetInsertBlock());
+    unsigned as = fi.sptr_raw->getType()->getPointerAddressSpace();
+
+    fi.sptr.resize(sizeof cpu_struct_entries / sizeof cpu_struct_entries[0]);
+    for (const auto& [sptr_idx, off, reg, facet] : cpu_struct_entries) {
+        llvm::Value* ptr = irb.CreateConstGEP1_64(fi.sptr_raw, off);
+        llvm::Type* ty = facet.Type(irb.getContext())->getPointerTo(as);
+        fi.sptr[sptr_idx] = irb.CreatePointerCast(ptr, ty);
+    }
+}
 
 // Mapping of GP registers to HHVM parameters and return struct indices.
 //     RAX->RAX; RCX->RCX; RDX->RDX; RBX->RBP; RSP->R15; RBP->R13;
@@ -124,7 +136,10 @@ static void Pack(CallConv cconv, BasicBlock* bb, FunctionInfo& fi, F hhvm_fn) {
     pack_info.block_dirty_regs = regfile.DirtyRegs();
     pack_info.bb = bb;
 
-    for (const auto& [sptr_idx, reg, facet] : cpu_struct_entries) {
+    for (const auto& [sptr_idx, off, reg, facet] : cpu_struct_entries) {
+        if (reg.Kind() == ArchReg::RegKind::INVALID)
+            continue;
+
         llvm::Value* reg_val = regfile.GetReg(reg, facet);
 
         if (cconv == CallConv::HHVM && hhvm_is_host_reg(reg)) {
@@ -146,7 +161,9 @@ static void Unpack(CallConv cconv, BasicBlock* bb, FunctionInfo& fi, F hhvm_fn) 
 
     // Clear all facets before entering new values.
     regfile.Clear();
-    for (const auto& [sptr_idx, reg, facet] : cpu_struct_entries) {
+    for (const auto& [sptr_idx, off, reg, facet] : cpu_struct_entries) {
+        if (reg.Kind() == ArchReg::RegKind::INVALID)
+            continue;
         if (cconv == CallConv::HHVM && hhvm_is_host_reg(reg)) {
             regfile.SetReg(reg, facet, hhvm_fn(reg), false);
             continue;
@@ -262,7 +279,9 @@ void CallConv::OptimizePacks(FunctionInfo& fi, BasicBlock* entry) {
 
     for (const auto& pack : fi.call_conv_packs) {
         RegisterSet regset = bb_map.lookup(pack.bb).first | pack.block_dirty_regs;
-        for (const auto& [sptr_idx, reg, facet] : cpu_struct_entries) {
+        for (const auto& [sptr_idx, off, reg, facet] : cpu_struct_entries) {
+            if (reg.Kind() == ArchReg::RegKind::INVALID)
+                continue;
             if (pack.stores[sptr_idx] && !regset[RegisterSetBitIdx(reg, facet)]) {
                 pack.stores[sptr_idx]->eraseFromParent();
             }

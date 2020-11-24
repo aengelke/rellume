@@ -54,22 +54,6 @@
 
 namespace rellume {
 
-static llvm::Value* CreateSptr(FunctionInfo& fi, llvm::IRBuilder<> irb,
-                               size_t offset, size_t bits) {
-    unsigned as = fi.sptr_raw->getType()->getPointerAddressSpace();
-    llvm::Value* ptr = irb.CreateConstGEP1_64(fi.sptr_raw, offset);
-    return irb.CreatePointerCast(ptr, irb.getIntNTy(bits)->getPointerTo(as));
-}
-
-static void CreateSptrs(FunctionInfo& fi, llvm::BasicBlock* llvm_block) {
-    llvm::IRBuilder<> irb(llvm_block);
-
-#define RELLUME_NAMED_REG(name,nameu,sz,off) \
-    fi.sptr[SptrIdx::nameu] = CreateSptr(fi, irb, off, sz == 1 ? sz : sz * 8);
-#include <rellume/cpustruct-private.inc>
-#undef RELLUME_NAMED_REG
-}
-
 Function::Function(llvm::Module* mod, LLConfig* cfg) : cfg(cfg), fi{}
 {
     llvm::LLVMContext& ctx = mod->getContext();
@@ -93,11 +77,11 @@ Function::Function(llvm::Module* mod, LLConfig* cfg) : cfg(cfg), fi{}
                                                    BasicBlock::Phis::NONE, cfg->arch);
 
     // Initialize the sptr pointers in the function info.
-    RegFile* entry_regfile = entry_block->GetInsertBlock()->GetRegFile();
-    CreateSptrs(fi, entry_regfile->GetInsertBlock());
+    cfg->callconv.InitSptrs(entry_block->GetInsertBlock(), fi);
     // And initially fill register file.
     cfg->callconv.UnpackParams(entry_block->GetInsertBlock(), fi);
 
+    RegFile* entry_regfile = entry_block->GetInsertBlock()->GetRegFile();
     fi.entry_ip_value = entry_regfile->GetReg(ArchReg::IP, Facet::I64);
 }
 

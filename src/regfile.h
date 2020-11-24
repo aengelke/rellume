@@ -74,12 +74,14 @@ public:
         return ArchReg(RegKind::VEC, idx);
     }
 
+    static const ArchReg INVALID;
     static const ArchReg IP;
     static const ArchReg EFLAGS;
     // x86-64-specific names ignored by other archs
     static const ArchReg RAX, RCX, RDX, RBX, RSP, RBP, RSI, RDI;
 };
 
+constexpr const ArchReg ArchReg::INVALID{ArchReg::RegKind::INVALID, 0};
 constexpr const ArchReg ArchReg::IP{ArchReg::RegKind::IP, 0};
 constexpr const ArchReg ArchReg::EFLAGS{ArchReg::RegKind::EFLAGS, 0};
 constexpr const ArchReg ArchReg::RAX = ArchReg::GP(0);
