@@ -41,7 +41,7 @@
 
 namespace rellume::x86_64 {
 
-llvm::Value* LifterBase::FlagCond(Condition cond) {
+llvm::Value* Lifter::FlagCond(Condition cond) {
     llvm::Value* result = nullptr;
     switch (static_cast<Condition>(static_cast<int>(cond) & ~1)) {
     case Condition::O:  result = GetFlag(Facet::OF); break;
@@ -63,7 +63,7 @@ static const std::pair<Facet, unsigned> RFLAGS_INDICES[] = {
     {Facet::SF, 7}, {Facet::DF, 10}, {Facet::OF, 11},
 };
 
-llvm::Value* LifterBase::FlagAsReg(unsigned size) {
+llvm::Value* Lifter::FlagAsReg(unsigned size) {
     llvm::Value* res = irb.getInt64(0x202); // IF
     llvm::Type* ty = res->getType();
     for (auto& kv : RFLAGS_INDICES) {
@@ -73,7 +73,7 @@ llvm::Value* LifterBase::FlagAsReg(unsigned size) {
     return irb.CreateTruncOrBitCast(res, irb.getIntNTy(size));
 }
 
-void LifterBase::FlagFromReg(llvm::Value* val) {
+void Lifter::FlagFromReg(llvm::Value* val) {
     unsigned sz = val->getType()->getIntegerBitWidth();
     for (auto& kv : RFLAGS_INDICES) {
         if (kv.second >= sz)

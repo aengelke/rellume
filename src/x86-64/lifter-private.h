@@ -59,20 +59,16 @@ enum class Condition {
  * \brief The LLVM state of the back-end.
  **/
 class LifterBase {
-private:
-    FunctionInfo& fi;
-    ArchBasicBlock& ablock;
-
-    /// Current register file
-    RegFile* regfile;
-
 protected:
+    ArchBasicBlock& ablock;
+    RegFile* regfile;
     llvm::IRBuilder<> irb;
+    FunctionInfo& fi;
     const LLConfig& cfg;
 
     LifterBase(FunctionInfo& fi, const LLConfig& cfg, ArchBasicBlock& ab)
-            : fi(fi), ablock(ab),regfile(ab.GetInsertBlock()->GetRegFile()),
-              irb(regfile->GetInsertBlock()), cfg(cfg) {
+            : ablock(ab), regfile(ab.GetInsertBlock()->GetRegFile()), irb(regfile->GetInsertBlock()),
+               fi(fi), cfg(cfg) {
         // Set fast-math flags. Newer LLVM supports FastMathFlags::getFast().
         if (cfg.enableFastMath) {
             llvm::FastMathFlags fmf;
@@ -90,8 +86,6 @@ protected:
     llvm::Module* GetModule() {
         return irb.GetInsertBlock()->getModule();
     }
-
-    ArchReg MapReg(const Instr::Reg reg);
 
     llvm::Value* GetReg(ArchReg reg, Facet facet) {
         return regfile->GetReg(reg, facet);
@@ -119,27 +113,20 @@ protected:
     }
     void SetIP(uint64_t inst_addr, bool nofold = false);
 
-private:
     void SetInsertBlock(BasicBlock* block) {
         ablock.SetInsertBlock(block);
         regfile = block->GetRegFile();
         irb.SetInsertPoint(regfile->GetInsertBlock());
     }
 
-    llvm::Value* OpAddrConst(uint64_t addr, llvm::PointerType* ptr_ty);
-protected:
-    llvm::Value* OpAddr(const Instr::Op op, llvm::Type* element_type, unsigned seg);
-    llvm::Value* OpLoad(const Instr::Op op, Facet facet, Alignment alignment = ALIGN_NONE, unsigned force_seg = 7);
-    void OpStoreGp(ArchReg reg, llvm::Value* v) {
-        OpStoreGp(reg, Facet::In(v->getType()->getIntegerBitWidth()), v);
-    }
-    void OpStoreGp(ArchReg reg, Facet facet, llvm::Value* value);
-    void OpStoreGp(const Instr::Op op, llvm::Value* value, Alignment alignment = ALIGN_NONE);
-    void OpStoreVec(const Instr::Op op, llvm::Value* value, bool avx = false, Alignment alignment = ALIGN_IMP);
-    void StackPush(llvm::Value* value);
-    llvm::Value* StackPop(const ArchReg sp_src_reg = ArchReg::RSP);
+    llvm::Value* AddrConst(uint64_t addr, llvm::PointerType* ptr_ty);
 
-    // llflags.cc
+    // Helper function for older LLVM versions
+    llvm::Value* CreateUnaryIntrinsic(llvm::Intrinsic::ID id, llvm::Value* v) {
+        // TODO: remove this helper function
+        return irb.CreateUnaryIntrinsic(id, v);
+    }
+
     void FlagCalcZ(llvm::Value* value) {
         auto zero = llvm::Constant::getNullValue(value->getType());
         SetFlag(Facet::ZF, irb.CreateICmpEQ(value, zero));
@@ -154,6 +141,34 @@ protected:
                      bool skip_carry = false);
     void FlagCalcSub(llvm::Value* res, llvm::Value* lhs, llvm::Value* rhs,
                      bool skip_carry = false, bool alt_zf = false);
+
+    void CallExternalFunction(llvm::Function* fn);
+
+    void ForceReturn() {
+        cfg.callconv.Return(ablock.GetInsertBlock(), fi);
+    }
+};
+
+class Lifter : public LifterBase {
+public:
+    Lifter(FunctionInfo& fi, const LLConfig& cfg, ArchBasicBlock& ab) :
+            LifterBase(fi, cfg, ab) {}
+
+    bool Lift(const Instr&);
+
+private:
+    ArchReg MapReg(const Instr::Reg reg);
+
+    void StoreGp(ArchReg reg, llvm::Value* v) {
+        StoreGpFacet(reg, Facet::In(v->getType()->getIntegerBitWidth()), v);
+    }
+    void StoreGpFacet(ArchReg reg, Facet facet, llvm::Value* value);
+    llvm::Value* OpAddr(const Instr::Op op, llvm::Type* element_type, unsigned seg);
+    llvm::Value* OpLoad(const Instr::Op op, Facet facet, Alignment alignment = ALIGN_NONE, unsigned force_seg = 7);
+    void OpStoreGp(const Instr::Op op, llvm::Value* value, Alignment alignment = ALIGN_NONE);
+    void OpStoreVec(const Instr::Op op, llvm::Value* value, bool avx = false, Alignment alignment = ALIGN_IMP);
+    void StackPush(llvm::Value* value);
+    llvm::Value* StackPop(const ArchReg sp_src_reg = ArchReg::RSP);
 
     llvm::Value* FlagCond(Condition cond);
     llvm::Value* FlagAsReg(unsigned size);
@@ -172,28 +187,6 @@ protected:
     RepInfo RepBegin(const Instr& inst);
     void RepEnd(RepInfo info);
 
-    // Helper function for older LLVM versions
-    llvm::Value* CreateUnaryIntrinsic(llvm::Intrinsic::ID id, llvm::Value* v) {
-        // TODO: remove this helper function
-        return irb.CreateUnaryIntrinsic(id, v);
-    }
-
-    void CallExternalFunction(llvm::Function* fn);
-
-    void ForceReturn() {
-        cfg.callconv.Return(ablock.GetInsertBlock(), fi);
-    }
-};
-
-class Lifter : public LifterBase {
-public:
-    Lifter(FunctionInfo& fi, const LLConfig& cfg, ArchBasicBlock& ab) :
-            LifterBase(fi, cfg, ab) {}
-
-    // llinstruction-gp.cc
-    bool Lift(const Instr&);
-
-private:
     void LiftMovgp(const Instr&, llvm::Instruction::CastOps cast);
     void LiftArith(const Instr&, bool sub);
     void LiftCmpxchg(const Instr&);
@@ -233,7 +226,7 @@ private:
     }
     void LiftLeave(const Instr& inst) {
         llvm::Value* val = StackPop(ArchReg::RBP);
-        OpStoreGp(ArchReg::RBP, val);
+        StoreGp(ArchReg::RBP, val);
     }
 
     void LiftJmp(const Instr& inst);

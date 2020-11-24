@@ -117,7 +117,7 @@ bool Lifter::Lift(const Instr& inst) {
     // case FDI_CRC32: NOT IMPLEMENTED
     // case FDI_UD2: Intentionally not implemented.
 
-    case FDI_LAHF: OpStoreGp(ArchReg::RAX, Facet::I8H, FlagAsReg(8)); break;
+    case FDI_LAHF: StoreGpFacet(ArchReg::RAX, Facet::I8H, FlagAsReg(8)); break;
     case FDI_SAHF: FlagFromReg(GetReg(ArchReg::RAX, Facet::I8H)); break;
 
     case FDI_MOV: LiftMovgp(inst, llvm::Instruction::SExt); break;

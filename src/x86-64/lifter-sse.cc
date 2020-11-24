@@ -385,7 +385,7 @@ void Lifter::LiftSsePextr(const Instr& inst, Facet vec_op, unsigned mask) {
     if (inst.op(0).is_reg()) {
         assert(inst.op(0).reg().rt == FD_RT_GPL);
         ext = irb.CreateZExt(ext, irb.getInt64Ty());
-        OpStoreGp(ArchReg::GP(inst.op(0).reg().ri), ext);
+        StoreGp(ArchReg::GP(inst.op(0).reg().ri), ext);
     } else {
         OpStoreGp(inst.op(0), ext);
     }

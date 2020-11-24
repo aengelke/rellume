@@ -45,7 +45,7 @@
 
 namespace rellume::x86_64 {
 
-ArchReg LifterBase::MapReg(const Instr::Reg reg) {
+ArchReg Lifter::MapReg(const Instr::Reg reg) {
     if (reg.rt == FD_RT_GPL)
         return reg.ri == FD_REG_IP ? ArchReg::IP : ArchReg::GP(reg.ri);
     else if (reg.rt == FD_RT_GPH)
@@ -55,7 +55,7 @@ ArchReg LifterBase::MapReg(const Instr::Reg reg) {
     return ArchReg();
 }
 
-llvm::Value* LifterBase::OpAddrConst(uint64_t addr, llvm::PointerType* ptr_ty) {
+llvm::Value* LifterBase::AddrConst(uint64_t addr, llvm::PointerType* ptr_ty) {
     if (addr == 0)
         return llvm::ConstantPointerNull::get(ptr_ty);
 
@@ -68,7 +68,7 @@ llvm::Value* LifterBase::OpAddrConst(uint64_t addr, llvm::PointerType* ptr_ty) {
     return irb.CreateIntToPtr(irb.getInt64(addr), ptr_ty);
 }
 
-llvm::Value* LifterBase::OpAddr(const Instr::Op op, llvm::Type* element_type,
+llvm::Value* Lifter::OpAddr(const Instr::Op op, llvm::Type* element_type,
                                 unsigned seg) {
     if (seg == FD_REG_FS || seg == FD_REG_GS || op.addrsz() != 8) {
         // For segment offsets, use inttoptr because the pointer base is stored
@@ -116,7 +116,7 @@ llvm::Value* LifterBase::OpAddr(const Instr::Op op, llvm::Type* element_type,
         if (llvm::isa<llvm::Constant>(base)) {
             llvm::Value* base_int = GetReg(MapReg(op.base()), Facet::I64);
             auto* addr = llvm::cast<llvm::ConstantInt>(base_int);
-            base = OpAddrConst(addr->getZExtValue() + op.off(), elem_ptr_ty);
+            base = AddrConst(addr->getZExtValue() + op.off(), elem_ptr_ty);
         } else if (op.off() != 0) {
             if (op.scale() != 0 && (op.off() % op.scale()) == 0) {
                 base = irb.CreatePointerCast(base, scale_type);
@@ -127,7 +127,7 @@ llvm::Value* LifterBase::OpAddr(const Instr::Op op, llvm::Type* element_type,
             }
         }
     } else {
-        base = OpAddrConst(op.off(), elem_ptr_ty);
+        base = AddrConst(op.off(), elem_ptr_ty);
     }
 
     if (op.scale() != 0) {
@@ -160,7 +160,8 @@ static void ll_operand_set_alignment(llvm::Instruction* value, llvm::Type* type,
         store->setAlignment(bytes);
 }
 
-llvm::Value* LifterBase::OpLoad(const Instr::Op op, Facet facet,
+// XXX put back in LifterBase?
+llvm::Value* Lifter::OpLoad(const Instr::Op op, Facet facet,
                                 Alignment alignment, unsigned seg) {
     facet = facet.Resolve(op.bits());
     if (op.is_imm()) {
@@ -198,7 +199,7 @@ llvm::Value* LifterBase::OpLoad(const Instr::Op op, Facet facet,
     return nullptr;
 }
 
-void LifterBase::OpStoreGp(ArchReg reg, Facet facet, llvm::Value* value) {
+void Lifter::StoreGpFacet(ArchReg reg, Facet facet, llvm::Value* value) {
     assert(reg.IsGP());
     assert(value->getType()->isIntegerTy());
     assert(value->getType() == facet.Type(irb.getContext()));
@@ -223,7 +224,7 @@ void LifterBase::OpStoreGp(ArchReg reg, Facet facet, llvm::Value* value) {
     SetRegFacet(reg, facet, value); // Store facet value as well
 }
 
-void LifterBase::OpStoreGp(const Instr::Op op, llvm::Value* value,
+void Lifter::OpStoreGp(const Instr::Op op, llvm::Value* value,
                            Alignment alignment) {
     if (op.is_mem()) {
         llvm::Value* addr = OpAddr(op, value->getType(), op.seg());
@@ -235,13 +236,13 @@ void LifterBase::OpStoreGp(const Instr::Op op, llvm::Value* value,
         Facet facet = Facet::In(value->getType()->getIntegerBitWidth());
         if (facet == Facet::I8 && op.reg().rt == FD_RT_GPH)
             facet = Facet::I8H;
-        OpStoreGp(MapReg(op.reg()), facet, value);
+        StoreGpFacet(MapReg(op.reg()), facet, value);
     } else {
         assert(false && "gp-store to non-mem/non-reg");
     }
 }
 
-void LifterBase::OpStoreVec(const Instr::Op op, llvm::Value* value, bool avx,
+void Lifter::OpStoreVec(const Instr::Op op, llvm::Value* value, bool avx,
                             Alignment alignment) {
     if (op.is_mem()) {
         llvm::Value* addr = OpAddr(op, value->getType(), op.seg());
@@ -300,7 +301,7 @@ void LifterBase::OpStoreVec(const Instr::Op op, llvm::Value* value, bool avx,
     SetRegFacet(reg, Facet::FromType(value_ty), value);
 }
 
-void LifterBase::StackPush(llvm::Value* value) {
+void Lifter::StackPush(llvm::Value* value) {
     llvm::Value* rsp = GetReg(ArchReg::RSP, Facet::PTR);
     rsp = irb.CreatePointerCast(rsp, value->getType()->getPointerTo());
     rsp = irb.CreateConstGEP1_64(rsp, -1);
@@ -309,7 +310,7 @@ void LifterBase::StackPush(llvm::Value* value) {
     SetRegPtr(ArchReg::RSP, rsp);
 }
 
-llvm::Value* LifterBase::StackPop(const ArchReg sp_src_reg) {
+llvm::Value* Lifter::StackPop(const ArchReg sp_src_reg) {
     llvm::Value* rsp = GetReg(sp_src_reg, Facet::PTR);
     rsp = irb.CreatePointerCast(rsp, irb.getInt64Ty()->getPointerTo());
 

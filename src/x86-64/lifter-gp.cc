@@ -83,7 +83,7 @@ void Lifter::LiftCmpxchg(const Instr& inst) {
     // Store SRC if DST=ACC, else store DST again (i.e. don't change memory).
     OpStoreGp(inst.op(0), irb.CreateSelect(GetFlag(Facet::ZF), src, dst));
     // ACC gets the value from memory.
-    OpStoreGp(ArchReg::RAX, dst);
+    StoreGp(ArchReg::RAX, dst);
 }
 
 void Lifter::LiftXchg(const Instr& inst) {
@@ -262,7 +262,7 @@ void Lifter::LiftMul(const Instr& inst) {
 
     if (op_cnt == 1) {
         if (sz == 8) {
-            OpStoreGp(ArchReg::RAX, ext_res);
+            StoreGp(ArchReg::RAX, ext_res);
         } else {
             // Don't use short_res to avoid having two multiplications.
             // TODO: is this concern still valid?
@@ -270,8 +270,8 @@ void Lifter::LiftMul(const Instr& inst) {
             llvm::Value* res_a = irb.CreateTrunc(ext_res, value_ty);
             llvm::Value* high = irb.CreateLShr(ext_res, sz);
             llvm::Value* res_d = irb.CreateTrunc(high, value_ty);
-            OpStoreGp(ArchReg::RAX, res_a);
-            OpStoreGp(ArchReg::RDX, res_d);
+            StoreGp(ArchReg::RAX, res_a);
+            StoreGp(ArchReg::RDX, res_d);
         }
     } else {
         OpStoreGp(inst.op(0), short_res);
@@ -328,12 +328,12 @@ void Lifter::LiftDiv(const Instr& inst) {
 
     if (sz == 8) {
         // Quotient is AL, remainder is AH
-        OpStoreGp(ArchReg::RAX, Facet::I8, quot);
-        OpStoreGp(ArchReg::RAX, Facet::I8H, rem);
+        StoreGpFacet(ArchReg::RAX, Facet::I8, quot);
+        StoreGpFacet(ArchReg::RAX, Facet::I8H, rem);
     } else {
         // Quotient is AX/EAX/RAX, remainer is DX/EDX/RDX
-        OpStoreGp(ArchReg::RAX, quot);
-        OpStoreGp(ArchReg::RDX, rem);
+        StoreGp(ArchReg::RAX, quot);
+        StoreGp(ArchReg::RDX, rem);
     }
 
     SetFlagUndef({Facet::OF, Facet::SF, Facet::ZF, Facet::AF, Facet::PF,
@@ -373,7 +373,7 @@ void Lifter::LiftXlat(const Instr& inst) {
     }
 
     llvm::Value* ptr = irb.CreateGEP(bx, irb.CreateZExt(al, irb.getInt32Ty()));
-    OpStoreGp(ArchReg::RAX, irb.CreateLoad(irb.getInt8Ty(), ptr));
+    StoreGp(ArchReg::RAX, irb.CreateLoad(irb.getInt8Ty(), ptr));
 }
 
 void Lifter::LiftCmovcc(const Instr& inst, Condition cond) {
@@ -390,13 +390,13 @@ void Lifter::LiftSetcc(const Instr& inst, Condition cond) {
 void Lifter::LiftCext(const Instr& inst) {
     unsigned sz = inst.opsz() * 8;
     llvm::Value* ax = GetReg(ArchReg::RAX, Facet::In(sz / 2));
-    OpStoreGp(ArchReg::RAX, irb.CreateSExt(ax, irb.getIntNTy(sz)));
+    StoreGp(ArchReg::RAX, irb.CreateSExt(ax, irb.getIntNTy(sz)));
 }
 
 void Lifter::LiftCsep(const Instr& inst) {
     unsigned sz = inst.opsz() * 8;
     llvm::Value* ax = GetReg(ArchReg::RAX, Facet::In(sz));
-    OpStoreGp(ArchReg::RDX, irb.CreateAShr(ax, sz - 1));
+    StoreGp(ArchReg::RDX, irb.CreateAShr(ax, sz - 1));
 }
 
 void Lifter::LiftBitscan(const Instr& inst, bool trailing) {
@@ -501,7 +501,7 @@ void Lifter::LiftLoop(const Instr& inst) {
     // Decrement RCX/ECX
     llvm::Value* cx = GetReg(ArchReg::RCX, Facet::In(sz * 8));
     cx = irb.CreateSub(cx, irb.getIntN(sz * 8, 1));
-    OpStoreGp(ArchReg::RCX, cx);
+    StoreGp(ArchReg::RCX, cx);
 
     // Construct condition
     llvm::Value* cond = irb.CreateICmpNE(cx, irb.getIntN(sz*8, 0));
@@ -572,7 +572,7 @@ void Lifter::LiftSyscall(const Instr& inst) {
         CallExternalFunction(cfg.syscall_implementation);
 }
 
-LifterBase::RepInfo LifterBase::RepBegin(const Instr& inst) {
+Lifter::RepInfo Lifter::RepBegin(const Instr& inst) {
     RepInfo info = {};
 
     bool condrep = inst.type() == FDI_SCAS || inst.type() == FDI_CMPS;
@@ -607,7 +607,7 @@ LifterBase::RepInfo LifterBase::RepBegin(const Instr& inst) {
     return info;
 }
 
-void LifterBase::RepEnd(RepInfo info) {
+void Lifter::RepEnd(RepInfo info) {
     // First update pointer registers with direction flag
     llvm::Value* df = GetFlag(Facet::DF);
     llvm::Value* adj = irb.CreateSelect(df, irb.getInt64(-1), irb.getInt64(1));
@@ -645,7 +645,7 @@ void Lifter::LiftLods(const Instr& inst) {
     RepInfo rep_info = RepBegin(inst); // NOTE: this modifies control flow!
 
     unsigned size = inst.opsz();
-    OpStoreGp(ArchReg::RAX, irb.CreateLoad(irb.getIntNTy(size), rep_info.di));
+    StoreGp(ArchReg::RAX, irb.CreateLoad(irb.getIntNTy(size), rep_info.di));
 
     RepEnd(rep_info); // NOTE: this modifies control flow!
 }
