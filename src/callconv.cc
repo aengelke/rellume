@@ -136,6 +136,7 @@ static void Pack(CallConv cconv, BasicBlock* bb, FunctionInfo& fi, F hhvm_fn) {
     CallConvPack& pack_info = fi.call_conv_packs.emplace_back();
     pack_info.block_dirty_regs = regfile.DirtyRegs();
     pack_info.bb = bb;
+    pack_info.stores.resize(sizeof cpu_struct_entries / sizeof cpu_struct_entries[0]);
 
     for (const auto& [sptr_idx, off, reg, facet] : cpu_struct_entries) {
         if (reg.Kind() == ArchReg::RegKind::INVALID)

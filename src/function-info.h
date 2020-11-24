@@ -42,7 +42,6 @@ namespace SptrIdx::x86_64 {
 #define RELLUME_NAMED_REG(name,nameu,sz,off) nameu,
 #include <rellume/cpustruct-private.inc>
 #undef RELLUME_NAMED_REG
-        MAX
     };
 }
 
@@ -51,7 +50,7 @@ class BasicBlock;
 struct CallConvPack {
     RegisterSet block_dirty_regs;
     BasicBlock* bb;
-    llvm::StoreInst* stores[SptrIdx::x86_64::MAX];
+    std::vector<llvm::StoreInst*> stores;
 };
 
 struct FunctionInfo {
