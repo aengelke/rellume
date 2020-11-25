@@ -13,13 +13,17 @@ FMT_SUBST = {
 }
 
 class Assembler:
-    def __init__(self, proc):
-        self.proc = subprocess.Popen([proc], stdin=subprocess.PIPE, stdout=subprocess.PIPE, universal_newlines=True)
+    def __init__(self, proc, arch):
+        self.proc = subprocess.Popen([proc, arch], stdin=subprocess.PIPE, stdout=subprocess.PIPE, universal_newlines=True)
+        self.arch = arch
     def assemble(self, code):
+        if self.arch == "x86_64":
+            code = ".intel_syntax noprefix;" + code
         self.proc.stdin.write(code + "\n")
         self.proc.stdin.flush()
-        res = self.proc.stdout.readline().strip()
-        return bytes.fromhex(res)
+        res = bytes.fromhex(self.proc.stdout.readline().strip())
+        if self.arch == "x86_64":
+            return res, b"\xcc"
     def close(self):
         self.proc.communicate()
         return self.proc.wait()
@@ -41,8 +45,8 @@ def parse_case(case, asm=None):
         elif key == "code":
             if cur is not pre:
                 raise Exception("code in post-check")
-            code = asm.assemble(".intel_syntax noprefix;" + val)
-            pre.append("m1000000=" + code.hex() + "cc")
+            code, term = asm.assemble(val)
+            pre.append("m1000000=" + code.hex() + term.hex())
             pre.append("rip=" + struct.pack("<Q", 0x1000000).hex())
             post.append("rip=" + struct.pack("<Q", 0x1000000 + len(code)).hex())
             continue
@@ -60,10 +64,11 @@ if __name__ == "__main__":
     parser = argparse.ArgumentParser()
     parser.add_argument("-o", "--output", type=argparse.FileType("w"), default='-')
     parser.add_argument("-a", "--assembler")
+    parser.add_argument("-A", "--arch")
     parser.add_argument("casefiles", type=argparse.FileType("r"), nargs="+")
     args = parser.parse_args()
 
-    asm = Assembler(args.assembler) if args.assembler else None
+    asm = Assembler(args.assembler, args.arch) if args.assembler else None
 
     for file in args.casefiles:
         for i, line in enumerate(file.readlines()):

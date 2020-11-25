@@ -22,10 +22,10 @@
 #include <unordered_set>
 #include <vector>
 
-
 static bool opt_verbose = false;
 static bool opt_jit = false;
 static bool opt_overflow_intrinsics = false;
+static const char* opt_arch = "x86_64";
 
 struct HexBuffer {
     uint8_t* buf;
@@ -48,19 +48,23 @@ struct RegEntry {
     off_t offset;
 };
 
-static std::unordered_map<std::string,RegEntry> regs = {
-#define RELLUME_NAMED_REG(name,nameu,sz,off) {#name, {sz, off}},
-#include <rellume/cpustruct-x86_64-private.inc>
-#undef RELLUME_NAMED_REG
-};
-
 class TestCase {
-
-
+    const std::unordered_map<std::string,RegEntry>* regs;
     std::ostringstream& diagnostic;
     std::vector<std::pair<void*, size_t>> mem_maps;
 
-    TestCase(std::ostringstream& diagnostic) : diagnostic(diagnostic) {}
+    TestCase(std::ostringstream& diagnostic) : diagnostic(diagnostic) {
+        static std::unordered_map<std::string,RegEntry> regs_x86_64 = {
+#define RELLUME_NAMED_REG(name,nameu,sz,off) {#name, {sz, off}},
+#include <rellume/cpustruct-x86_64-private.inc>
+#undef RELLUME_NAMED_REG
+        };
+
+        if (!strcmp(opt_arch, "x86_64"))
+            regs = &regs_x86_64;
+        else
+            assert(false && "unsupported architecture");
+    }
 
     ~TestCase() {
         for (auto& map : mem_maps) {
@@ -69,8 +73,8 @@ class TestCase {
     }
 
     bool SetReg(std::string reg, std::string value_str, CPU* cpu) {
-        auto reg_entry = regs.find(reg);
-        if (reg_entry == regs.end()) {
+        auto reg_entry = regs->find(reg);
+        if (reg_entry == regs->end()) {
             diagnostic << "# invalid register: " << reg << std::endl;
             return true;
         }
@@ -197,9 +201,12 @@ class TestCase {
         LLConfig* rlcfg = ll_config_new();
         ll_config_enable_verify_ir(rlcfg, true);
         ll_config_enable_overflow_intrinsics(rlcfg, opt_overflow_intrinsics);
+        ll_config_set_architecture(rlcfg, opt_arch);
+
         LLFunc* rlfn = ll_func_new(llvm::wrap(mod.get()), rlcfg);
         bool decode_ok = !ll_func_decode_cfg(rlfn, *reinterpret_cast<uint64_t*>(&state.rip), nullptr, nullptr);
         LLVMValueRef fn_wrap = decode_ok ? ll_func_lift(rlfn) : nullptr;
+
         ll_func_dispose(rlfn);
         ll_config_free(rlcfg);
 
@@ -271,7 +278,7 @@ class TestCase {
 
         uint8_t* state_raw = reinterpret_cast<uint8_t*>(&state);
         uint8_t* expected_raw = reinterpret_cast<uint8_t*>(&expected);
-        for (auto& reg_entry : regs) {
+        for (const auto& reg_entry : *regs) {
             if (skip_regs.count(reg_entry.first) > 0)
                 continue;
 
@@ -306,14 +313,15 @@ public:
 
 int main(int argc, char** argv) {
     int opt;
-    while ((opt = getopt(argc, argv, "vji")) != -1) {
+    while ((opt = getopt(argc, argv, "vjiA:")) != -1) {
         switch (opt) {
         case 'v': opt_verbose = true; break;
         case 'j': opt_jit = true; break;
         case 'i': opt_overflow_intrinsics = true; break;
+        case 'A': opt_arch = optarg; break;
         default:
 usage:
-            std::cerr << "usage: " << argv[0] << " [-v] [-j] casefile" << std::endl;
+            std::cerr << "usage: " << argv[0] << " [-v] [-j] [-i] [-A arch] casefile" << std::endl;
             return 1;
         }
     }

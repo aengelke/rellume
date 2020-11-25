@@ -58,13 +58,27 @@ struct HexBuffer {
 int main(int argc, char** argv) {
     int retval = 0;
 
-    LLVMInitializeX86TargetInfo();
-    LLVMInitializeX86Target();
-    LLVMInitializeX86TargetMC();
-    LLVMInitializeX86AsmParser();
+    std::string triplestr;
+    std::string cpufeatures;
+    if (argc != 2) {
+        std::cerr << "usage: " << argv[0] << " [architecture]" << std::endl;
+        return 1;
+    }
+
+    if (!strcmp(argv[1], "x86_64")) {
+        triplestr = "x86_64-linux-gnu";
+        cpufeatures = "+nopl";
+        LLVMInitializeX86TargetInfo();
+        LLVMInitializeX86Target();
+        LLVMInitializeX86TargetMC();
+        LLVMInitializeX86AsmParser();
+    } else {
+        std::cerr << "unsupported architecture" << std::endl;
+        return 1;
+    }
 
     std::string error;
-    llvm::Triple triple("x86_64-linux-gnu");
+    llvm::Triple triple(triplestr);
     const llvm::Target* target = llvm::TargetRegistry::lookupTarget("", triple, error);
     if (target == nullptr) {
         std::cerr << "error getting target: " << error << std::endl;
@@ -89,7 +103,7 @@ int main(int argc, char** argv) {
         return 1;
     }
 
-    llvm::MCSubtargetInfo* sti = target->createMCSubtargetInfo(triple.str(), "", "");
+    llvm::MCSubtargetInfo* sti = target->createMCSubtargetInfo(triple.str(), "", cpufeatures);
     if (sti == nullptr) {
         std::cerr << "error getting MCSubtargetInfo" << std::endl;
         return 1;
