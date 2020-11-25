@@ -59,3 +59,11 @@ code="eor w0, w1, w2"  x0=q:0x0 x1=q:0x1        x2=q:0x1   => x0=q:0x0
 code="eon w0, w1, w2"  x0=q:0x0 x1=q:0x1        x2=q:0x1   => x0=q:0xffffffff
 code="ands w0, w1, w2" x0=q:0x0 x1=q:0x0        x2=q:0x1        n=00 z=00 c=00 v=00 => x0=q:0x0 n=00 z=01 c=00 v=00
 code="tst w1, w2"               x1=q:0xffff0000 x2=q:0xffff0000 n=00 z=00 c=00 v=00 => n=01 z=00 c=00 v=00
+
+code="udiv x0, x1, x2" x0=q:0 x1=q:100 x2=q:25  => x0=q:4
+code="udiv w0, w1, w2" x0=q:0 x1=q:301 x2=q:12  => x0=q:25
+code="sdiv x0, x1, x2" x0=q:0 x1=q:100 x2=q:-25 => x0=q:-4
+code="sdiv w0, w1, w2" x0=q:0 x1=q:-301 x2=q:12 => x0=e7ffffff00000000
+code="udiv x0, x1, x2" x0=q:1 x1=q:100 x2=q:0                   => x0=q:0
+code="sdiv w0, w1, w2" x0=q:0 x1=q:-2147483648 x2=q:-1          => x0=0000008000000000
+code="sdiv x0, x1, x2" x0=q:0 x1=q:-9223372036854775808 x2=q:-1 => x0=q:-9223372036854775808

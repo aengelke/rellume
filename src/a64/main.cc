@@ -30,6 +30,8 @@
 #include "instr.h"
 #include "regfile.h"
 
+#include <cstdint>
+
 #include <llvm/IR/Constants.h>
 #include <llvm/IR/DerivedTypes.h>
 #include <llvm/IR/IRBuilder.h>
@@ -220,6 +222,38 @@ bool Lifter::Lift(const Instr& inst) {
         auto on_false = PCRel(inst.len()); // next instr
         SetReg(ArchReg::IP, Facet::I64, irb.CreateSelect(do_branch, on_true, on_false));
         return true;
+    }
+    case farmdec::A64_UDIV: {
+        auto lhs = GetGp(a64.rn, w32);
+        auto rhs = GetGp(a64.rm, w32);
+
+        // div(a,0) => 0. We need to make sure the division does not fault
+        // _before_ we even arrive at the final select where we discard it.
+        // Hence safe_rhs.
+        auto is_zero = irb.CreateICmpEQ(rhs, irb.getIntN(bits, 0));
+        auto safe_rhs = irb.CreateSelect(is_zero, irb.getIntN(bits, 1), rhs);
+        auto val = irb.CreateSelect(is_zero, irb.getIntN(bits, 0), irb.CreateUDiv(lhs, safe_rhs));
+
+        SetGp(a64.rd, w32, val);
+        break;
+    }
+    case farmdec::A64_SDIV: {
+        auto lhs = GetGp(a64.rn, w32);
+        auto rhs = GetGp(a64.rm, w32);
+
+        // See above
+        auto is_zero = irb.CreateICmpEQ(rhs, irb.getIntN(bits, 0));
+        auto safe_rhs = irb.CreateSelect(is_zero, irb.getIntN(bits, 1), rhs);
+
+        // sdiv(INT_MIN,-1) => INT_MIN. sdiv overflow is also UB, so we need
+        // the same precautions as for the div-by-zero case.
+        auto int_min = irb.getIntN(bits, (w32) ? INT32_MIN : INT64_MIN);
+        auto is_min = irb.CreateAnd(irb.CreateICmpEQ(lhs, int_min), irb.CreateICmpEQ(rhs, irb.getIntN(bits, -1)));
+        safe_rhs = irb.CreateSelect(is_min, irb.getIntN(bits, 1), safe_rhs);
+        auto val = irb.CreateSelect(is_min, int_min, irb.CreateSDiv(lhs, safe_rhs));
+        val = irb.CreateSelect(is_zero, irb.getIntN(bits, 0), val);
+        SetGp(a64.rd, w32, val);
+        break;
     }
     case farmdec::A64_AND_SHIFTED:
     case farmdec::A64_TST_SHIFTED:
