@@ -27,6 +27,7 @@ code="cmn x1, x2" x1=q:-1 x2=q:1 n=00 z=00 c=00 v=00 => n=00 z=01 c=01 v=00
 
 code="mov w0, w1" x0=q:0x0 x1=aabbccddffffffff => x0=aabbccdd00000000
 code="mov x0, x1" x0=q:0x0 x1=ffffffffffffffff => x0=ffffffffffffffff
+code="mvn x0, x1" x0=q:0x0 x1=fff0fff00fff00ff => x0=000f000ff000ff00
 
 code="mov w0, #1234"   x0=q:0x0            => x0=q:1234
 code="mov w0, #0xffff" x0=q:0x0            => x0=ffff000000000000
@@ -43,3 +44,18 @@ code=".4byte 0xb0000000"            => x0=q:0x1001000
 code="mov x0, 0; .4byte 0xb0000000" => x0=q:0x1001000
 code="adr x0, ."         => x0=q:0x1000000
 code="adr x0, foo; foo:" => x0=q:0x1000004
+
+code="and x0, x0, #0xff"   x0=q:0xaabb => x0=q:0xbb
+code="orr x0, x0, #0x100"  x0=q:0x0    => x0=q:0x100
+code="eor w0, w0, #1"      x0=q:0x1    => x0=q:0x0
+code="ands x0, x0, #1"     x0=q:0x0        n=00 z=00 c=00 v=00 => x0=q:0x0 n=00 z=01 c=00 v=00
+code="tst w0, #0xffff0000" x0=q:0xffff0000 n=00 z=00 c=00 v=00 => n=01 z=00 c=00 v=00
+
+code="and x0, x1, x2"  x0=q:0x0 x1=q:0xaabb     x2=q:0xff  => x0=q:0xbb
+code="bic x0, x1, x2"  x0=q:0x0 x1=q:0xaabb     x2=q:0xff  => x0=q:0xaa00
+code="orr x0, x1, x2"  x0=q:0x0 x1=q:0x0        x2=q:0x100 => x0=q:0x100
+code="orn x0, x1, x2"  x0=q:0x0 x1=q:0x0        x2=q:0x100 => x0=q:0xfffffffffffffeff
+code="eor w0, w1, w2"  x0=q:0x0 x1=q:0x1        x2=q:0x1   => x0=q:0x0
+code="eon w0, w1, w2"  x0=q:0x0 x1=q:0x1        x2=q:0x1   => x0=q:0xffffffff
+code="ands w0, w1, w2" x0=q:0x0 x1=q:0x0        x2=q:0x1        n=00 z=00 c=00 v=00 => x0=q:0x0 n=00 z=01 c=00 v=00
+code="tst w1, w2"               x1=q:0xffff0000 x2=q:0xffff0000 n=00 z=00 c=00 v=00 => n=01 z=00 c=00 v=00

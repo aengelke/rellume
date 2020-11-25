@@ -87,6 +87,28 @@ bool Lifter::Lift(const Instr& inst) {
         break;
     }
 
+    case farmdec::A64_AND_IMM:
+    case farmdec::A64_TST_IMM: {
+        auto lhs = GetGp(a64.rn, w32);
+        auto val = irb.CreateAnd(lhs, a64.imm);
+        SetGp(a64.rd, w32, val);
+        if (set_flags) {
+            FlagCalcLogic(val);
+        }
+        break;
+    }
+    case farmdec::A64_ORR_IMM: {
+        auto lhs = GetGp(a64.rn, w32);
+        auto val = irb.CreateOr(lhs, a64.imm);
+        SetGp(a64.rd, w32, val);
+        break;
+    }
+    case farmdec::A64_EOR_IMM: {
+        auto lhs = GetGp(a64.rn, w32);
+        auto val = irb.CreateXor(lhs, a64.imm);
+        SetGp(a64.rd, w32, val);
+        break;
+    }
     case farmdec::A64_ADD_IMM:
     case farmdec::A64_CMN_IMM: {
         auto lhs = GetGp(a64.rn, w32);
@@ -199,9 +221,49 @@ bool Lifter::Lift(const Instr& inst) {
         SetReg(ArchReg::IP, Facet::I64, irb.CreateSelect(do_branch, on_true, on_false));
         return true;
     }
+    case farmdec::A64_AND_SHIFTED:
+    case farmdec::A64_TST_SHIFTED:
+    case farmdec::A64_BIC: {
+        auto lhs = GetGp(a64.rn, w32);
+        auto rhs = Shift(GetGp(a64.rm, w32), static_cast<farmdec::Shift>(a64.shift.type), a64.shift.amount);
+        if (a64.op == farmdec::A64_BIC) {
+            rhs = irb.CreateNot(rhs);
+        }
+        auto val = irb.CreateAnd(lhs, rhs);
+        SetGp(a64.rd, w32, val);
+        if (set_flags) {
+            FlagCalcLogic(val);
+        }
+        break;
+    }
+    case farmdec::A64_ORR_SHIFTED:
+    case farmdec::A64_ORN: {
+        auto lhs = GetGp(a64.rn, w32);
+        auto rhs = Shift(GetGp(a64.rm, w32), static_cast<farmdec::Shift>(a64.shift.type), a64.shift.amount);
+        if (a64.op == farmdec::A64_ORN) {
+            rhs = irb.CreateNot(rhs);
+        }
+        auto val = irb.CreateOr(lhs, rhs);
+        SetGp(a64.rd, w32, val);
+        break;
+    }
     case farmdec::A64_MOV_REG:
         SetGp(a64.rd, w32, GetGp(a64.rm, w32)); // rd := rm
         break;
+    case farmdec::A64_MVN:
+        SetGp(a64.rd, w32, irb.CreateNot(GetGp(a64.rm, w32))); // rd := ~rm
+        break;
+    case farmdec::A64_EOR_SHIFTED:
+    case farmdec::A64_EON: {
+        auto lhs = GetGp(a64.rn, w32);
+        auto rhs = Shift(GetGp(a64.rm, w32), static_cast<farmdec::Shift>(a64.shift.type), a64.shift.amount);
+        if (a64.op == farmdec::A64_EON) {
+            rhs = irb.CreateNot(rhs);
+        }
+        auto val = irb.CreateXor(lhs, rhs);
+        SetGp(a64.rd, w32, val);
+        break;
+    }
     case farmdec::A64_ADD_SHIFTED:
     case farmdec::A64_CMN_SHIFTED: {
         auto lhs = GetGp(a64.rn, w32);
@@ -412,6 +474,14 @@ void Lifter::FlagCalcSub(llvm::Value* res, llvm::Value* lhs, llvm::Value* rhs) {
     SetFlag(Facet::SF, sf);
     SetFlag(Facet::CF, irb.CreateICmpUGE(lhs, rhs));
     SetFlag(Facet::OF, irb.CreateICmpNE(sf, irb.CreateICmpSLT(lhs, rhs)));
+}
+
+void Lifter::FlagCalcLogic(llvm::Value* res) {
+    auto zero = llvm::Constant::getNullValue(res->getType());
+    SetFlag(Facet::ZF, irb.CreateICmpEQ(res, zero));
+    SetFlag(Facet::SF, irb.CreateICmpSLT(res, zero));
+    SetFlag(Facet::CF, irb.getFalse());
+    SetFlag(Facet::OF, irb.getFalse());
 }
 
 // Shift or rotate the value v. No spurious instruction is generated if the shift

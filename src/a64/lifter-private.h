@@ -47,6 +47,7 @@ private:
 
     void FlagCalcAdd(llvm::Value* res, llvm::Value* lhs, llvm::Value* rhs);
     void FlagCalcSub(llvm::Value* res, llvm::Value* lhs, llvm::Value* rhs);
+    void FlagCalcLogic(llvm::Value* res);
 
     llvm::Value* Shift(llvm::Value* v, farmdec::Shift sh, uint32_t amount);
     llvm::Value* Extend(llvm::Value* v, farmdec::ExtendType ext, uint32_t lsl);
