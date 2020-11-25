@@ -32,3 +32,14 @@ code="mov w0, #1234"   x0=q:0x0            => x0=q:1234
 code="mov w0, #0xffff" x0=q:0x0            => x0=ffff000000000000
 code="mov w0, #0xffff" x0=f0f0f0f0f0f0f0f0 => x0=ffff000000000000
 code="mov x0, #0xffff" x0=f0f0f0f0f0f0f0f0 => x0=ffff000000000000
+
+# XXX cannot test adrp: test_assembler: [...]: Assertion `false && "relocations not supported"' failed.
+# This reads "adrp x0, imm=0"
+code=".4byte 0x90000000"            => x0=q:0x1000000
+# The lowest 12 bits are always zero.
+code="mov x0, 0; .4byte 0x90000000" => x0=q:0x1000000
+# This reads "adrp x0, imm=1"
+code=".4byte 0xb0000000"            => x0=q:0x1001000
+code="mov x0, 0; .4byte 0xb0000000" => x0=q:0x1001000
+code="adr x0, ."         => x0=q:0x1000000
+code="adr x0, foo; foo:" => x0=q:0x1000004

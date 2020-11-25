@@ -75,6 +75,18 @@ bool Lifter::Lift(const Instr& inst) {
     default:
         SetIP(inst.start(), /*nofold=*/true);
         return false;
+
+    case farmdec::A64_ADR:
+        SetGp(a64.rd, /*w32=*/false, PCRel(a64.offset));
+        break;
+    case farmdec::A64_ADRP: {
+        // Scaling to page granularity is already handled in farmdec, but we need to mask out
+        // the bottom 12 bits.
+        auto masked_pc = irb.CreateAnd(GetReg(ArchReg::IP, Facet::I64), irb.getInt64(~(uint64_t)4095));
+        SetGp(a64.rd, /*w32=*/false, irb.CreateAdd(masked_pc, irb.getInt64(a64.offset)));
+        break;
+    }
+
     case farmdec::A64_ADD_IMM:
     case farmdec::A64_CMN_IMM: {
         auto lhs = GetGp(a64.rn, w32);
