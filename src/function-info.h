@@ -44,6 +44,13 @@ namespace SptrIdx::x86_64 {
 #undef RELLUME_NAMED_REG
     };
 }
+namespace SptrIdx::rv64 {
+    enum {
+#define RELLUME_NAMED_REG(name,nameu,sz,off) nameu,
+#include <rellume/cpustruct-rv64-private.inc>
+#undef RELLUME_NAMED_REG
+    };
+}
 
 class BasicBlock;
 

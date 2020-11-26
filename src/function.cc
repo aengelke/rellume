@@ -29,6 +29,7 @@
 #include "config.h"
 #include "function-info.h"
 #include "x86-64/lifter.h"
+#include "rv64/lifter.h"
 #include "regfile.h"
 #include <llvm/ADT/DepthFirstIterator.h>
 #include <llvm/ADT/SmallVector.h>
@@ -111,6 +112,7 @@ bool Function::AddInst(uint64_t block_addr, const Instr& inst)
     ArchBasicBlock& ab = *block_map[block_addr];
     switch (cfg->arch) {
     case Arch::X86_64: return x86_64::LiftInstruction(inst, fi, *cfg, ab);
+    case Arch::RV64: return rv64::LiftInstruction(inst, fi, *cfg, ab);
     default: return false;
     }
 }

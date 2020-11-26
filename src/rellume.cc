@@ -110,6 +110,9 @@ bool ll_config_set_architecture(LLConfig* cfg, const char *s) {
     if (!strcmp(s, "x86-64")) {
         unwrap(cfg)->arch = rellume::Arch::X86_64;
         unwrap(cfg)->callconv = rellume::CallConv::X86_64_SPTR;
+    } else if (!strcmp(s, "rv64")) {
+        unwrap(cfg)->arch = rellume::Arch::RV64;
+        unwrap(cfg)->callconv = rellume::CallConv::RV64_SPTR;
     } else {
         return false;
     }

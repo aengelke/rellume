@@ -1,8 +1,7 @@
 /**
  * This file is part of Rellume.
  *
- * (c) 2020, Alexis Engelke <alexis.engelke@tum.de>
- * (c) 2020, Dominik Okwieka <dominik.okwieka@t-online.de>
+ * (c) 2020, Alexis Engelke <alexis.engelke@googlemail.com>
  *
  * Rellume is free software: you can redistribute it and/or modify
  * it under the terms of the GNU Lesser General Public License (LGPL)
@@ -19,18 +18,25 @@
  */
 
 /**
- * \file enum Arch definition; new header file to resolve cyclical include.
+ * \file
  **/
 
-#ifndef RELLUME_ARCH_H
-#define RELLUME_ARCH_H
+#ifndef RELLUME_RV64_LIFTER_H
+#define RELLUME_RV64_LIFTER_H
 
 namespace rellume {
 
-enum class Arch : unsigned {
-    X86_64, // x86-64 (Intel 64, actually)
-    RV64, // RISC-V, 64 bit
-};
+class ArchBasicBlock;
+class FunctionInfo;
+class Instr;
+class LLConfig;
+
+namespace rv64 {
+
+bool LiftInstruction(const Instr& inst, FunctionInfo& fi, const LLConfig& cfg,
+                     ArchBasicBlock& ab) noexcept;
+
+} // namespace rellume::rv64
 
 } // namespace rellume
 

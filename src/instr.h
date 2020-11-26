@@ -25,6 +25,7 @@
 #define RELLUME_INSTR_H
 
 #include <fadec.h>
+#include <frvdec.h>
 
 #include <cstdbool>
 #include <cstdint>
@@ -40,6 +41,7 @@ class Instr {
     uint64_t addr;
     union {
         FdInstr x86_64;
+        FrvInst rv64;
     };
 
 public:
@@ -114,6 +116,11 @@ public:
     uintptr_t start() const { return addr; }
     uintptr_t end() const { return start() + len(); }
 
+    operator const FrvInst*() const {
+        assert(arch == Arch::RV64);
+        return &rv64;
+    }
+
     enum class Kind {
         BRANCH,
         COND_BRANCH,
@@ -158,6 +165,19 @@ public:
             case FDI_UD2:     return Kind::UNKNOWN;
             case FDI_HLT:     return Kind::UNKNOWN;
             }
+        case Arch::RV64:
+            switch (rv64.mnem) {
+            default:          return Kind::OTHER;
+            case FRV_BEQ:     return Kind::COND_BRANCH;
+            case FRV_BNE:     return Kind::COND_BRANCH;
+            case FRV_BLT:     return Kind::COND_BRANCH;
+            case FRV_BGE:     return Kind::COND_BRANCH;
+            case FRV_BLTU:    return Kind::COND_BRANCH;
+            case FRV_BGEU:    return Kind::COND_BRANCH;
+            case FRV_JAL:     return rv64.rd ? Kind::CALL : Kind::BRANCH;
+            case FRV_JALR:    return rv64.rd ? Kind::CALL : Kind::BRANCH;
+            case FRV_ECALL:   return Kind::UNKNOWN;
+            }
         default:
             return Kind::UNKNOWN;
         }
@@ -171,6 +191,19 @@ public:
             case Kind::CALL:
                 if (op(0).is_pcrel())
                     return end() + op(0).pcrel();
+                break;
+            default:
+                break;
+            }
+            break;
+        case Arch::RV64:
+            switch (Kind()) {
+            case Kind::COND_BRANCH:
+                return start() + rv64.imm;
+            case Kind::BRANCH:
+            case Kind::CALL:
+                if (rv64.mnem == FRV_JAL)
+                    return start() + rv64.imm;
                 break;
             default:
                 break;
@@ -190,6 +223,9 @@ public:
         switch (arch) {
         case Arch::X86_64:
             res = fd_decode(buf, len, /*mode=*/64, /*addr=*/0, &x86_64);
+            break;
+        case Arch::RV64:
+            res = frv_decode(len, buf, FRV_RV64, &rv64);
             break;
         }
         if (res >= 0)

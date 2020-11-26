@@ -12,6 +12,8 @@ add_project_arguments(['-DLL_LLVM_MAJOR='+libllvm.version().split('.')[0]], lang
 
 fadec_subproject = subproject('fadec', default_options: ['archmode=only64'])
 fadec = fadec_subproject.get_variable('fadec')
+frvdec_subproject = subproject('frvdec')
+frvdec = frvdec_subproject.get_variable('frvdec')
 
 rellume_inc = include_directories('include', 'data')
 subdir('data/rellume')
@@ -19,7 +21,7 @@ subdir('src')
 subdir('include/rellume')
 librellume = declare_dependency(include_directories: rellume_inc,
                                 link_with: librellume_lib,
-                                dependencies: [libllvm, fadec],
+                                dependencies: [libllvm, fadec, frvdec],
                                 sources: [cpustruct_pub])
 
 subdir('tests')

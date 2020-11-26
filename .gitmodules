@@ -1,3 +1,6 @@
 [submodule "subprojects/fadec"]
 	path = subprojects/fadec
     url = https://github.com/aengelke/fadec.git
+[submodule "subprojects/frvdec"]
+	path = subprojects/frvdec
+	url = https://git.sr.ht/~aengelke/frvdec

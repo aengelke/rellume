@@ -42,6 +42,7 @@ CallConv CallConv::FromFunction(llvm::Function* fn, Arch arch) {
     case Arch::X86_64:
         hunch = fn_cconv == llvm::CallingConv::HHVM ? X86_64_HHVM : X86_64_SPTR;
         break;
+    case Arch::RV64: hunch = RV64_SPTR; break;
     default:
         return INVALID;
     }
@@ -71,6 +72,7 @@ llvm::FunctionType* CallConv::FnType(llvm::LLVMContext& ctx,
     default:
         return nullptr;
     case CallConv::X86_64_SPTR:
+    case CallConv::RV64_SPTR:
         return llvm::FunctionType::get(void_ty, {i8p}, false);
     case CallConv::X86_64_HHVM: {
         auto ret_ty = llvm::StructType::get(i64, i64, i64, i64, i64, i64, i64,
@@ -87,6 +89,7 @@ llvm::CallingConv::ID CallConv::FnCallConv() const {
     default: return llvm::CallingConv::C;
     case CallConv::X86_64_SPTR: return llvm::CallingConv::C;
     case CallConv::X86_64_HHVM: return llvm::CallingConv::HHVM;
+    case CallConv::RV64_SPTR: return llvm::CallingConv::C;
     }
 }
 
@@ -95,6 +98,7 @@ unsigned CallConv::CpuStructParamIdx() const {
     default: return 0;
     case CallConv::X86_64_SPTR: return 0;
     case CallConv::X86_64_HHVM: return 1;
+    case CallConv::RV64_SPTR: return 0;
     }
 }
 
@@ -122,12 +126,21 @@ static span<const CPUStructEntry> CPUStructEntries(CallConv cconv) {
 #undef RELLUME_MAPPED_REG
     };
 
+    static const CPUStructEntry cpu_struct_entries_rv64[] = {
+#define RELLUME_MAPPED_REG(nameu,off,reg,facet) \
+            std::make_tuple(SptrIdx::rv64::nameu, off, reg, facet),
+#include <rellume/cpustruct-rv64-private.inc>
+#undef RELLUME_MAPPED_REG
+    };
+
     switch (cconv) {
     default:
         return span<const CPUStructEntry>();
     case CallConv::X86_64_SPTR:
     case CallConv::X86_64_HHVM:
         return cpu_struct_entries_x86_64;
+    case CallConv::RV64_SPTR:
+        return cpu_struct_entries_rv64;
     }
 }
 

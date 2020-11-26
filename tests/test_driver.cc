@@ -59,9 +59,16 @@ class TestCase {
 #include <rellume/cpustruct-x86_64-private.inc>
 #undef RELLUME_NAMED_REG
         };
+        static std::unordered_map<std::string,RegEntry> regs_rv64 = {
+#define RELLUME_NAMED_REG(name,nameu,sz,off) {#name, {sz, off}},
+#include <rellume/cpustruct-rv64-private.inc>
+#undef RELLUME_NAMED_REG
+        };
 
         if (!strcmp(opt_arch, "x86_64"))
             regs = &regs_x86_64;
+        else if (!strcmp(opt_arch, "rv64"))
+            regs = &regs_rv64;
         else
             assert(false && "unsupported architecture");
     }

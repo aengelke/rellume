@@ -24,6 +24,8 @@ class Assembler:
         res = bytes.fromhex(self.proc.stdout.readline().strip())
         if self.arch == "x86_64":
             return res, b"\xcc"
+        if self.arch == "rv64":
+            return res, b"\x73\x00\x10\x00"
     def close(self):
         self.proc.communicate()
         return self.proc.wait()

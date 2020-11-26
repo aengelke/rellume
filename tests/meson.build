@@ -5,6 +5,9 @@ casefiles = [
     'cases_string.txt',
     'cases_sse.txt',
   ]],
+  ['rv64', [
+    'cases_rv64_basic.txt',
+  ]],
 ]
 
 assembler = executable('test_assembler', 'test_assembler.cc', dependencies: [libllvm])

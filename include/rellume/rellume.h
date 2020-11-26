@@ -63,7 +63,7 @@ RELLUME_API void ll_config_set_use_native_segment_base(LLConfig*, bool);
 RELLUME_API void ll_config_enable_full_facets(LLConfig*, bool);
 
 /// Sets the architecture. Currently the only valid options is "x86-64", which
-/// is also default. Return true, if the architecture is supported.
+/// is also default, and "rv64". Return true, if the architecture is supported.
 RELLUME_API bool ll_config_set_architecture(LLConfig*, const char*);
 
 typedef struct LLFunc LLFunc;

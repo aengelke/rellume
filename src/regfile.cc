@@ -185,6 +185,7 @@ public:
         unsigned ngp, nvec;
         switch (arch) {
         case Arch::X86_64: ngp = 16; nvec = 16; ivec_facet = Facet::I128; break;
+        case Arch::RV64: ngp = 32; nvec = 32; ivec_facet = Facet::I64; break;
         default: assert(false);
         }
         regs_gp.resize(ngp);

@@ -72,6 +72,13 @@ int main(int argc, char** argv) {
         LLVMInitializeX86Target();
         LLVMInitializeX86TargetMC();
         LLVMInitializeX86AsmParser();
+    } else if (!strcmp(argv[1], "rv64")) {
+        triplestr = "riscv64-unknown-linux-gnu";
+        cpufeatures = "+m,+a,+f,+d,+c";
+        LLVMInitializeRISCVTargetInfo();
+        LLVMInitializeRISCVTarget();
+        LLVMInitializeRISCVTargetMC();
+        LLVMInitializeRISCVAsmParser();
     } else {
         std::cerr << "unsupported architecture" << std::endl;
         return 1;

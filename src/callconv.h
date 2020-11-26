@@ -40,7 +40,7 @@ class FunctionInfo;
 class CallConv {
 public:
     enum Value {
-        INVALID, X86_64_SPTR, X86_64_HHVM,
+        INVALID, X86_64_SPTR, X86_64_HHVM, RV64_SPTR,
     };
 
     static CallConv FromFunction(llvm::Function* fn, Arch arch);

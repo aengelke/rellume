@@ -1,5 +1,5 @@
 python3 = find_program('python3')
-cpustruct_in = ['cpustruct-x86_64']
+cpustruct_in = ['cpustruct-x86_64', 'cpustruct-rv64']
 cpustruct_pub = []
 cpustruct_priv = []
 foreach cpustruct : cpustruct_in

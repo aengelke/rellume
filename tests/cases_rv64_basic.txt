@@ -1,0 +1,37 @@
+code="addi x0, x0, 0" =>
+code="addi x1, x0, 0" => x1=q:0x0
+code="addi x1, x0, 10" => x1=q:0xa
+code="addiw x1, x0, -1" => x1=q:0xffffffffffffffff
+code="srai x2, x1, 63" x1=q:0x8000000000000000 => x2=q:0xffffffffffffffff
+code="sraiw x2, x1, 0" x1=q:0xabcdef0180000000 => x2=q:0xffffffff80000000
+code="srliw x2, x1, 0" x1=q:0xabcdef0180000000 => x2=q:0xffffffff80000000
+code="sraiw x2, x1, 1" x1=q:0xabcdef0180000000 => x2=q:0xffffffffc0000000
+code="srliw x2, x1, 1" x1=q:0xabcdef0180000000 => x2=q:0x0000000040000000
+code="srai x2, x1, 63" x1=q:0x7fffffffffffffff => x2=q:0x0000000000000000
+code="j 1f; ebreak; 1: addi x1, x0, 1" => x1=q:0x1
+# rip is different, because we don't go into calls.
+code="jal x1, 1f; ebreak; 1:" => x1=q:0x1000004 rip=q:0x1000006
+code="jalr x0, x1" x1=q:0x2000008 => rip=q:0x2000008
+code="jalr x1, x1" x1=q:0x2000008 => rip=q:0x2000008 x1=q:0x1000002
+code="bne x1, x2, 1f; ebreak; 1:" x1=q:0x1 x2=q:0x2 =>
+code="beq x1, x2, 1f; addi x3, x0, 1; 1:" x1=q:0x1234567800000001 x2=q:0xabcdef8900000001 x3=q:0x0 => x3=q:0x1
+code="bltz a0, 1f; addi x3, x0, 1; 1:" x10=q:0x1234567800000001 x3=q:0x0 => x3=q:0x1
+code="bltz a0, 1f; addi x3, x0, 1; 1:" x10=q:0x8000000000000000 x3=q:0x0 => x3=q:0x0
+code="bltz a0, 1f; addi x3, x0, 1; 1:" x10=q:0xffffffffffffffff x3=q:0x0 => x3=q:0x0
+code="mulh x3, x1, x2" x1=q:0x100000000 x2=q:0x100000000 => x3=q:0x1
+code="div x3, x1, x2" x1=q:0x34 x2=q:0x3 => x3=q:0x11
+code="rem x3, x1, x2" x1=q:0x34 x2=q:0x3 => x3=q:0x1
+code="div x3, x1, x2" x2=q:0 => x3=q:0xffffffffffffffff
+code="rem x3, x1, x2" x1=q:0x34 x2=q:0 => x3=q:0x34
+code="divu x3, x1, x2" x2=q:0 => x3=q:0xffffffffffffffff
+code="remu x3, x1, x2" x1=q:0x34 x2=q:0 => x3=q:0x34
+code="div x3, x1, x2" x1=q:0x8000000000000000 x2=q:0xffffffffffffffff => x3=q:0x8000000000000000
+code="rem x3, x1, x2" x1=q:0x8000000000000000 x2=q:0xffffffffffffffff => x3=q:0
+code="divu x3, x1, x2" x1=q:0x8000000000000000 x2=q:0xffffffffffffffff => x3=q:0
+code="remu x3, x1, x2" x1=q:0x8000000000000000 x2=q:0xffffffffffffffff => x3=q:0x8000000000000000
+
+code="fsgnj.d f1, f0, f0" f0=q:0x8000000000000000 => f1=q:0x8000000000000000
+code="fsgnj.d f1, f0, f1" f0=q:0x8000000000000000, f1=q:0x7fffffffffffffff => f1=q:0x0000000000000000
+code="fsgnj.d f1, f0, f1" f0=q:0x8000001234560000, f1=q:0x7fffffffffffffff => f1=q:0x0000001234560000
+code="fsgnjn.d f1, f0, f1" f0=q:0x8000001234560000, f1=q:0x7fffffffffffffff => f1=q:0x8000001234560000
+code="fsgnjn.d f1, f0, f1" f0=q:0x8000001234560000, f1=q:0xffffffffffffffff => f1=q:0x0000001234560000

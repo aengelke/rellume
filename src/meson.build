@@ -11,6 +11,7 @@ sources = [
   'x86-64/lifter-gp.cc',
   'x86-64/lifter-sse.cc',
   'x86-64/lifter-operand.cc',
+  'rv64/lifter.cc',
   'regfile.cc',
   'rellume.cc',
   'transforms.cc',
@@ -27,7 +28,7 @@ rellume_flags = [
 ]
 librellume_lib = library('rellume', sources, cpustruct_priv,
                          include_directories: [rellume_inc, rellume_inc_priv],
-                         dependencies: [libllvm, fadec],
+                         dependencies: [libllvm, fadec, frvdec],
                          c_args: rellume_flags,
                          cpp_args: rellume_flags,
                          cpp_pch: 'pch/llvm.h',
