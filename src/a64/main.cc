@@ -255,6 +255,32 @@ bool Lifter::Lift(const Instr& inst) {
         SetGp(a64.rd, w32, val);
         break;
     }
+    case farmdec::A64_LSLV: {
+        auto lhs = GetGp(a64.rn, w32);
+        auto amount = irb.CreateAnd(GetGp(a64.rm, w32), (w32) ? 0x1f : 0x3f); // lowest 5 or 6 bit
+        SetGp(a64.rd, w32, irb.CreateShl(lhs, amount));
+        break;
+    }
+    case farmdec::A64_LSRV: {
+        auto lhs = GetGp(a64.rn, w32);
+        auto amount = irb.CreateAnd(GetGp(a64.rm, w32), (w32) ? 0x1f : 0x3f); // lowest 5 or 6 bit
+        SetGp(a64.rd, w32, irb.CreateLShr(lhs, amount));
+        break;
+    }
+    case farmdec::A64_ASRV: {
+        auto lhs = GetGp(a64.rn, w32);
+        auto amount = irb.CreateAnd(GetGp(a64.rm, w32), (w32) ? 0x1f : 0x3f); // lowest 5 or 6 bit
+        SetGp(a64.rd, w32, irb.CreateAShr(lhs, amount));
+        break;
+    }
+    case farmdec::A64_RORV: {
+        auto lhs = GetGp(a64.rn, w32);
+        auto amount = irb.CreateAnd(GetGp(a64.rm, w32), (w32) ? 0x1f : 0x3f); // lowest 5 or 6 bit
+        auto mod = irb.GetInsertBlock()->getModule();
+        auto fn = llvm::Intrinsic::getDeclaration(mod, llvm::Intrinsic::fshr, {lhs->getType()});
+        SetGp(a64.rd, w32, irb.CreateCall(fn, {lhs, lhs, amount}));
+        break;
+    }
     case farmdec::A64_AND_SHIFTED:
     case farmdec::A64_TST_SHIFTED:
     case farmdec::A64_BIC: {
@@ -528,7 +554,10 @@ llvm::Value* Lifter::Shift(llvm::Value* v, farmdec::Shift sh, uint32_t amount) {
     case farmdec::SH_LSL: return irb.CreateShl(v, (uint64_t) amount);
     case farmdec::SH_LSR: return irb.CreateLShr(v, (uint64_t) amount);
     case farmdec::SH_ASR: return irb.CreateAShr(v, (uint64_t) amount);
-    case farmdec::SH_ROR: break; // XXX use fshr intrinsic; only for RORV
+    case farmdec::SH_ROR:
+        auto mod = irb.GetInsertBlock()->getModule();
+        auto fn = llvm::Intrinsic::getDeclaration(mod, llvm::Intrinsic::fshr, {v->getType()});
+        return irb.CreateCall(fn, {v, v, irb.getIntN(v->getType()->getIntegerBitWidth(), amount)});
     }
     return v; // no change
 }

@@ -67,3 +67,21 @@ code="sdiv w0, w1, w2" x0=q:0 x1=q:-301 x2=q:12 => x0=e7ffffff00000000
 code="udiv x0, x1, x2" x0=q:1 x1=q:100 x2=q:0                   => x0=q:0
 code="sdiv w0, w1, w2" x0=q:0 x1=q:-2147483648 x2=q:-1          => x0=0000008000000000
 code="sdiv x0, x1, x2" x0=q:0 x1=q:-9223372036854775808 x2=q:-1 => x0=q:-9223372036854775808
+
+code="lslv x0, x1, x2" x0=q:0 x1=q:0xff x2=q:8  => x0=q:0xff00
+code="lslv x0, x1, x2" x0=q:0 x1=q:0xff x2=q:63 => x0=q:0x8000000000000000
+code="lslv x0, x1, x2" x0=q:0 x1=q:0xff x2=q:72 => x0=q:0xff00
+code="lslv w0, w1, w2" x0=q:0 x1=q:0xff x2=q:31 => x0=q:0x80000000
+code="lslv w0, w1, w2" x0=q:0 x1=q:0xff x2=q:36 => x0=q:0xff0
+
+code="lsrv x0, x1, x2" x0=q:0 x1=q:0xff               x2=q:4  => x0=q:0xf
+code="lsrv x0, x1, x2" x0=q:0 x1=q:0xff00000000000000 x2=q:63 => x0=q:0x1
+code="lsrv x0, x1, x2" x0=q:0 x1=q:0xff00000000000000 x2=q:72 => x0=q:0x00ff000000000000
+code="lsrv w0, w1, w2" x0=q:0 x1=q:0xff000000         x2=q:31 => x0=q:0x1
+code="lsrv w0, w1, w2" x0=q:0 x1=q:0xff000000         x2=q:36 => x0=q:0x0ff00000
+
+code="asrv x0, x1, x2" x0=q:0 x1=q:0xff               x2=q:4  => x0=q:0xf
+code="asrv x0, x1, x2" x0=q:0 x1=q:0xff00000000000000 x2=q:63 => x0=q:-1
+code="asrv x0, x1, x2" x0=q:0 x1=q:0xff00000000000000 x2=q:72 => x0=q:0xffff000000000000
+code="asrv w0, w1, w2" x0=q:0 x1=q:0xff000000         x2=q:31 => x0=ffffffff00000000
+code="asrv w0, w1, w2" x0=q:0 x1=q:0xff000000         x2=q:36 => x0=q:0xfff00000
