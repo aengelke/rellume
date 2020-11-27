@@ -53,6 +53,7 @@ private:
     llvm::Value* Extend(llvm::Value* v, farmdec::ExtendType ext, uint32_t lsl);
     llvm::IntegerType* TypeOf(farmdec::Size sz);
     llvm::Type* TypeOf(farmdec::FPSize fsz);
+    llvm::AtomicOrdering Ordering(farmdec::MemOrdering);
     llvm::Value* IsTrue(farmdec::Cond);
 
     llvm::Value* PCRel(uint64_t off);

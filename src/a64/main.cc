@@ -429,8 +429,9 @@ bool Lifter::Lift(const Instr& inst) {
         auto addr = Addr(srcty, a64);
 
         llvm::LoadInst* load = irb.CreateLoad(srcty, addr);
-        if (mode == farmdec::AM_SIMPLE) {
-            // XXX AM_SIMPLE → set AtomicOrdering according to Inst.ldst_order
+        if (mode == farmdec::AM_SIMPLE) { // AM_SIMPLE → LDAR, LDLAR
+            load->setOrdering(Ordering(static_cast<farmdec::MemOrdering>(a64.ldst_order.load)));
+            load->setAlignment(llvm::Align(srcty->getPrimitiveSizeInBits() / 8));
         }
         llvm::Value* val = load;
         if (srcty != dstty) { // sign- or zero-extend unless a copy is sufficient (i.e. srcty==dstty)
@@ -455,8 +456,9 @@ bool Lifter::Lift(const Instr& inst) {
         }
 
         llvm::StoreInst* store = irb.CreateStore(val, addr);
-        if (mode == farmdec::AM_SIMPLE) {
-            // XXX AM_SIMPLE → set AtomicOrdering according to Inst.ldst_order
+        if (mode == farmdec::AM_SIMPLE) { // AM_SIMPLE → STLR, STLLR
+            store->setOrdering(Ordering(static_cast<farmdec::MemOrdering>(a64.ldst_order.store)));
+            store->setAlignment(llvm::Align(dstty->getPrimitiveSizeInBits() / 8));
         }
         break;
     }
@@ -623,6 +625,18 @@ llvm::Value* Lifter::IsTrue(farmdec::Cond cond) {
         assert(false && "invalid condition code");
     }
     return (cond & 1) ? irb.CreateNot(res) : res;
+}
+
+llvm::AtomicOrdering Lifter::Ordering(farmdec::MemOrdering mo) {
+    switch (mo) {
+    case farmdec::MO_NONE:       return llvm::AtomicOrdering::NotAtomic;
+    case farmdec::MO_ACQUIRE:    return llvm::AtomicOrdering::Acquire;
+    case farmdec::MO_LO_ACQUIRE: return llvm::AtomicOrdering::Acquire; // Stronger than LOAcquire
+    case farmdec::MO_ACQUIRE_PC: return llvm::AtomicOrdering::Acquire; // XXX is this correct? RCpc is weaker than normal Acq, right?
+    case farmdec::MO_RELEASE:    return llvm::AtomicOrdering::Release;
+    case farmdec::MO_LO_RELEASE: return llvm::AtomicOrdering::Release; // Stronger than LORelease
+    }
+    assert(false && "invalid memory ordering");
 }
 
 // Returns PC-relative address as i64, suitable for storing into PC again.
