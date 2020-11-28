@@ -112,6 +112,7 @@ bool Lifter::Lift(const Instr& inst) {
         break;
     }
     case farmdec::A64_ADD_IMM:
+    case farmdec::A64_MOV_SP:
     case farmdec::A64_CMN_IMM: {
         auto lhs = GetGp(a64.rn, w32);
         auto rhs = irb.getIntN(bits, a64.imm);
@@ -131,6 +132,15 @@ bool Lifter::Lift(const Instr& inst) {
         if (set_flags) {
             FlagCalcSub(val, lhs, rhs);
         }
+        break;
+    }
+    case farmdec::A64_MOVK: {
+        uint64_t clrmask = ~ (0xffffuL << a64.movk.lsl);
+        uint64_t shiftedimm = static_cast<uint64_t>(a64.movk.imm16) << a64.movk.lsl;
+        auto val = GetGp(a64.rd, w32);
+        val = irb.CreateAnd(val, irb.getIntN(bits, clrmask));   // clear 16 bits at point of insertion...
+        val = irb.CreateOr(val, irb.getIntN(bits, shiftedimm)); // ...and fill in the immediate
+        SetGp(a64.rd, w32, val);
         break;
     }
     case farmdec::A64_MOV_IMM:
@@ -620,7 +630,7 @@ llvm::Value* Lifter::IsTrue(farmdec::Cond cond) {
         res = irb.CreateAnd(irb.CreateNot(GetFlag(Facet::ZF)), irb.CreateICmpEQ(GetFlag(Facet::SF), GetFlag(Facet::OF)));
         break;
     case farmdec::COND_AL: case farmdec::COND_NV:
-        return irb.getTrue();
+        return irb.getTrue(); // Both AL and NV yield true, so return directly without inverting.
     default:
         assert(false && "invalid condition code");
     }

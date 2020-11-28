@@ -27,12 +27,21 @@ code="cmn x1, x2" x1=q:-1 x2=q:1 n=00 z=00 c=00 v=00 => n=00 z=01 c=01 v=00
 
 code="mov w0, w1" x0=q:0x0 x1=aabbccddffffffff => x0=aabbccdd00000000
 code="mov x0, x1" x0=q:0x0 x1=ffffffffffffffff => x0=ffffffffffffffff
+code="mov wsp, w1" sp=q:0x0 x1=aabbccddffffffff => sp=aabbccdd00000000
+code="mov x0, sp"  x0=q:0x0 sp=ffffffffffffffff => x0=ffffffffffffffff
 code="mvn x0, x1" x0=q:0x0 x1=fff0fff00fff00ff => x0=000f000ff000ff00
 
 code="mov w0, #1234"   x0=q:0x0            => x0=q:1234
 code="mov w0, #0xffff" x0=q:0x0            => x0=ffff000000000000
 code="mov w0, #0xffff" x0=f0f0f0f0f0f0f0f0 => x0=ffff000000000000
 code="mov x0, #0xffff" x0=f0f0f0f0f0f0f0f0 => x0=ffff000000000000
+
+code="movn x0, #0"     x0=q:0              => x0=q:-1
+code="movn w0, #0"     x0=q:0              => x0=ffffffff00000000
+code="movn x0, #0xaaaa, lsl #32" x0=q:0    => x0=q:0xffff5555ffffffff
+code="movz w0, #0xfaf, lsl #16"  x0=q:0    => x0=q:0xfaf0000
+code="movk x0, #0x11"          x0=q:0xaaaaaaaaaaaaaaaa => x0=q:0xaaaaaaaaaaaa0011
+code="movk x0, #0x11, lsl #16" x0=q:0xaaaaaaaaaaaaaaaa => x0=q:0xaaaaaaaa0011aaaa
 
 # XXX cannot test adrp: test_assembler: [...]: Assertion `false && "relocations not supported"' failed.
 # This reads "adrp x0, imm=0"
@@ -44,6 +53,8 @@ code=".4byte 0xb0000000"            => x0=q:0x1001000
 code="mov x0, 0; .4byte 0xb0000000" => x0=q:0x1001000
 code="adr x0, ."         => x0=q:0x1000000
 code="adr x0, foo; foo:" => x0=q:0x1000004
+code="adr x0, ."         x0=q:0x0 => x0=q:0x1000000
+code="adr x0, foo; foo:" x0=q:0x0 => x0=q:0x1000004
 
 code="and x0, x0, #0xff"   x0=q:0xaabb => x0=q:0xbb
 code="orr x0, x0, #0x100"  x0=q:0x0    => x0=q:0x100
