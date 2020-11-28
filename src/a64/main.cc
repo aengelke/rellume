@@ -190,6 +190,55 @@ bool Lifter::Lift(const Instr& inst) {
         }
         break;
     }
+    case farmdec::A64_CSEL: { // rd := (cond) ? rn : rm;
+        auto on_true = GetGp(a64.rn, w32);
+        auto on_false = GetGp(a64.rm, w32);
+        SetGp(a64.rd, w32, irb.CreateSelect(IsTrue(fad_get_cond(a64.flags)), on_true, on_false));
+        break;
+    }
+    case farmdec::A64_CSINC: { // rd := (cond) ? rn : rm+1;
+        auto on_true = GetGp(a64.rn, w32);
+        auto on_false = irb.CreateAdd(GetGp(a64.rm, w32), irb.getIntN(bits, 1));
+        SetGp(a64.rd, w32, irb.CreateSelect(IsTrue(fad_get_cond(a64.flags)), on_true, on_false));
+        break;
+    }
+    case farmdec::A64_CINC: { // rd := (cond) ? rn+1 : rn;
+        auto val = GetGp(a64.rn, w32);
+        auto on_true = irb.CreateAdd(val, irb.getIntN(bits, 1));
+        auto on_false = val;
+        SetGp(a64.rd, w32, irb.CreateSelect(IsTrue(fad_get_cond(a64.flags)), on_true, on_false));
+        break;
+    }
+    case farmdec::A64_CSET: { // rd := (cond) ? 1 : 0;
+        SetGp(a64.rd, w32, irb.CreateZExt(IsTrue(fad_get_cond(a64.flags)), (w32) ? irb.getInt32Ty() : irb.getInt64Ty()));
+        break;
+    }
+    case farmdec::A64_CSINV: { // rd := (cond) ? rn : ~rm;
+        auto on_true = GetGp(a64.rn, w32);
+        auto on_false = irb.CreateNot(GetGp(a64.rm, w32));
+        SetGp(a64.rd, w32, irb.CreateSelect(IsTrue(fad_get_cond(a64.flags)), on_true, on_false));
+        break;
+    }
+    case farmdec::A64_CINV: { // rd := (cond) ? ~rn : rn;
+        auto val = GetGp(a64.rn, w32);
+        SetGp(a64.rd, w32, irb.CreateSelect(IsTrue(fad_get_cond(a64.flags)), irb.CreateNot(val), val));
+        break;
+    }
+    case farmdec::A64_CSETM: { // rd := (cond) ? -1 : 0;
+        SetGp(a64.rd, w32, irb.CreateSelect(IsTrue(fad_get_cond(a64.flags)), irb.getIntN(bits, -1), irb.getIntN(bits, 0)));
+        break;
+    }
+    case farmdec::A64_CSNEG: { // rd := (cond) ? rn : -rm;
+        auto on_true = GetGp(a64.rn, w32);
+        auto on_false = irb.CreateNeg(GetGp(a64.rm, w32));
+        SetGp(a64.rd, w32, irb.CreateSelect(IsTrue(fad_get_cond(a64.flags)), on_true, on_false));
+        break;
+    }
+    case farmdec::A64_CNEG: { // rd := (cond) ? -rn : rn;
+        auto val = GetGp(a64.rn, w32);
+        SetGp(a64.rd, w32, irb.CreateSelect(IsTrue(fad_get_cond(a64.flags)), irb.CreateNeg(val), val));
+        break;
+    }
     case farmdec::A64_LDR: {
         farmdec::AddrMode mode = fad_get_addrmode(a64.flags);
         farmdec::ExtendType ext = fad_get_mem_extend(a64.flags);
@@ -358,6 +407,32 @@ llvm::Type* Lifter::TypeOf(farmdec::FPSize fsz) {
     case farmdec::FSZ_Q: return llvm::ArrayType::get(irb.getDoubleTy(), 2);
     }
     assert(false && "invalid FP size");
+}
+
+// Returns a i1 that is 1 if the A64 condition is true, 0 otherwise.
+// Look into any intro of the A64 instruction set for reference.
+llvm::Value* Lifter::IsTrue(farmdec::Cond cond) {
+    llvm::Value* res = nullptr; // positive result, inverted iff LSB(cond) == 1
+    switch (cond) {
+    case farmdec::COND_EQ: case farmdec::COND_NE: res = GetFlag(Facet::ZF); break;
+    case farmdec::COND_HS: case farmdec::COND_LO: res = GetFlag(Facet::CF); break;
+    case farmdec::COND_MI: case farmdec::COND_PL: res = GetFlag(Facet::SF); break;
+    case farmdec::COND_VS: case farmdec::COND_VC: res = GetFlag(Facet::OF); break;
+    case farmdec::COND_HI: case farmdec::COND_LS:
+        res = irb.CreateAnd(GetFlag(Facet::CF), irb.CreateNot(GetFlag(Facet::ZF)));
+        break;
+    case farmdec::COND_GE: case farmdec::COND_LT:
+        res = irb.CreateICmpEQ(GetFlag(Facet::SF), GetFlag(Facet::OF));
+        break;
+    case farmdec::COND_GT: case farmdec::COND_LE:
+        res = irb.CreateAnd(irb.CreateNot(GetFlag(Facet::ZF)), irb.CreateICmpEQ(GetFlag(Facet::SF), GetFlag(Facet::OF)));
+        break;
+    case farmdec::COND_AL: case farmdec::COND_NV:
+        return irb.getTrue();
+    default:
+        assert(false && "invalid condition code");
+    }
+    return (cond & 1) ? irb.CreateNot(res) : res;
 }
 
 // Returns PC-relative address as i64, suitable for storing into PC again.
