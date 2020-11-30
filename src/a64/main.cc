@@ -227,7 +227,7 @@ bool Lifter::Lift(const Instr& inst) {
         SetGp(a64.rd, w32, Extract(GetGp(a64.rn, w32), w32, a64.bfm.lsb, a64.bfm.width));
         break;
     case farmdec::A64_EXTEND:
-        SetGp(a64.rd, w32, Extend(GetGp(a64.rn, w32), static_cast<farmdec::ExtendType>(a64.extend.type), 0));
+        SetGp(a64.rd, w32, Extend(GetGp(a64.rn, w32), w32, static_cast<farmdec::ExtendType>(a64.extend.type), 0));
         break;
     case farmdec::A64_ROR_IMM:
         SetGp(a64.rd, w32, Shift(GetGp(a64.rn, w32), farmdec::SH_ROR, a64.imm));
@@ -446,7 +446,7 @@ bool Lifter::Lift(const Instr& inst) {
     case farmdec::A64_ADD_EXT:
     case farmdec::A64_CMN_EXT: {
         auto lhs = GetGp(a64.rn, w32);
-        auto rhs = Extend(GetGp(a64.rm, w32), static_cast<farmdec::ExtendType>(a64.extend.type), a64.extend.lsl);
+        auto rhs = Extend(GetGp(a64.rm, w32), w32, static_cast<farmdec::ExtendType>(a64.extend.type), a64.extend.lsl);
         auto val = irb.CreateAdd(lhs, rhs);
         SetGp(a64.rd, w32, val);
         if (set_flags) {
@@ -457,7 +457,7 @@ bool Lifter::Lift(const Instr& inst) {
     case farmdec::A64_SUB_EXT:
     case farmdec::A64_CMP_EXT: {
         auto lhs = GetGp(a64.rn, w32);
-        auto rhs = Extend(GetGp(a64.rm, w32), static_cast<farmdec::ExtendType>(a64.extend.type), a64.extend.lsl);
+        auto rhs = Extend(GetGp(a64.rm, w32), w32, static_cast<farmdec::ExtendType>(a64.extend.type), a64.extend.lsl);
         auto val = irb.CreateSub(lhs, rhs);
         SetGp(a64.rd, w32, val);
         if (set_flags) {
@@ -660,19 +660,24 @@ llvm::Value* Lifter::Shift(llvm::Value* v, farmdec::Shift sh, uint32_t amount) {
     return v; // no change
 }
 
-// Zero- or sign-extend the value v, and optionally apply a left shift.
-llvm::Value* Lifter::Extend(llvm::Value* v, farmdec::ExtendType ext, uint32_t lsl) {
-    llvm::Value* extended = v;
+// Zero- or sign-extend the lowest 8, 16, 32, or 64 bits of the value v
+// to 32 or 64 bits depending on w32 and optionally apply a left shift.
+llvm::Value* Lifter::Extend(llvm::Value* v, bool w32, farmdec::ExtendType ext, uint32_t lsl) {
+    llvm::Type* srcty = nullptr;
+    llvm::Type* dstty = (w32) ? irb.getInt32Ty() : irb.getInt64Ty();
+    bool sign_extend = false;
     switch (ext) {
-    case farmdec::UXTB: extended = irb.CreateZExt(v,  irb.getInt8Ty()); break;
-    case farmdec::UXTH: extended = irb.CreateZExt(v, irb.getInt16Ty()); break;
-    case farmdec::UXTW: extended = irb.CreateZExt(v, irb.getInt32Ty()); break;
-    case farmdec::UXTX: extended = irb.CreateZExt(v, irb.getInt64Ty()); break;
-    case farmdec::SXTB: extended = irb.CreateSExt(v,  irb.getInt8Ty()); break;
-    case farmdec::SXTH: extended = irb.CreateSExt(v, irb.getInt16Ty()); break;
-    case farmdec::SXTW: extended = irb.CreateSExt(v, irb.getInt32Ty()); break;
-    case farmdec::SXTX: extended = irb.CreateSExt(v, irb.getInt64Ty()); break;
+    case farmdec::UXTB: srcty = irb.getInt8Ty();  sign_extend = false; break;
+    case farmdec::UXTH: srcty = irb.getInt16Ty(); sign_extend = false; break;
+    case farmdec::UXTW: srcty = irb.getInt32Ty(); sign_extend = false; break;
+    case farmdec::UXTX: srcty = irb.getInt64Ty(); sign_extend = false; break;
+    case farmdec::SXTB: srcty = irb.getInt8Ty();  sign_extend = true; break;
+    case farmdec::SXTH: srcty = irb.getInt16Ty(); sign_extend = true; break;
+    case farmdec::SXTW: srcty = irb.getInt32Ty(); sign_extend = true; break;
+    case farmdec::SXTX: srcty = irb.getInt64Ty(); sign_extend = true; break;
     }
+    v = irb.CreateTruncOrBitCast(v, srcty);
+    auto extended = (sign_extend) ? irb.CreateSExt(v, dstty) : irb.CreateZExt(v, dstty);
     return Shift(extended, farmdec::SH_LSL, lsl);
 }
 

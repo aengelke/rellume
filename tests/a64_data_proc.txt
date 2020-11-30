@@ -159,3 +159,13 @@ code="sbfx x0, x1, #8, #8"   x0=q:0xffffffffffffffff x1=q:0x0abcd => x0=q:0xffff
 code="sbfx w0, w1, #4, #16"  x0=q:0xffffffff x1=q:0x0abcd => x0=q:0x0abc
 code="sbfx w0, w1, #4, #4"   x0=q:0xffffffff x1=q:0x0abcd => x0=q:0xfffffffc
 code="sbfx w0, w1, #16, #16" x0=q:0xffffffff x1=q:0x0abcd => x0=q:0x0000
+
+code="sxtb w0, w1" x0=q:0 x1=q:0xff       => x0=q:0xffffffff
+code="sxth w0, w1" x0=q:0 x1=q:0xffff     => x0=q:0xffffffff
+code="sxtw x0, w1" x0=q:0 x1=q:0xffffffff => x0=q:-1
+code="sxtb w0, w1" x0=q:0 x1=q:0x7f       => x0=q:0x7f
+code="sxth w0, w1" x0=q:0 x1=q:0x7fff     => x0=q:0x7fff
+code="sxtw x0, w1" x0=q:0 x1=q:0x7fffffff => x0=q:0x7fffffff
+
+code="uxtb w0, w1" x0=q:0 x1=q:0xaaff       => x0=q:0xff
+code="uxth w0, w1" x0=q:0 x1=q:0xaaffff     => x0=q:0xffff
