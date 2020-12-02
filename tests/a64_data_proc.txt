@@ -169,3 +169,15 @@ code="sxtw x0, w1" x0=q:0 x1=q:0x7fffffff => x0=q:0x7fffffff
 
 code="uxtb w0, w1" x0=q:0 x1=q:0xaaff       => x0=q:0xff
 code="uxth w0, w1" x0=q:0 x1=q:0xaaffff     => x0=q:0xffff
+
+code="clz w0, w1" x0=q:0 x1=q:0                  => x0=q:32
+code="clz x0, x1" x0=q:0 x1=q:0                  => x0=q:64
+code="clz w0, w1" x0=q:0 x1=q:0x1ff              => x0=q:23
+code="clz w0, w1" x0=q:0 x1=q:0xffffffff         => x0=q:0
+code="clz x0, x1" x0=q:0 x1=q:0x1ff              => x0=q:55
+code="clz x0, x1" x0=q:0 x1=q:0xffffffffffffffff => x0=q:0
+
+code="extr w0, w1, w2, #0"  x0=q:0 x1=89abcdef00000000 x2=0123456700000000 => x0=0123456700000000
+code="extr w0, w1, w2, #16" x0=q:0 x1=89abcdef00000000 x2=0123456700000000 => x0=456789ab00000000
+code="extr x0, x1, x2, #0"  x0=q:0 x1=89abcdef00000000 x2=0123456700000000 => x0=0123456700000000
+code="extr x0, x1, x2, #32" x0=q:0 x1=89abcdef00000000 x2=0123456700000000 => x0=0000000089abcdef

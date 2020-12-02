@@ -229,7 +229,20 @@ bool Lifter::Lift(const Instr& inst) {
     case farmdec::A64_EXTEND:
         SetGp(a64.rd, w32, Extend(GetGp(a64.rn, w32), w32, static_cast<farmdec::ExtendType>(a64.extend.type), 0));
         break;
-    case farmdec::A64_ROR_IMM:
+    case farmdec::A64_EXTR: {
+        auto longty = irb.getIntNTy(bits*2);
+        auto high = irb.CreateShl(irb.CreateZExt(GetGp(a64.rn, w32), longty), bits);
+        auto low = irb.CreateZExt(GetGp(a64.rm, w32), longty);
+        auto long_val = irb.CreateOr(high, low); // long_val = high:low
+
+        auto mask = irb.getIntN(bits*2, ones(bits)); // mask: 00000...(bits x 0):11111...(bits x 1)
+        long_val = irb.CreateLShr(long_val, irb.getIntN(bits*2, a64.imm));
+        long_val = irb.CreateAnd(long_val, mask);
+
+        SetGp(a64.rd, w32, irb.CreateTrunc(long_val, (w32) ? irb.getInt32Ty() : irb.getInt64Ty()));
+        break;
+    }
+    case farmdec::A64_ROR_IMM: 
         SetGp(a64.rd, w32, Shift(GetGp(a64.rn, w32), farmdec::SH_ROR, a64.imm));
         break;
     case farmdec::A64_BCOND:
@@ -375,6 +388,13 @@ bool Lifter::Lift(const Instr& inst) {
         auto mod = irb.GetInsertBlock()->getModule();
         auto fn = llvm::Intrinsic::getDeclaration(mod, llvm::Intrinsic::fshr, {lhs->getType()});
         SetGp(a64.rd, w32, irb.CreateCall(fn, {lhs, lhs, amount}));
+        break;
+    }
+    case farmdec::A64_CLZ: {
+        auto val = GetGp(a64.rn, w32);
+        auto intr = llvm::Intrinsic::ctlz;
+        SetGp(a64.rd, w32, irb.CreateBinaryIntrinsic(intr, val,
+                                                    /*zeroundef=*/irb.getFalse()));
         break;
     }
     case farmdec::A64_AND_SHIFTED:
@@ -825,6 +845,7 @@ static uint64_t ones(int n) {
 //
 //     return (v >> lsb) & ones(width);
 //
+// The value v must be of type i32 or i64.
 llvm::Value* Lifter::Extract(llvm::Value* v, bool w32, unsigned lsb, unsigned width) {
     int bits = (w32) ? 32 : 64;
     v = irb.CreateLShr(v, irb.getIntN(bits, lsb));
