@@ -1,1 +1,3 @@
-rellume_sources += files()
+rellume_sources += files(
+  '../a64/main.cc',
+)

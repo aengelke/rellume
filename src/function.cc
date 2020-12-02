@@ -29,6 +29,7 @@
 #include "config.h"
 #include "function-info.h"
 #include "instr.h"
+#include "a64/lifter.h"
 #include "x86-64/lifter.h"
 #include "rv64/lifter.h"
 #include "regfile.h"
@@ -137,6 +138,9 @@ bool Function::AddInst(uint64_t block_addr, const Instr& inst)
 #ifdef RELLUME_WITH_RV64
     case Arch::RV64: return rv64::LiftInstruction(inst, fi, *cfg, ab);
 #endif // RELLUME_WITH_RV64
+#ifdef RELLUME_WITH_AARCH64
+    case Arch::AArch64: return aarch64::LiftInstruction(inst, fi, *cfg, ab);
+#endif // RELLUME_WITH_AARCH64
     default: return false;
     }
 }
