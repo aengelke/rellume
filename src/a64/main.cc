@@ -100,6 +100,48 @@ bool Lifter::Lift(const Instr& inst) {
     case farmdec::A64_MOV_IMM:
         SetGp(a64.rd, w32, irb.getIntN(bits, a64.imm));
         break;
+    case farmdec::A64_B:
+        SetIP(inst.start() + a64.offset);
+        return true;
+    case farmdec::A64_BR:
+        SetReg(ArchReg::IP, Facet::I64, GetGp(a64.rn, false));
+        return true;
+    case farmdec::A64_BL:
+    case farmdec::A64_BLR: {
+        if (cfg.call_ret_clobber_flags)
+            SetFlagUndef({Facet::OF, Facet::SF, Facet::ZF, Facet::CF});
+
+        auto ret_addr = PCRel(inst.len()); // _next_ instruction → inst.end()
+        SetGp(30, false, ret_addr);        // X30: Link Register (LR)
+
+        if (a64.op == farmdec::A64_BLR)
+            SetReg(ArchReg::IP, Facet::I64, GetGp(a64.rn, false));
+        else
+            SetIP(inst.start() + a64.offset);
+
+        if (cfg.call_function) {
+            CallExternalFunction(cfg.call_function);
+
+            // The external function call may manipulate the PC in non-obvious ways (e.g. exceptions).
+            // See also the comment in the x86_64 LiftCall method.
+            llvm::Value* cont_addr = GetReg(ArchReg::IP, Facet::I64);
+            llvm::Value* eq = irb.CreateICmpEQ(cont_addr, ret_addr);
+            SetReg(ArchReg::IP, Facet::I64, irb.CreateSelect(eq, ret_addr, cont_addr)); // common case
+        }
+        return true;
+    }
+    case farmdec::A64_RET:
+        if (cfg.call_ret_clobber_flags)
+            SetFlagUndef({Facet::OF, Facet::SF, Facet::ZF, Facet::CF});
+
+        SetReg(ArchReg::IP, Facet::I64, GetGp(a64.rn, false));
+
+        if (cfg.call_function) {
+            // If we are in call-ret-lifting mode, forcefully return. Otherwise, we
+            // might end up using tail_function, which we don't want here.
+            ForceReturn();
+        }
+        return true;
     case farmdec::A64_MOV_REG:
         SetGp(a64.rd, w32, GetGp(a64.rm, w32)); // rd := rm
         break;

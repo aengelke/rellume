@@ -1,0 +1,7 @@
+code="bl foo; hlt #0; foo:"     =>  pc=q:0x1000008 x30=q:0x1000004
+code="blr x10" x10=q:0xaabbccdd => pc=q:0xaabbccdd x30=q:0x1000004
+code="ret"     x30=q:0xaabbccdd => pc=q:0xaabbccdd
+code="ret x10" x10=q:0xaabbccdd => pc=q:0xaabbccdd
+
+code="b foo; hlt #0; foo:"      => pc=q:0x1000008
+code="br x10"  x10=q:0xaabbccdd => pc=q:0xaabbccdd
