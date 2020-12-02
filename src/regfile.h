@@ -80,6 +80,9 @@ public:
     static const ArchReg EFLAGS;
     // x86-64-specific names ignored by other archs
     static const ArchReg RAX, RCX, RDX, RBX, RSP, RBP, RSI, RDI;
+
+    // AArch64-specific names
+    static const ArchReg A64_SP;
 };
 
 constexpr const ArchReg ArchReg::INVALID{ArchReg::RegKind::INVALID, 0};
@@ -93,6 +96,7 @@ constexpr const ArchReg ArchReg::RSP = ArchReg::GP(4);
 constexpr const ArchReg ArchReg::RBP = ArchReg::GP(5);
 constexpr const ArchReg ArchReg::RSI = ArchReg::GP(6);
 constexpr const ArchReg ArchReg::RDI = ArchReg::GP(7);
+constexpr const ArchReg ArchReg::A64_SP = ArchReg::GP(31);
 
 // The calling convention code uses RegisterSet to record which registers
 // are used by the basic blocks of a function, in order to generate loads

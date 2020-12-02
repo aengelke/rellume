@@ -30,6 +30,7 @@
 #include "instr.h"
 #include "regfile.h"
 
+#include <llvm/IR/Constants.h>
 #include <llvm/IR/IRBuilder.h>
 #include <llvm/IR/Instruction.h>
 #include <llvm/IR/Value.h>
@@ -64,11 +65,23 @@ bool Lifter::Lift(const Instr& inst) {
 
     const farmdec::Inst* a64p = inst;
     const farmdec::Inst& a64 = *a64p;
+    bool w32 = a64.flags & farmdec::W32;
+    bool set_flags = a64.flags & farmdec::SET_FLAGS;
 
     switch (a64.op) {
     default:
         SetIP(inst.start(), /*nofold=*/true);
         return false;
+    case farmdec::A64_ADD_SHIFTED: { // XXX SUB_SHIFTED and shifted logical should be almost the same
+        auto lhs = GetGp(a64.rn, w32);
+        auto rhs = GetGp(a64.rm, w32); // XXX apply shift (write helper function)
+        auto val = irb.CreateAdd(lhs, rhs);
+        SetGp(a64.rd, w32, val);
+        if (set_flags) {
+            FlagCalcAdd(val, lhs, rhs);
+        }
+        break;
+    }
     }
 
     // For non-branches, continue with the next instruction. The Function::Lift
@@ -77,6 +90,55 @@ bool Lifter::Lift(const Instr& inst) {
     // handling there.
     SetIP(inst.end());
     return true;
+}
+
+/// Get the value of an A64 general-purpose register. If w32 is true, the 32-bit facet
+/// is used instead of the 64-bit one. Handles ZR (yields zero) and SP (stack ptr).
+llvm::Value* Lifter::GetGp(farmdec::Reg r, bool w32) {
+    unsigned bits = (w32) ? 32 : 64;
+    Facet fc = (w32) ? Facet::I32 : Facet::I64;
+
+    if (r == farmdec::ZERO_REG) {
+        return irb.getIntN(bits, 0);
+    }
+    if (r == farmdec::STACK_POINTER) {
+        return GetReg(ArchReg::A64_SP, fc);
+    }
+    return GetReg(ArchReg::GP(r), fc);
+}
+
+/// Set the value of an A64 general-purpose register. If w32 is true, the 32-bit facet
+/// is used instead of the 64-bit one. Handles ZR (discards writes) and SP (stack ptr).
+void Lifter::SetGp(farmdec::Reg r, bool w32, llvm::Value* val) {
+    Facet fc = (w32) ? Facet::I32 : Facet::I64;
+
+    if (r == farmdec::ZERO_REG) {
+        return; // discard
+    }
+    if (r == farmdec::STACK_POINTER) {
+        SetReg(ArchReg::A64_SP, Facet::I64, irb.CreateZExt(val, irb.getInt64Ty()));
+        SetRegFacet(ArchReg::A64_SP, fc, val);
+        return;
+    }
+    SetReg(ArchReg::GP(r), Facet::I64, irb.CreateZExt(val, irb.getInt64Ty()));
+    SetRegFacet(ArchReg::GP(r), fc, val);
+}
+
+void Lifter::FlagCalcAdd(llvm::Value* res, llvm::Value* lhs, llvm::Value* rhs) {
+    auto zero = llvm::Constant::getNullValue(res->getType());
+    SetFlag(Facet::ZF, irb.CreateICmpEQ(res, zero));
+    SetFlag(Facet::SF, irb.CreateICmpSLT(res, zero));
+    SetFlag(Facet::CF, irb.CreateICmpULT(res, lhs));
+
+    if (cfg.enableOverflowIntrinsics) {
+        llvm::Intrinsic::ID id = llvm::Intrinsic::sadd_with_overflow;
+        llvm::Value* packed = irb.CreateBinaryIntrinsic(id, lhs, rhs);
+        SetFlag(Facet::OF, irb.CreateExtractValue(packed, 1));
+    } else {
+        llvm::Value* tmp1 = irb.CreateNot(irb.CreateXor(lhs, rhs));
+        llvm::Value* tmp2 = irb.CreateAnd(tmp1, irb.CreateXor(res, lhs));
+        SetFlag(Facet::OF, irb.CreateICmpSLT(tmp2, zero));
+    }
 }
 
 } // namespace rellume::aarch64

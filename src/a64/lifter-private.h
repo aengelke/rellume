@@ -40,6 +40,12 @@ public:
             LifterBase(fi, cfg, ab) {}
 
     bool Lift(const Instr&);
+
+private:
+    llvm::Value* GetGp(farmdec::Reg, bool w32);
+    void SetGp(farmdec::Reg, bool w32, llvm::Value* val);
+
+    void FlagCalcAdd(llvm::Value* res, llvm::Value* lhs, llvm::Value* rhs);
 };
 
 } // namespace
