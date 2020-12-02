@@ -548,6 +548,62 @@ bool Lifter::Lift(const Instr& inst) {
         SetGp(a64.rd, w32, irb.CreateSelect(IsTrue(fad_get_cond(a64.flags)), irb.CreateNeg(val), val));
         break;
     }
+    case farmdec::A64_MUL:
+        // LLVM and AArch64 both treat overflow by simply rolling over. No need
+        // for extending to i(N*2) like in the other cases.
+        SetGp(a64.rd, w32, irb.CreateMul(GetGp(a64.rn, w32), GetGp(a64.rm, w32)));
+        break;
+    case farmdec::A64_MADD:
+    case farmdec::A64_MSUB:
+    case farmdec::A64_MNEG: {
+        bool sub = (a64.op == farmdec::A64_MSUB || a64.op == farmdec::A64_MNEG);
+        auto lhs = GetGp(a64.rn, w32);
+        auto rhs = GetGp(a64.rm, w32);
+        auto base = GetGp(a64.ra, w32);
+
+        // Yes, lhs*rhs might overflow before the addition, but this is irrelevant
+        // to the final value.
+        auto prod = irb.CreateMul(lhs, rhs);
+        auto val = (sub) ? irb.CreateSub(base, prod) : irb.CreateAdd(base, prod);
+        SetGp(a64.rd, w32, val);
+        break;
+    }
+    case farmdec::A64_SMADDL:
+    case farmdec::A64_SMULL:
+        SetGp(a64.rd, /*w32=*/false, MulAddSub(GetGp(a64.ra, /*w32=*/false), llvm::Instruction::Add,
+                             GetGp(a64.rn, /*w32=*/true), GetGp(a64.rm, /*w32=*/true), llvm::Instruction::SExt));
+        break;
+    case farmdec::A64_SMSUBL:
+    case farmdec::A64_SMNEGL:
+        SetGp(a64.rd, /*w32=*/false, MulAddSub(GetGp(a64.ra, /*w32=*/false), llvm::Instruction::Sub,
+                             GetGp(a64.rn, /*w32=*/true), GetGp(a64.rm, /*w32=*/true), llvm::Instruction::SExt));
+        break;
+    case farmdec::A64_SMULH: {
+        auto lhs = GetGp(a64.rn, /*w32=*/false);
+        auto rhs = GetGp(a64.rm, /*w32=*/false);
+        auto long_val = MulAddSub(irb.getIntN(64, 0), llvm::Instruction::Add, lhs, rhs, llvm::Instruction::SExt);
+        auto high_half = irb.CreateLShr(long_val, irb.getIntN(128, 64));
+        SetGp(a64.rd, /*w32=*/false, irb.CreateTrunc(high_half, irb.getInt64Ty()));
+        break;
+    }
+    case farmdec::A64_UMADDL:
+    case farmdec::A64_UMULL:
+        SetGp(a64.rd, /*w32=*/false, MulAddSub(GetGp(a64.ra, /*w32=*/false), llvm::Instruction::Add,
+                             GetGp(a64.rn, true), GetGp(a64.rm, /*w32=*/true), llvm::Instruction::ZExt));
+        break;
+    case farmdec::A64_UMSUBL:
+    case farmdec::A64_UMNEGL:
+        SetGp(a64.rd, /*w32=*/false, MulAddSub(GetGp(a64.ra, /*w32=*/false), llvm::Instruction::Sub,
+                             GetGp(a64.rn, true), GetGp(a64.rm, /*w32=*/true), llvm::Instruction::ZExt));
+        break;
+    case farmdec::A64_UMULH: {
+        auto lhs = GetGp(a64.rn, /*w32=*/false);
+        auto rhs = GetGp(a64.rm, /*w32=*/false);
+        auto long_val = MulAddSub(irb.getIntN(64, 0), llvm::Instruction::Add, lhs, rhs, llvm::Instruction::ZExt);
+        auto high_half = irb.CreateLShr(long_val, irb.getIntN(128, 64));
+        SetGp(a64.rd, /*w32=*/false, irb.CreateTrunc(high_half, irb.getInt64Ty()));
+        break;
+    }
     case farmdec::A64_LDP:
     case farmdec::A64_STP:
     case farmdec::A64_LDR:
@@ -861,6 +917,20 @@ llvm::Value* Lifter::MoveField(llvm::Value* v, bool w32, unsigned lsb, unsigned 
     uint64_t mask = ones(width);
     v = irb.CreateAnd(v, irb.getIntN(bits, mask));
     return irb.CreateShl(v, irb.getIntN(bits, lsb));
+}
+
+// Given base, lhs, rhs : iN, calculate (base ± (lhs*rhs)) : i(N*2). This never overflows.
+// The inputs are sign- or zero-extended before the operation.
+llvm::Value* Lifter::MulAddSub(llvm::Value* base, llvm::Instruction::BinaryOps addsub, llvm::Value* lhs, llvm::Value* rhs, llvm::Instruction::CastOps extend) {
+    unsigned n = llvm::cast<llvm::IntegerType>(lhs->getType())->getBitWidth();
+    auto long_ty = irb.getIntNTy(n*2);
+
+    auto long_base = irb.CreateCast(extend, base, long_ty);
+    auto long_lhs =  irb.CreateCast(extend, lhs, long_ty);
+    auto long_rhs =  irb.CreateCast(extend, rhs, long_ty);
+
+    auto long_prod = irb.CreateMul(long_lhs, long_rhs);
+    return irb.CreateBinOp(addsub, long_base, long_prod);
 }
 
 // If the condition holds, compare the values; otherwise set the flags according to nzcv.

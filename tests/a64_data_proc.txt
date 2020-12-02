@@ -181,3 +181,34 @@ code="extr w0, w1, w2, #0"  x0=q:0 x1=89abcdef00000000 x2=0123456700000000 => x0
 code="extr w0, w1, w2, #16" x0=q:0 x1=89abcdef00000000 x2=0123456700000000 => x0=456789ab00000000
 code="extr x0, x1, x2, #0"  x0=q:0 x1=89abcdef00000000 x2=0123456700000000 => x0=0123456700000000
 code="extr x0, x1, x2, #32" x0=q:0 x1=89abcdef00000000 x2=0123456700000000 => x0=0000000089abcdef
+
+# MUL, MADD, MSUB, MNEG, *MADDL, *MULL, *MSUBL, *MNEGL, *MULH
+
+code="mul w0, w1, w2" x0=q:1 x1=q:0                  x2=q:0   => x0=q:0
+code="mul w0, w1, w2" x0=q:1 x1=q:640                x2=q:480 => x0=q:307200
+code="mul w0, w1, w2" x0=q:1 x1=q:0xffffffff         x2=q:2   => x0=q:0xfffffffe
+code="mul x0, x1, x2" x0=q:1 x1=q:0xffffffffffffffff x2=q:2   => x0=q:0xfffffffffffffffe
+
+code="madd w0, w1, w2, w3" x0=q:1 x1=q:0                  x2=q:0   x3=q:100 => x0=q:100
+code="madd w0, w1, w2, w3" x0=q:1 x1=q:640                x2=q:480 x3=q:100 => x0=q:307300
+code="madd w0, w1, w2, w3" x0=q:1 x1=q:0xffffffff         x2=q:2   x3=q:100 => x0=q:98
+code="madd x0, x1, x2, x3" x0=q:1 x1=q:0xffffffffffffffff x2=q:2   x3=q:100 => x0=q:98
+
+code="msub x0, x1, x2, x3" x0=q:1 x1=q:0   x2=q:0   x3=q:100 => x0=q:100
+code="msub x0, x1, x2, x3" x0=q:1 x1=q:640 x2=q:480 x3=q:100 => x0=q:-307100
+code="msub x0, x1, x2, x3" x0=q:1 x1=q:-1  x2=q:2   x3=q:100 => x0=q:102
+
+code="smaddl x0, w1, w2, x3" x0=q:1 x1=q:0                  x2=q:0   x3=q:0x100000000 => x0=q:0x100000000
+code="smaddl x0, w1, w2, x3" x0=q:1 x1=q:0xffffffff         x2=q:2   x3=q:0x100000000 => x0=q:0x0fffffffe
+code="umaddl x0, w1, w2, x3" x0=q:1 x1=q:0                  x2=q:0   x3=q:0x100000000 => x0=q:0x100000000
+code="umaddl x0, w1, w2, x3" x0=q:1 x1=q:0xffffffff         x2=q:2   x3=q:0x100000000 => x0=q:0x2fffffffe
+
+code="smsubl x0, w1, w2, x3" x0=q:1 x1=q:0          x2=q:0 x3=q:0x100000000 => x0=q:0x100000000
+code="smsubl x0, w1, w2, x3" x0=q:1 x1=q:0xffffffff x2=q:2 x3=q:0x100000000 => x0=q:0x100000002
+code="umsubl x0, w1, w2, x3" x0=q:1 x1=q:0          x2=q:0 x3=q:0x100000000 => x0=q:0x100000000
+code="umsubl x0, w1, w2, x3" x0=q:1 x1=q:0xffffffff x2=q:2 x3=q:0x100000000 => x0=q:0xffffffff00000002
+
+# i128 -2 → all 64 upper bits 1 → x0=q:-1
+code="smulh x0, x1, x2" x0=q:1 x1=q:-1 x2=q:2                  => x0=q:-1
+# (2^64 - 1) * 2 → 2^65 - 2 → 64th bit set → x0=q:1
+code="umulh x0, x1, x2" x0=q:1 x1=q:0xfffffffffffffffff x2=q:2 => x0=q:1
