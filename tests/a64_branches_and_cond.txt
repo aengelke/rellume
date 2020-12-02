@@ -1,3 +1,12 @@
+code="svc #0" =>
+! code="hvc #0" =>
+! code="smc #0" =>
+! code="brk #0" =>
+! code="hlt #0" =>
+! code="dcps1 #0" =>
+! code="dcps2 #0" =>
+! code="dcps3 #0" =>
+
 code="bl foo; hlt #0; foo:"     =>  pc=q:0x1000008 x30=q:0x1000004
 code="blr x10" x10=q:0xaabbccdd => pc=q:0xaabbccdd x30=q:0x1000004
 code="ret"     x30=q:0xaabbccdd => pc=q:0xaabbccdd
@@ -5,6 +14,33 @@ code="ret x10" x10=q:0xaabbccdd => pc=q:0xaabbccdd
 
 code="b foo; hlt #0; foo:"      => pc=q:0x1000008
 code="br x10"  x10=q:0xaabbccdd => pc=q:0xaabbccdd
+
+code="b.eq foo; mov x0, #1; foo:" x0=q:0 n=00 z=01 c=00 v=00 => x0=q:0
+code="b.ne foo; mov x0, #1; foo:" x0=q:0 n=00 z=01 c=00 v=00 => x0=q:1
+code="b.hs foo; mov x0, #1; foo:" x0=q:0 n=00 z=00 c=01 v=00 => x0=q:0
+code="b.lo foo; mov x0, #1; foo:" x0=q:0 n=00 z=00 c=01 v=00 => x0=q:1
+code="b.mi foo; mov x0, #1; foo:" x0=q:0 n=01 z=00 c=00 v=00 => x0=q:0
+code="b.pl foo; mov x0, #1; foo:" x0=q:0 n=01 z=00 c=00 v=00 => x0=q:1
+code="b.vs foo; mov x0, #1; foo:" x0=q:0 n=00 z=00 c=00 v=01 => x0=q:0
+code="b.vc foo; mov x0, #1; foo:" x0=q:0 n=00 z=00 c=00 v=01 => x0=q:1
+code="b.hi foo; mov x0, #1; foo:" x0=q:0 n=00 z=00 c=01 v=00 => x0=q:0
+code="b.ls foo; mov x0, #1; foo:" x0=q:0 n=00 z=00 c=01 v=00 => x0=q:1
+code="b.ge foo; mov x0, #1; foo:" x0=q:0 n=01 z=00 c=00 v=01 => x0=q:0
+code="b.lt foo; mov x0, #1; foo:" x0=q:0 n=01 z=00 c=00 v=01 => x0=q:1
+code="b.gt foo; mov x0, #1; foo:" x0=q:0 n=00 z=00 c=00 v=00 => x0=q:0
+code="b.le foo; mov x0, #1; foo:" x0=q:0 n=00 z=00 c=00 v=00 => x0=q:1
+code="b.al foo; mov x0, #1; foo:" x0=q:0 n=00 z=00 c=00 v=00 => x0=q:0
+code="b.nv foo; mov x0, #1; foo:" x0=q:0 n=00 z=00 c=00 v=00 => x0=q:0
+
+code="cbz x0,  foo; mov x1, #1; foo:" x0=q:0 x1=q:0 => x1=q:0
+code="cbz x0,  foo; mov x1, #1; foo:" x0=q:1 x1=q:0 => x1=q:1
+code="cbnz x0, foo; mov x1, #1; foo:" x0=q:1 x1=q:0 => x1=q:0
+code="cbnz x0, foo; mov x1, #1; foo:" x0=q:0 x1=q:0 => x1=q:1
+
+code="tbz x0, #5, foo;   mov x1, #1; foo:" x0=q:0xffff x1=q:0 => x1=q:1
+code="tbz x0, #23, foo;  mov x1, #1; foo:" x0=q:0xffff x1=q:0 => x1=q:0
+code="tbnz x0, #31, foo; mov x1, #1; foo:" x0=q:0xffff x1=q:0 => x1=q:1
+code="tbnz x0, #5, foo;  mov x1, #1; foo:" x0=q:0xffff x1=q:0 => x1=q:0
 
 code="csel x0, x1, x2, eq" x0=q:0 x1=q:1 x2=q:2 n=00 z=01 c=00 v=00 => x0=q:1
 code="csel x0, x1, x2, ne" x0=q:0 x1=q:1 x2=q:2 n=00 z=01 c=00 v=00 => x0=q:2

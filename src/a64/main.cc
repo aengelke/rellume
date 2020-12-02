@@ -100,6 +100,27 @@ bool Lifter::Lift(const Instr& inst) {
     case farmdec::A64_MOV_IMM:
         SetGp(a64.rd, w32, irb.getIntN(bits, a64.imm));
         break;
+    case farmdec::A64_BCOND:
+        SetReg(ArchReg::IP, Facet::I64, irb.CreateSelect(IsTrue(fad_get_cond(a64.flags)), PCRel(a64.offset), PCRel(inst.len())));
+        return true;
+    case farmdec::A64_SVC:
+        // SVC has an immediate, but cfg.syscall_implementation takes only a CPU state pointer.
+        // This seems dire, but Linux and the BSDs and probably most Unixes only ever use svc #0.
+        if (cfg.syscall_implementation)
+            CallExternalFunction(cfg.syscall_implementation);
+        break;
+/*
+    Intentionally unimplemented because they are either for debugging or use in the kernel
+    while we focus on userspace lifting.
+
+    case farmdec::A64_HVC:
+    case farmdec::A64_SMC:
+    case farmdec::A64_BRK:
+    case farmdec::A64_HLT:
+    case farmdec::A64_DCPS1:
+    case farmdec::A64_DCPS2:
+    case farmdec::A64_DCPS3:
+*/
     case farmdec::A64_B:
         SetIP(inst.start() + a64.offset);
         return true;
@@ -142,6 +163,30 @@ bool Lifter::Lift(const Instr& inst) {
             ForceReturn();
         }
         return true;
+    case farmdec::A64_CBZ:
+    case farmdec::A64_CBNZ: {
+        // CBZ: rt == 0; CBNZ: rt != 0
+        auto pred = (a64.op == farmdec::A64_CBZ) ? llvm::CmpInst::Predicate::ICMP_EQ : llvm::CmpInst::Predicate::ICMP_NE;
+        auto do_branch = irb.CreateICmp(pred, GetGp(a64.rt, w32), irb.getIntN(bits, 0));
+        auto on_true = PCRel(a64.offset);
+        auto on_false = PCRel(inst.len()); // next instr
+        SetReg(ArchReg::IP, Facet::I64, irb.CreateSelect(do_branch, on_true, on_false));
+        return true;
+    }
+    case farmdec::A64_TBZ:
+    case farmdec::A64_TBNZ: {
+        assert(a64.tbz.bit < bits);
+        uint64_t mask = ((uint64_t)1) << a64.tbz.bit;
+        auto bit = irb.CreateAnd(GetGp(a64.rt, w32), irb.getIntN(bits, mask)); // bit := rt & (1 << bit)
+
+        // TBZ: bit == 0; TBNZ: bit != 0
+        auto pred = (a64.op == farmdec::A64_TBZ) ? llvm::CmpInst::Predicate::ICMP_EQ : llvm::CmpInst::Predicate::ICMP_NE;
+        auto do_branch = irb.CreateICmp(pred, bit, irb.getIntN(bits, 0));
+        auto on_true = PCRel(a64.tbz.offset);
+        auto on_false = PCRel(inst.len()); // next instr
+        SetReg(ArchReg::IP, Facet::I64, irb.CreateSelect(do_branch, on_true, on_false));
+        return true;
+    }
     case farmdec::A64_MOV_REG:
         SetGp(a64.rd, w32, GetGp(a64.rm, w32)); // rd := rm
         break;
