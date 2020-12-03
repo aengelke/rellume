@@ -465,6 +465,20 @@ bool Lifter::Lift(const Instr& inst) {
         }
         break;
     }
+    case farmdec::A64_CCMN_REG:
+    case farmdec::A64_CCMP_REG: {
+        auto lhs = GetGp(a64.rn, w32);
+        auto rhs = GetGp(a64.rm, w32);
+        LiftCCmp(lhs, rhs, fad_get_cond(a64.flags), a64.ccmp.nzcv, (a64.op == farmdec::A64_CCMN_REG));
+        break;
+    }
+    case farmdec::A64_CCMN_IMM:
+    case farmdec::A64_CCMP_IMM: {
+        auto lhs = GetGp(a64.rn, w32);
+        auto rhs = irb.getIntN(bits, a64.ccmp.imm5);
+        LiftCCmp(lhs, rhs, fad_get_cond(a64.flags), a64.ccmp.nzcv, (a64.op == farmdec::A64_CCMN_IMM));
+        break;
+    }
     case farmdec::A64_CSEL: { // rd := (cond) ? rn : rm;
         auto on_true = GetGp(a64.rn, w32);
         auto on_false = GetGp(a64.rm, w32);
@@ -864,6 +878,20 @@ llvm::Value* Lifter::MoveField(llvm::Value* v, bool w32, unsigned lsb, unsigned 
     uint64_t mask = ones(width);
     v = irb.CreateAnd(v, irb.getIntN(bits, mask));
     return irb.CreateShl(v, irb.getIntN(bits, lsb));
+}
+
+// If the condition holds, compare the values; otherwise set the flags according to nzcv.
+void Lifter::LiftCCmp(llvm::Value* lhs, llvm::Value* rhs, farmdec::Cond cond, uint8_t nzcv, bool ccmn) {
+    auto cond_holds = IsTrue(cond);
+    if (ccmn) {
+        FlagCalcAdd(irb.CreateAdd(lhs, rhs), lhs, rhs);
+    } else {
+        FlagCalcSub(irb.CreateSub(lhs, rhs), lhs, rhs);
+    }
+    SetFlag(Facet::SF, irb.CreateSelect(cond_holds, GetFlag(Facet::SF), irb.getInt1((nzcv & 8) != 0))); // N
+    SetFlag(Facet::ZF, irb.CreateSelect(cond_holds, GetFlag(Facet::ZF), irb.getInt1((nzcv & 4) != 0))); // Z
+    SetFlag(Facet::CF, irb.CreateSelect(cond_holds, GetFlag(Facet::CF), irb.getInt1((nzcv & 2) != 0))); // C
+    SetFlag(Facet::OF, irb.CreateSelect(cond_holds, GetFlag(Facet::OF), irb.getInt1((nzcv & 1) != 0))); // V
 }
 
 } // namespace rellume::aarch64

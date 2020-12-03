@@ -98,3 +98,23 @@ code="cneg x0, x1, eq" x0=q:0 x1=q:1 n=00 z=01 c=00 v=00 => x0=q:-1
 code="cneg x0, x1, ne" x0=q:0 x1=q:1 n=00 z=01 c=00 v=00 => x0=q:1
 code="cneg w0, w1, hs" x0=q:0 x1=q:1 n=00 z=00 c=01 v=00 => x0=q:0xffffffff
 code="cneg w0, w1, lo" x0=q:0 x1=q:1 n=00 z=00 c=01 v=00 => x0=q:1
+
+code="ccmp x0, x1, #0xf, eq" x0=q:0 x1=q:0 n=00 z=01 c=00 v=00 => n=00 z=01 c=01 v=00
+code="ccmp x0, x1, #0xf, ne" x0=q:0 x1=q:0 n=00 z=01 c=00 v=00 => n=01 z=01 c=01 v=01
+code="ccmp w0, w1, #0xf, hs" x0=q:0 x1=q:0 n=00 z=00 c=01 v=00 => n=00 z=01 c=01 v=00
+code="ccmp w0, w1, #0xf, lo" x0=q:0 x1=q:0 n=00 z=00 c=01 v=00 => n=01 z=01 c=01 v=01
+
+code="ccmn x0, x1, #0xf, eq" x0=q:0 x1=q:1 n=00 z=01 c=00 v=00 => n=00 z=00 c=00 v=00
+code="ccmn x0, x1, #0xf, ne" x0=q:0 x1=q:1 n=00 z=01 c=00 v=00 => n=01 z=01 c=01 v=01
+code="ccmn w0, w1, #0xf, hs" x0=q:0 x1=q:1 n=00 z=00 c=01 v=00 => n=00 z=00 c=00 v=00
+code="ccmn w0, w1, #0xf, lo" x0=q:0 x1=q:1 n=00 z=00 c=01 v=00 => n=01 z=01 c=01 v=01
+
+code="ccmp x0, #0, #0xf, eq" x0=q:0 n=00 z=01 c=00 v=00 => n=00 z=01 c=01 v=00
+code="ccmp x0, #0, #0xf, ne" x0=q:0 n=00 z=01 c=00 v=00 => n=01 z=01 c=01 v=01
+code="ccmp w0, #0, #0xf, hs" x0=q:0 n=00 z=00 c=01 v=00 => n=00 z=01 c=01 v=00
+code="ccmp w0, #0, #0xf, lo" x0=q:0 n=00 z=00 c=01 v=00 => n=01 z=01 c=01 v=01
+
+code="ccmn x0, #1, #0xf, eq" x0=q:0 n=00 z=01 c=00 v=00 => n=00 z=00 c=00 v=00
+code="ccmn x0, #1, #0xf, ne" x0=q:0 n=00 z=01 c=00 v=00 => n=01 z=01 c=01 v=01
+code="ccmn w0, #1, #0xf, hs" x0=q:0 n=00 z=00 c=01 v=00 => n=00 z=00 c=00 v=00
+code="ccmn w0, #1, #0xf, lo" x0=q:0 n=00 z=00 c=01 v=00 => n=01 z=01 c=01 v=01

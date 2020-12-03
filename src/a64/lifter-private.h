@@ -69,6 +69,8 @@ private:
     llvm::Value* Addr(llvm::Type* elemty, farmdec::Reg base, uint64_t off);
     llvm::Value* Addr(llvm::Type* elemty, farmdec::Reg base, farmdec::Reg off, uint32_t lsl);
     llvm::Value* Addr(llvm::Type* elemty, farmdec::Reg base, farmdec::Reg off, farmdec::ExtendType ext, uint32_t lsl);
+
+    void LiftCCmp(llvm::Value* lhs, llvm::Value* rhs, farmdec::Cond cond, uint8_t nzcv, bool ccmn);
 };
 
 } // namespace
