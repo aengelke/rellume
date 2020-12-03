@@ -340,47 +340,16 @@ llvm::Value* RegFile::impl::GetReg(ArchReg reg, Facet facet) {
         llvm::Value* res = nullptr;
         llvm::Value* native = GetRegFacet(reg, Facet::IVEC);
         assert(native && "native sse-reg facet is null");
-        switch (facet) {
-        case Facet::I128:
-            res = irb.CreateTrunc(native, facetType);
-            break;
-        case Facet::I8:
-            res = irb.CreateExtractElement(GetReg(reg, Facet::V16I8), int{0});
-            break;
-        case Facet::I16:
-            res = irb.CreateExtractElement(GetReg(reg, Facet::V8I16), int{0});
-            break;
-        case Facet::I32:
-            res = irb.CreateExtractElement(GetReg(reg, Facet::V4I32), int{0});
-            break;
-        case Facet::I64:
-            res = irb.CreateExtractElement(GetReg(reg, Facet::V2I64), int{0});
-            break;
-        case Facet::F32:
-            res = irb.CreateExtractElement(GetReg(reg, Facet::V4F32), int{0});
-            break;
-        case Facet::F64:
-            res = irb.CreateExtractElement(GetReg(reg, Facet::V2F64), int{0});
-            break;
-        case Facet::V1I8:
-        case Facet::V2I8:
-        case Facet::V4I8:
-        case Facet::V8I8:
-        case Facet::V16I8:
-        case Facet::V1I16:
-        case Facet::V2I16:
-        case Facet::V4I16:
-        case Facet::V8I16:
-        case Facet::V1I32:
-        case Facet::V2I32:
-        case Facet::V4I32:
-        case Facet::V1I64:
-        case Facet::V2I64:
-        case Facet::V1F32:
-        case Facet::V2F32:
-        case Facet::V4F32:
-        case Facet::V1F64:
-        case Facet::V2F64: {
+        if (!facetType->isVectorTy()) {
+            int nativeBits = native->getType()->getPrimitiveSizeInBits();
+            int nativeCnt = nativeBits / facetType->getPrimitiveSizeInBits();
+            if (nativeCnt == 1) {
+                res = irb.CreateBitCast(native, facetType);
+            } else {
+                Facet vec_facet = Facet::Vnt(nativeCnt, facet);
+                res = irb.CreateExtractElement(GetReg(reg, vec_facet), int{0});
+            }
+        } else {
             llvm::Type* elem_ty = facetType->getVectorElementType();
             int targetCnt = facetType->getVectorNumElements();
 
@@ -405,11 +374,6 @@ llvm::Value* RegFile::impl::GetReg(ArchReg reg, Facet facet) {
                 llvm::Value* undef = llvm::UndefValue::get(native_vec_ty);
                 res = irb.CreateShuffleVector(res, undef, mask);
             }
-            break;
-        }
-        default:
-            assert(false && "invalid facet for sse-reg");
-            break;
         }
 
         if (DeferredValueBase* facet_entry = AccessRegFacet(reg, facet))
