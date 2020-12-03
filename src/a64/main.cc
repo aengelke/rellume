@@ -67,14 +67,35 @@ bool Lifter::Lift(const Instr& inst) {
     const farmdec::Inst& a64 = *a64p;
     bool w32 = a64.flags & farmdec::W32;
     bool set_flags = a64.flags & farmdec::SET_FLAGS;
+    unsigned bits = (w32) ? 32 : 64;
 
     switch (a64.op) {
     default:
         SetIP(inst.start(), /*nofold=*/true);
         return false;
-    case farmdec::A64_ADD_SHIFTED: { // XXX SUB_SHIFTED and shifted logical should be almost the same
+    case farmdec::A64_ADD_IMM: {
         auto lhs = GetGp(a64.rn, w32);
-        auto rhs = GetGp(a64.rm, w32); // XXX apply shift (write helper function)
+        auto rhs = irb.getIntN(bits, a64.imm);
+        auto val = irb.CreateAdd(lhs, rhs);
+        SetGp(a64.rd, w32, val);
+        if (set_flags) {
+            FlagCalcAdd(val, lhs, rhs);
+        }
+        break;
+    }
+    case farmdec::A64_ADD_SHIFTED: {
+        auto lhs = GetGp(a64.rn, w32);
+        auto rhs = Shift(GetGp(a64.rm, w32), static_cast<farmdec::Shift>(a64.shift.type), a64.shift.amount);
+        auto val = irb.CreateAdd(lhs, rhs);
+        SetGp(a64.rd, w32, val);
+        if (set_flags) {
+            FlagCalcAdd(val, lhs, rhs);
+        }
+        break;
+    }
+    case farmdec::A64_ADD_EXT: {
+        auto lhs = GetGp(a64.rn, w32);
+        auto rhs = Extend(GetGp(a64.rm, w32), static_cast<farmdec::ExtendType>(a64.extend.type), a64.extend.lsl);
         auto val = irb.CreateAdd(lhs, rhs);
         SetGp(a64.rd, w32, val);
         if (set_flags) {
@@ -139,6 +160,37 @@ void Lifter::FlagCalcAdd(llvm::Value* res, llvm::Value* lhs, llvm::Value* rhs) {
         llvm::Value* tmp2 = irb.CreateAnd(tmp1, irb.CreateXor(res, lhs));
         SetFlag(Facet::OF, irb.CreateICmpSLT(tmp2, zero));
     }
+}
+
+// Shift or rotate the value v. No spurious instruction is generated if the shift
+// amount is zero.
+llvm::Value* Lifter::Shift(llvm::Value* v, farmdec::Shift sh, uint32_t amount) {
+    if (amount == 0) {
+        return v;
+    }
+    switch (sh) {
+    case farmdec::SH_LSL: return irb.CreateShl(v, (uint64_t) amount);
+    case farmdec::SH_LSR: return irb.CreateLShr(v, (uint64_t) amount);
+    case farmdec::SH_ASR: return irb.CreateAShr(v, (uint64_t) amount);
+    case farmdec::SH_ROR: break; // XXX use fshr intrinsic; only for RORV
+    }
+    return v; // no change
+}
+
+// Zero- or sign-extend the value v, and optionally apply a left shift.
+llvm::Value* Lifter::Extend(llvm::Value* v, farmdec::ExtendType ext, uint32_t lsl) {
+    llvm::Value* extended = v;
+    switch (ext) {
+    case farmdec::UXTB: extended = irb.CreateZExt(v,  irb.getInt8Ty()); break;
+    case farmdec::UXTH: extended = irb.CreateZExt(v, irb.getInt16Ty()); break;
+    case farmdec::UXTW: extended = irb.CreateZExt(v, irb.getInt32Ty()); break;
+    case farmdec::UXTX: extended = irb.CreateZExt(v, irb.getInt64Ty()); break;
+    case farmdec::SXTB: extended = irb.CreateSExt(v,  irb.getInt8Ty()); break;
+    case farmdec::SXTH: extended = irb.CreateSExt(v, irb.getInt16Ty()); break;
+    case farmdec::SXTW: extended = irb.CreateSExt(v, irb.getInt32Ty()); break;
+    case farmdec::SXTX: extended = irb.CreateSExt(v, irb.getInt64Ty()); break;
+    }
+    return Shift(extended, farmdec::SH_LSL, lsl);
 }
 
 } // namespace rellume::aarch64
