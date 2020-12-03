@@ -10,6 +10,7 @@ casefiles = {
   ],
   'aarch64': [
     'a64_data_proc.txt',
+    'a64_loads_stores.txt',
   ]
 }
 llvm_targets = {

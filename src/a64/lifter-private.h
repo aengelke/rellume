@@ -42,13 +42,26 @@ public:
     bool Lift(const Instr&);
 
 private:
-    llvm::Value* GetGp(farmdec::Reg, bool w32);
+    llvm::Value* GetGp(farmdec::Reg, bool w32, bool ptr = false);
     void SetGp(farmdec::Reg, bool w32, llvm::Value* val);
 
     void FlagCalcAdd(llvm::Value* res, llvm::Value* lhs, llvm::Value* rhs);
 
     llvm::Value* Shift(llvm::Value* v, farmdec::Shift sh, uint32_t amount);
     llvm::Value* Extend(llvm::Value* v, farmdec::ExtendType ext, uint32_t lsl);
+    llvm::IntegerType* TypeOf(farmdec::Size sz);
+    llvm::Type* TypeOf(farmdec::FPSize fsz);
+
+    llvm::Value* PCRel(uint64_t off);
+
+    // Dispatches to the correct addressing mode variant.
+    llvm::Value* Addr(llvm::Type* elemty, farmdec::Inst inst);
+
+    // The various addressing modes. See farmdec::AddrMode.
+    llvm::Value* Addr(llvm::Type* elemty, farmdec::Reg base);
+    llvm::Value* Addr(llvm::Type* elemty, farmdec::Reg base, uint64_t off);
+    llvm::Value* Addr(llvm::Type* elemty, farmdec::Reg base, farmdec::Reg off, uint32_t lsl);
+    llvm::Value* Addr(llvm::Type* elemty, farmdec::Reg base, farmdec::Reg off, farmdec::ExtendType ext, uint32_t lsl);
 };
 
 } // namespace

@@ -31,6 +31,7 @@
 #include "regfile.h"
 
 #include <llvm/IR/Constants.h>
+#include <llvm/IR/DerivedTypes.h>
 #include <llvm/IR/IRBuilder.h>
 #include <llvm/IR/Instruction.h>
 #include <llvm/IR/Value.h>
@@ -69,6 +70,7 @@ bool Lifter::Lift(const Instr& inst) {
     bool set_flags = a64.flags & farmdec::SET_FLAGS;
     unsigned bits = (w32) ? 32 : 64;
 
+    // In the order of farmdec::Op.
     switch (a64.op) {
     default:
         SetIP(inst.start(), /*nofold=*/true);
@@ -103,6 +105,52 @@ bool Lifter::Lift(const Instr& inst) {
         }
         break;
     }
+    case farmdec::A64_LDR: {
+        farmdec::AddrMode mode = fad_get_addrmode(a64.flags);
+        farmdec::ExtendType ext = fad_get_mem_extend(a64.flags);
+        farmdec::Size sz = static_cast<farmdec::Size>(ext & 3); // lower two bits
+        bool sign_extend = (ext & 4) != 0;
+
+        auto srcty = TypeOf(sz); // type of data to load
+        auto dstty = TypeOf((w32) ? farmdec::SZ_W : farmdec::SZ_X); // type of the register the result is stored to
+        auto addr = Addr(srcty, a64);
+
+        llvm::LoadInst* load = irb.CreateLoad(srcty, addr);
+        if (mode == farmdec::AM_SIMPLE) {
+            // XXX AM_SIMPLE → set AtomicOrdering according to Inst.ldst_order
+        }
+        llvm::Value* val = load;
+        if (srcty != dstty) { // sign- or zero-extend unless a copy is sufficient (i.e. srcty==dstty)
+            val = (sign_extend) ? irb.CreateSExt(val, dstty) : irb.CreateZExt(val, dstty);
+        }
+
+        SetGp(a64.rt, w32, val);
+        break;
+    }
+    case farmdec::A64_STR: {
+        farmdec::AddrMode mode = fad_get_addrmode(a64.flags);
+        farmdec::ExtendType ext = fad_get_mem_extend(a64.flags);
+        farmdec::Size sz = static_cast<farmdec::Size>(ext & 3); // lower two bits
+
+        auto val = GetGp(a64.rt, w32);
+        auto srcty = TypeOf((w32) ? farmdec::SZ_W : farmdec::SZ_X);
+        auto dstty = TypeOf(sz);
+        auto addr = Addr(dstty, a64);
+
+        if (srcty != dstty) {
+            val = irb.CreateTrunc(val, dstty);
+        }
+
+        llvm::StoreInst* store = irb.CreateStore(val, addr);
+        if (mode == farmdec::AM_SIMPLE) {
+            // XXX AM_SIMPLE → set AtomicOrdering according to Inst.ldst_order
+        }
+        break;
+    }
+    case farmdec::A64_LDR_FP:
+        break;
+    case farmdec::A64_STR_FP:
+        break;
     }
 
     // For non-branches, continue with the next instruction. The Function::Lift
@@ -115,9 +163,13 @@ bool Lifter::Lift(const Instr& inst) {
 
 /// Get the value of an A64 general-purpose register. If w32 is true, the 32-bit facet
 /// is used instead of the 64-bit one. Handles ZR (yields zero) and SP (stack ptr).
-llvm::Value* Lifter::GetGp(farmdec::Reg r, bool w32) {
+llvm::Value* Lifter::GetGp(farmdec::Reg r, bool w32, bool ptr) {
     unsigned bits = (w32) ? 32 : 64;
     Facet fc = (w32) ? Facet::I32 : Facet::I64;
+    if (ptr) {
+        bits = 64; // all ptrs are 64 bits
+        fc = Facet::PTR;
+    }
 
     if (r == farmdec::ZERO_REG) {
         return irb.getIntN(bits, 0);
@@ -191,6 +243,126 @@ llvm::Value* Lifter::Extend(llvm::Value* v, farmdec::ExtendType ext, uint32_t ls
     case farmdec::SXTX: extended = irb.CreateSExt(v, irb.getInt64Ty()); break;
     }
     return Shift(extended, farmdec::SH_LSL, lsl);
+}
+
+llvm::IntegerType* Lifter::TypeOf(farmdec::Size sz) {
+    switch (sz) {
+    case farmdec::SZ_B: return irb.getInt8Ty();
+    case farmdec::SZ_H: return irb.getInt16Ty();
+    case farmdec::SZ_W: return irb.getInt32Ty();
+    case farmdec::SZ_X: return irb.getInt64Ty();
+    }
+    assert(false && "invalid size");
+}
+
+llvm::Type* Lifter::TypeOf(farmdec::FPSize fsz) {
+    switch (fsz) {
+    case farmdec::FSZ_B: return irb.getInt8Ty();
+    case farmdec::FSZ_H: return irb.getHalfTy();
+    case farmdec::FSZ_S: return irb.getFloatTy();
+    case farmdec::FSZ_D: return irb.getDoubleTy();
+    case farmdec::FSZ_Q: return llvm::ArrayType::get(irb.getDoubleTy(), 2);
+    }
+    assert(false && "invalid FP size");
+}
+
+// Returns PC-relative address as i64, suitable for storing into PC again.
+llvm::Value* Lifter::PCRel(uint64_t off) {
+    return irb.CreateAdd(GetReg(ArchReg::IP, Facet::I64), irb.getInt64(off));
+}
+
+// Dispatches to the correct addressing mode handler.
+llvm::Value* Lifter::Addr(llvm::Type* elemty, farmdec::Inst inst) {
+    farmdec::AddrMode mode = fad_get_addrmode(inst.flags);
+
+    // XXX Move the variants in here if that significantly increases performance.
+    // XXX But: might lead to clutter, and I'd like to keep the extensive comments.
+
+    switch (mode) {
+    case farmdec::AM_SIMPLE:
+        return Addr(elemty, inst.rn);
+    case farmdec::AM_OFF_IMM:
+        return Addr(elemty, inst.rn, inst.offset);
+    case farmdec::AM_OFF_REG:
+        return Addr(elemty, inst.rn, inst.rm, inst.shift.amount);
+    case farmdec::AM_OFF_EXT:
+        return Addr(elemty, inst.rn, inst.rm, static_cast<farmdec::ExtendType>(inst.extend.type), inst.extend.lsl);
+    case farmdec::AM_PRE:
+        SetGp(inst.rn, /*w32=*/false, irb.CreateAdd(GetGp(inst.rn, /*w32=*/false), irb.getIntN(64, inst.imm))); // rn += imm
+        return Addr(elemty, inst.rn);
+    case farmdec::AM_POST: {
+        auto addr = Addr(elemty, inst.rn);
+        SetGp(inst.rn, /*w32=*/false, irb.CreateAdd(GetGp(inst.rn, /*w32=*/false), irb.getIntN(64, inst.imm))); // rn += imm
+        return addr;
+    }
+    case farmdec::AM_LITERAL:
+        return irb.CreateIntToPtr(PCRel(inst.offset), elemty->getPointerTo());
+    }
+
+    assert(false && "invalid addrmode");
+}
+
+// AM_SIMPLE addressing mode: [base].
+// AM_PRE and AM_POST also make use of this, but add an immediate to base
+// before or after this call.
+llvm::Value* Lifter::Addr(llvm::Type* elemty, farmdec::Reg base) {
+    return irb.CreatePointerCast(GetGp(base, false, /*ptr=*/true), elemty->getPointerTo());
+}
+
+// AM_OFF_IMM addressing mode: [base, #imm].
+llvm::Value* Lifter::Addr(llvm::Type* elemty, farmdec::Reg base, uint64_t off) {
+    auto ptr = GetGp(base, false, /*ptr=*/true);
+    auto byteaddr = irb.CreateConstGEP1_64(irb.getInt8Ty(), ptr, off);
+    return irb.CreatePointerCast(byteaddr, elemty->getPointerTo());
+}
+
+// AM_OFF_REG addressing mode: [base, Xoff {, LSL #imm}]. #imm is log2(size in bytes) or #0.
+llvm::Value* Lifter::Addr(llvm::Type* elemty, farmdec::Reg base, farmdec::Reg off, uint32_t lsl) {
+    // Uncommon: Offset register holds a byte offset instead of an index.
+    // So do a bit of "manual" pointer arithmetic:
+    //
+    //     uintptr_t baseval = (uintptr_t) base;
+    //     uintptr_t byteaddr = base + off;
+    //     return (elemty*)byteaddr;
+    //
+    if (lsl == 0 && elemty != irb.getInt8Ty()) {
+        auto baseval = GetGp(base, false);
+        auto byteaddr = irb.CreateAdd(baseval, GetGp(off, false));
+        return irb.CreateIntToPtr(byteaddr, elemty->getPointerTo());
+    }
+
+    // Usual case of lsl == log2(size in bytes), e.g. log2(4)==2 for i32.
+    //
+    // Here, the offset register actually holds an _index_ into an array at base.
+    // Like in C pointer arithmetic, the GEP instruction automatically converts
+    // the index into a byte offset appropriate for the type.
+    //
+    //     elemty *elemptr = (elemty*)base
+    //     return elemptr + idx;
+    //
+    auto elemptr = irb.CreatePointerCast(GetGp(base, false, /*ptr=*/true),  elemty->getPointerTo());
+    return irb.CreateGEP(elemty, elemptr, GetGp(off, false));
+}
+
+// AM_OFF_EXT addressing mode: [base, Woff, (U|S)XTW {#imm}].
+// As for AM_OFF_REG, #imm is log2(size in bytes) or #0.
+llvm::Value* Lifter::Addr(llvm::Type* elemty, farmdec::Reg base, farmdec::Reg off, farmdec::ExtendType ext, uint32_t lsl) {
+    auto extended_off = GetGp(off, true);
+    switch (ext) {
+    case farmdec::UXTW: extended_off = irb.CreateZExt(extended_off, irb.getInt64Ty()); break;
+    case farmdec::SXTW: extended_off = irb.CreateSExt(extended_off, irb.getInt64Ty()); break;
+    default:
+        assert(false && "bad extend type for AM_OFF_EXT: only UXTW and SXTW are allowed");
+    }
+
+    // An exact copy of the AM_OFF_REG case, sans the explanations.
+    if (lsl == 0 && elemty != irb.getInt8Ty()) {
+        auto baseval = GetGp(base, false);
+        auto byteaddr = irb.CreateAdd(baseval, extended_off);
+        return irb.CreateIntToPtr(byteaddr, elemty->getPointerTo());
+    }
+    auto elemptr = irb.CreatePointerCast(GetGp(base, false, /*ptr=*/true),  elemty->getPointerTo());
+    return irb.CreateGEP(elemty, elemptr, extended_off);
 }
 
 } // namespace rellume::aarch64
