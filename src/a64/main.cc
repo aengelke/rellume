@@ -528,50 +528,12 @@ bool Lifter::Lift(const Instr& inst) {
         SetGp(a64.rd, w32, irb.CreateSelect(IsTrue(fad_get_cond(a64.flags)), irb.CreateNeg(val), val));
         break;
     }
-    case farmdec::A64_LDR: {
-        farmdec::AddrMode mode = fad_get_addrmode(a64.flags);
-        farmdec::ExtendType ext = fad_get_mem_extend(a64.flags);
-        farmdec::Size sz = static_cast<farmdec::Size>(ext & 3); // lower two bits
-        bool sign_extend = (ext & 4) != 0;
-
-        auto srcty = TypeOf(sz); // type of data to load
-        auto dstty = TypeOf((w32) ? farmdec::SZ_W : farmdec::SZ_X); // type of the register the result is stored to
-        auto addr = Addr(srcty, a64);
-
-        llvm::LoadInst* load = irb.CreateLoad(srcty, addr);
-        if (mode == farmdec::AM_SIMPLE) { // AM_SIMPLE → LDAR, LDLAR
-            load->setOrdering(Ordering(static_cast<farmdec::MemOrdering>(a64.ldst_order.load)));
-            load->setAlignment(llvm::Align(srcty->getPrimitiveSizeInBits() / 8));
-        }
-        llvm::Value* val = load;
-        if (srcty != dstty) { // sign- or zero-extend unless a copy is sufficient (i.e. srcty==dstty)
-            val = (sign_extend) ? irb.CreateSExt(val, dstty) : irb.CreateZExt(val, dstty);
-        }
-
-        SetGp(a64.rt, w32, val);
+    case farmdec::A64_LDP:
+    case farmdec::A64_STP:
+    case farmdec::A64_LDR:
+    case farmdec::A64_STR:
+        LiftLoadStore(a64, w32);
         break;
-    }
-    case farmdec::A64_STR: {
-        farmdec::AddrMode mode = fad_get_addrmode(a64.flags);
-        farmdec::ExtendType ext = fad_get_mem_extend(a64.flags);
-        farmdec::Size sz = static_cast<farmdec::Size>(ext & 3); // lower two bits
-
-        auto val = GetGp(a64.rt, w32);
-        auto srcty = TypeOf((w32) ? farmdec::SZ_W : farmdec::SZ_X);
-        auto dstty = TypeOf(sz);
-        auto addr = Addr(dstty, a64);
-
-        if (srcty != dstty) {
-            val = irb.CreateTrunc(val, dstty);
-        }
-
-        llvm::StoreInst* store = irb.CreateStore(val, addr);
-        if (mode == farmdec::AM_SIMPLE) { // AM_SIMPLE → STLR, STLLR
-            store->setOrdering(Ordering(static_cast<farmdec::MemOrdering>(a64.ldst_order.store)));
-            store->setAlignment(llvm::Align(dstty->getPrimitiveSizeInBits() / 8));
-        }
-        break;
-    }
     case farmdec::A64_LDR_FP:
         break;
     case farmdec::A64_STR_FP:
@@ -892,6 +854,62 @@ void Lifter::LiftCCmp(llvm::Value* lhs, llvm::Value* rhs, farmdec::Cond cond, ui
     SetFlag(Facet::ZF, irb.CreateSelect(cond_holds, GetFlag(Facet::ZF), irb.getInt1((nzcv & 4) != 0))); // Z
     SetFlag(Facet::CF, irb.CreateSelect(cond_holds, GetFlag(Facet::CF), irb.getInt1((nzcv & 2) != 0))); // C
     SetFlag(Facet::OF, irb.CreateSelect(cond_holds, GetFlag(Facet::OF), irb.getInt1((nzcv & 1) != 0))); // V
+}
+
+// Given a pointer ptr = *T, load a T value, extend it according to ext and put it in rt.
+void Lifter::Load(farmdec::Reg rt, bool w32, llvm::Type* srcty,
+                  llvm::Value* ptr, farmdec::ExtendType ext,
+                  farmdec::MemOrdering mo) {
+    llvm::LoadInst* load = irb.CreateLoad(srcty, ptr);
+    if (mo != farmdec::MO_NONE) {
+        load->setOrdering(Ordering(mo));
+        load->setAlignment(llvm::Align(srcty->getPrimitiveSizeInBits() / 8));
+    }
+
+    SetGp(rt, w32, Extend(load, w32, ext, 0));
+}
+
+// Given a pointer ptr = *T, store the value val.
+void Lifter::Store(llvm::Value* ptr, llvm::Value* val, farmdec::MemOrdering mo) {
+    llvm::StoreInst* store = irb.CreateStore(val, ptr);
+    if (mo != farmdec::MO_NONE) {
+        store->setOrdering(Ordering(mo));
+        store->setAlignment(llvm::Align(val->getType()->getPrimitiveSizeInBits() / 8));
+    }
+}
+
+void Lifter::LiftLoadStore(farmdec::Inst a64, bool w32) {
+    farmdec::AddrMode mode = fad_get_addrmode(a64.flags);
+    farmdec::ExtendType ext = fad_get_mem_extend(a64.flags);
+    farmdec::MemOrdering mo = farmdec::MO_NONE;
+    if (mode == farmdec::AM_SIMPLE) { // AM_SIMPLE → LDAR, LDLAR, STLR, STLLR, ...
+        mo = static_cast<farmdec::MemOrdering>(a64.ldst_order.load);
+    }
+
+    // The type of the value to load/store depends on the in-memory size encoded
+    // in the lower two bits of ext.
+    auto memty = TypeOf(static_cast<farmdec::Size>(ext&3));
+    auto ptr = Addr(memty, a64);
+
+    switch (a64.op) {
+    default:
+        assert(false && "not a load/store");
+        break;
+
+    case farmdec::A64_LDP:
+        Load(a64.rt2, w32, memty, irb.CreateConstGEP1_64(memty, ptr, 1), ext, mo);
+        /* fallthrough */
+    case farmdec::A64_LDR:
+        Load(a64.rt, w32, memty, ptr, ext, mo);
+        break;
+
+    case farmdec::A64_STP:
+        Store(irb.CreateConstGEP1_64(memty, ptr, 1), irb.CreateTruncOrBitCast(GetGp(a64.rt2, w32), memty), mo);
+        /* fallthrough */
+    case farmdec::A64_STR:
+        Store(ptr, irb.CreateTruncOrBitCast(GetGp(a64.rt, w32), memty), mo);
+        break;
+    }
 }
 
 } // namespace rellume::aarch64
