@@ -96,3 +96,66 @@ code="asrv x0, x1, x2" x0=q:0 x1=q:0xff00000000000000 x2=q:63 => x0=q:-1
 code="asrv x0, x1, x2" x0=q:0 x1=q:0xff00000000000000 x2=q:72 => x0=q:0xffff000000000000
 code="asrv w0, w1, w2" x0=q:0 x1=q:0xff000000         x2=q:31 => x0=ffffffff00000000
 code="asrv w0, w1, w2" x0=q:0 x1=q:0xff000000         x2=q:36 => x0=q:0xfff00000
+
+code="lsl x0, x1, #8"  x0=q:0 x1=q:0xff => x0=q:0xff00
+code="lsl x0, x1, #63" x0=q:0 x1=q:0xff => x0=q:0x8000000000000000
+code="lsl w0, w1, #31" x0=q:0 x1=q:0xff => x0=q:0x80000000
+code="lsl w0, w1, #4"  x0=q:0 x1=q:0xff => x0=q:0xff0
+
+code="lsr x0, x1, #4"  x0=q:0 x1=q:0xff               => x0=q:0xf
+code="lsr x0, x1, #63" x0=q:0 x1=q:0xff00000000000000 => x0=q:0x1
+code="lsr x0, x1, #8"  x0=q:0 x1=q:0xff00000000000000 => x0=q:0x00ff000000000000
+code="lsr w0, w1, #31" x0=q:0 x1=q:0xff000000         => x0=q:0x1
+code="lsr w0, w1, #4"  x0=q:0 x1=q:0xff000000         => x0=q:0x0ff00000
+
+code="asr x0, x1, #4"  x0=q:0 x1=q:0xff               => x0=q:0xf
+code="asr x0, x1, #62" x0=q:0 x1=q:0xff00000000000000 => x0=q:-1
+code="asr x0, x1, #8"  x0=q:0 x1=q:0xff00000000000000 => x0=q:0xffff000000000000
+code="asr w0, w1, #31" x0=q:0 x1=q:0xff000000         => x0=ffffffff00000000
+code="asr w0, w1, #4"  x0=q:0 x1=q:0xff000000         => x0=q:0xfff00000
+
+code="bfc x0, #4, #8"   x0=q:0xffffffffffffffff => x0=q:0xfffffffffffff00f
+code="bfc x0, #1, #1"   x0=q:0xffffffffffffffff => x0=q:0xfffffffffffffffd
+code="bfc x0, #32, #32" x0=q:0xffffffffffffffff => x0=q:0x00000000ffffffff
+code="bfc w0, #4, #8"   x0=q:0xffffffff => x0=q:0xfffff00f
+code="bfc w0, #1, #1"   x0=q:0xffffffff => x0=q:0xfffffffd
+code="bfc w0, #16, #16" x0=q:0xffffffff => x0=q:0x0000ffff
+
+code="bfi x0, x1, #4, #20"  x0=q:0xffffffffffffffff x1=q:0x0abcd => x0=q:0xffffffffff0abcdf
+code="bfi x0, x1, #4, #8"   x0=q:0xffffffffffffffff x1=q:0x0abcd => x0=q:0xfffffffffffffcdf
+code="bfi x0, x1, #32, #32" x0=q:0xffffffffffffffff x1=q:0x0abcd => x0=q:0x0000abcdffffffff
+code="bfi w0, w1, #4, #20"  x0=q:0xffffffff x1=q:0x0abcd => x0=q:0xff0abcdf
+code="bfi w0, w1, #4, #4"   x0=q:0xffffffff x1=q:0x0abcd => x0=q:0xffffffdf
+code="bfi w0, w1, #16, #16" x0=q:0xffffffff x1=q:0x0abcd => x0=q:0xabcdffff
+
+code="bfxil x0, x1, #4, #16"  x0=q:0xffffffffffffffff x1=q:0x0abcd => x0=q:0xffffffffffff0abc
+code="bfxil x0, x1, #8, #8"   x0=q:0xffffffffffffffff x1=q:0x0abcd => x0=q:0xffffffffffffffab
+code="bfxil w0, w1, #4, #16"  x0=q:0xffffffff x1=q:0x0abcd => x0=q:0xffff0abc
+code="bfxil w0, w1, #4, #4"   x0=q:0xffffffff x1=q:0x0abcd => x0=q:0xfffffffc
+code="bfxil w0, w1, #16, #16" x0=q:0xffffffff x1=q:0x0abcd => x0=q:0xffff0000
+
+code="ubfiz x0, x1, #4, #20"  x0=q:0xffffffffffffffff x1=q:0x0abcd => x0=q:0x0abcd0
+code="ubfiz x0, x1, #4, #8"   x0=q:0xffffffffffffffff x1=q:0x0abcd => x0=q:0xcd0
+code="ubfiz x0, x1, #32, #32" x0=q:0xffffffffffffffff x1=q:0x0abcd => x0=q:0x0000abcd00000000
+code="ubfiz w0, w1, #4, #20"  x0=q:0xffffffff x1=q:0x0abcd => x0=q:0x000abcd0
+code="ubfiz w0, w1, #4, #4"   x0=q:0xffffffff x1=q:0x0abcd => x0=q:0x000000d0
+code="ubfiz w0, w1, #16, #16" x0=q:0xffffffff x1=q:0x0abcd => x0=q:0xabcd0000
+
+code="ubfx x0, x1, #4, #16"  x0=q:0xffffffffffffffff x1=q:0x0abcd => x0=q:0x0abc
+code="ubfx x0, x1, #8, #8"   x0=q:0xffffffffffffffff x1=q:0x0abcd => x0=q:0xab
+code="ubfx w0, w1, #4, #16"  x0=q:0xffffffff x1=q:0x0abcd => x0=q:0x0abc
+code="ubfx w0, w1, #4, #4"   x0=q:0xffffffff x1=q:0x0abcd => x0=q:0xc
+code="ubfx w0, w1, #16, #16" x0=q:0xffffffff x1=q:0x0abcd => x0=q:0x0000
+
+code="sbfiz x0, x1, #4, #16"  x0=q:0xffffffffffffffff x1=q:0x0abcd => x0=q:0xfffffffffffabcd0
+code="sbfiz x0, x1, #4, #8"   x0=q:0xffffffffffffffff x1=q:0x0abcd => x0=q:0xfffffffffffffcd0
+code="sbfiz x0, x1, #32, #32" x0=q:0xffffffffffffffff x1=q:0x0abcd => x0=q:0x0000abcd00000000
+code="sbfiz w0, w1, #4, #16"  x0=q:0xffffffff x1=q:0x0abcd => x0=q:0xfffabcd0
+code="sbfiz w0, w1, #4, #4"   x0=q:0xffffffff x1=q:0x0abcd => x0=q:0xffffffd0
+code="sbfiz w0, w1, #16, #16" x0=q:0xffffffff x1=q:0x0abcd => x0=q:0xabcd0000
+
+code="sbfx x0, x1, #4, #12"  x0=q:0xffffffffffffffff x1=q:0x0abcd => x0=q:0xfffffffffffffabc
+code="sbfx x0, x1, #8, #8"   x0=q:0xffffffffffffffff x1=q:0x0abcd => x0=q:0xffffffffffffffab
+code="sbfx w0, w1, #4, #16"  x0=q:0xffffffff x1=q:0x0abcd => x0=q:0x0abc
+code="sbfx w0, w1, #4, #4"   x0=q:0xffffffff x1=q:0x0abcd => x0=q:0xfffffffc
+code="sbfx w0, w1, #16, #16" x0=q:0xffffffff x1=q:0x0abcd => x0=q:0x0000

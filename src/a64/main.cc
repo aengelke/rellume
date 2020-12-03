@@ -46,6 +46,8 @@ bool LiftInstruction(const Instr& inst, FunctionInfo& fi, const LLConfig& cfg,
     return Lifter(fi, cfg, ab).Lift(inst);
 }
 
+static uint64_t ones(int n);
+
 bool Lifter::Lift(const Instr& inst) {
     SetIP(inst.start()); // ARM PC points to current instruction.
 
@@ -145,6 +147,90 @@ bool Lifter::Lift(const Instr& inst) {
     }
     case farmdec::A64_MOV_IMM:
         SetGp(a64.rd, w32, irb.getIntN(bits, a64.imm));
+        break;
+    case farmdec::A64_SBFM:
+        assert(false && "SBFM should only appear as one of its aliases ASR_IMM, SBFIZ, SBFX");
+        break;
+    case farmdec::A64_ASR_IMM:
+        SetGp(a64.rd, w32, Shift(GetGp(a64.rn, w32), farmdec::SH_ASR, a64.imm));
+        break;
+    case farmdec::A64_SBFIZ: {
+        auto field = MoveField(GetGp(a64.rn, w32), w32, a64.bfm.lsb, a64.bfm.width);
+
+        // sext_mask: ones in the upper bits, including the MSB of the field.
+        //
+        //     msb_set = (field & sext_mask) != 0;
+        //     extended = sext_mask | field;
+        //     rd = (msb_set) ? extended : field;
+        //
+        uint64_t sext_mask = ~0uL << (a64.bfm.lsb + a64.bfm.width - 1);
+        auto sext_mask_value = irb.getIntN(bits, sext_mask); // truncates to 32-bit if required
+        auto msb_set = irb.CreateICmpNE(irb.CreateAnd(field, sext_mask_value), irb.getIntN(bits, 0));
+        auto extended = irb.CreateOr(irb.CreateOr(field, sext_mask_value));
+        auto val = irb.CreateSelect(msb_set, extended, field);
+
+        SetGp(a64.rd, w32, val);
+        break;
+    }
+    case farmdec::A64_SBFX: {
+        auto field = Extract(GetGp(a64.rn, w32), w32, a64.bfm.lsb, a64.bfm.width);
+
+        // See above.
+        uint64_t sext_mask = ~0uL << (a64.bfm.width - 1);
+        auto sext_mask_value = irb.getIntN(bits, sext_mask); // truncates to 32-bit if required
+        auto msb_set = irb.CreateICmpNE(irb.CreateAnd(field, sext_mask_value), irb.getIntN(bits, 0));
+        auto extended = irb.CreateOr(irb.CreateOr(field, sext_mask_value));
+        auto val = irb.CreateSelect(msb_set, extended, field);
+
+        SetGp(a64.rd, w32, val);
+        break;
+    }
+    case farmdec::A64_BFM:
+        assert(false && "BFM should only appear as one of its aliases BFC, BFI, BFXIL");
+        break;
+    case farmdec::A64_BFC: {
+        uint64_t clrmask = ~(ones(a64.bfm.width) << a64.bfm.lsb);
+        SetGp(a64.rd, w32, irb.CreateAnd(GetGp(a64.rd, w32), irb.getIntN(bits, clrmask)));
+        break;
+    }
+    case farmdec::A64_BFI: {
+        auto src = MoveField(GetGp(a64.rn, w32), w32, a64.bfm.lsb, a64.bfm.width);
+
+        uint64_t clrmask = ~(ones(a64.bfm.width) << a64.bfm.lsb);
+        auto dst = irb.CreateAnd(GetGp(a64.rd, w32), irb.getIntN(bits, clrmask));
+
+        SetGp(a64.rd, w32, irb.CreateOr(src, dst));
+        break;
+    }
+    case farmdec::A64_BFXIL: {
+        auto src = Extract(GetGp(a64.rn, w32), w32, a64.bfm.lsb, a64.bfm.width);
+
+        uint64_t clrmask = ~ones(a64.bfm.width);
+        auto dst = irb.CreateAnd(GetGp(a64.rd, w32), irb.getIntN(bits, clrmask));
+
+        SetGp(a64.rd, w32, irb.CreateOr(src, dst));
+        break;
+    }
+    case farmdec::A64_UBFM:
+        assert(false && "UBFM should only appear as one of its aliases LSL_IMM, LSR_IMM, UBFIZ, UBFX");
+        break;
+    case farmdec::A64_LSL_IMM:
+        SetGp(a64.rd, w32, Shift(GetGp(a64.rn, w32), farmdec::SH_LSL, a64.imm));
+        break;
+    case farmdec::A64_LSR_IMM:
+        SetGp(a64.rd, w32, Shift(GetGp(a64.rn, w32), farmdec::SH_LSR, a64.imm));
+        break;
+    case farmdec::A64_UBFIZ:
+        SetGp(a64.rd, w32, MoveField(GetGp(a64.rn, w32), w32, a64.bfm.lsb, a64.bfm.width));
+        break;
+    case farmdec::A64_UBFX:
+        SetGp(a64.rd, w32, Extract(GetGp(a64.rn, w32), w32, a64.bfm.lsb, a64.bfm.width));
+        break;
+    case farmdec::A64_EXTEND:
+        SetGp(a64.rd, w32, Extend(GetGp(a64.rn, w32), static_cast<farmdec::ExtendType>(a64.extend.type), 0));
+        break;
+    case farmdec::A64_ROR_IMM:
+        SetGp(a64.rd, w32, Shift(GetGp(a64.rn, w32), farmdec::SH_ROR, a64.imm));
         break;
     case farmdec::A64_BCOND:
         SetReg(ArchReg::IP, Facet::I64, irb.CreateSelect(IsTrue(fad_get_cond(a64.flags)), PCRel(a64.offset), PCRel(inst.len())));
@@ -746,6 +832,33 @@ llvm::Value* Lifter::Addr(llvm::Type* elemty, farmdec::Reg base, farmdec::Reg of
     }
     auto elemptr = irb.CreatePointerCast(GetGp(base, false, /*ptr=*/true),  elemty->getPointerTo());
     return irb.CreateGEP(elemty, elemptr, extended_off);
+}
+
+// Return up to 64 ones.
+static uint64_t ones(int n) {
+    return (n >= 64) ? ~((uint64_t)0) : ((uint64_t) 1 << n) - 1;
+}
+
+// Extract a bitfield of that width starting at bit position lsb. Essentially
+// the standard C idiom
+//
+//     return (v >> lsb) & ones(width);
+//
+llvm::Value* Lifter::Extract(llvm::Value* v, bool w32, unsigned lsb, unsigned width) {
+    int bits = (w32) ? 32 : 64;
+    v = irb.CreateLShr(v, irb.getIntN(bits, lsb));
+    return irb.CreateAnd(v, irb.getIntN(bits, ones(width)));
+}
+
+// Move the #width least significant bits to the bit position lsb.
+//
+//     return (v & ones(width)) << lsb;
+//
+llvm::Value* Lifter::MoveField(llvm::Value* v, bool w32, unsigned lsb, unsigned width) {
+    int bits = (w32) ? 32 : 64;
+    uint64_t mask = ones(width);
+    v = irb.CreateAnd(v, irb.getIntN(bits, mask));
+    return irb.CreateShl(v, irb.getIntN(bits, lsb));
 }
 
 } // namespace rellume::aarch64

@@ -56,6 +56,9 @@ private:
     llvm::AtomicOrdering Ordering(farmdec::MemOrdering);
     llvm::Value* IsTrue(farmdec::Cond);
 
+    llvm::Value* Extract(llvm::Value* v, bool w32, unsigned lsb, unsigned width);
+    llvm::Value* MoveField(llvm::Value* v, bool w32, unsigned lsb, unsigned width);
+
     llvm::Value* PCRel(uint64_t off);
 
     // Dispatches to the correct addressing mode variant.
