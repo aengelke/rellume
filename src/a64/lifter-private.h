@@ -75,11 +75,12 @@ private:
     llvm::Value* Addr(llvm::Type* elemty, farmdec::Reg base, farmdec::Reg off, farmdec::ExtendType ext, uint32_t lsl);
 
     void Load(farmdec::Reg rt, bool w32, llvm::Type* srcty, llvm::Value* ptr, farmdec::ExtendType ext, farmdec::MemOrdering mo = farmdec::MO_NONE);
+    void Load(farmdec::Reg rt, llvm::Type* srcty, llvm::Value* ptr, farmdec::FPSize fsz, farmdec::MemOrdering mo = farmdec::MO_NONE);
     void Store(llvm::Value* ptr, llvm::Value* val, farmdec::MemOrdering mo = farmdec::MO_NONE);
 
     void LiftMull(llvm::Value* base, bool sub, llvm::Value* lhs, llvm::Value* rhs, bool sign_extend);
     void LiftCCmp(llvm::Value* lhs, llvm::Value* rhs, farmdec::Cond cond, uint8_t nzcv, bool ccmn);
-    void LiftLoadStore(farmdec::Inst a64, bool w32);
+    void LiftLoadStore(farmdec::Inst a64, bool w32, bool fp = false);
 };
 
 } // namespace

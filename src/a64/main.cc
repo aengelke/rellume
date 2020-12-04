@@ -612,9 +612,11 @@ bool Lifter::Lift(const Instr& inst) {
     case farmdec::A64_STR:
         LiftLoadStore(a64, w32);
         break;
+    case farmdec::A64_LDP_FP:
+    case farmdec::A64_STP_FP:
     case farmdec::A64_LDR_FP:
-        break;
     case farmdec::A64_STR_FP:
+        LiftLoadStore(a64, w32, /*fp=*/true);
         break;
     case farmdec::A64_FMOV_REG:
         SetScalar(a64.rd, fad_get_prec(a64.flags), GetScalar(a64.rn, fad_get_prec(a64.flags)));
@@ -1032,7 +1034,18 @@ void Lifter::Load(farmdec::Reg rt, bool w32, llvm::Type* srcty,
     SetGp(rt, w32, Extend(load, w32, ext, 0));
 }
 
-// Given a pointer ptr = *T, store the value val.
+// Loads into the SIMD&FP register Vt.
+void Lifter::Load(farmdec::Reg rt, llvm::Type* srcty, llvm::Value* ptr, farmdec::FPSize fsz, farmdec::MemOrdering mo) {
+    llvm::LoadInst* load = irb.CreateLoad(srcty, ptr);
+    if (mo != farmdec::MO_NONE) {
+        load->setOrdering(Ordering(mo));
+        load->setAlignment(llvm::Align(srcty->getPrimitiveSizeInBits() / 8));
+    }
+
+    SetScalar(rt, fsz, load);
+}
+
+// Given a pointer ptr = *T, store the value val, which is truncated appropriately.
 void Lifter::Store(llvm::Value* ptr, llvm::Value* val, farmdec::MemOrdering mo) {
     llvm::StoreInst* store = irb.CreateStore(val, ptr);
     if (mo != farmdec::MO_NONE) {
@@ -1041,17 +1054,19 @@ void Lifter::Store(llvm::Value* ptr, llvm::Value* val, farmdec::MemOrdering mo) 
     }
 }
 
-void Lifter::LiftLoadStore(farmdec::Inst a64, bool w32) {
+// (The w32 flag is passed for convenience and is ignored if fp=true.)
+void Lifter::LiftLoadStore(farmdec::Inst a64, bool w32, bool fp) {
     farmdec::AddrMode mode = fad_get_addrmode(a64.flags);
-    farmdec::ExtendType ext = fad_get_mem_extend(a64.flags);
+    farmdec::ExtendType ext = fad_get_mem_extend(a64.flags); // General load/stores
+    farmdec::FPSize fsz = fad_get_prec(a64.flags);           // FP load/stores
     farmdec::MemOrdering mo = farmdec::MO_NONE;
     if (mode == farmdec::AM_SIMPLE) { // AM_SIMPLE → LDAR, LDLAR, STLR, STLLR, ...
         mo = static_cast<farmdec::MemOrdering>(a64.ldst_order.load);
     }
 
-    // The type of the value to load/store depends on the in-memory size encoded
-    // in the lower two bits of ext.
-    auto memty = TypeOf(static_cast<farmdec::Size>(ext&3));
+    // General: The type of the value to load/store depends on the in-memory
+    // size encoded in the lower two bits of ext.
+    auto memty = (fp) ? TypeOf(fsz) : TypeOf(static_cast<farmdec::Size>(ext&3));
     auto ptr = Addr(memty, a64);
 
     switch (a64.op) {
@@ -1071,6 +1086,20 @@ void Lifter::LiftLoadStore(farmdec::Inst a64, bool w32) {
         /* fallthrough */
     case farmdec::A64_STR:
         Store(ptr, irb.CreateTruncOrBitCast(GetGp(a64.rt, w32), memty), mo);
+        break;
+
+    case farmdec::A64_LDP_FP:
+        Load(a64.rt2, memty, irb.CreateConstGEP1_64(memty, ptr, 1), fsz, mo);
+        /* fallthrough */
+    case farmdec::A64_LDR_FP:
+        Load(a64.rt, memty, ptr, fsz, mo);
+        break;
+
+    case farmdec::A64_STP_FP:
+        Store(irb.CreateConstGEP1_64(memty, ptr, 1), GetScalar(a64.rt2, fsz), mo);
+        /* fallthrough */
+    case farmdec::A64_STR_FP:
+        Store(ptr, GetScalar(a64.rt, fsz), mo);
         break;
     }
 }
