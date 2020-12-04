@@ -184,7 +184,7 @@ public:
                       cleaned_regs() {
         unsigned ngp, nvec;
         switch (arch) {
-        case Arch::X86_64: ngp = 16; nvec = 16; break;
+        case Arch::X86_64: ngp = 16; nvec = 16; ivec_facet = Facet::I128; break;
         default: assert(false);
         }
         regs_gp.resize(ngp);
@@ -209,6 +209,8 @@ private:
     std::vector<ValueMapSse<DeferredValueBase>> regs_sse;
     DeferredValueBase reg_ip;
     ValueMapFlags<DeferredValueBase> flags;
+
+    Facet ivec_facet;
 
     RegisterSet dirty_regs;
     RegisterSet cleaned_regs;
@@ -250,7 +252,7 @@ void RegFile::impl::InitWithPHIs(std::vector<PhiDesc>* desc_vec,
         for (auto& reg : regs_gp)
             reg[Facet::I64] = fn(Facet::I64);
         for (auto& reg : regs_sse)
-            reg[Facet::IVEC] = fn(Facet::IVEC);
+            reg[ivec_facet] = fn(ivec_facet);
     }
 
     flags.setAll(fn);
@@ -338,7 +340,7 @@ llvm::Value* RegFile::impl::GetReg(ArchReg reg, Facet facet) {
             assert(false && "invalid facet for ip-reg");
     } else if (reg.Kind() == ArchReg::RegKind::VEC) {
         llvm::Value* res = nullptr;
-        llvm::Value* native = GetRegFacet(reg, Facet::IVEC);
+        llvm::Value* native = GetRegFacet(reg, ivec_facet);
         assert(native && "native sse-reg facet is null");
         if (!facetType->isVectorTy()) {
             int nativeBits = native->getType()->getPrimitiveSizeInBits();
@@ -398,7 +400,7 @@ void RegFile::impl::SetReg(ArchReg reg, Facet facet, llvm::Value* value,
             assert(facet == Facet::I64);
             regs_gp[reg.Index()].clear();
         } else if (reg.Kind() == ArchReg::RegKind::VEC) {
-            assert(facet == Facet::IVEC);
+            assert(facet == ivec_facet);
             regs_sse[reg.Index()].clear();
         }
     }
