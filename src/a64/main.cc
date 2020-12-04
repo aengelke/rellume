@@ -614,6 +614,14 @@ bool Lifter::Lift(const Instr& inst) {
         break;
     case farmdec::A64_STR_FP:
         break;
+    case farmdec::A64_FMOV_REG:
+        SetScalar(a64.rd, fad_get_prec(a64.flags), GetScalar(a64.rn, fad_get_prec(a64.flags)));
+        break;
+    case farmdec::A64_FMOV_IMM: {
+        farmdec::FPSize prec = fad_get_prec(a64.flags);
+        SetScalar(a64.rd, prec, llvm::ConstantFP::get(TypeOf(prec), a64.fimm));
+        break;
+    }
     }
 
     // For non-branches, continue with the next instruction. The Function::Lift
@@ -694,6 +702,68 @@ void Lifter::FlagCalcLogic(llvm::Value* res) {
     SetFlag(Facet::OF, irb.getFalse());
 }
 
+// Get a scalar value stored in the A64 register Vr. The sizes FSZ_B (byte, Br)
+// and FSZ_Q (quad, Qr) return integers and may only be used with SIMD&FP load/stores.
+// FSZ_S, FSZ_D return floating-point values as expected.
+//
+// Note: The half-precision FSZ_H returns an integer because there is no
+// half-precision support in the rest of Rellume right now.
+llvm::Value* Lifter::GetScalar(farmdec::Reg r, farmdec::FPSize fsz) {
+    Facet fc = Facet::F64;
+
+    switch (fsz) {
+    case farmdec::FSZ_B: fc = Facet::I8;   break;
+    case farmdec::FSZ_H: fc = Facet::I16;  break; // XXX
+    case farmdec::FSZ_S: fc = Facet::F32;  break;
+    case farmdec::FSZ_D: fc = Facet::F64;  break;
+    case farmdec::FSZ_Q: fc = Facet::I128; break;
+    default:
+        assert(false && "invalid FP facet");
+    }
+
+    return GetReg(ArchReg::VEC(r), fc);
+}
+
+// Set an A64 vector register Vr to a scalar value. For FSZ_S, FSZ_D we expect
+// a floating-point value, for the others an integer. See GetScalar for details.
+void Lifter::SetScalar(farmdec::Reg r, farmdec::FPSize fsz, llvm::Value* val) {
+    Facet fc = Facet::F64;
+    unsigned bits = 64;
+
+    switch (fsz) {
+    case farmdec::FSZ_B: fc = Facet::I8;    bits =   8; break;
+    case farmdec::FSZ_H: fc = Facet::I16;   bits =  16; break;
+    case farmdec::FSZ_S: fc = Facet::F32;   bits =  32; break;
+    case farmdec::FSZ_D: fc = Facet::F64;   bits =  64; break;
+    case farmdec::FSZ_Q: fc = Facet::I128;  bits = 128; break;
+    default:
+        assert(false && "invalid Scalar facet");
+    }
+
+    // Loosely based on the x86 lifter's OpStoreVec: we need to insert
+    // (val : elemty) into a vector (nelem x elemty) that spans the
+    // entire V register (→ IVEC).
+    Facet ivec = Facet::V2I64;
+    auto ivecty = ivec.Type(irb.getContext());
+
+    // Does val fill the entire (128-bit) V register?
+    if (bits == ivec.Size()) {
+        SetReg(ArchReg::VEC(r), ivec, irb.CreateBitCast(val, ivecty));
+        SetRegFacet(ArchReg::VEC(r), fc, val);
+        return;
+    }
+
+    auto elemty = TypeOf(fsz);
+    unsigned nelem = ivec.Size() / bits;
+    auto vecty = llvm::VectorType::get(elemty, nelem, false);
+
+    llvm::Value* fullvec = llvm::Constant::getNullValue(vecty);
+    fullvec = irb.CreateInsertElement(fullvec, val, 0uL);
+
+    SetReg(ArchReg::VEC(r), ivec, irb.CreateBitCast(fullvec, ivecty));
+    SetRegFacet(ArchReg::VEC(r), fc, val);
+}
+
 // Shift or rotate the value v. No spurious instruction is generated if the shift
 // amount is zero.
 llvm::Value* Lifter::Shift(llvm::Value* v, farmdec::Shift sh, uint32_t amount) {
@@ -746,10 +816,10 @@ llvm::IntegerType* Lifter::TypeOf(farmdec::Size sz) {
 llvm::Type* Lifter::TypeOf(farmdec::FPSize fsz) {
     switch (fsz) {
     case farmdec::FSZ_B: return irb.getInt8Ty();
-    case farmdec::FSZ_H: return irb.getHalfTy();
+    case farmdec::FSZ_H: return irb.getInt16Ty(); // XXX
     case farmdec::FSZ_S: return irb.getFloatTy();
     case farmdec::FSZ_D: return irb.getDoubleTy();
-    case farmdec::FSZ_Q: return llvm::ArrayType::get(irb.getDoubleTy(), 2);
+    case farmdec::FSZ_Q: return irb.getIntNTy(128);
     }
     assert(false && "invalid FP size");
 }

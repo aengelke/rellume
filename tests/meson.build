@@ -12,6 +12,7 @@ casefiles = {
     'a64_data_proc.txt',
     'a64_loads_stores.txt',
     'a64_branches_and_cond.txt',
+    'a64_scalar_fp.txt',
   ]
 }
 llvm_targets = {
