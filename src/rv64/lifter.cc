@@ -194,7 +194,7 @@ public:
     }
     void LiftFcvtIToF(const FrvInst* rvi, Facet df, Facet sf,
                   llvm::Instruction::CastOps cast) {
-        assert(rvi->misc == 7 && "only rm=DYN supported");
+        assert((rvi->misc == 0 || rvi->misc == 7) && "only rm=DYN/RNE supported");
         llvm::Type* tgt_ty = df.Type(irb.getContext());
         StoreFp(rvi->rd, irb.CreateCast(cast, LoadGp(rvi->rs1, sf), tgt_ty));
     }
@@ -229,6 +229,7 @@ public:
         // auto intrinsic = llvm::Intrinsic::getDeclaration(module, id, {ty});
     }
     void LiftFminmax(const FrvInst* rvi, llvm::Intrinsic::ID id, Facet f) {
+        assert(rvi->misc == 7 && "only rm=DYN supported");
         auto res = irb.CreateBinaryIntrinsic(id, LoadFp(rvi->rs1, f), LoadFp(rvi->rs2, f));
         StoreFp(rvi->rd, res);
     }
