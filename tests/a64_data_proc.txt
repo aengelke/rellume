@@ -234,3 +234,12 @@ code="rev16 x0, x1" x0=q:0 x1=aabbccddeeff0011 => x0=bbaaddccffee1100
 code="rev32 x0, x1" x0=q:0 x1=aabbccddeeff0011 => x0=ddccbbaa1100ffee
 code="rev w0, w1" x0=q:0 x1=aabbccddeeff0011 => x0=ddccbbaa00000000
 code="rev x0, x1" x0=q:0 x1=aabbccddeeff0011 => x0=1100ffeeddccbbaa
+
+code="adc x1, x2, x3"  x1=q:0x0 x2=q:0x12345678 x3=q:0x76543210 c=00 => x1=q:0x88888888
+code="adc x1, x2, x3"  x1=q:0x0 x2=q:0x12345678 x3=q:0x76543210 c=01 => x1=q:0x88888889
+code="adcs w0, w1, w2" x0=q:0x0 x1=q:2147483647 x2=q:1 c=01  => x0=0100008000000000 n=01 z=00 c=00 v=01
+
+code="sbc x1, x2, x3"  x1=q:0x0 x2=q:100 x3=q:90 c=00 => x1=q:9
+code="sbc w1, w2, w3"  x1=q:0x0 x2=q:100 x3=q:90 c=01 => x1=q:10
+code="ngc x1, x2"      x1=q:0x0 x2=q:100 c=01 => x1=q:-100
+code="sbcs w1, w2, w3" x1=q:0x0 x2=q:100 x3=q:90 n=00 z=00 c=01 v=00 => x1=q:10 n=00 z=00 c=01 v=00

@@ -508,6 +508,26 @@ bool Lifter::Lift(const Instr& inst) {
         }
         break;
     }
+    case farmdec::A64_ADC:
+    case farmdec::A64_SBC:
+    case farmdec::A64_NGC: {
+        // ADC: Rd := Rn + Rm + carry.
+        // SBC: Rd := Rn - (Rm + NOT(carry)).
+        bool add = (a64.op == farmdec::A64_ADC);
+        auto lhs = GetGp(a64.rn, w32);
+        auto rhs = GetGp(a64.rm, w32);
+        auto cf = GetFlag(Facet::CF);
+        cf = (add) ? cf : irb.CreateNot(cf);
+        rhs = irb.CreateAdd(rhs, irb.CreateZExt(cf, irb.getIntNTy(bits)));
+        auto val = (add) ? irb.CreateAdd(lhs, rhs) : irb.CreateSub(lhs, rhs);
+        SetGp(a64.rd, w32, val);
+        if (set_flags && add) {
+            FlagCalcAdd(val, lhs, rhs);
+        } else if (set_flags && !add) {
+            FlagCalcSub(val, lhs, rhs);
+        }
+        break;
+    }
     case farmdec::A64_CCMN_REG:
     case farmdec::A64_CCMP_REG: {
         auto lhs = GetGp(a64.rn, w32);
