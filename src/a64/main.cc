@@ -258,6 +258,7 @@ bool Lifter::Lift(const Instr& inst) {
     Intentionally unimplemented because they are either for debugging or use in the kernel
     while we focus on userspace lifting.
 
+    case farmdec::A64_UDF:
     case farmdec::A64_HVC:
     case farmdec::A64_SMC:
     case farmdec::A64_BRK:
@@ -390,6 +391,26 @@ bool Lifter::Lift(const Instr& inst) {
         auto mod = irb.GetInsertBlock()->getModule();
         auto fn = llvm::Intrinsic::getDeclaration(mod, llvm::Intrinsic::fshr, {lhs->getType()});
         SetGp(a64.rd, w32, irb.CreateCall(fn, {lhs, lhs, amount}));
+        break;
+    }
+    case farmdec::A64_RBIT:
+        SetGp(a64.rd, w32, irb.CreateUnaryIntrinsic(llvm::Intrinsic::bitreverse, GetGp(a64.rn, w32)));
+        break;
+    case farmdec::A64_REV16: { // swap bytes of every halfword independently
+        auto vecty = llvm::VectorType::get(irb.getInt16Ty(), (w32) ? 2 : 4, false); // i32 → <2xi16>, i64 → <4xi16>
+        auto invec = irb.CreateBitCast(GetGp(a64.rn, w32), vecty);
+        auto outvec = irb.CreateUnaryIntrinsic(llvm::Intrinsic::bswap, invec);
+        SetGp(a64.rd, w32, irb.CreateBitCast(outvec, irb.getIntNTy(bits)));
+        break;
+    }
+    case farmdec::A64_REV: // swap order of entire (double)word
+        SetGp(a64.rd, w32, irb.CreateUnaryIntrinsic(llvm::Intrinsic::bswap, GetGp(a64.rn, w32)));
+        break;
+    case farmdec::A64_REV32: { // swap bytes of every word independently
+        auto vecty = llvm::VectorType::get(irb.getInt32Ty(), (w32) ? 1 : 2, false); // i32 → <1xi32>, i64 → <2xi32>
+        auto invec = irb.CreateBitCast(GetGp(a64.rn, w32), vecty);
+        auto outvec = irb.CreateUnaryIntrinsic(llvm::Intrinsic::bswap, invec);
+        SetGp(a64.rd, w32, irb.CreateBitCast(outvec, irb.getIntNTy(bits)));
         break;
     }
     case farmdec::A64_CLZ: {
