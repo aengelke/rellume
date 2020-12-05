@@ -79,8 +79,14 @@ private:
     void Store(llvm::Value* ptr, llvm::Value* val, farmdec::MemOrdering mo = farmdec::MO_NONE);
 
     void LiftMull(llvm::Value* base, bool sub, llvm::Value* lhs, llvm::Value* rhs, bool sign_extend);
-    void LiftCCmp(llvm::Value* lhs, llvm::Value* rhs, farmdec::Cond cond, uint8_t nzcv, bool ccmn);
+    void LiftCCmp(llvm::Value* lhs, llvm::Value* rhs, farmdec::Cond cond, uint8_t nzcv, bool ccmn, bool fp = false);
     void LiftLoadStore(farmdec::Inst a64, bool w32, bool fp = false);
+
+    void FlagCalcFP(llvm::Value* lhs, llvm::Value* rhs);
+    void LiftBinOpFP(llvm::Instruction::BinaryOps op, farmdec::FPSize prec, farmdec::Reg rd, farmdec::Reg rn, farmdec::Reg rm);
+    void LiftIntrinsicFP(llvm::Intrinsic::ID op, farmdec::FPSize prec, farmdec::Reg rd, farmdec::Reg rn);
+    void LiftIntrinsicFP(llvm::Intrinsic::ID op, farmdec::FPSize prec, farmdec::Reg rd, farmdec::Reg rn, farmdec::Reg rm);
+    void LiftIntrinsicFP(llvm::Intrinsic::ID op, farmdec::FPSize prec, farmdec::Reg rd, farmdec::Reg rn, farmdec::Reg rm, farmdec::Reg ra);
 };
 
 } // namespace

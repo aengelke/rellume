@@ -659,6 +659,122 @@ bool Lifter::Lift(const Instr& inst) {
     case farmdec::A64_STR_FP:
         LiftLoadStore(a64, w32, /*fp=*/true);
         break;
+    case farmdec::A64_FCVT_H:
+        assert(false && "FP half precision not supported");
+        break;
+    case farmdec::A64_FCVT_S: {
+        farmdec::FPSize prec = fad_get_prec(a64.flags);
+        auto val = GetScalar(a64.rn, prec);
+        SetScalar(a64.rd, farmdec::FSZ_S, irb.CreateFPCast(val, irb.getFloatTy()));
+        break;
+    }
+    case farmdec::A64_FCVT_D: {
+        farmdec::FPSize prec = fad_get_prec(a64.flags);
+        auto val = GetScalar(a64.rn, prec);
+        SetScalar(a64.rd, farmdec::FSZ_D, irb.CreateFPCast(val, irb.getDoubleTy()));
+        break;
+    }
+    case farmdec::A64_FABS:
+        LiftIntrinsicFP(llvm::Intrinsic::fabs, fad_get_prec(a64.flags), a64.rd, a64.rn);
+        break;
+    case farmdec::A64_FNEG: {
+        farmdec::FPSize prec = fad_get_prec(a64.flags);
+        auto val = GetScalar(a64.rn, prec);
+        SetScalar(a64.rd, prec, irb.CreateFNeg(val));
+        break;
+    }
+    case farmdec::A64_FSQRT:
+        LiftIntrinsicFP(llvm::Intrinsic::sqrt, fad_get_prec(a64.flags), a64.rd, a64.rn);
+        break;
+    case farmdec::A64_FMUL:
+        LiftBinOpFP(llvm::Instruction::FMul, fad_get_prec(a64.flags), a64.rd, a64.rn, a64.rm);
+        break;
+    case farmdec::A64_FDIV:
+        LiftBinOpFP(llvm::Instruction::FDiv, fad_get_prec(a64.flags), a64.rd, a64.rn, a64.rm);
+        break;
+    case farmdec::A64_FADD:
+        LiftBinOpFP(llvm::Instruction::FAdd, fad_get_prec(a64.flags), a64.rd, a64.rn, a64.rm);
+        break;
+    case farmdec::A64_FSUB:
+        LiftBinOpFP(llvm::Instruction::FSub, fad_get_prec(a64.flags), a64.rd, a64.rn, a64.rm);
+        break;
+    case farmdec::A64_FMAX:
+        LiftIntrinsicFP(llvm::Intrinsic::maximum, fad_get_prec(a64.flags), a64.rd, a64.rn, a64.rm);
+        break;
+    case farmdec::A64_FMAXNM:
+        LiftIntrinsicFP(llvm::Intrinsic::maxnum, fad_get_prec(a64.flags), a64.rd, a64.rn, a64.rm);
+        break;
+    case farmdec::A64_FMIN:
+        LiftIntrinsicFP(llvm::Intrinsic::minimum, fad_get_prec(a64.flags), a64.rd, a64.rn, a64.rm);
+        break;
+    case farmdec::A64_FMINNM:
+        LiftIntrinsicFP(llvm::Intrinsic::minnum, fad_get_prec(a64.flags), a64.rd, a64.rn, a64.rm);
+        break;
+    case farmdec::A64_FNMUL: { // - (a*b) (should be fused, but is not)
+        farmdec::FPSize prec = fad_get_prec(a64.flags);
+        auto lhs = GetScalar(a64.rn, prec);
+        auto rhs = GetScalar(a64.rm, prec);
+        SetScalar(a64.rd, prec, irb.CreateFNeg(irb.CreateFMul(lhs, rhs)));
+        break;
+    }
+    case farmdec::A64_FMADD: // Fused (a*b) + c
+        LiftIntrinsicFP(llvm::Intrinsic::fma, fad_get_prec(a64.flags), a64.rd, a64.rn, a64.rm, a64.ra);
+        break;
+    case farmdec::A64_FMSUB: { // (-(a*b)) + c (should be fused, but is not)
+        farmdec::FPSize prec = fad_get_prec(a64.flags);
+        auto lhs = GetScalar(a64.rn, prec);
+        auto rhs = GetScalar(a64.rm, prec);
+        auto add = GetScalar(a64.ra, prec);
+        SetScalar(a64.rd, prec, irb.CreateFAdd(irb.CreateFNeg(irb.CreateFMul(lhs, rhs)), add));
+        break;
+    }
+    case farmdec::A64_FNMADD: { // (-(a*b)) - c (should be fused, but is not)
+        farmdec::FPSize prec = fad_get_prec(a64.flags);
+        auto lhs = GetScalar(a64.rn, prec);
+        auto rhs = GetScalar(a64.rm, prec);
+        auto sub = GetScalar(a64.ra, prec);
+        SetScalar(a64.rd, prec, irb.CreateFSub(irb.CreateFNeg(irb.CreateFMul(lhs, rhs)), sub));
+        break;
+    }
+    case farmdec::A64_FNMSUB: { // (a*b) - c (should be fused, but is not)
+        farmdec::FPSize prec = fad_get_prec(a64.flags);
+        auto lhs = GetScalar(a64.rn, prec);
+        auto rhs = GetScalar(a64.rm, prec);
+        auto sub = GetScalar(a64.ra, prec);
+        SetScalar(a64.rd, prec, irb.CreateFSub(irb.CreateFMul(lhs, rhs), sub));
+        break;
+    }
+    case farmdec::A64_FCMP_REG:
+    case farmdec::A64_FCMPE_REG: {
+        farmdec::FPSize prec = fad_get_prec(a64.flags);
+        auto lhs = GetScalar(a64.rn, prec);
+        auto rhs = GetScalar(a64.rm, prec);
+        FlagCalcFP(lhs, rhs);
+        break;
+    }
+    case farmdec::A64_FCMP_ZERO:
+    case farmdec::A64_FCMPE_ZERO: {
+        farmdec::FPSize prec = fad_get_prec(a64.flags);
+        auto lhs = GetScalar(a64.rn, prec);
+        auto rhs = llvm::ConstantFP::get(TypeOf(prec), 0.0);
+        FlagCalcFP(lhs, rhs);
+        break;
+    }
+    case farmdec::A64_FCCMP:
+    case farmdec::A64_FCCMPE: {
+        farmdec::FPSize prec = fad_get_prec(a64.flags);
+        auto lhs = GetScalar(a64.rn, prec);
+        auto rhs = GetScalar(a64.rm, prec);
+        LiftCCmp(lhs, rhs, fad_get_cond(a64.flags), a64.ccmp.nzcv, /*ccmn=*/false, /*fp=*/true);
+        break;
+    }
+    case farmdec::A64_FCSEL: { // rd := (cond) ? rn : rm;
+        farmdec::FPSize prec = fad_get_prec(a64.flags);
+        auto on_true = GetScalar(a64.rn, prec);
+        auto on_false = GetScalar(a64.rm, prec);
+        SetScalar(a64.rd, prec, irb.CreateSelect(IsTrue(fad_get_cond(a64.flags)), on_true, on_false));
+        break;
+    }
     case farmdec::A64_FMOV_REG:
         SetScalar(a64.rd, fad_get_prec(a64.flags), GetScalar(a64.rn, fad_get_prec(a64.flags)));
         break;
@@ -1049,9 +1165,11 @@ llvm::Value* Lifter::MulAddSub(llvm::Value* base, llvm::Instruction::BinaryOps a
 }
 
 // If the condition holds, compare the values; otherwise set the flags according to nzcv.
-void Lifter::LiftCCmp(llvm::Value* lhs, llvm::Value* rhs, farmdec::Cond cond, uint8_t nzcv, bool ccmn) {
+void Lifter::LiftCCmp(llvm::Value* lhs, llvm::Value* rhs, farmdec::Cond cond, uint8_t nzcv, bool ccmn, bool fp) {
     auto cond_holds = IsTrue(cond);
-    if (ccmn) {
+    if (fp) {
+        FlagCalcFP(lhs, rhs);
+    } else if (ccmn) {
         FlagCalcAdd(irb.CreateAdd(lhs, rhs), lhs, rhs);
     } else {
         FlagCalcSub(irb.CreateSub(lhs, rhs), lhs, rhs);
@@ -1145,6 +1263,42 @@ void Lifter::LiftLoadStore(farmdec::Inst a64, bool w32, bool fp) {
     }
 }
 
+// Essentially, FCMP as defined by the ARM manual's pseudocode function FPCompare.
+void Lifter::FlagCalcFP(llvm::Value* lhs, llvm::Value* rhs) {
+    auto is_unordered = irb.CreateFCmpUNO(lhs, rhs);
+    auto is_equal = irb.CreateFCmpOEQ(lhs, rhs);
+    auto is_less = irb.CreateFCmpOLT(lhs, rhs);
+    SetFlag(Facet::SF, is_less);
+    SetFlag(Facet::ZF, is_equal);
+    SetFlag(Facet::CF, irb.CreateNot(is_less));
+    SetFlag(Facet::OF, is_unordered);
+}
+
+void Lifter::LiftBinOpFP(llvm::Instruction::BinaryOps op, farmdec::FPSize prec, farmdec::Reg rd, farmdec::Reg rn, farmdec::Reg rm) {
+    auto lhs = GetScalar(rn, prec);
+    auto rhs = GetScalar(rm, prec);
+    SetScalar(rd, prec, irb.CreateBinOp(op, lhs, rhs));
+}
+
+void Lifter::LiftIntrinsicFP(llvm::Intrinsic::ID op, farmdec::FPSize prec, farmdec::Reg rd, farmdec::Reg rn) {
+    auto val = GetScalar(rn, prec);
+    SetScalar(rd, prec, irb.CreateUnaryIntrinsic(op, val));
+}
+
+void Lifter::LiftIntrinsicFP(llvm::Intrinsic::ID op, farmdec::FPSize prec, farmdec::Reg rd, farmdec::Reg rn, farmdec::Reg rm) {
+    auto lhs = GetScalar(rn, prec);
+    auto rhs = GetScalar(rm, prec);
+    SetScalar(rd, prec, irb.CreateBinaryIntrinsic(op, lhs, rhs));
+}
+
+void Lifter::LiftIntrinsicFP(llvm::Intrinsic::ID op, farmdec::FPSize prec, farmdec::Reg rd, farmdec::Reg rn, farmdec::Reg rm, farmdec::Reg ra) {
+    auto lhs = GetScalar(rn, prec);
+    auto rhs = GetScalar(rm, prec);
+    auto add = GetScalar(ra, prec);
+    auto mod = irb.GetInsertBlock()->getModule();
+    auto fn = llvm::Intrinsic::getDeclaration(mod, op, {lhs->getType()});
+    SetScalar(rd, prec, irb.CreateCall(fn, {lhs, rhs, add}));
+}
 } // namespace rellume::aarch64
 
 /**
