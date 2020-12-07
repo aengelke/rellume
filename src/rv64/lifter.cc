@@ -200,9 +200,21 @@ public:
     }
     void LiftFcvtFToI(const FrvInst* rvi, Facet df, Facet sf,
                   llvm::Instruction::CastOps cast) {
-        assert((rvi->misc == 1 || rvi->misc == 7) && "only rm=DYN/RTZ supported");
-        llvm::Type* tgt_ty = df.Type(irb.getContext());
-        StoreGp(rvi->rd, irb.CreateCast(cast, LoadFp(rvi->rs1, sf), tgt_ty));
+        llvm::Value* v = LoadFp(rvi->rs1, sf);
+        switch (rvi->misc) {
+        // case 0: // TODO: RNE requires llvm::Intrinsic::roundeven
+        case 1: break; // RTZ = default for LLVM fp-to-int conversions
+        case 2: // RDN
+            v = irb.CreateUnaryIntrinsic(llvm::Intrinsic::floor, v); break;
+        case 3: // RUP
+            v = irb.CreateUnaryIntrinsic(llvm::Intrinsic::ceil, v); break;
+        case 4: // RMM
+            v = irb.CreateUnaryIntrinsic(llvm::Intrinsic::round, v); break;
+        case 7: break; // DYN = we don't care, for now. TODO: support DYN RM
+                       // Actually, this is usually the same as RNE, see above.
+        default: assert(false && "unsupported rounding mode in F2I");
+        }
+        StoreGp(rvi->rd, irb.CreateCast(cast, v, df.Type(irb.getContext())));
     }
     void LiftFcvtFToF(const FrvInst* rvi, Facet df, Facet sf,
                   llvm::Instruction::CastOps cast) {
