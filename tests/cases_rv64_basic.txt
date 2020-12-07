@@ -36,6 +36,7 @@ code="fsgnj.d f1, f0, f1" f0=q:0x8000000000000000, f1=q:0x7fffffffffffffff => f1
 code="fsgnj.d f1, f0, f1" f0=q:0x8000001234560000, f1=q:0x7fffffffffffffff => f1=q:0x0000001234560000
 code="fsgnjn.d f1, f0, f1" f0=q:0x8000001234560000, f1=q:0x7fffffffffffffff => f1=q:0x8000001234560000
 code="fsgnjn.d f1, f0, f1" f0=q:0x8000001234560000, f1=q:0xffffffffffffffff => f1=q:0x0000001234560000
++jit code="fmin.s f3, f1, f2" f1=fl:1,0 f2=fl:-1,0 => f3=fl:-1,0
 
 code="frrm x1" => x1=q:0
 code="frflags x1" => x1=q:0

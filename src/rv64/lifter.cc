@@ -226,10 +226,8 @@ public:
         sign_op = irb.CreateAnd(sign_op, irb.getIntN(sz, 1ul << (sz-1)));
         abs_op = irb.CreateXor(abs_op, sign_op);
         StoreFp(rvi->rd, irb.CreateBitCast(abs_op, f.Type(irb.getContext())));
-        // auto intrinsic = llvm::Intrinsic::getDeclaration(module, id, {ty});
     }
     void LiftFminmax(const FrvInst* rvi, llvm::Intrinsic::ID id, Facet f) {
-        assert(rvi->misc == 7 && "only rm=DYN supported");
         auto res = irb.CreateBinaryIntrinsic(id, LoadFp(rvi->rs1, f), LoadFp(rvi->rs2, f));
         StoreFp(rvi->rd, res);
     }
@@ -414,8 +412,11 @@ bool Lifter::Lift(const Instr& inst) {
     case FRV_FSUBS: LiftFpArith(rvi, llvm::Instruction::FSub, Facet::F32); break;
     case FRV_FMULS: LiftFpArith(rvi, llvm::Instruction::FMul, Facet::F32); break;
     case FRV_FDIVS: LiftFpArith(rvi, llvm::Instruction::FDiv, Facet::F32); break;
-    case FRV_FMINS: LiftFminmax(rvi, llvm::Intrinsic::minimum, Facet::F32); break;
-    case FRV_FMAXS: LiftFminmax(rvi, llvm::Intrinsic::maximum, Facet::F32); break;
+    // TODO: use llvm::Instrinsic::minimum/maximum
+    // These are rarely supported by back-ends, though, and therefore prevent
+    // lowering to hardware instructions. See also FMIND/FMAXD
+    case FRV_FMINS: LiftFminmax(rvi, llvm::Intrinsic::minnum, Facet::F32); break;
+    case FRV_FMAXS: LiftFminmax(rvi, llvm::Intrinsic::maxnum, Facet::F32); break;
     case FRV_FSQRTS: StoreFp(rvi->rd, irb.CreateUnaryIntrinsic(llvm::Intrinsic::sqrt, LoadFp(rvi->rs1, Facet::F32))); break;
     case FRV_FSGNJS: LiftFsgn(rvi, Facet::F32, /*keep=*/false, /*zero=*/true); break;
     case FRV_FSGNJNS: LiftFsgn(rvi, Facet::F32, /*keep=*/false, /*zero=*/false); break;
@@ -440,8 +441,10 @@ bool Lifter::Lift(const Instr& inst) {
     case FRV_FSUBD: LiftFpArith(rvi, llvm::Instruction::FSub, Facet::F64); break;
     case FRV_FMULD: LiftFpArith(rvi, llvm::Instruction::FMul, Facet::F64); break;
     case FRV_FDIVD: LiftFpArith(rvi, llvm::Instruction::FDiv, Facet::F64); break;
-    case FRV_FMIND: LiftFminmax(rvi, llvm::Intrinsic::minimum, Facet::F64); break;
-    case FRV_FMAXD: LiftFminmax(rvi, llvm::Intrinsic::maximum, Facet::F64); break;
+    // TODO: use llvm::Instrinsic::minimum/maximum
+    // See comment for FMINS/FMAXS
+    case FRV_FMIND: LiftFminmax(rvi, llvm::Intrinsic::minnum, Facet::F64); break;
+    case FRV_FMAXD: LiftFminmax(rvi, llvm::Intrinsic::maxnum, Facet::F64); break;
     case FRV_FSQRTD: StoreFp(rvi->rd, irb.CreateUnaryIntrinsic(llvm::Intrinsic::sqrt, LoadFp(rvi->rs1, Facet::F64))); break;
     case FRV_FSGNJD: LiftFsgn(rvi, Facet::F64, /*keep=*/false, /*zero=*/true); break;
     case FRV_FSGNJND: LiftFsgn(rvi, Facet::F64, /*keep=*/false, /*zero=*/false); break;
