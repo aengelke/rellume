@@ -245,6 +245,15 @@ public:
         auto res = irb.CreateBinaryIntrinsic(id, LoadFp(rvi->rs1, f), LoadFp(rvi->rs2, f));
         StoreFp(rvi->rd, res);
     }
+
+    void LiftFmadd(const FrvInst* rvi, bool sub, bool negprod, Facet f) {
+        // TODO: actually implement as fused operation
+        llvm::Value* op = irb.CreateFMul(LoadFp(rvi->rs1, f), LoadFp(rvi->rs2, f));
+        if (negprod)
+            op = irb.CreateFNeg(op);
+        auto binop = sub ? llvm::Instruction::FSub : llvm::Instruction::FAdd;
+        StoreFp(rvi->rd, irb.CreateBinOp(binop, op, LoadFp(rvi->rs3, f)));
+    }
 };
 
 bool LiftInstruction(const Instr& inst, FunctionInfo& fi, const LLConfig& cfg,
@@ -431,6 +440,10 @@ bool Lifter::Lift(const Instr& inst) {
     // lowering to hardware instructions. See also FMIND/FMAXD
     case FRV_FMINS: LiftFminmax(rvi, llvm::Intrinsic::minnum, Facet::F32); break;
     case FRV_FMAXS: LiftFminmax(rvi, llvm::Intrinsic::maxnum, Facet::F32); break;
+    case FRV_FMADDS: LiftFmadd(rvi, /*sub=*/false, /*negprod=*/false, Facet::F32); break;
+    case FRV_FMSUBS: LiftFmadd(rvi, /*sub=*/true, /*negprod=*/false, Facet::F32); break;
+    case FRV_FNMSUBS: LiftFmadd(rvi, /*sub=*/false, /*negprod=*/true, Facet::F32); break;
+    case FRV_FNMADDS: LiftFmadd(rvi, /*sub=*/true, /*negprod=*/true, Facet::F32); break;
     case FRV_FSQRTS: StoreFp(rvi->rd, irb.CreateUnaryIntrinsic(llvm::Intrinsic::sqrt, LoadFp(rvi->rs1, Facet::F32))); break;
     case FRV_FSGNJS: LiftFsgn(rvi, Facet::F32, /*keep=*/false, /*zero=*/true); break;
     case FRV_FSGNJNS: LiftFsgn(rvi, Facet::F32, /*keep=*/false, /*zero=*/false); break;
@@ -459,6 +472,10 @@ bool Lifter::Lift(const Instr& inst) {
     // See comment for FMINS/FMAXS
     case FRV_FMIND: LiftFminmax(rvi, llvm::Intrinsic::minnum, Facet::F64); break;
     case FRV_FMAXD: LiftFminmax(rvi, llvm::Intrinsic::maxnum, Facet::F64); break;
+    case FRV_FMADDD: LiftFmadd(rvi, /*sub=*/false, /*negprod=*/false, Facet::F64); break;
+    case FRV_FMSUBD: LiftFmadd(rvi, /*sub=*/true, /*negprod=*/false, Facet::F64); break;
+    case FRV_FNMSUBD: LiftFmadd(rvi, /*sub=*/false, /*negprod=*/true, Facet::F64); break;
+    case FRV_FNMADDD: LiftFmadd(rvi, /*sub=*/true, /*negprod=*/true, Facet::F64); break;
     case FRV_FSQRTD: StoreFp(rvi->rd, irb.CreateUnaryIntrinsic(llvm::Intrinsic::sqrt, LoadFp(rvi->rs1, Facet::F64))); break;
     case FRV_FSGNJD: LiftFsgn(rvi, Facet::F64, /*keep=*/false, /*zero=*/true); break;
     case FRV_FSGNJND: LiftFsgn(rvi, Facet::F64, /*keep=*/false, /*zero=*/false); break;
@@ -468,7 +485,7 @@ bool Lifter::Lift(const Instr& inst) {
     case FRV_FLED: LiftFcmp(rvi, llvm::CmpInst::FCMP_OLE, Facet::F64); break;
     case FRV_FCVTSD: StoreFp(rvi->rd, irb.CreateFPTrunc(LoadFp(rvi->rs1, Facet::F64), irb.getFloatTy())); break;
     case FRV_FCVTDS: StoreFp(rvi->rd, irb.CreateFPExt(LoadFp(rvi->rs1, Facet::F32), irb.getDoubleTy())); break;
-    // TODO: F[N]MADD, F[N]MSUB, FCLASS
+    // TODO: FCLASS
     }
 
     SetIP(inst.end());
