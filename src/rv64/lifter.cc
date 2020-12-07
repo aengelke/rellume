@@ -194,7 +194,9 @@ public:
     }
     void LiftFcvtIToF(const FrvInst* rvi, Facet df, Facet sf,
                   llvm::Instruction::CastOps cast) {
-        assert((rvi->misc == 0 || rvi->misc == 7) && "only rm=DYN/RNE supported");
+        // TODO: support rounding modes for int-to-fp conversions.
+        // For now, we assume that values are small enough to be representable
+        // in the target FP type without any rounding (=exact conversions).
         llvm::Type* tgt_ty = df.Type(irb.getContext());
         StoreFp(rvi->rd, irb.CreateCast(cast, LoadGp(rvi->rs1, sf), tgt_ty));
     }
