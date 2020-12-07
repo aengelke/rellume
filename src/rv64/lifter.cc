@@ -264,6 +264,7 @@ bool Lifter::Lift(const Instr& inst) {
 
     switch (rvi->mnem) {
     default:
+    unhandled:
         SetIP(inst.start(), /*nofold=*/true);
         return false;
 
@@ -353,12 +354,25 @@ bool Lifter::Lift(const Instr& inst) {
     case FRV_REMW: LiftDivRem(rvi, llvm::Instruction::SRem, Facet::I32); break;
     case FRV_REMUW: LiftDivRem(rvi, llvm::Instruction::URem, Facet::I32); break;
 
-    case FRV_CSRRW: break; // TODO: CSR instructions
-    case FRV_CSRRS: break; // TODO: CSR instructions
-    case FRV_CSRRC: break; // TODO: CSR instructions
-    case FRV_CSRRWI: break; // TODO: CSR instructions
-    case FRV_CSRRSI: break; // TODO: CSR instructions
-    case FRV_CSRRCI: break; // TODO: CSR instructions
+    case FRV_CSRRW:
+    case FRV_CSRRS:
+    case FRV_CSRRC:
+    case FRV_CSRRWI:
+    case FRV_CSRRSI:
+    case FRV_CSRRCI: {
+        switch (rvi->imm) {
+        case 0x01: // fflags
+        case 0x02: // frm
+        case 0x03: // fcsr
+            // TODO: actually implement FCSR writes.
+            // This very complicated to map accurately to LLVM-IR.
+            StoreGp(rvi->rd, irb.getInt32(0));
+            break;
+        default:
+            goto unhandled;
+        }
+        break;
+    }
 
     // TODO: implement atomic semantics for LR/SC.
     case FRV_LRW: StoreGp(rvi->rd, irb.CreateLoad(irb.getInt32Ty(), irb.CreatePointerCast(LoadGp(rvi->rs1, Facet::PTR), irb.getInt32Ty()->getPointerTo()))); break;
