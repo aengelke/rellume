@@ -37,6 +37,9 @@ def parse_case(case, asm=None):
         if part == "!" and i == 0:
             pre.append("!")
             continue
+        if part[:1] == "+" and cur is pre:
+            pre.append(part)
+            continue
         if part == "=>":
             cur = post
             continue

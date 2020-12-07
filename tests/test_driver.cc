@@ -173,6 +173,7 @@ class TestCase {
         std::string arg;
         bool fail = false;
         bool should_pass = true;
+        bool use_jit = opt_jit;
 
         // 1. Setup initial state
         CPU initial{};
@@ -181,6 +182,8 @@ class TestCase {
         while (argstream >> arg) {
             if (arg == "!") {
                 should_pass = false;
+            } else if (arg == "+jit") {
+                use_jit = true;
             } else if (arg == "=>") {
                 goto run_function;
             } else {
@@ -243,7 +246,7 @@ class TestCase {
         // There are two options: "Interpreter" and "JIT". Because we execute
         // the code once only, the interpreter is usually faster (even compared
         // to the -O0 JIT configuration).
-        if (opt_jit)
+        if (use_jit)
             builder.setEngineKind(llvm::EngineKind::JIT);
         else
             builder.setEngineKind(llvm::EngineKind::Interpreter);
