@@ -225,7 +225,7 @@ public:
         StoreFp(rvi->rd, irb.CreateCast(cast, LoadFp(rvi->rs1, sf), tgt_ty));
     }
     void LiftFcmp(const FrvInst* rvi, llvm::CmpInst::Predicate pred, Facet f) {
-        auto res = irb.CreateFCmp(pred, LoadFp(rvi->rs1, f), LoadFp(rvi->rs1, f));
+        auto res = irb.CreateFCmp(pred, LoadFp(rvi->rs1, f), LoadFp(rvi->rs2, f));
         StoreGp(rvi->rd, irb.CreateZExt(res, irb.getInt64Ty()));
     }
     void LiftFsgn(const FrvInst* rvi, Facet f, bool keep, bool zero) {

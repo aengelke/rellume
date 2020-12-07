@@ -50,6 +50,12 @@ code="fsgnjn.d f1, f0, f1" f0=q:0x8000001234560000, f1=q:0xffffffffffffffff => f
 +jit code="fcvt.w.s x1, f1, rmm" f1=fl:1.5,0 => x1=q:2
 +jit code="fcvt.w.s x1, f1, rmm" f1=fl:-1.5,0 => x1=q:-2
 +jit code="fcvt.w.s x1, f1, rmm" f1=fl:1.45,0 => x1=q:1
+code="flt.s x1, f1, f2" f1=fl:1.45,0 f2=fl:1.45,0 => x1=q:0
+code="fle.s x1, f1, f2" f1=fl:1.45,0 f2=fl:1.45,0 => x1=q:1
+code="feq.s x1, f1, f2" f1=fl:1.45,0 f2=fl:1.45,0 => x1=q:1
+code="feq.s x1, f1, f2" f1=fl:1.5,0 f2=fl:1.45,0 => x1=q:0
+code="fle.s x1, f1, f2" f1=fl:1.5,0 f2=fl:1.45,0 => x1=q:0
+code="flt.s x1, f1, f2" f1=fl:1.5,0 f2=fl:1.45,0 => x1=q:0
 
 code="frrm x1" => x1=q:0
 code="frflags x1" => x1=q:0
