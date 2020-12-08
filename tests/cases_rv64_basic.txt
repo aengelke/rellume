@@ -59,6 +59,18 @@ code="feq.s x1, f1, f2" f1=fl:1.45,0 f2=fl:1.45,0 => x1=q:1
 code="feq.s x1, f1, f2" f1=fl:1.5,0 f2=fl:1.45,0 => x1=q:0
 code="fle.s x1, f1, f2" f1=fl:1.5,0 f2=fl:1.45,0 => x1=q:0
 code="flt.s x1, f1, f2" f1=fl:1.5,0 f2=fl:1.45,0 => x1=q:0
+code="fclass.s x1, f1" f1=q:0x00000000 => x1=q:4
+code="fclass.s x1, f1" f1=q:0x80000000 => x1=q:3
+code="fclass.s x1, f1" f1=q:0x00000012 => x1=q:5
+code="fclass.s x1, f1" f1=q:0x80000012 => x1=q:2
+code="fclass.s x1, f1" f1=q:0x3f800000 => x1=q:6
+code="fclass.s x1, f1" f1=q:0xbf800000 => x1=q:1
+code="fclass.s x1, f1" f1=q:0x7f800000 => x1=q:7
+code="fclass.s x1, f1" f1=q:0xff800000 => x1=q:0
+code="fclass.s x1, f1" f1=q:0x7f800001 => x1=q:8
+code="fclass.s x1, f1" f1=q:0xff800001 => x1=q:8
+code="fclass.s x1, f1" f1=q:0x7fc00001 => x1=q:9
+code="fclass.s x1, f1" f1=q:0xffc00001 => x1=q:9
 
 code="frrm x1" => x1=q:0
 code="frflags x1" => x1=q:0

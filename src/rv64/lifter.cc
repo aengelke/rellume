@@ -252,7 +252,40 @@ public:
         auto res = irb.CreateBinaryIntrinsic(id, LoadFp(rvi->rs1, f), LoadFp(rvi->rs2, f));
         StoreFp(rvi->rd, res);
     }
+    void LiftFclass(const FrvInst* rvi, Facet fi) {
+        llvm::Value* v = LoadFp(rvi->rs1, fi);
+        unsigned sz = fi.Size();
+        assert(sz == 32 || sz == 64);
+        uint64_t expmsk = sz == 32 ? 0x7f800000 : 0x7ff0000000000000;
+        uint64_t mantmsk = sz == 32 ? 0x007fffff : 0x000fffffffffffff;
+        unsigned nanidx = sz == 32 ? 22 : 51;
 
+        // TODO: find a more performant way for FP classification
+        llvm::Value* sign = irb.CreateAnd(v, irb.getIntN(sz, 1ul << (sz-1)));
+        llvm::Value* exp = irb.CreateAnd(v, irb.getIntN(sz, expmsk));
+        llvm::Value* expzero = irb.CreateICmpEQ(exp, irb.getIntN(sz, 0));
+        llvm::Value* expmax = irb.CreateICmpEQ(exp, irb.getIntN(sz, expmsk));
+        llvm::Value* mant = irb.CreateAnd(v, irb.getIntN(sz, mantmsk));
+        llvm::Value* mantnotzero = irb.CreateICmpNE(mant, irb.getIntN(sz, 0));
+
+        // First construct values 4..7
+        llvm::Value* mze = irb.CreateZExt(mantnotzero, irb.getIntNTy(sz));
+        mze = irb.CreateOr(mze, irb.getIntN(sz, 4));
+        llvm::Value* mme = irb.CreateZExt(expmax, irb.getIntNTy(sz));
+        mme = irb.CreateOr(mme, irb.getIntN(sz, 6));
+        llvm::Value* res = irb.CreateSelect(expzero, mze, mme);
+
+        // Values 0..3 are mirrored from values 4..7
+        llvm::Value* resneg = irb.CreateXor(res, irb.getIntN(sz, 7));
+        res = irb.CreateSelect(irb.CreateICmpEQ(sign, irb.getIntN(sz, 0)), res, resneg);
+
+        // NaN (8/9) overrides others.
+        llvm::Value* signaling = irb.CreateLShr(mant, nanidx);
+        signaling = irb.CreateOr(signaling, irb.getIntN(sz, 8));
+        llvm::Value* isnan = irb.CreateAnd(expmax, mantnotzero);
+        res = irb.CreateSelect(isnan, signaling, res);
+        StoreGp(rvi->rd, res);
+    }
     void LiftFmadd(const FrvInst* rvi, bool sub, bool negprod, Facet f) {
         // TODO: actually implement as fused operation
         llvm::Value* op = irb.CreateFMul(LoadFp(rvi->rs1, f), LoadFp(rvi->rs2, f));
@@ -470,6 +503,7 @@ bool Lifter::Lift(const Instr& inst) {
     case FRV_FEQS: LiftFcmp(rvi, llvm::CmpInst::FCMP_OEQ, Facet::F32); break;
     case FRV_FLTS: LiftFcmp(rvi, llvm::CmpInst::FCMP_OLT, Facet::F32); break;
     case FRV_FLES: LiftFcmp(rvi, llvm::CmpInst::FCMP_OLE, Facet::F32); break;
+    case FRV_FCLASSS: LiftFclass(rvi, Facet::I32); break;
 
     case FRV_FLD: LiftLoadFp(rvi, Facet::F64); break;
     case FRV_FSD: LiftStoreFp(rvi, Facet::F64); break;
@@ -504,7 +538,7 @@ bool Lifter::Lift(const Instr& inst) {
     case FRV_FLED: LiftFcmp(rvi, llvm::CmpInst::FCMP_OLE, Facet::F64); break;
     case FRV_FCVTSD: StoreFp(rvi->rd, irb.CreateFPTrunc(LoadFp(rvi->rs1, Facet::F64), irb.getFloatTy())); break;
     case FRV_FCVTDS: StoreFp(rvi->rd, irb.CreateFPExt(LoadFp(rvi->rs1, Facet::F32), irb.getDoubleTy())); break;
-    // TODO: FCLASS
+    case FRV_FCLASSD: LiftFclass(rvi, Facet::I64); break;
     }
 
     SetIP(inst.end());
