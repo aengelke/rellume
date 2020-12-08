@@ -294,10 +294,22 @@ bool Lifter::Lift(const Instr& inst) {
         llvm::Value* pc = GetReg(ArchReg::IP, Facet::I64);
         auto base = rvi->rs1 != FRV_REG_INV ? LoadGp(rvi->rs1, Facet::I64) : pc;
         SetReg(ArchReg::IP, Facet::I64, irb.CreateAdd(base, irb.getInt64(rvi->imm)));
-        if (rvi->rd) {
-            llvm::Value* ret_addr = irb.CreateAdd(pc, irb.getInt64(inst.len()));
-            StoreGp(rvi->rd, ret_addr);
-            // TODO: implement correct RAS for call and return semantics.
+        llvm::Value* ret_addr = irb.CreateAdd(pc, irb.getInt64(inst.len()));
+        StoreGp(rvi->rd, ret_addr);
+
+        // For discussion, see x86-64 lifting of call/ret.
+        if (cfg.call_function) {
+            bool rdl = rvi->rd == 1 || rvi->rd == 5;
+            bool rs1l = rvi->rs1 == 1 || rvi->rs1 == 5;
+            if (!rdl && rs1l) {
+                ForceReturn();
+            } else if (rdl && (!rs1l || rvi->rs1 == rvi->rd)) {
+                CallExternalFunction(cfg.call_function);
+                llvm::Value* cont_addr = GetReg(ArchReg::IP, Facet::I64);
+                llvm::Value* eq = irb.CreateICmpEQ(cont_addr, ret_addr);
+                // This allows for optimization of the common case (equality).
+                SetReg(ArchReg::IP, Facet::I64, irb.CreateSelect(eq, ret_addr, cont_addr));
+            }
         }
         return true;
     }
