@@ -95,6 +95,13 @@ public:
         llvm::Value* imm = irb.getIntN(f.Size(), rvi->imm);
         StoreGp(rvi->rd, irb.CreateBinOp(op, LoadGp(rvi->rs1, f), imm));
     }
+    void LiftShift(const FrvInst* rvi, llvm::Instruction::BinaryOps op,
+                   llvm::Value* shiftop) {
+        unsigned width = shiftop->getType()->getIntegerBitWidth();
+        shiftop = irb.CreateAnd(shiftop, irb.getIntN(width, width - 1));
+        llvm::Value* src = LoadGp(rvi->rs1, Facet::In(width));
+        StoreGp(rvi->rd, irb.CreateBinOp(op, src, shiftop));
+    }
     void LiftMulh(const FrvInst* rvi, llvm::Instruction::CastOps ext1,
                   llvm::Instruction::CastOps ext2) {
         llvm::Type* tgt_ty = irb.getIntNTy(128);
@@ -356,18 +363,18 @@ bool Lifter::Lift(const Instr& inst) {
     case FRV_OR: LiftBinOpR(rvi, llvm::Instruction::Or, Facet::I64); break;
     case FRV_XORI: LiftBinOpI(rvi, llvm::Instruction::Xor, Facet::I64); break;
     case FRV_XOR: LiftBinOpR(rvi, llvm::Instruction::Xor, Facet::I64); break;
-    case FRV_SLLI: LiftBinOpI(rvi, llvm::Instruction::Shl, Facet::I64); break;
-    case FRV_SLL: LiftBinOpR(rvi, llvm::Instruction::Shl, Facet::I64); break;
-    case FRV_SLLIW: LiftBinOpI(rvi, llvm::Instruction::Shl, Facet::I32); break;
-    case FRV_SLLW: LiftBinOpR(rvi, llvm::Instruction::Shl, Facet::I32); break;
-    case FRV_SRLI: LiftBinOpI(rvi, llvm::Instruction::LShr, Facet::I64); break;
-    case FRV_SRL: LiftBinOpR(rvi, llvm::Instruction::LShr, Facet::I64); break;
-    case FRV_SRLIW: LiftBinOpI(rvi, llvm::Instruction::LShr, Facet::I32); break;
-    case FRV_SRLW: LiftBinOpR(rvi, llvm::Instruction::LShr, Facet::I32); break;
-    case FRV_SRAI: LiftBinOpI(rvi, llvm::Instruction::AShr, Facet::I64); break;
-    case FRV_SRA: LiftBinOpR(rvi, llvm::Instruction::AShr, Facet::I64); break;
-    case FRV_SRAIW: LiftBinOpI(rvi, llvm::Instruction::AShr, Facet::I32); break;
-    case FRV_SRAW: LiftBinOpR(rvi, llvm::Instruction::AShr, Facet::I32); break;
+    case FRV_SLLI: LiftShift(rvi, llvm::Instruction::Shl, irb.getInt64(rvi->imm)); break;
+    case FRV_SLL: LiftShift(rvi, llvm::Instruction::Shl, LoadGp(rvi->rs2, Facet::I64)); break;
+    case FRV_SLLIW: LiftShift(rvi, llvm::Instruction::Shl, irb.getInt32(rvi->imm)); break;
+    case FRV_SLLW: LiftShift(rvi, llvm::Instruction::Shl, LoadGp(rvi->rs2, Facet::I32)); break;
+    case FRV_SRLI: LiftShift(rvi, llvm::Instruction::LShr, irb.getInt64(rvi->imm)); break;
+    case FRV_SRL: LiftShift(rvi, llvm::Instruction::LShr, LoadGp(rvi->rs2, Facet::I64)); break;
+    case FRV_SRLIW: LiftShift(rvi, llvm::Instruction::LShr, irb.getInt32(rvi->imm)); break;
+    case FRV_SRLW: LiftShift(rvi, llvm::Instruction::LShr, LoadGp(rvi->rs2, Facet::I32)); break;
+    case FRV_SRAI: LiftShift(rvi, llvm::Instruction::AShr, irb.getInt64(rvi->imm)); break;
+    case FRV_SRA: LiftShift(rvi, llvm::Instruction::AShr, LoadGp(rvi->rs2, Facet::I64)); break;
+    case FRV_SRAIW: LiftShift(rvi, llvm::Instruction::AShr, irb.getInt32(rvi->imm)); break;
+    case FRV_SRAW: LiftShift(rvi, llvm::Instruction::AShr, LoadGp(rvi->rs2, Facet::I32)); break;
     case FRV_SLT: StoreGp(rvi->rd, irb.CreateZExt(irb.CreateICmpSLT(LoadGp(rvi->rs1), LoadGp(rvi->rs2)), irb.getInt64Ty())); break;
     case FRV_SLTI: StoreGp(rvi->rd, irb.CreateZExt(irb.CreateICmpSLT(LoadGp(rvi->rs1), irb.getInt64(rvi->imm)), irb.getInt64Ty())); break;
     case FRV_SLTU: StoreGp(rvi->rd, irb.CreateZExt(irb.CreateICmpULT(LoadGp(rvi->rs1), LoadGp(rvi->rs2)), irb.getInt64Ty())); break;

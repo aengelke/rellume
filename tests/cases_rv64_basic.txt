@@ -8,7 +8,10 @@ code="sraiw x2, x1, 0" x1=q:0xabcdef0180000000 => x2=q:0xffffffff80000000
 code="srliw x2, x1, 0" x1=q:0xabcdef0180000000 => x2=q:0xffffffff80000000
 code="sraiw x2, x1, 1" x1=q:0xabcdef0180000000 => x2=q:0xffffffffc0000000
 code="srliw x2, x1, 1" x1=q:0xabcdef0180000000 => x2=q:0x0000000040000000
-code="srai x2, x1, 63" x1=q:0x7fffffffffffffff => x2=q:0x0000000000000000
+code="srlw x2, x1, x4" x1=q:0xabcdef0180000000 x4=q:31 => x2=q:0x0000000000000001
+code="srlw x2, x1, x4" x1=q:0xabcdef0180000000 x4=q:32 => x2=q:0xffffffff80000000
+code="sra x2, x1, x4" x1=q:0x7fffffffffffffff x4=q:63 => x2=q:0x0000000000000000
+code="sra x2, x1, x4" x1=q:0x7fffffffffffffff x4=q:64 => x2=q:0x7fffffffffffffff
 code="j 1f; ebreak; 1: addi x1, x0, 1" => x1=q:0x1
 # rip is different, because we don't go into calls.
 code="jal x1, 1f; ebreak; 1:" => x1=q:0x1000004 rip=q:0x1000006
