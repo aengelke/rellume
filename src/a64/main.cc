@@ -266,6 +266,8 @@ bool Lifter::Lift(const Instr& inst) {
     case farmdec::A64_DCPS2:
     case farmdec::A64_DCPS3:
 */
+    case farmdec::A64_HINT:
+        break; // All Hints can be treated as no-ops.
     case farmdec::A64_B:
         SetIP(inst.start() + a64.offset);
         return true;
