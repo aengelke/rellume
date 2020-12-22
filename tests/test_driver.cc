@@ -105,7 +105,7 @@ class TestCase {
         uintptr_t addr = std::stoul(key.substr(1), nullptr, 16);
         size_t value_len = value_str.length() / 2;
 
-        uintptr_t paged_addr = addr & -0x1000;
+        uintptr_t paged_addr = addr & -sysconf(_SC_PAGE_SIZE);
         size_t paged_size = value_len + (addr - paged_addr);
         void* map = mmap(reinterpret_cast<void*>(paged_addr), paged_size,
                          PROT_READ|PROT_WRITE,
