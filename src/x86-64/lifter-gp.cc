@@ -572,6 +572,17 @@ void Lifter::LiftSyscall(const Instr& inst) {
         CallExternalFunction(cfg.syscall_implementation);
 }
 
+void Lifter::LiftRdtsc(const Instr& inst) {
+    llvm::Module* module = irb.GetInsertBlock()->getModule();
+    auto id = llvm::Intrinsic::readcyclecounter;
+    auto intrinsic = llvm::Intrinsic::getDeclaration(module, id);
+    llvm::Value* res = irb.CreateCall(intrinsic);
+    llvm::Value* lo = irb.CreateTrunc(res, irb.getInt32Ty());
+    llvm::Value* hi = irb.CreateLShr(res, irb.getInt64(32));
+    StoreGpFacet(ArchReg::RAX, Facet::I32, lo);
+    SetReg(ArchReg::RDX, Facet::I64, hi);
+}
+
 Lifter::RepInfo Lifter::RepBegin(const Instr& inst) {
     RepInfo info = {};
 
