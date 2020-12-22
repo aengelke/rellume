@@ -184,6 +184,8 @@ class TestCase {
                 should_pass = false;
             } else if (arg == "+jit") {
                 use_jit = true;
+            } else if (arg == "-jit") {
+                use_jit = false;
             } else if (arg == "=>") {
                 goto run_function;
             } else {
