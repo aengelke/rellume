@@ -15,6 +15,31 @@ code="sev" =>
 code="sevl" =>
 code="csdb" =>
 
+# NZCV: bits 31-28 → N, Z, C, V.
+code="msr nzcv, x1" x1=q:0xa0000000 n=00 z=00 c=00 v=00 => n=01 z=00 c=01 v=00
+code="mrs x1, nzcv" x1=q:0x00000000 n=01 z=00 c=01 v=00 => x1=q:0xa0000000
+
+# TPIDR_EL0
+code="msr tpidr_el0, x1" x1=q:0xdeadbeef tpidr_el0=q:0 => tpidr_el0=q:0xdeadbeef
+code="mrs x1, tpidr_el0" x1=q:0 tpidr_el0=q:0xdeadbeef => x1=q:0xdeadbeef
+
+# DCZID_EL0: 4 → 64-byte block size
+code="mrs x1, dczid_el0" x1=q:0 => x1=q:4
+
+# MIDR_EL1: Architecture(19:16)
+code="mrs x1, midr_el1" x1=q:0 => x1=q:0xf0000
+
+# FPCR, FPSR: For the forseeable future, ignore writes and return 0.
+code="msr fpcr, x1; mrs x1, fpcr" x1=q:0xabcd => x1=q:0
+code="msr fpsr, x1; mrs x1, fpsr" x1=q:0xabcd => x1=q:0
+
+# "error: instruction requires: fmi"
+#code="cfinv" cf=01 => cf=00
+
+# "error: instruction requires: altnzcv"
+#code="xaflag" =>
+#code="axflag" =>
+
 code="bl foo; hlt #0; foo:"     =>  pc=q:0x1000008 x30=q:0x1000004
 code="blr x10" x10=q:0xaabbccdd => pc=q:0xaabbccdd x30=q:0x1000004
 code="ret"     x30=q:0xaabbccdd => pc=q:0xaabbccdd

@@ -105,7 +105,7 @@ constexpr const ArchReg ArchReg::A64_SP = ArchReg::GP(31);
 //
 // Unlike vector<bool>, bitset allows helpful bit operations and needs no
 // initialisation, but is fixed in size. Many bits are unused (x64 uses
-// merely 40 registers, aarch64 uses 68).
+// mere 40 registers, aarch64 uses 68).
 using RegisterSet = std::bitset<128>;
 unsigned RegisterSetBitIdx(ArchReg reg, Facet facet);
 

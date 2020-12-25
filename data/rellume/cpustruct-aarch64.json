@@ -37,6 +37,8 @@
     {"name": "x29", "size": 8, "reg": ["GP(29)", "I64"]},
     {"name": "x30", "size": 8, "reg": ["GP(30)", "I64"]},
     {"name": "sp",  "size": 8, "reg": ["GP(31)", "I64"]},
+    {"name": "tpidr_el0", "size": 8, "reg": ["INVALID", "I64"]},
+    {               "size": 8},
 
     {"name": "v0",  "size": 16, "reg": ["VEC(0)", "V2I64"]},
     {"name": "v1",  "size": 16, "reg": ["VEC(1)", "V2I64"]},

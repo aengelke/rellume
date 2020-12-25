@@ -269,6 +269,98 @@ bool Lifter::Lift(const Instr& inst) {
 */
     case farmdec::A64_HINT:
         break; // All Hints can be treated as no-ops.
+
+/*
+    Intentionally unimplemented since it can only affect PSTATE.D, .A, .I, .F, (DAIF),
+    .SP, .SSBS, .PAN, .UAO, .DIT, all of which concern system decisions outside of
+    LLVM/Rellume scope (e.g. exception masking, timing control).
+
+    case farmdec::A64_MSR_IMM:
+*/
+    case farmdec::A64_MSR_REG: {
+        // a64.imm is the encoded system register (op0:op1:CRn:CRm:op2).
+        switch (a64.imm) {
+        case 0xde82: {// TPIDR_EL0
+            unsigned idx = SptrIdx::aarch64::TPIDR_EL0;
+            irb.CreateStore(GetGp(a64.rt, /*w32=*/false), fi.sptr[idx]);
+            break;
+        }
+        case 0xda10: {// NZCV (bits 31-28)
+            auto nzcv = GetGp(a64.rt, /*w32=*/false);
+            SetFlag(Facet::SF, irb.CreateTrunc(irb.CreateLShr(nzcv, 31), irb.getInt1Ty()));
+            SetFlag(Facet::ZF, irb.CreateTrunc(irb.CreateLShr(nzcv, 30), irb.getInt1Ty()));
+            SetFlag(Facet::CF, irb.CreateTrunc(irb.CreateLShr(nzcv, 29), irb.getInt1Ty()));
+            SetFlag(Facet::OF, irb.CreateTrunc(irb.CreateLShr(nzcv, 28), irb.getInt1Ty()));
+            break; // XXX
+        }
+        case 0xda20: // FPCR
+            break; // XXX no meaningful re-configuration possible at the moment
+        case 0xda21: // FPSR
+            break; // XXX reset QC if overwritten (once it exists as a flag)
+        default:
+            return false;
+        }
+        break;
+    }
+    case farmdec::A64_CFINV:
+        SetFlag(Facet::CF, irb.CreateNot(GetFlag(Facet::CF)));
+        break;
+    case farmdec::A64_SYS: {
+        // DC ZVA -- zeroes a block of bytes, with the size stored in DCZID_EL0. Both
+        // glibc and musl want 64-byte blocks, so do exactly that.
+        if (a64.sys.op1 == 3 && a64.sys.op2 == 1 && a64.sys.crn == 7 && a64.sys.crm == 4) {
+            auto addr = GetGp(a64.rt, /*w32=*/false);                  // may point anywhere into the block
+            auto start = irb.CreateAnd(addr, irb.getInt64(~0x3fuL)); // actual start address of block
+            auto ptr = irb.CreateIntToPtr(start, irb.getInt8PtrTy());
+            irb.CreateMemSet(ptr, irb.getInt8(0), irb.getInt32(64), llvm::Align(64));
+        } else {
+            return false;
+        }
+        break;
+    }
+    case farmdec::A64_MRS: {
+        // a64.imm is the encoded system register (op0:op1:CRn:CRm:op2).
+        switch (a64.imm) {
+        case 0xde82: {// TPIDR_EL0
+            unsigned idx = SptrIdx::aarch64::TPIDR_EL0;
+            auto res = irb.CreateLoad(irb.getInt64Ty(), fi.sptr[idx]);
+            SetGp(a64.rt, /*w32=*/false, res);
+            break;
+        }
+        case 0xda10: {// NZCV (bits 31-28)
+            llvm::Value* nzcv = irb.getIntN(64, 0);
+            nzcv = irb.CreateOr(nzcv, irb.CreateShl(irb.CreateZExt(GetFlag(Facet::SF), irb.getInt64Ty()), 31)); // nzcv |= n << 31
+            nzcv = irb.CreateOr(nzcv, irb.CreateShl(irb.CreateZExt(GetFlag(Facet::ZF), irb.getInt64Ty()), 30)); // nzcv |= z << 30
+            nzcv = irb.CreateOr(nzcv, irb.CreateShl(irb.CreateZExt(GetFlag(Facet::CF), irb.getInt64Ty()), 29)); // nzcv |= c << 29
+            nzcv = irb.CreateOr(nzcv, irb.CreateShl(irb.CreateZExt(GetFlag(Facet::OF), irb.getInt64Ty()), 28)); // nzcv |= v << 28
+            SetGp(a64.rt, /*w32=*/false, nzcv);
+            break;
+        }
+        case 0xda20: // FPCR
+            // Bits: AHP(26), DN(25), FZ(24), RMode(23:22), IDE(15), IXE(12), UFE(11), OFE(10), DZE(9), IOE(8)
+            // All bits = 0 indicates IEEE 754 with round to nearest and no exceptions.
+            SetGp(a64.rt, /*w32=*/false, irb.getIntN(64, 0));
+            break;
+        case 0xda21: // FPSR
+            // XXX We cannot check for "normal" FP errors, but we should store QC in the CPU state and output it here.
+            // Bits: QC(27), IDC(7), IXC(4), UFC(3), OFC(2), DZC(1), IOC(0).
+            SetGp(a64.rt, /*w32=*/false, irb.getIntN(64, 0));
+            break;
+        case 0xd807: // DCZID_EL0
+            SetGp(a64.rt, /*w32=*/false, irb.getIntN(64, 0x04)); // 4 → 64-byte block size wanted by musl and glibc
+            break;
+        case 0xc000: // MIDR_EL1
+            // Bits: Implementer(31:24), Variant(23:20), Architecture(19:16), PartNum(15:4), Revision(3:0).
+            // We set Architecture to 0b1111 to indicate ARMv8, but we do not implement the feature registers
+            // ID_AA64* because they are not commonly read in userspace (the compiler knows the features of
+            // the target, so why would the generated code check them?).
+            SetGp(a64.rt, /*w32=*/false, irb.getIntN(64, 0xfuL << 16));
+            break;
+        default:
+            return false;
+        }
+        break;
+    }
     case farmdec::A64_B:
         SetIP(inst.start() + a64.offset);
         return true;
