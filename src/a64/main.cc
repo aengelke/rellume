@@ -867,6 +867,18 @@ bool Lifter::Lift(const Instr& inst) {
         SetScalar(a64.rd, prec, irb.CreateSelect(IsTrue(fad_get_cond(a64.flags)), on_true, on_false));
         break;
     }
+    case farmdec::A64_FMOV_VEC2GPR: {
+        farmdec::FPSize prec = fad_get_prec(a64.flags);
+        auto fp = GetScalar(a64.rn, prec);
+        SetGp(a64.rd, w32, irb.CreateBitCast(fp, irb.getIntNTy(bits)));
+        break;
+    }
+    case farmdec::A64_FMOV_GPR2VEC: {
+        farmdec::FPSize prec = fad_get_prec(a64.flags);
+        auto ival = GetGp(a64.rn, w32);
+        SetScalar(a64.rd, prec, irb.CreateBitCast(ival, TypeOf(prec)));
+        break;
+    }
     case farmdec::A64_FMOV_REG:
         SetScalar(a64.rd, fad_get_prec(a64.flags), GetScalar(a64.rn, fad_get_prec(a64.flags)));
         break;

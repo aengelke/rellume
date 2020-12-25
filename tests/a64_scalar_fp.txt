@@ -1,3 +1,8 @@
+code="fmov s0, w1" v0=qq:0xaaaabbbbccccdddd,0 x1=q:0xffffffffffffffff => v0=qq:0xffffffff,0
+code="fmov d0, x1" v0=qq:0xaaaabbbbccccdddd,0 x1=q:0xffffffffffffffff => v0=qq:0xffffffffffffffff,0
+code="fmov w1, s0" v0=qq:0xaaaabbbbccccdddd,0 x1=q:0xffffffffffffffff => x1=q:0xccccdddd
+code="fmov x1, d0" v0=qq:0xaaaabbbbccccdddd,0 x1=q:0xffffffffffffffff => x1=q:0xaaaabbbbccccdddd
+
 code="fmov s0, s1" v0=qq:0xaaaabbbbccccdddd,0 v1=qq:0xffffffffffffffff,0 => v0=qq:0xffffffff,0
 code="fmov d0, d1" v0=qq:0xaaaabbbbccccdddd,0 v1=qq:0xffffffffffffffff,0 => v0=qq:0xffffffffffffffff,0
 
