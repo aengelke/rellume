@@ -53,6 +53,7 @@ private:
 
     llvm::Value* Shift(llvm::Value* v, farmdec::Shift sh, uint32_t amount);
     llvm::Value* Extend(llvm::Value* v, bool w32, farmdec::ExtendType ext, uint32_t lsl);
+    llvm::Value* Round(llvm::Value* v, farmdec::FPRounding mode, bool exact = false);
     llvm::IntegerType* TypeOf(farmdec::Size sz);
     llvm::Type* TypeOf(farmdec::FPSize fsz);
     llvm::AtomicOrdering Ordering(farmdec::MemOrdering);

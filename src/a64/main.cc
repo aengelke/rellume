@@ -692,6 +692,35 @@ bool Lifter::Lift(const Instr& inst) {
     case farmdec::A64_STR_FP:
         LiftLoadStore(a64, w32, /*fp=*/true);
         break;
+    case farmdec::A64_FCVT_GPR: {
+        assert(a64.fcvt.fbits == 0); // XXX fixed-point currently not supported
+
+        auto fp = GetScalar(a64.rn, fad_get_prec(a64.flags));
+        auto rounded = Round(fp, static_cast<farmdec::FPRounding>(a64.fcvt.mode));
+        auto ity = irb.getIntNTy((w32) ? 32 : 64);
+        auto ival = (a64.fcvt.sgn) ? irb.CreateFPToSI(rounded, ity) : irb.CreateFPToUI(rounded, ity);
+        SetGp(a64.rd, w32, ival);
+        break;
+    }
+    case farmdec::A64_CVTF: {     // GPR(int|fixed) → Sca(fp)
+        farmdec::FPSize prec = fad_get_prec(a64.flags);
+        assert(a64.fcvt.fbits == 0); // XXX fixed-point currently not supported
+
+        auto ival = GetGp(a64.rn, w32);
+        auto fp = (a64.fcvt.sgn) ? irb.CreateSIToFP(ival, TypeOf(prec)) : irb.CreateUIToFP(ival, TypeOf(prec));
+        SetScalar(a64.rd, prec, fp);
+        break;
+    }
+    // case farmdec::A64_FJCVTZS: never/seldom seen in the wild
+    case farmdec::A64_FRINT:
+    case farmdec::A64_FRINTX: {
+        farmdec::FPSize prec = fad_get_prec(a64.flags);
+        assert(a64.frint.bits == 0); // XXX frint32*, frint64* currently not supported
+
+        bool exact = (a64.op == farmdec::A64_FRINTX);
+        SetScalar(a64.rd, prec, Round(GetScalar(a64.rn, prec), static_cast<farmdec::FPRounding>(a64.frint.mode), exact));
+        break;
+    }
     case farmdec::A64_FCVT_H:
         assert(false && "FP half precision not supported");
         break;
@@ -1007,6 +1036,28 @@ llvm::Value* Lifter::Extend(llvm::Value* v, bool w32, farmdec::ExtendType ext, u
     v = irb.CreateTruncOrBitCast(v, srcty);
     auto extended = (sign_extend) ? irb.CreateSExt(v, dstty) : irb.CreateZExt(v, dstty);
     return Shift(extended, farmdec::SH_LSL, lsl);
+}
+
+// Round the floating-point value v to an itegral floating-point value, according
+// to the given rounding mode. If exact is true, FPR_CURRENT may raise an Inexact
+// Exception. Whether an Inexact Exception is raised in the other cases is undefined
+// behaviour
+llvm::Value* Lifter::Round(llvm::Value* v, farmdec::FPRounding mode, bool exact) {
+    switch (mode) {
+    case farmdec::FPR_CURRENT:
+        if (exact) {
+            return irb.CreateUnaryIntrinsic(llvm::Intrinsic::rint, v);
+        } else {
+            return irb.CreateUnaryIntrinsic(llvm::Intrinsic::nearbyint, v);
+        }
+    case farmdec::FPR_TIE_EVEN: return irb.CreateUnaryIntrinsic(llvm::Intrinsic::roundeven, v);
+    case farmdec::FPR_TIE_AWAY: return irb.CreateUnaryIntrinsic(llvm::Intrinsic::round, v);
+    case farmdec::FPR_NEG_INF:  return irb.CreateUnaryIntrinsic(llvm::Intrinsic::floor, v);
+    case farmdec::FPR_ZERO:     return irb.CreateUnaryIntrinsic(llvm::Intrinsic::trunc, v);
+    case farmdec::FPR_POS_INF:  return irb.CreateUnaryIntrinsic(llvm::Intrinsic::ceil, v);
+    case farmdec::FPR_ODD:      assert(false && "round to odd not supported");
+    }
+    assert(false && "invalid rounding mode");
 }
 
 llvm::IntegerType* Lifter::TypeOf(farmdec::Size sz) {
