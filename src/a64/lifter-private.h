@@ -78,7 +78,11 @@ private:
     void Load(farmdec::Reg rt, llvm::Type* srcty, llvm::Value* ptr, farmdec::FPSize fsz, farmdec::MemOrdering mo = farmdec::MO_NONE);
     void Store(llvm::Value* ptr, llvm::Value* val, farmdec::MemOrdering mo = farmdec::MO_NONE);
 
-    void LiftMull(llvm::Value* base, bool sub, llvm::Value* lhs, llvm::Value* rhs, bool sign_extend);
+    enum class BinOpKind : unsigned {
+        SHIFT, EXT, IMM
+    };
+
+    void LiftBinOp(farmdec::Inst a64, bool w32, llvm::Instruction::BinaryOps op, BinOpKind kind, bool set_flags = false, bool invert_rhs = false);
     void LiftCCmp(llvm::Value* lhs, llvm::Value* rhs, farmdec::Cond cond, uint8_t nzcv, bool ccmn, bool fp = false);
     void LiftLoadStore(farmdec::Inst a64, bool w32, bool fp = false);
 

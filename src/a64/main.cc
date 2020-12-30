@@ -92,50 +92,20 @@ bool Lifter::Lift(const Instr& inst) {
     }
 
     case farmdec::A64_AND_IMM:
-    case farmdec::A64_TST_IMM: {
-        auto lhs = GetGp(a64.rn, w32);
-        auto val = irb.CreateAnd(lhs, a64.imm);
-        SetGp(a64.rd, w32, val);
-        if (set_flags) {
-            FlagCalcLogic(val);
-        }
+    case farmdec::A64_TST_IMM:
+        LiftBinOp(a64, w32, llvm::Instruction::And, BinOpKind::IMM, set_flags);
         break;
-    }
-    case farmdec::A64_ORR_IMM: {
-        auto lhs = GetGp(a64.rn, w32);
-        auto val = irb.CreateOr(lhs, a64.imm);
-        SetGp(a64.rd, w32, val);
-        break;
-    }
-    case farmdec::A64_EOR_IMM: {
-        auto lhs = GetGp(a64.rn, w32);
-        auto val = irb.CreateXor(lhs, a64.imm);
-        SetGp(a64.rd, w32, val);
-        break;
-    }
+    case farmdec::A64_ORR_IMM: LiftBinOp(a64, w32, llvm::Instruction::Or, BinOpKind::IMM, set_flags); break;
+    case farmdec::A64_EOR_IMM: LiftBinOp(a64, w32, llvm::Instruction::Xor, BinOpKind::IMM, set_flags); break;
     case farmdec::A64_ADD_IMM:
     case farmdec::A64_MOV_SP:
-    case farmdec::A64_CMN_IMM: {
-        auto lhs = GetGp(a64.rn, w32);
-        auto rhs = irb.getIntN(bits, a64.imm);
-        auto val = irb.CreateAdd(lhs, rhs);
-        SetGp(a64.rd, w32, val);
-        if (set_flags) {
-            FlagCalcAdd(val, lhs, rhs);
-        }
+    case farmdec::A64_CMN_IMM:
+        LiftBinOp(a64, w32, llvm::Instruction::Add, BinOpKind::IMM, set_flags);
         break;
-    }
     case farmdec::A64_SUB_IMM:
-    case farmdec::A64_CMP_IMM: {
-        auto lhs = GetGp(a64.rn, w32);
-        auto rhs = irb.getIntN(bits, a64.imm);
-        auto val = irb.CreateSub(lhs, rhs);
-        SetGp(a64.rd, w32, val);
-        if (set_flags) {
-            FlagCalcSub(val, lhs, rhs);
-        }
+    case farmdec::A64_CMP_IMM:
+        LiftBinOp(a64, w32, llvm::Instruction::Sub, BinOpKind::IMM, set_flags);
         break;
-    }
     case farmdec::A64_MOVK: {
         uint64_t clrmask = ~ (0xffffuL << a64.movk.lsl);
         uint64_t shiftedimm = static_cast<uint64_t>(a64.movk.imm16) << a64.movk.lsl;
@@ -514,92 +484,36 @@ bool Lifter::Lift(const Instr& inst) {
     }
     case farmdec::A64_AND_SHIFTED:
     case farmdec::A64_TST_SHIFTED:
-    case farmdec::A64_BIC: {
-        auto lhs = GetGp(a64.rn, w32);
-        auto rhs = Shift(GetGp(a64.rm, w32), static_cast<farmdec::Shift>(a64.shift.type), a64.shift.amount);
-        if (a64.op == farmdec::A64_BIC) {
-            rhs = irb.CreateNot(rhs);
-        }
-        auto val = irb.CreateAnd(lhs, rhs);
-        SetGp(a64.rd, w32, val);
-        if (set_flags) {
-            FlagCalcLogic(val);
-        }
+        LiftBinOp(a64, w32, llvm::Instruction::And, BinOpKind::SHIFT, set_flags);
         break;
-    }
-    case farmdec::A64_ORR_SHIFTED:
-    case farmdec::A64_ORN: {
-        auto lhs = GetGp(a64.rn, w32);
-        auto rhs = Shift(GetGp(a64.rm, w32), static_cast<farmdec::Shift>(a64.shift.type), a64.shift.amount);
-        if (a64.op == farmdec::A64_ORN) {
-            rhs = irb.CreateNot(rhs);
-        }
-        auto val = irb.CreateOr(lhs, rhs);
-        SetGp(a64.rd, w32, val);
-        break;
-    }
+    case farmdec::A64_BIC:         LiftBinOp(a64, w32, llvm::Instruction::And, BinOpKind::SHIFT, set_flags, /*invert_rhs=*/true); break;
+    case farmdec::A64_ORR_SHIFTED: LiftBinOp(a64, w32, llvm::Instruction::Or, BinOpKind::SHIFT, set_flags); break;
+    case farmdec::A64_ORN:         LiftBinOp(a64, w32, llvm::Instruction::Or, BinOpKind::SHIFT, set_flags, /*invert_rhs=*/true); break;
     case farmdec::A64_MOV_REG:
         SetGp(a64.rd, w32, GetGp(a64.rm, w32)); // rd := rm
         break;
     case farmdec::A64_MVN:
         SetGp(a64.rd, w32, irb.CreateNot(GetGp(a64.rm, w32))); // rd := ~rm
         break;
-    case farmdec::A64_EOR_SHIFTED:
-    case farmdec::A64_EON: {
-        auto lhs = GetGp(a64.rn, w32);
-        auto rhs = Shift(GetGp(a64.rm, w32), static_cast<farmdec::Shift>(a64.shift.type), a64.shift.amount);
-        if (a64.op == farmdec::A64_EON) {
-            rhs = irb.CreateNot(rhs);
-        }
-        auto val = irb.CreateXor(lhs, rhs);
-        SetGp(a64.rd, w32, val);
-        break;
-    }
+    case farmdec::A64_EOR_SHIFTED: LiftBinOp(a64, w32, llvm::Instruction::Xor, BinOpKind::SHIFT, set_flags); break;
+    case farmdec::A64_EON:         LiftBinOp(a64, w32, llvm::Instruction::Xor, BinOpKind::SHIFT, set_flags, /*invert_rhs=*/true); break;
     case farmdec::A64_ADD_SHIFTED:
-    case farmdec::A64_CMN_SHIFTED: {
-        auto lhs = GetGp(a64.rn, w32);
-        auto rhs = Shift(GetGp(a64.rm, w32), static_cast<farmdec::Shift>(a64.shift.type), a64.shift.amount);
-        auto val = irb.CreateAdd(lhs, rhs);
-        SetGp(a64.rd, w32, val);
-        if (set_flags) {
-            FlagCalcAdd(val, lhs, rhs);
-        }
+    case farmdec::A64_CMN_SHIFTED:
+        LiftBinOp(a64, w32, llvm::Instruction::Add, BinOpKind::SHIFT, set_flags);
         break;
-    }
     case farmdec::A64_SUB_SHIFTED:
     case farmdec::A64_NEG:
-    case farmdec::A64_CMP_SHIFTED: {
-        auto lhs = GetGp(a64.rn, w32);
-        auto rhs = Shift(GetGp(a64.rm, w32), static_cast<farmdec::Shift>(a64.shift.type), a64.shift.amount);
-        auto val = irb.CreateSub(lhs, rhs);
-        SetGp(a64.rd, w32, val);
-        if (set_flags) {
-            FlagCalcSub(val, lhs, rhs);
-        }
+    case farmdec::A64_CMP_SHIFTED:
+        LiftBinOp(a64, w32, llvm::Instruction::Sub, BinOpKind::SHIFT, set_flags);
         break;
-    }
     case farmdec::A64_ADD_EXT:
-    case farmdec::A64_CMN_EXT: {
-        auto lhs = GetGp(a64.rn, w32);
-        auto rhs = Extend(GetGp(a64.rm, w32), w32, static_cast<farmdec::ExtendType>(a64.extend.type), a64.extend.lsl);
-        auto val = irb.CreateAdd(lhs, rhs);
-        SetGp(a64.rd, w32, val);
-        if (set_flags) {
-            FlagCalcAdd(val, lhs, rhs);
-        }
+    case farmdec::A64_CMN_EXT:
+        LiftBinOp(a64, w32, llvm::Instruction::Add, BinOpKind::EXT, set_flags);
         break;
-    }
     case farmdec::A64_SUB_EXT:
-    case farmdec::A64_CMP_EXT: {
-        auto lhs = GetGp(a64.rn, w32);
-        auto rhs = Extend(GetGp(a64.rm, w32), w32, static_cast<farmdec::ExtendType>(a64.extend.type), a64.extend.lsl);
-        auto val = irb.CreateSub(lhs, rhs);
-        SetGp(a64.rd, w32, val);
-        if (set_flags) {
-            FlagCalcSub(val, lhs, rhs);
-        }
+    case farmdec::A64_CMP_EXT:
+        LiftBinOp(a64, w32, llvm::Instruction::Sub, BinOpKind::EXT, set_flags);
         break;
-    }
     case farmdec::A64_ADC:
     case farmdec::A64_SBC:
     case farmdec::A64_NGC: {
@@ -1266,6 +1180,32 @@ llvm::Value* Lifter::MulAddSub(llvm::Value* base, llvm::Instruction::BinaryOps a
 
     auto long_prod = irb.CreateMul(long_lhs, long_rhs);
     return irb.CreateBinOp(addsub, long_base, long_prod);
+}
+
+// Lift an instruction Rd := Rn op X or, if invert_rhs is true, Rd := Rn op X, where X is an optionally
+// inverted Shifted(Rm), Extended(Rm) or an Immediate. Most parameters are to avoid needless recalculations.
+void Lifter::LiftBinOp(farmdec::Inst a64, bool w32, llvm::Instruction::BinaryOps op, BinOpKind kind, bool set_flags, bool invert_rhs) {
+    auto lhs = GetGp(a64.rn, w32);
+    llvm::Value* rhs = nullptr;
+    switch (kind) {
+    case BinOpKind::SHIFT: rhs = Shift(GetGp(a64.rm, w32), static_cast<farmdec::Shift>(a64.shift.type), a64.shift.amount); break;
+    case BinOpKind::EXT: rhs = Extend(GetGp(a64.rm, w32), w32, static_cast<farmdec::ExtendType>(a64.extend.type), a64.extend.lsl); break;
+    case BinOpKind::IMM: rhs = irb.getIntN((w32) ? 32 : 64, a64.imm); break;
+    }
+    if (invert_rhs) {
+        rhs = irb.CreateNot(rhs);
+    }
+    auto val = irb.CreateBinOp(op, lhs, rhs);
+    SetGp(a64.rd, w32, val);
+    if (set_flags) {
+        switch (op) {
+        case llvm::Instruction::Add: FlagCalcAdd(val, lhs, rhs); break;
+        case llvm::Instruction::Sub: FlagCalcSub(val, lhs, rhs); break;
+        case llvm::Instruction::And: FlagCalcLogic(val); break;
+        default:
+            assert(false && "bad instruction for setting flags");
+        }
+    }
 }
 
 // If the condition holds, compare the values; otherwise set the flags according to nzcv.
