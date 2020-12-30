@@ -6,13 +6,12 @@ code="fmov x1, d0" v0=qq:0xaaaabbbbccccdddd,0 x1=q:0xffffffffffffffff => x1=q:0x
 code="fmov s0, s1" v0=qq:0xaaaabbbbccccdddd,0 v1=qq:0xffffffffffffffff,0 => v0=qq:0xffffffff,0
 code="fmov d0, d1" v0=qq:0xaaaabbbbccccdddd,0 v1=qq:0xffffffffffffffff,0 => v0=qq:0xffffffffffffffff,0
 
-# http://weitz.de/ieee/ is a pleasant IEEE 754 calculator without tracking/ads.
-code="fmov s0, #0.5"  v0=qq:0xaaaabbbbccccdddd,0 => v0=qq:0x3f000000,0
-code="fmov s0, #1.0"  v0=qq:0xaaaabbbbccccdddd,0 => v0=qq:0x3f800000,0
-code="fmov s0, #3.5"  v0=qq:0xaaaabbbbccccdddd,0 => v0=qq:0x40600000,0
-code="fmov d0, #10.0" v0=qq:0xaaaabbbbccccdddd,0 => v0=qq:0x4024000000000000,0
-code="fmov d0, #-1.5" v0=qq:0xaaaabbbbccccdddd,0 => v0=qq:0xbff8000000000000,0
-code="fmov d0, #21.0" v0=qq:0xaaaabbbbccccdddd,0 => v0=qq:0x4035000000000000,0
+code="fmov s0, #0.5"  v0=qq:0xaaaabbbbccccdddd,0 => v0=flq:0.5,0,0
+code="fmov s0, #1.0"  v0=qq:0xaaaabbbbccccdddd,0 => v0=flq:1.0,0,0
+code="fmov s0, #3.5"  v0=qq:0xaaaabbbbccccdddd,0 => v0=flq:3.5,0,0
+code="fmov d0, #10.0" v0=qq:0xaaaabbbbccccdddd,0 => v0=dq:10.0,0
+code="fmov d0, #-1.5" v0=qq:0xaaaabbbbccccdddd,0 => v0=dq:-1.5,0
+code="fmov d0, #21.0" v0=qq:0xaaaabbbbccccdddd,0 => v0=dq:21.0,0
 
 # FCVT_S, FCVT_D: Convert precisions; the value is an approximation of π.
 code="fcvt s0, d1" v1=qq:0x400921fb54442d18,0 => v0=qq:0x40490fdb,0
@@ -21,13 +20,14 @@ code="fcvt d0, s1" v1=qq:0x40490fdb,0         => v0=qq:0x400921fb60000000,0
 code="fcsel d0, d1, d2, ne" v0=qq:0,0 v1=qq:1,0 v2=qq:2,0 z=00 => v0=qq:1,0
 code="fcsel s0, s1, s2, ne" v0=qq:0,0 v1=qq:1,0 v2=qq:2,0 z=01 => v0=qq:2,0
 
-code="fcmp d0, d1"    v0=qq:0x4024000000000000,0 v1=qq:0x4024000000000000,0 n=00 z=00 c=00 v=00 => n=00 z=01 c=01 v=00
-code="fcmp s0, s1"    v0=qq:0x3f000000,0         v1=qq:0x40600000,0         n=00 z=00 c=00 v=00 => n=01 z=00 c=00 v=00
-code="fcmp d0, #0.0"  v0=qq:0x4024000000000000,0 v1=qq:0x4024000000000000,0 n=00 z=00 c=00 v=00 => n=00 z=00 c=01 v=00
-code="fcmpe d0, d1"   v0=qq:0x4024000000000000,0 v1=qq:0x4024000000000000,0 n=00 z=00 c=00 v=00 => n=00 z=01 c=01 v=00
-code="fcmpe d0, #0.0" v0=qq:0x4024000000000000,0 v1=qq:0x4024000000000000,0 n=00 z=00 c=00 v=00 => n=00 z=00 c=01 v=00
+code="fcmp d0, d1"    v0=dq:1.25,0   v1=dq:1.25,0   n=00 z=00 c=00 v=00 => n=00 z=01 c=01 v=00
+code="fcmp s0, s1"    v0=flq:0.5,0,0 v1=flq:3.5,0,0 n=00 z=00 c=00 v=00 => n=01 z=00 c=00 v=00
+code="fcmp d0, #0.0"  v0=dq:1.25,0   v1=dq:1.25,0   n=00 z=00 c=00 v=00 => n=00 z=00 c=01 v=00
+code="fcmpe d0, d1"   v0=dq:1.25,0   v1=dq:1.25,0   n=00 z=00 c=00 v=00 => n=00 z=01 c=01 v=00
+code="fcmpe d0, #0.0" v0=dq:1.25,0   v1=dq:1.25,0   n=00 z=00 c=00 v=00 => n=00 z=00 c=01 v=00
 
-code="fccmp d0, d1, #0xf, eq" v0=qq:0x4024000000000000,0 v1=qq:0x4024000000000000,0 n=00 z=01 c=00 v=00 => n=00 z=01 c=01 v=00
-code="fccmp d0, d1, #0xf, ne" v0=qq:0x4024000000000000,0 v1=qq:0x4024000000000000,0 n=00 z=01 c=00 v=00 => n=01 z=01 c=01 v=01
-code="fccmp s0, s1, #0xf, hs" v0=qq:0x4024000000000000,0 v1=qq:0x4024000000000000,0 n=00 z=00 c=01 v=00 => n=00 z=01 c=01 v=00
-code="fccmp s0, s1, #0xf, lo" v0=qq:0x4024000000000000,0 v1=qq:0x4024000000000000,0 n=00 z=00 c=01 v=00 => n=01 z=01 c=01 v=01
+code="fccmp d0, d1, #0xf, eq" v0=dq:1.25,0 v1=dq:1.25,0 n=00 z=01 c=00 v=00 => n=00 z=01 c=01 v=00
+code="fccmp d0, d1, #0xf, ne" v0=dq:1.25,0 v1=dq:1.25,0 n=00 z=01 c=00 v=00 => n=01 z=01 c=01 v=01
+code="fccmp s0, s1, #0xf, hs" v0=dq:1.25,0 v1=dq:1.25,0 n=00 z=00 c=01 v=00 => n=00 z=01 c=01 v=00
+code="fccmp s0, s1, #0xf, lo" v0=dq:1.25,0 v1=dq:1.25,0 n=00 z=00 c=01 v=00 => n=01 z=01 c=01 v=01
+

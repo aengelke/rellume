@@ -11,6 +11,7 @@ FMT_SUBST = {
     "l": ("L", lambda v: int(v, 0) % 0x100000000),
     "q": ("Q", lambda v: int(v, 0) % 0x10000000000000000),
     "f": ("f", lambda v: float(v)),
+    "d": ("d", lambda v: float(v)),
 }
 
 class Assembler:
