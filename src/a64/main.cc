@@ -659,6 +659,33 @@ bool Lifter::Lift(const Instr& inst) {
     case farmdec::A64_STR:
         LiftLoadStore(a64, w32);
         break;
+    case farmdec::A64_PRFM: {
+        auto addr = Addr(irb.getInt8Ty(), a64); // i8*
+
+        // prfop = type(2):target(2);policy(1)
+        // type: 0=PLD (load), 1=PLI (instructions), 2=PST (store)
+        // target: 0=L1, 1=L2, 2=L3
+        // policy: 0=KEEP, 1=STRM
+        int prfop = a64.rt;
+
+        bool is_write, is_data;
+        switch ((prfop >> 3) & 3) { // type(2)
+        case 0: is_write = false; is_data = true; break;
+        case 1: is_write = false; is_data = false; break;
+        case 2: is_write = true;  is_data = true; break;
+        default:
+            assert(false && "bad PRFM prfop");
+        }
+
+        int locality = 3 - ((prfop>>1) & 3); // 3 - target
+
+        llvm::SmallVector<llvm::Type*, 1> tys;
+        tys.push_back(irb.getInt8PtrTy());
+        auto mod = irb.GetInsertBlock()->getModule();
+        auto fn = llvm::Intrinsic::getDeclaration(mod, llvm::Intrinsic::prefetch, tys);
+        irb.CreateCall(fn, {addr, irb.getInt32(is_write), irb.getInt32(locality), irb.getInt32(is_data)});
+        break;
+    }
     case farmdec::A64_LDP_FP:
     case farmdec::A64_STP_FP:
     case farmdec::A64_LDR_FP:

@@ -30,4 +30,3 @@ code="fccmp d0, d1, #0xf, eq" v0=dq:1.25,0 v1=dq:1.25,0 n=00 z=01 c=00 v=00 => n
 code="fccmp d0, d1, #0xf, ne" v0=dq:1.25,0 v1=dq:1.25,0 n=00 z=01 c=00 v=00 => n=01 z=01 c=01 v=01
 code="fccmp s0, s1, #0xf, hs" v0=dq:1.25,0 v1=dq:1.25,0 n=00 z=00 c=01 v=00 => n=00 z=01 c=01 v=00
 code="fccmp s0, s1, #0xf, lo" v0=dq:1.25,0 v1=dq:1.25,0 n=00 z=00 c=01 v=00 => n=01 z=01 c=01 v=01
-

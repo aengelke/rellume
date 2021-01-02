@@ -135,3 +135,13 @@ code="stp x0, x1, [x2], #8" x0=0123456789abcdef x1=fedcba9876543210 x2=q:0x20000
 # DC ZVA: clear 64-byte naturally aligned block into which the pointer x0 points.
 code="dc zva, x0" x0=q:0x2000000 m2000000=aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa => m2000000=00000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000
 code="dc zva, x0" x0=q:0x2000034 m2000000=aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa => m2000000=00000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000
+
+#
+### Prefetch
+#
+
+# LLVM-IR manually checked.
+code="prfm pldL1keep, [sp, #8]"          sp=q:0x200000 m200000=0000000000000000 =>
+code="foo: prfm pliL2strm, foo"          sp=q:0x200000 =>
+code="prfm pstL3keep, [sp, w0, sxtw #3]" sp=q:0x200000 m200000=0000000000000000 =>
+code="prfum pldL1strm, [sp, #-43]"       sp=q:0x200000 m200000=0000000000000000 =>
