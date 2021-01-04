@@ -77,6 +77,11 @@ bool Lifter::Lift(const Instr& inst) {
     // In the order of farmdec::Op.
     switch (a64.op) {
     default:
+        // See if it's a valid SIMD instruction before giving up.
+        if (LiftSIMD(a64)) {
+            break;
+        }
+
         SetIP(inst.start(), /*nofold=*/true);
         return false;
 

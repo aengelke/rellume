@@ -42,6 +42,8 @@ public:
     bool Lift(const Instr&);
 
 private:
+    bool LiftSIMD(farmdec::Inst a64);
+
     llvm::Value* GetGp(farmdec::Reg, bool w32, bool ptr = false);
     void SetGp(farmdec::Reg, bool w32, llvm::Value* val);
     llvm::Value* GetScalar(farmdec::Reg r, farmdec::FPSize fsz);
@@ -54,8 +56,10 @@ private:
     llvm::Value* Shift(llvm::Value* v, farmdec::Shift sh, uint32_t amount);
     llvm::Value* Extend(llvm::Value* v, bool w32, farmdec::ExtendType ext, uint32_t lsl);
     llvm::Value* Round(llvm::Value* v, farmdec::FPRounding mode, bool exact = false);
+    Facet FacetOf(farmdec::VectorArrangement va, bool fp = false);
     llvm::IntegerType* TypeOf(farmdec::Size sz);
     llvm::Type* TypeOf(farmdec::FPSize fsz);
+    llvm::Type* TypeOf(farmdec::VectorArrangement va, bool fp = false);
     llvm::AtomicOrdering Ordering(farmdec::MemOrdering);
     llvm::Value* IsTrue(farmdec::Cond);
 
