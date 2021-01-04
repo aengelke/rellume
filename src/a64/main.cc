@@ -239,7 +239,18 @@ bool Lifter::Lift(const Instr& inst) {
 */
     case farmdec::A64_HINT:
         break; // All Hints can be treated as no-ops.
-
+    case farmdec::A64_DMB:
+        switch (a64.imm) {
+        case 0xf: case 0xb: case 0x7: case 0x3: // SY, ISH, NSH, OSH (reads and writes)
+            irb.CreateFence(llvm::AtomicOrdering::SequentiallyConsistent); break;
+        case 0xe: case 0xa: case 0x6: case 0x2: // ST, ISHST, NSHST, OSHST (writes)
+            irb.CreateFence(llvm::AtomicOrdering::Release); break;
+        case 0xd: case 0x9: case 0x5: case 0x1: // LD, ISHLD, NSHLD, OSHLD (reads)
+            irb.CreateFence(llvm::AtomicOrdering::Acquire); break;
+        default:
+            assert(false && "bad DMB CRm value");
+        }
+        break;
 /*
     Intentionally unimplemented since it can only affect PSTATE.D, .A, .I, .F, (DAIF),
     .SP, .SSBS, .PAN, .UAO, .DIT, all of which concern system decisions outside of

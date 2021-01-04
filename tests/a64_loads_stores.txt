@@ -145,3 +145,11 @@ code="prfm pldL1keep, [sp, #8]"          sp=q:0x200000 m200000=0000000000000000 
 code="foo: prfm pliL2strm, foo"          sp=q:0x200000 =>
 code="prfm pstL3keep, [sp, w0, sxtw #3]" sp=q:0x200000 m200000=0000000000000000 =>
 code="prfum pldL1strm, [sp, #-43]"       sp=q:0x200000 m200000=0000000000000000 =>
+
+#
+### Exclusive Load/Store, Fences
+#
+
++jit code="dmb ishld" =>
++jit code="dmb ishst" =>
++jit code="dmb ish" =>
