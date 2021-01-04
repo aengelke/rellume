@@ -664,6 +664,23 @@ bool Lifter::Lift(const Instr& inst) {
         SetGp(a64.rd, /*w32=*/false, irb.CreateTrunc(high_half, irb.getInt64Ty()));
         break;
     }
+    // Exclusive Loads and Stores always come in pairs and appear in a loop: first the
+    // value is loaded and the address thus locked (LDXR), then the value is compared
+    // and if necessary, a new value is stored to the previously locked address (STXR).
+    // If the store fails (Rs == 1), the loop continues.
+    //
+    // Because we do not support true parallelism and because they always appear in
+    // matching pairs, we can model LDXR/STXR as normal loads and stores, with STXR
+    // always succeeding (Rs == 0).
+    case farmdec::A64_LDXR:
+    case farmdec::A64_LDXP:
+        LiftLoadStore(a64, w32);
+        break;
+    case farmdec::A64_STXR:
+    case farmdec::A64_STXP:
+        LiftLoadStore(a64, w32);
+        SetGp(a64.ldst_order.rs, w32, irb.getIntN(bits, 0));
+        break;
     case farmdec::A64_LDP:
     case farmdec::A64_STP:
     case farmdec::A64_LDR:
@@ -1367,16 +1384,20 @@ void Lifter::LiftLoadStore(farmdec::Inst a64, bool w32, bool fp) {
         break;
 
     case farmdec::A64_LDP:
+    case farmdec::A64_LDXP: // TODO: exclusive access
         Load(a64.rt2, w32, memty, irb.CreateConstGEP1_64(memty, ptr, 1), ext, mo);
         /* fallthrough */
     case farmdec::A64_LDR:
+    case farmdec::A64_LDXR: // TODO: exclusive access
         Load(a64.rt, w32, memty, ptr, ext, mo);
         break;
 
     case farmdec::A64_STP:
+    case farmdec::A64_STXP: // TODO: exclusive access
         Store(irb.CreateConstGEP1_64(memty, ptr, 1), irb.CreateTruncOrBitCast(GetGp(a64.rt2, w32), memty), mo);
         /* fallthrough */
     case farmdec::A64_STR:
+    case farmdec::A64_STXR: // TODO: exclusive access
         Store(ptr, irb.CreateTruncOrBitCast(GetGp(a64.rt, w32), memty), mo);
         break;
 
