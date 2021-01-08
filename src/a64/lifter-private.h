@@ -43,6 +43,13 @@ public:
 
 private:
     bool LiftSIMD(farmdec::Inst a64);
+    llvm::Value* GetVec(farmdec::Reg r, farmdec::VectorArrangement va, bool fp = false);
+    llvm::Value* GetElem(farmdec::Reg r, farmdec::VectorArrangement va, unsigned i, bool fp = false);
+    void SetVec(farmdec::Reg r, llvm::Value* val);
+    void InsertElem(farmdec::Reg r, unsigned i, llvm::Value* elem);
+    void Dup(farmdec::Reg r, farmdec::VectorArrangement va, llvm::Value* elem);
+    unsigned NumElem(farmdec::VectorArrangement va);
+    Facet FacetOf(farmdec::VectorArrangement va, bool fp = false);
 
     llvm::Value* GetGp(farmdec::Reg, bool w32, bool ptr = false);
     void SetGp(farmdec::Reg, bool w32, llvm::Value* val);
@@ -56,10 +63,11 @@ private:
     llvm::Value* Shift(llvm::Value* v, farmdec::Shift sh, uint32_t amount);
     llvm::Value* Extend(llvm::Value* v, bool w32, farmdec::ExtendType ext, uint32_t lsl);
     llvm::Value* Round(llvm::Value* v, farmdec::FPRounding mode, bool exact = false);
-    Facet FacetOf(farmdec::VectorArrangement va, bool fp = false);
+
     llvm::IntegerType* TypeOf(farmdec::Size sz);
     llvm::Type* TypeOf(farmdec::FPSize fsz);
     llvm::Type* TypeOf(farmdec::VectorArrangement va, bool fp = false);
+    llvm::Type* ElemTypeOf(farmdec::VectorArrangement va, bool fp = false);
     llvm::AtomicOrdering Ordering(farmdec::MemOrdering);
     llvm::Value* IsTrue(farmdec::Cond);
 
