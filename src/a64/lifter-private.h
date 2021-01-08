@@ -47,7 +47,7 @@ private:
     llvm::Value* GetGp(farmdec::Reg, bool w32, bool ptr = false);
     void SetGp(farmdec::Reg, bool w32, llvm::Value* val);
     llvm::Value* GetScalar(farmdec::Reg r, farmdec::FPSize fsz);
-    void SetScalar(farmdec::Reg r, farmdec::FPSize fsz, llvm::Value* val);
+    void SetScalar(farmdec::Reg r, llvm::Value* val);
 
     void FlagCalcAdd(llvm::Value* res, llvm::Value* lhs, llvm::Value* rhs);
     void FlagCalcSub(llvm::Value* res, llvm::Value* lhs, llvm::Value* rhs);
@@ -80,7 +80,7 @@ private:
     llvm::Value* Addr(llvm::Type* elemty, farmdec::Reg base, farmdec::Reg off, farmdec::ExtendType ext, uint32_t lsl);
 
     void Load(farmdec::Reg rt, bool w32, llvm::Type* srcty, llvm::Value* ptr, farmdec::ExtendType ext, farmdec::MemOrdering mo = farmdec::MO_NONE);
-    void Load(farmdec::Reg rt, llvm::Type* srcty, llvm::Value* ptr, farmdec::FPSize fsz, farmdec::MemOrdering mo = farmdec::MO_NONE);
+    void Load(farmdec::Reg rt, llvm::Type* srcty, llvm::Value* ptr, farmdec::MemOrdering mo = farmdec::MO_NONE);
     void Store(llvm::Value* ptr, llvm::Value* val, farmdec::MemOrdering mo = farmdec::MO_NONE);
 
     enum class BinOpKind : unsigned {

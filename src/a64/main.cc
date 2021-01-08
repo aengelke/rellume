@@ -741,7 +741,7 @@ bool Lifter::Lift(const Instr& inst) {
 
         auto ival = GetGp(a64.rn, w32);
         auto fp = (a64.fcvt.sgn) ? irb.CreateSIToFP(ival, TypeOf(prec)) : irb.CreateUIToFP(ival, TypeOf(prec));
-        SetScalar(a64.rd, prec, fp);
+        SetScalar(a64.rd, fp);
         break;
     }
     // case farmdec::A64_FJCVTZS: never/seldom seen in the wild
@@ -751,7 +751,7 @@ bool Lifter::Lift(const Instr& inst) {
         assert(a64.frint.bits == 0); // XXX frint32*, frint64* currently not supported
 
         bool exact = (a64.op == farmdec::A64_FRINTX);
-        SetScalar(a64.rd, prec, Round(GetScalar(a64.rn, prec), static_cast<farmdec::FPRounding>(a64.frint.mode), exact));
+        SetScalar(a64.rd, Round(GetScalar(a64.rn, prec), static_cast<farmdec::FPRounding>(a64.frint.mode), exact));
         break;
     }
     case farmdec::A64_FCVT_H:
@@ -760,13 +760,13 @@ bool Lifter::Lift(const Instr& inst) {
     case farmdec::A64_FCVT_S: {
         farmdec::FPSize prec = fad_get_prec(a64.flags);
         auto val = GetScalar(a64.rn, prec);
-        SetScalar(a64.rd, farmdec::FSZ_S, irb.CreateFPCast(val, irb.getFloatTy()));
+        SetScalar(a64.rd, irb.CreateFPCast(val, irb.getFloatTy()));
         break;
     }
     case farmdec::A64_FCVT_D: {
         farmdec::FPSize prec = fad_get_prec(a64.flags);
         auto val = GetScalar(a64.rn, prec);
-        SetScalar(a64.rd, farmdec::FSZ_D, irb.CreateFPCast(val, irb.getDoubleTy()));
+        SetScalar(a64.rd, irb.CreateFPCast(val, irb.getDoubleTy()));
         break;
     }
     case farmdec::A64_FABS:
@@ -775,7 +775,7 @@ bool Lifter::Lift(const Instr& inst) {
     case farmdec::A64_FNEG: {
         farmdec::FPSize prec = fad_get_prec(a64.flags);
         auto val = GetScalar(a64.rn, prec);
-        SetScalar(a64.rd, prec, irb.CreateFNeg(val));
+        SetScalar(a64.rd, irb.CreateFNeg(val));
         break;
     }
     case farmdec::A64_FSQRT:
@@ -809,7 +809,7 @@ bool Lifter::Lift(const Instr& inst) {
         farmdec::FPSize prec = fad_get_prec(a64.flags);
         auto lhs = GetScalar(a64.rn, prec);
         auto rhs = GetScalar(a64.rm, prec);
-        SetScalar(a64.rd, prec, irb.CreateFNeg(irb.CreateFMul(lhs, rhs)));
+        SetScalar(a64.rd, irb.CreateFNeg(irb.CreateFMul(lhs, rhs)));
         break;
     }
     case farmdec::A64_FMADD: // Fused (a*b) + c
@@ -820,7 +820,7 @@ bool Lifter::Lift(const Instr& inst) {
         auto lhs = GetScalar(a64.rn, prec);
         auto rhs = GetScalar(a64.rm, prec);
         auto add = GetScalar(a64.ra, prec);
-        SetScalar(a64.rd, prec, irb.CreateFAdd(irb.CreateFNeg(irb.CreateFMul(lhs, rhs)), add));
+        SetScalar(a64.rd, irb.CreateFAdd(irb.CreateFNeg(irb.CreateFMul(lhs, rhs)), add));
         break;
     }
     case farmdec::A64_FNMADD: { // (-(a*b)) - c (should be fused, but is not)
@@ -828,7 +828,7 @@ bool Lifter::Lift(const Instr& inst) {
         auto lhs = GetScalar(a64.rn, prec);
         auto rhs = GetScalar(a64.rm, prec);
         auto sub = GetScalar(a64.ra, prec);
-        SetScalar(a64.rd, prec, irb.CreateFSub(irb.CreateFNeg(irb.CreateFMul(lhs, rhs)), sub));
+        SetScalar(a64.rd, irb.CreateFSub(irb.CreateFNeg(irb.CreateFMul(lhs, rhs)), sub));
         break;
     }
     case farmdec::A64_FNMSUB: { // (a*b) - c (should be fused, but is not)
@@ -836,7 +836,7 @@ bool Lifter::Lift(const Instr& inst) {
         auto lhs = GetScalar(a64.rn, prec);
         auto rhs = GetScalar(a64.rm, prec);
         auto sub = GetScalar(a64.ra, prec);
-        SetScalar(a64.rd, prec, irb.CreateFSub(irb.CreateFMul(lhs, rhs), sub));
+        SetScalar(a64.rd, irb.CreateFSub(irb.CreateFMul(lhs, rhs), sub));
         break;
     }
     case farmdec::A64_FCMP_REG:
@@ -867,7 +867,7 @@ bool Lifter::Lift(const Instr& inst) {
         farmdec::FPSize prec = fad_get_prec(a64.flags);
         auto on_true = GetScalar(a64.rn, prec);
         auto on_false = GetScalar(a64.rm, prec);
-        SetScalar(a64.rd, prec, irb.CreateSelect(IsTrue(fad_get_cond(a64.flags)), on_true, on_false));
+        SetScalar(a64.rd, irb.CreateSelect(IsTrue(fad_get_cond(a64.flags)), on_true, on_false));
         break;
     }
     case farmdec::A64_FMOV_VEC2GPR: {
@@ -879,15 +879,15 @@ bool Lifter::Lift(const Instr& inst) {
     case farmdec::A64_FMOV_GPR2VEC: {
         farmdec::FPSize prec = fad_get_prec(a64.flags);
         auto ival = GetGp(a64.rn, w32);
-        SetScalar(a64.rd, prec, irb.CreateBitCast(ival, TypeOf(prec)));
+        SetScalar(a64.rd, irb.CreateBitCast(ival, TypeOf(prec)));
         break;
     }
     case farmdec::A64_FMOV_REG:
-        SetScalar(a64.rd, fad_get_prec(a64.flags), GetScalar(a64.rn, fad_get_prec(a64.flags)));
+        SetScalar(a64.rd, GetScalar(a64.rn, fad_get_prec(a64.flags)));
         break;
     case farmdec::A64_FMOV_IMM: {
         farmdec::FPSize prec = fad_get_prec(a64.flags);
-        SetScalar(a64.rd, prec, llvm::ConstantFP::get(TypeOf(prec), a64.fimm));
+        SetScalar(a64.rd, llvm::ConstantFP::get(TypeOf(prec), a64.fimm));
         break;
     }
     }
@@ -992,21 +992,11 @@ llvm::Value* Lifter::GetScalar(farmdec::Reg r, farmdec::FPSize fsz) {
     return GetReg(ArchReg::VEC(r), fc);
 }
 
-// Set an A64 vector register Vr to a scalar value. For FSZ_S, FSZ_D we expect
-// a floating-point value, for the others an integer. See GetScalar for details.
-void Lifter::SetScalar(farmdec::Reg r, farmdec::FPSize fsz, llvm::Value* val) {
-    Facet fc = Facet::F64;
-    unsigned bits = 64;
-
-    switch (fsz) {
-    case farmdec::FSZ_B: fc = Facet::I8;    bits =   8; break;
-    case farmdec::FSZ_H: fc = Facet::I16;   bits =  16; break;
-    case farmdec::FSZ_S: fc = Facet::F32;   bits =  32; break;
-    case farmdec::FSZ_D: fc = Facet::F64;   bits =  64; break;
-    case farmdec::FSZ_Q: fc = Facet::I128;  bits = 128; break;
-    default:
-        assert(false && "invalid Scalar facet");
-    }
+// Set an A64 vector register Vr to a scalar value.
+void Lifter::SetScalar(farmdec::Reg r, llvm::Value* val) {
+    auto elemty = val->getType();
+    Facet fc = Facet::FromType(elemty);
+    unsigned bits = elemty->getPrimitiveSizeInBits();
 
     // Loosely based on the x86 lifter's OpStoreVec: we need to insert
     // (val : elemty) into a vector (nelem x elemty) that spans the
@@ -1021,7 +1011,6 @@ void Lifter::SetScalar(farmdec::Reg r, farmdec::FPSize fsz, llvm::Value* val) {
         return;
     }
 
-    auto elemty = TypeOf(fsz);
     unsigned nelem = ivec.Size() / bits;
     auto vecty = llvm::VectorType::get(elemty, nelem, false);
 
@@ -1349,14 +1338,14 @@ void Lifter::Load(farmdec::Reg rt, bool w32, llvm::Type* srcty,
 }
 
 // Loads into the SIMD&FP register Vt.
-void Lifter::Load(farmdec::Reg rt, llvm::Type* srcty, llvm::Value* ptr, farmdec::FPSize fsz, farmdec::MemOrdering mo) {
+void Lifter::Load(farmdec::Reg rt, llvm::Type* srcty, llvm::Value* ptr, farmdec::MemOrdering mo) {
     llvm::LoadInst* load = irb.CreateLoad(srcty, ptr);
     if (mo != farmdec::MO_NONE) {
         load->setOrdering(Ordering(mo));
         load->setAlignment(llvm::Align(srcty->getPrimitiveSizeInBits() / 8));
     }
 
-    SetScalar(rt, fsz, load);
+    SetScalar(rt, load);
 }
 
 // Given a pointer ptr = *T, store the value val, which is truncated appropriately.
@@ -1407,10 +1396,10 @@ void Lifter::LiftLoadStore(farmdec::Inst a64, bool w32, bool fp) {
         break;
 
     case farmdec::A64_LDP_FP:
-        Load(a64.rt2, memty, irb.CreateConstGEP1_64(memty, ptr, 1), fsz, mo);
+        Load(a64.rt2, memty, irb.CreateConstGEP1_64(memty, ptr, 1), mo);
         /* fallthrough */
     case farmdec::A64_LDR_FP:
-        Load(a64.rt, memty, ptr, fsz, mo);
+        Load(a64.rt, memty, ptr, mo);
         break;
 
     case farmdec::A64_STP_FP:
@@ -1436,18 +1425,18 @@ void Lifter::FlagCalcFP(llvm::Value* lhs, llvm::Value* rhs) {
 void Lifter::LiftBinOpFP(llvm::Instruction::BinaryOps op, farmdec::FPSize prec, farmdec::Reg rd, farmdec::Reg rn, farmdec::Reg rm) {
     auto lhs = GetScalar(rn, prec);
     auto rhs = GetScalar(rm, prec);
-    SetScalar(rd, prec, irb.CreateBinOp(op, lhs, rhs));
+    SetScalar(rd, irb.CreateBinOp(op, lhs, rhs));
 }
 
 void Lifter::LiftIntrinsicFP(llvm::Intrinsic::ID op, farmdec::FPSize prec, farmdec::Reg rd, farmdec::Reg rn) {
     auto val = GetScalar(rn, prec);
-    SetScalar(rd, prec, irb.CreateUnaryIntrinsic(op, val));
+    SetScalar(rd, irb.CreateUnaryIntrinsic(op, val));
 }
 
 void Lifter::LiftIntrinsicFP(llvm::Intrinsic::ID op, farmdec::FPSize prec, farmdec::Reg rd, farmdec::Reg rn, farmdec::Reg rm) {
     auto lhs = GetScalar(rn, prec);
     auto rhs = GetScalar(rm, prec);
-    SetScalar(rd, prec, irb.CreateBinaryIntrinsic(op, lhs, rhs));
+    SetScalar(rd, irb.CreateBinaryIntrinsic(op, lhs, rhs));
 }
 
 void Lifter::LiftIntrinsicFP(llvm::Intrinsic::ID op, farmdec::FPSize prec, farmdec::Reg rd, farmdec::Reg rn, farmdec::Reg rm, farmdec::Reg ra) {
@@ -1456,7 +1445,7 @@ void Lifter::LiftIntrinsicFP(llvm::Intrinsic::ID op, farmdec::FPSize prec, farmd
     auto add = GetScalar(ra, prec);
     auto mod = irb.GetInsertBlock()->getModule();
     auto fn = llvm::Intrinsic::getDeclaration(mod, op, {lhs->getType()});
-    SetScalar(rd, prec, irb.CreateCall(fn, {lhs, rhs, add}));
+    SetScalar(rd, irb.CreateCall(fn, {lhs, rhs, add}));
 }
 } // namespace rellume::aarch64
 
