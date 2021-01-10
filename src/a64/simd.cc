@@ -112,6 +112,68 @@ bool Lifter::LiftSIMD(farmdec::Inst a64) {
         SetGp(a64.rd, w32, irb.CreateZExt(elem, (w32) ? irb.getInt32Ty() : irb.getInt64Ty()));
         break;
     }
+    case farmdec::A64_CMEQ_REG:
+        if (scalar)
+            LiftScalarCmXX(llvm::CmpInst::Predicate::ICMP_EQ, a64.rd, a64.rn, a64.rm, /*zero=*/false);
+        else
+            LiftCmXX(llvm::CmpInst::Predicate::ICMP_EQ, a64.rd, va, a64.rn, a64.rm, /*zero=*/false);
+        break;
+    case farmdec::A64_CMEQ_ZERO:
+        if (scalar)
+            LiftScalarCmXX(llvm::CmpInst::Predicate::ICMP_EQ, a64.rd, a64.rn, a64.rm, /*zero=*/true);
+        else
+            LiftCmXX(llvm::CmpInst::Predicate::ICMP_EQ, a64.rd, va, a64.rn, a64.rm, /*zero=*/true);
+        break;
+    case farmdec::A64_CMGE_REG:
+        if (scalar)
+            LiftScalarCmXX(llvm::CmpInst::Predicate::ICMP_SGE, a64.rd, a64.rn, a64.rm, /*zero=*/false);
+        else
+            LiftCmXX(llvm::CmpInst::Predicate::ICMP_SGE, a64.rd, va, a64.rn, a64.rm, /*zero=*/false);
+        break;
+    case farmdec::A64_CMGE_ZERO:
+        if (scalar)
+            LiftScalarCmXX(llvm::CmpInst::Predicate::ICMP_SGE, a64.rd, a64.rn, a64.rm, /*zero=*/true);
+        else
+            LiftCmXX(llvm::CmpInst::Predicate::ICMP_SGE, a64.rd, va, a64.rn, a64.rm, /*zero=*/true);
+        break;
+    case farmdec::A64_CMGT_REG:
+        if (scalar)
+            LiftScalarCmXX(llvm::CmpInst::Predicate::ICMP_SGT, a64.rd, a64.rn, a64.rm, /*zero=*/false);
+        else
+            LiftCmXX(llvm::CmpInst::Predicate::ICMP_SGT, a64.rd, va, a64.rn, a64.rm, /*zero=*/false);
+        break;
+    case farmdec::A64_CMGT_ZERO:
+        if (scalar)
+            LiftScalarCmXX(llvm::CmpInst::Predicate::ICMP_SGT, a64.rd, a64.rn, a64.rm, /*zero=*/true);
+        else
+            LiftCmXX(llvm::CmpInst::Predicate::ICMP_SGT, a64.rd, va, a64.rn, a64.rm, /*zero=*/true);
+        break;
+    case farmdec::A64_CMHI_REG:
+        if (scalar)
+            LiftScalarCmXX(llvm::CmpInst::Predicate::ICMP_UGT, a64.rd, a64.rn, a64.rm, /*zero=*/false);
+        else
+            LiftCmXX(llvm::CmpInst::Predicate::ICMP_UGT, a64.rd, va, a64.rn, a64.rm, /*zero=*/false);
+        break;
+    case farmdec::A64_CMHS_REG:
+        if (scalar)
+            LiftScalarCmXX(llvm::CmpInst::Predicate::ICMP_UGE, a64.rd, a64.rn, a64.rm, /*zero=*/false);
+        else
+            LiftCmXX(llvm::CmpInst::Predicate::ICMP_UGE, a64.rd, va, a64.rn, a64.rm, /*zero=*/false);
+        break;
+    case farmdec::A64_CMLE_ZERO:
+        if (scalar)
+            LiftScalarCmXX(llvm::CmpInst::Predicate::ICMP_SLE, a64.rd, a64.rn, a64.rm, /*zero=*/true);
+        else
+            LiftCmXX(llvm::CmpInst::Predicate::ICMP_SLE, a64.rd, va, a64.rn, a64.rm, /*zero=*/true);
+        break;
+    case farmdec::A64_CMLT_ZERO:
+        if (scalar)
+            LiftScalarCmXX(llvm::CmpInst::Predicate::ICMP_SLT, a64.rd, a64.rn, a64.rm, /*zero=*/true);
+        else
+            LiftCmXX(llvm::CmpInst::Predicate::ICMP_SLT, a64.rd, va, a64.rn, a64.rm, /*zero=*/true);
+        break;
+    case farmdec::A64_CMTST:
+        return false; // XXX
     default:
         return false;
     }
@@ -215,6 +277,38 @@ llvm::Type* Lifter::TypeOf(farmdec::VectorArrangement va, bool fp) {
 
 llvm::Type* Lifter::ElemTypeOf(farmdec::VectorArrangement va, bool fp) {
     return llvm::cast<llvm::VectorType>(TypeOf(va, fp))->getElementType();
+}
+
+// Lift the SIMD [F]CMxx intructions. There are variants that compare two
+// registers Rn and Rm (zero == false) while others compare Rn to 0/0.0
+// (zero == true).
+void Lifter::LiftCmXX(llvm::CmpInst::Predicate cmp, farmdec::Reg rd, farmdec::VectorArrangement va, farmdec::Reg rn, farmdec::Reg rm, bool zero, bool fp) {
+    auto srcty = TypeOf(va, fp); // may be float or int
+    auto lhs = GetVec(rn, va);
+    auto rhs = (zero) ? llvm::Constant::getNullValue(srcty) : GetVec(rm, va);
+
+    auto dstty = llvm::VectorType::getInteger(llvm::cast<llvm::VectorType>(srcty)); // must be int
+    auto is_true = (fp) ? irb.CreateFCmp(cmp, lhs, rhs) : irb.CreateICmp(cmp, lhs, rhs); // XXX use CreateCmp when available
+    auto val = irb.CreateSExt(is_true, dstty);
+
+    SetVec(rd, val);
+}
+
+// Like LiftCmXX, but has scalar Dd, Dn, Dm operands.
+void Lifter::LiftScalarCmXX(llvm::CmpInst::Predicate cmp, farmdec::Reg rd, farmdec::Reg rn, farmdec::Reg rm, bool zero, bool fp) {
+    llvm::Value* zero_val = (fp) ? llvm::ConstantFP::get(irb.getDoubleTy(), 0.0) : irb.getInt64(0);
+
+    auto lhs = GetScalar(rn, farmdec::FSZ_D);
+    auto rhs = (zero) ? zero_val : GetScalar(rm, farmdec::FSZ_D);
+    if (!fp) {
+        lhs = irb.CreateBitCast(lhs, irb.getInt64Ty());
+        rhs = irb.CreateBitCast(rhs, irb.getInt64Ty());
+    }
+
+    auto is_true = (fp) ? irb.CreateFCmp(cmp, lhs, rhs) : irb.CreateICmp(cmp, lhs, rhs); // XXX use CreateCmp when available
+    auto val = irb.CreateSExt(is_true, irb.getInt64Ty());
+
+    SetScalar(rd, val);
 }
 
 } // namespace rellume::aarch64

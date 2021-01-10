@@ -104,6 +104,9 @@ private:
     void LiftIntrinsicFP(llvm::Intrinsic::ID op, farmdec::FPSize prec, farmdec::Reg rd, farmdec::Reg rn);
     void LiftIntrinsicFP(llvm::Intrinsic::ID op, farmdec::FPSize prec, farmdec::Reg rd, farmdec::Reg rn, farmdec::Reg rm);
     void LiftIntrinsicFP(llvm::Intrinsic::ID op, farmdec::FPSize prec, farmdec::Reg rd, farmdec::Reg rn, farmdec::Reg rm, farmdec::Reg ra);
+
+    void LiftCmXX(llvm::CmpInst::Predicate cmp, farmdec::Reg rd, farmdec::VectorArrangement va, farmdec::Reg rn, farmdec::Reg rm, bool zero, bool fp = false);
+    void LiftScalarCmXX(llvm::CmpInst::Predicate cmp, farmdec::Reg rd, farmdec::Reg rn, farmdec::Reg rm, bool zero, bool fp = false);
 };
 
 } // namespace

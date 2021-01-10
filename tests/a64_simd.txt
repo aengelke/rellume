@@ -54,3 +54,14 @@ code="movi v0.2s, #1, msl #8"          v0=qq:0,0 => v0=llq:0x1ff,0x1ff,0
 code="movi v0.2s, #1, msl #16"         v0=qq:0,0 => v0=llq:0x1ffff,0x1ffff,0
 code="movi d0, #0x00ff00ff00ff00ff"    v0=qq:0,0 => v0=qq:0x00ff00ff00ff00ff,0
 code="movi v0.2d, #0x00ff00ff00ff00ff" v0=qq:0,0 => v0=qq:0x00ff00ff00ff00ff,0x00ff00ff00ff00ff
+
+code="cmeq d0, d1, d2" v0=qq:0,0 v1=qq:0,0 v2=qq:0,0 => v0=qq:-1,0
+code="cmeq d0, d1, #0" v0=qq:0,0 v1=qq:1,0           => v0=qq:0,0
+code="cmeq v0.2d, v1.2d, v2.2d" v0=qq:0,0 v1=qq:1,0 v2=qq:0,0 => v0=qq:0,-1
+code="cmeq v0.2d, v1.2d, #0" v0=qq:0,0 v1=qq:1,0 => v0=qq:0,-1
+code="cmgt v0.2s, v1.2s, v2.2s" v0=qq:0,0 v1=llq:1,0,0 v2=llq:0,1,0 => v0=llq:-1,0,0
+code="cmge v0.2s, v1.2s, v2.2s" v0=qq:0,0 v1=llq:1,0,0 v2=llq:1,1,0 => v0=llq:-1,0,0
+code="cmhi v0.4h, v1.4h, v2.4h" v0=qq:0,0 v1=wwwwq:34,0,1,2,0 v2=wwwwq:0,0,0,0,0 => v0=wwwwq:-1,0,-1,-1,0
+code="cmhs v0.8b, v1.8b, v2.8b" v0=qq:0,0 v1=bbbbbbbbq:0,1,2,3,4,5,6,7,0 v2=bbbbbbbbq:0,0,0,0,0,0,0,0,0 => v0=bbbbbbbbq:-1,-1,-1,-1,-1,-1,-1,-1,0
+code="cmle v0.2d, v1.2d, v2.2d" v0=qq:0,0 v1=qq:1,0 v2=qq:0,0 => v0=qq:0,-1
+code="cmlt v0.2d, v1.2d, #0" v0=qq:0,0 v1=qq:-10,0 => v0=qq:-1,0
