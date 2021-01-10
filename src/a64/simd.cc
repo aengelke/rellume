@@ -63,6 +63,21 @@ bool Lifter::LiftSIMD(farmdec::Inst a64) {
         Dup(a64.rd, va, elem);
         break;
     }
+    case farmdec::A64_EXT: {
+        auto lower = GetVec(a64.rn, va);
+        auto upper = GetVec(a64.rm, va);
+
+        unsigned start = a64.imm;
+        unsigned end = start + NumElem(va);
+        llvm::SmallVector<int, 16> mask;
+        for (unsigned i = start; i < end; i++) {
+            mask.push_back(i);
+        }
+
+        auto vec = irb.CreateShuffleVector(lower, upper, mask);
+        SetVec(a64.rd, vec);
+        break;
+    }
     case farmdec::A64_INS_ELEM: {
         auto elem = GetElem(a64.rn, va, a64.ins_elem.src);
         InsertElem(a64.rd, a64.ins_elem.dst, elem);
@@ -71,6 +86,20 @@ bool Lifter::LiftSIMD(farmdec::Inst a64) {
     case farmdec::A64_INS_GPR: {
         auto elem = irb.CreateTruncOrBitCast(GetGp(a64.rn, w32), ElemTypeOf(va));
         InsertElem(a64.rd, a64.imm, elem);
+        break;
+    }
+    case farmdec::A64_FMOV_VEC: {
+        farmdec::FPSize prec = static_cast<farmdec::FPSize>(va >> 1);
+        Dup(a64.rd, va, llvm::ConstantFP::get(TypeOf(prec), a64.fimm));
+        break;
+    }
+    case farmdec::A64_MOVI: {
+        unsigned bits = TypeOf(va)->getScalarSizeInBits();
+        if (scalar) {
+            SetScalar(a64.rd, irb.getInt64(a64.imm));
+            break;
+        }
+        Dup(a64.rd, va, irb.getIntN(bits, a64.imm));
         break;
     }
     case farmdec::A64_SMOV: {
