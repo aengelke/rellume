@@ -288,7 +288,7 @@ void Lifter::LiftCmXX(llvm::CmpInst::Predicate cmp, farmdec::Reg rd, farmdec::Ve
     auto rhs = (zero) ? llvm::Constant::getNullValue(srcty) : GetVec(rm, va);
 
     auto dstty = llvm::VectorType::getInteger(llvm::cast<llvm::VectorType>(srcty)); // must be int
-    auto is_true = (fp) ? irb.CreateFCmp(cmp, lhs, rhs) : irb.CreateICmp(cmp, lhs, rhs); // XXX use CreateCmp when available
+    auto is_true = irb.CreateCmp(cmp, lhs, rhs);
     auto val = irb.CreateSExt(is_true, dstty);
 
     SetVec(rd, val);
@@ -298,14 +298,10 @@ void Lifter::LiftCmXX(llvm::CmpInst::Predicate cmp, farmdec::Reg rd, farmdec::Ve
 void Lifter::LiftScalarCmXX(llvm::CmpInst::Predicate cmp, farmdec::Reg rd, farmdec::Reg rn, farmdec::Reg rm, bool zero, bool fp) {
     llvm::Value* zero_val = (fp) ? llvm::ConstantFP::get(irb.getDoubleTy(), 0.0) : irb.getInt64(0);
 
-    auto lhs = GetScalar(rn, farmdec::FSZ_D);
-    auto rhs = (zero) ? zero_val : GetScalar(rm, farmdec::FSZ_D);
-    if (!fp) {
-        lhs = irb.CreateBitCast(lhs, irb.getInt64Ty());
-        rhs = irb.CreateBitCast(rhs, irb.getInt64Ty());
-    }
+    auto lhs = GetScalar(rn, farmdec::FSZ_D, fp);
+    auto rhs = (zero) ? zero_val : GetScalar(rm, farmdec::FSZ_D, fp);
 
-    auto is_true = (fp) ? irb.CreateFCmp(cmp, lhs, rhs) : irb.CreateICmp(cmp, lhs, rhs); // XXX use CreateCmp when available
+    auto is_true = irb.CreateCmp(cmp, lhs, rhs);
     auto val = irb.CreateSExt(is_true, irb.getInt64Ty());
 
     SetScalar(rd, val);

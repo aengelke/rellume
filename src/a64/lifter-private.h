@@ -53,7 +53,7 @@ private:
 
     llvm::Value* GetGp(farmdec::Reg, bool w32, bool ptr = false);
     void SetGp(farmdec::Reg, bool w32, llvm::Value* val);
-    llvm::Value* GetScalar(farmdec::Reg r, farmdec::FPSize fsz);
+    llvm::Value* GetScalar(farmdec::Reg r, farmdec::FPSize fsz, bool fp = true);
     void SetScalar(farmdec::Reg r, llvm::Value* val);
 
     void FlagCalcAdd(llvm::Value* res, llvm::Value* lhs, llvm::Value* rhs);

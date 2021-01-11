@@ -972,18 +972,18 @@ void Lifter::FlagCalcLogic(llvm::Value* res) {
 
 // Get a scalar value stored in the A64 register Vr. The sizes FSZ_B (byte, Br)
 // and FSZ_Q (quad, Qr) return integers and may only be used with SIMD&FP load/stores.
-// FSZ_S, FSZ_D return floating-point values as expected.
+// FSZ_S, FSZ_D return floating-point values if fp is true (default).
 //
 // Note: The half-precision FSZ_H returns an integer because there is no
 // half-precision support in the rest of Rellume right now.
-llvm::Value* Lifter::GetScalar(farmdec::Reg r, farmdec::FPSize fsz) {
-    Facet fc = Facet::F64;
+llvm::Value* Lifter::GetScalar(farmdec::Reg r, farmdec::FPSize fsz, bool fp) {
+    Facet fc = (fp) ? Facet::F64 : Facet::I64;
 
     switch (fsz) {
     case farmdec::FSZ_B: fc = Facet::I8;   break;
     case farmdec::FSZ_H: fc = Facet::I16;  break; // XXX
-    case farmdec::FSZ_S: fc = Facet::F32;  break;
-    case farmdec::FSZ_D: fc = Facet::F64;  break;
+    case farmdec::FSZ_S: fc = (fp) ? Facet::F32 : Facet::I32; break;
+    case farmdec::FSZ_D: fc = (fp) ? Facet::F64 : Facet::I64; break;
     case farmdec::FSZ_Q: fc = Facet::I128; break;
     default:
         assert(false && "invalid FP facet");
