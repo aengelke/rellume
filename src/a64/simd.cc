@@ -174,6 +174,38 @@ bool Lifter::LiftSIMD(farmdec::Inst a64) {
         break;
     case farmdec::A64_CMTST:
         return false; // XXX
+    case farmdec::A64_ADDP:
+        SetScalar(a64.rd, irb.CreateAddReduce(GetVec(a64.rn, farmdec::VA_2D)));
+        break;
+    case farmdec::A64_ADDP_VEC: {
+        auto add = [this](llvm::Value* lhs, llvm::Value* rhs) -> llvm::Value* { return irb.CreateAdd(lhs, rhs); };
+        LiftSIMDPairwise(add, a64.rd, va, a64.rn, a64.rm);
+        break;
+    }
+    case farmdec::A64_MAXP: {
+        auto max = [this, sgn](llvm::Value* lhs, llvm::Value* rhs) -> llvm::Value* {
+            auto is_greater = (sgn) ? irb.CreateICmpSGT(lhs, rhs) : irb.CreateICmpUGT(lhs, rhs);
+            return irb.CreateSelect(is_greater, lhs, rhs);
+
+            // XXX llvm.umax.*, llvm.smax.* not available in LLVM 11
+            //auto id = (sgn) ? llvm::Intrinsic::smax : llvm::Intrinsic::umax;
+            //return irb.CreateBinaryIntrinsic(id, lhs, rhs);
+        };
+        LiftSIMDPairwise(max, a64.rd, va, a64.rn, a64.rm);
+        break;
+    }
+    case farmdec::A64_MINP: {
+        auto min = [this, sgn](llvm::Value* lhs, llvm::Value* rhs) -> llvm::Value* {
+            auto is_less = (sgn) ? irb.CreateICmpSLT(lhs, rhs) : irb.CreateICmpULT(lhs, rhs);
+            return irb.CreateSelect(is_less, lhs, rhs);
+
+            // XXX llvm.umin.*, llvm.smin.* not available in LLVM 11
+            //auto id = (sgn) ? llvm::Intrinsic::smin : llvm::Intrinsic::umin;
+            //return irb.CreateBinaryIntrinsic(id, lhs, rhs);
+        };
+        LiftSIMDPairwise(min, a64.rd, va, a64.rn, a64.rm);
+        break;
+    }
     default:
         return false;
     }
@@ -305,6 +337,43 @@ void Lifter::LiftScalarCmXX(llvm::CmpInst::Predicate cmp, farmdec::Reg rd, farmd
     auto val = irb.CreateSExt(is_true, irb.getInt64Ty());
 
     SetScalar(rd, val);
+}
+
+// Lift vector pairwise instructions (ADDP_VEC, MAXP, MINP, ...). Unlike scalar pairwise
+// instructions (ADDP), which simply reduce the a two-element vector, these instructions
+// take the input vectors, concatenate them, and apply the binary op fn() for each pair of
+// adjacent elements.
+//
+//     Vn: [a,b,c,d]
+//     Vm: [u,v,w,x]
+//  Vm:Vn: [a,b,c,d,u,v,w,x] (yes, Vn is after Vm)
+//     Vd: [a+b,c+d,u+v,w+x] ('+' stands for binary op, e.g. addition, max/min)
+//
+// I'd prefer to use a llvm::Instruction::BinaryOps parameter instead of a callback, but
+// LiftSIMDPairwise is not only called for ADDP_VEC, but also for MINP, MAXP and so on,
+// and these are implemented using intrinsics/multiple instructions.
+void Lifter::LiftSIMDPairwise(std::function<llvm::Value*(llvm::Value*,llvm::Value*)> fn, farmdec::Reg rd, farmdec::VectorArrangement va, farmdec::Reg rn, farmdec::Reg rm) {
+    // Expressed using two shuffled vectors and then normal vector binary operation:
+    //     lhs: [a,c,u,w] (even elements of Vn:Vm, starting with i=0)
+    //     rhs: [b,d,v,x] (odd elements)
+    // lhs+rhs: [a+b,c+d,u+v,w+x]
+
+    auto vn = GetVec(rn, va);
+    auto vm = GetVec(rm, va);
+
+    llvm::SmallVector<int, 16> odd, even;
+    unsigned nelem = NumElem(va);
+    for (unsigned i = 0; i < 2*nelem; i++) {
+        if ((i % 2) == 0)
+            even.push_back(i);
+        else
+            odd.push_back(i);
+     }
+
+    auto lhs = irb.CreateShuffleVector(vm, vn, even);
+    auto rhs = irb.CreateShuffleVector(vm, vn, odd);
+    auto val = fn(lhs, rhs); // irb.CreateBinOp(op, lhs, rhs);
+    SetVec(rd, val);
 }
 
 } // namespace rellume::aarch64

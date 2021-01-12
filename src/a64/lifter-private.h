@@ -107,6 +107,7 @@ private:
 
     void LiftCmXX(llvm::CmpInst::Predicate cmp, farmdec::Reg rd, farmdec::VectorArrangement va, farmdec::Reg rn, farmdec::Reg rm, bool zero, bool fp = false);
     void LiftScalarCmXX(llvm::CmpInst::Predicate cmp, farmdec::Reg rd, farmdec::Reg rn, farmdec::Reg rm, bool zero, bool fp = false);
+    void LiftSIMDPairwise(std::function<llvm::Value*(llvm::Value*,llvm::Value*)>, farmdec::Reg rd, farmdec::VectorArrangement va, farmdec::Reg rn, farmdec::Reg rm);
 };
 
 } // namespace
