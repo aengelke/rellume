@@ -49,6 +49,43 @@ bool Lifter::LiftSIMD(farmdec::Inst a64) {
 
     // In the order of farmdec::Op.
     switch (a64.op) {
+    case farmdec::A64_LD1_MULT:
+    case farmdec::A64_ST1_MULT: {
+        bool load = (a64.op == farmdec::A64_LD1_MULT);
+        auto vecty = TypeOf(va);
+
+        llvm::Value* base = nullptr;
+        farmdec::AddrMode mode = fad_get_addrmode(a64.flags);
+        switch (mode) {
+        case farmdec::AM_SIMPLE:
+            base = Addr(vecty, a64.rn);
+            break;
+        case farmdec::AM_POST: {
+            base = Addr(vecty, a64.rn);
+            // Offset/increment can be an immediate or the Rm register.
+            auto offset = (a64.rm == farmdec::ZERO_REG) ? irb.getInt64(a64.simd_ldst.offset) : GetGp(a64.rm, /*w32=*/false);
+            SetGp(a64.rn, /*w32=*/false, irb.CreateAdd(GetGp(a64.rn, /*w32=*/false), offset)); // rn += offset
+            break;
+        }
+        default:
+            assert(false && "bad LD1/ST1 addrmode");
+        }
+
+        // For each register Vtt, starting with Vd, wrapping around V31..V0.
+        farmdec::Reg tt = a64.rd;
+        for (unsigned i = 0; i < a64.simd_ldst.nreg; i++) {
+            auto ptr = irb.CreateConstGEP1_64(vecty, base, i);
+            if (load) {
+                auto vec = irb.CreateLoad(vecty, ptr);
+                SetVec(tt, vec);
+            } else {
+                auto vec = GetVec(tt, va);
+                irb.CreateStore(vec, ptr);
+            }
+            tt = (tt+1) % 32;
+        }
+        break;
+    }
     case farmdec::A64_DUP_ELEM: {
         auto elem = GetElem(a64.rn, va, a64.imm);
         if (scalar) {
