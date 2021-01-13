@@ -326,6 +326,7 @@ bool Lifter::Lift(const Instr& inst) {
     case FDI_SSE_PSUBSW: LiftSsePaddsubSaturate(inst, llvm::Instruction::Sub, /*sign=*/true, Facet::V8I16); break;
     case FDI_SSE_PSUBUSB: LiftSsePaddsubSaturate(inst, llvm::Instruction::Sub, /*sign=*/false, Facet::V16I8); break;
     case FDI_SSE_PSUBUSW: LiftSsePaddsubSaturate(inst, llvm::Instruction::Sub, /*sign=*/false, Facet::V8I16); break;
+    case FDI_SSE_PSADBW: LiftSsePsadbw(inst); break;
     case FDI_SSE_PMULLW: LiftSseBinOp(inst, llvm::Instruction::Mul, Facet::V8I16); break;
     case FDI_SSE_PMULLD: LiftSseBinOp(inst, llvm::Instruction::Mul, Facet::V4I32); break;
     case FDI_SSE_PSLLW: LiftSsePshiftElement(inst, llvm::Instruction::Shl, Facet::VI16); break;

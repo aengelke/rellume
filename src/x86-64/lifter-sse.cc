@@ -534,6 +534,30 @@ void Lifter::LiftSsePaddsubSaturate(const Instr& inst,
     OpStoreVec(inst.op(0), SaturateTrunc(irb, res, sign));
 }
 
+void Lifter::LiftSsePsadbw(const Instr& inst) {
+    llvm::Value* src1 = OpLoad(inst.op(0), Facet::VI8);
+    llvm::Value* src2 = OpLoad(inst.op(1), Facet::VI8);
+    unsigned elem_cnt = src1->getType()->getVectorNumElements();
+    llvm::Type* ext_ty = llvm::VectorType::get(irb.getInt16Ty(), elem_cnt / 2);
+    llvm::Value* zero = llvm::Constant::getNullValue(src1->getType());
+
+    llvm::Value* diff = irb.CreateSub(src1, src2);
+    llvm::Value* negdiff = irb.CreateNeg(diff);
+    diff = irb.CreateSelect(irb.CreateICmpUGT(src2, src1), negdiff, diff);
+
+    llvm::Value* low = irb.CreateShuffleVector(diff, zero,
+                                               {0, 1, 2, 3, 4, 5, 6, 7});
+    llvm::Value* lowr = irb.CreateAddReduce(irb.CreateZExt(low, ext_ty));
+    llvm::Value* high = irb.CreateShuffleVector(diff, zero,
+                                                {8, 9, 10, 11, 12, 13, 14, 15});
+    llvm::Value* highr = irb.CreateAddReduce(irb.CreateZExt(high, ext_ty));
+
+    llvm::Value* zero_ext = llvm::Constant::getNullValue(ext_ty);
+    llvm::Value* res = irb.CreateInsertElement(zero_ext, lowr, uint64_t{0});
+    res = irb.CreateInsertElement(res, highr, uint64_t{4});
+    OpStoreVec(inst.op(0), res);
+}
+
 void Lifter::LiftSsePack(const Instr& inst, Facet src_type, bool sign) {
     llvm::Value* op1 = OpLoad(inst.op(0), src_type, ALIGN_MAX);
     llvm::Value* op2 = OpLoad(inst.op(1), src_type, ALIGN_MAX);

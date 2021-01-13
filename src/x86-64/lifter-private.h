@@ -192,6 +192,7 @@ private:
     void LiftSsePaddsubSaturate(const Instr& inst,
                                 llvm::Instruction::BinaryOps calc_op, bool sign,
                                 Facet op_ty);
+    void LiftSsePsadbw(const Instr&);
     void LiftSsePack(const Instr&, Facet, bool sign);
     void LiftSsePcmp(const Instr&, llvm::CmpInst::Predicate, Facet);
     void LiftSsePminmax(const Instr&, llvm::CmpInst::Predicate, Facet);
