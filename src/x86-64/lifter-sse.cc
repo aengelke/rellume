@@ -479,6 +479,21 @@ void Lifter::LiftSsePmuludq(const Instr& inst) {
     OpStoreVec(inst.op(0), irb.CreateMul(src1, src2));
 }
 
+void Lifter::LiftSsePmaddwd(const Instr& inst) {
+    llvm::Value* src1 = OpLoad(inst.op(0), Facet::VI16);
+    llvm::Value* src2 = OpLoad(inst.op(1), Facet::VI16);
+
+    unsigned elem_cnt = src1->getType()->getVectorNumElements();
+    llvm::Type* ext_ty = llvm::VectorType::get(irb.getInt32Ty(), elem_cnt);
+
+    llvm::Value* ext1 = irb.CreateSExt(src1, ext_ty);
+    llvm::Value* ext2 = irb.CreateSExt(src2, ext_ty);
+    llvm::Value* mul = irb.CreateMul(ext1, ext2);
+    llvm::Value* add1 = irb.CreateShuffleVector(mul, mul, {0, 2, 4, 6});
+    llvm::Value* add2 = irb.CreateShuffleVector(mul, mul, {1, 3, 5, 7});
+    OpStoreVec(inst.op(0), irb.CreateAdd(add1, add2));
+}
+
 static llvm::Value* SaturateTrunc(llvm::IRBuilder<> irb, llvm::Value* val,
                                   bool sign) {
     llvm::VectorType* src_ty = llvm::cast<llvm::VectorType>(val->getType());
