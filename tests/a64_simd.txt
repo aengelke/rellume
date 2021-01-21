@@ -81,11 +81,21 @@ code="cmlt v0.2d, v1.2d, #0" v0=qq:0,0 v1=qq:-10,0 => v0=qq:-1,0
 # Scalar pairwise is really a simple reduce, not comparable to SIMD pairwise
 +jit code="addp d0, v1.2d" v0=qq:0,0 v1=qq:0x1111111111111111,0xeeeeeeeeeeeeeeee => v0=qq:0xffffffffffffffff,0
 
++jit code="addv s0, v1.4s" v0=qq:0,0 v1=llll:1,10,100,1000 => v0=qq:1111,0
++jit code="uminv s0, v1.4s" v0=qq:0,0 v1=llll:1,10,100,1000 => v0=qq:1,0
++jit code="umaxv h0, v1.4h" v0=qq:0,0 v1=wwwwq:1,10,100,1000,0 => v0=qq:1000,0
++jit code="sminv s0, v1.4s" v0=qq:0,0 v1=llll:-1,10,-100,1000 => v0=llq:-100,0,0
++jit code="smaxv s0, v1.4s" v0=qq:0,0 v1=llll:1,-10,100,-1000 => v0=llq:100,0,0
+
++jit code="fminv s0, v1.4s" v0=qq:0,0 v1=ffff:-100.4,-44004.3,1345.4,56677.0 => v0=flq:-44004.3,0,0
++jit code="fmaxv s0, v1.4s" v0=qq:0,0 v1=ffff:-100.4,-44004.3,1345.4,56677.0 => v0=flq:56677.0,0,0
+
 #
 ### SIMD pairwise
 #
 
 code="addp v0.16b, v1.16b, v2.16b" v0=qq:0,0 v1=bbbbbbbbbbbbbbbb:1,99,2,98,3,97,4,96,5,95,6,94,7,93,8,92 v2=bbbbbbbbbbbbbbbb:1,99,2,98,3,97,4,96,5,95,6,94,7,93,8,92 => v0=bbbbbbbbbbbbbbbb:100,100,100,100,100,100,100,100,100,100,100,100,100,100,100,100
+code="faddp v0.4s, v1.4s, v2.4s" v0=qq:0,0 v1=ffff:1,99,2,98 v2=ffff:1,99,2,98 => v0=ffff:100,100,100,100
 code="addp v0.4s, v1.4s, v2.4s" v0=qq:0,0 v1=llll:1,99,2,98 v2=llll:1,99,2,98 => v0=llll:100,100,100,100
 
 code="umaxp v0.4s, v1.4s, v2.4s" v0=qq:0,0 v1=llll:1,99,2,98 v2=llll:1,99,2,98 => v0=llll:99,98,99,98

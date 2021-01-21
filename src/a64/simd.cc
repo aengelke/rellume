@@ -286,6 +286,11 @@ bool Lifter::LiftSIMD(farmdec::Inst a64) {
     case farmdec::A64_ADDP:
         SetScalar(a64.rd, irb.CreateAddReduce(GetVec(a64.rn, farmdec::VA_2D)));
         break;
+    case farmdec::A64_FADDP_VEC: {
+        auto add = [this](llvm::Value* lhs, llvm::Value* rhs) -> llvm::Value* { return irb.CreateFAdd(lhs, rhs); };
+        LiftSIMDPairwise(add, a64.rd, va, a64.rn, a64.rm, /*fp=*/true);
+        break;
+    }
     case farmdec::A64_ADDP_VEC: {
         auto add = [this](llvm::Value* lhs, llvm::Value* rhs) -> llvm::Value* { return irb.CreateAdd(lhs, rhs); };
         LiftSIMDPairwise(add, a64.rd, va, a64.rn, a64.rm);
@@ -315,6 +320,23 @@ bool Lifter::LiftSIMD(farmdec::Inst a64) {
         LiftSIMDPairwise(min, a64.rd, va, a64.rn, a64.rm);
         break;
     }
+    case farmdec::A64_ADDV:
+        SetScalar(a64.rd, irb.CreateAddReduce(GetVec(a64.rn, va)));
+        break;
+    case farmdec::A64_FMAXV:
+    case farmdec::A64_FMAXNMV:
+        SetScalar(a64.rd, irb.CreateFPMaxReduce(GetVec(a64.rn, va, /*fp=*/true)));
+        break;
+    case farmdec::A64_MAXV:
+        SetScalar(a64.rd, irb.CreateIntMaxReduce(GetVec(a64.rn, va), sgn));
+        break;
+    case farmdec::A64_FMINV:
+    case farmdec::A64_FMINNMV:
+        SetScalar(a64.rd, irb.CreateFPMinReduce(GetVec(a64.rn, va, /*fp=*/true)));
+        break;
+    case farmdec::A64_MINV:
+        SetScalar(a64.rd, irb.CreateIntMinReduce(GetVec(a64.rn, va), sgn));
+        break;
     default:
         return false;
     }
@@ -476,14 +498,14 @@ void Lifter::LiftScalarCmXX(llvm::CmpInst::Predicate cmp, farmdec::Reg rd, farmd
 // I'd prefer to use a llvm::Instruction::BinaryOps parameter instead of a callback, but
 // LiftSIMDPairwise is not only called for ADDP_VEC, but also for MINP, MAXP and so on,
 // and these are implemented using intrinsics/multiple instructions.
-void Lifter::LiftSIMDPairwise(std::function<llvm::Value*(llvm::Value*,llvm::Value*)> fn, farmdec::Reg rd, farmdec::VectorArrangement va, farmdec::Reg rn, farmdec::Reg rm) {
+void Lifter::LiftSIMDPairwise(std::function<llvm::Value*(llvm::Value*,llvm::Value*)> fn, farmdec::Reg rd, farmdec::VectorArrangement va, farmdec::Reg rn, farmdec::Reg rm, bool fp) {
     // Expressed using two shuffled vectors and then normal vector binary operation:
     //     lhs: [a,c,u,w] (even elements of Vn:Vm, starting with i=0)
     //     rhs: [b,d,v,x] (odd elements)
     // lhs+rhs: [a+b,c+d,u+v,w+x]
 
-    auto vn = GetVec(rn, va);
-    auto vm = GetVec(rm, va);
+    auto vn = GetVec(rn, va, fp);
+    auto vm = GetVec(rm, va, fp);
 
     llvm::SmallVector<int, 16> odd, even;
     unsigned nelem = NumElem(va);
@@ -496,7 +518,7 @@ void Lifter::LiftSIMDPairwise(std::function<llvm::Value*(llvm::Value*,llvm::Valu
 
     auto lhs = irb.CreateShuffleVector(vm, vn, even);
     auto rhs = irb.CreateShuffleVector(vm, vn, odd);
-    auto val = fn(lhs, rhs); // irb.CreateBinOp(op, lhs, rhs);
+    auto val = fn(lhs, rhs);
     SetVec(rd, val);
 }
 
