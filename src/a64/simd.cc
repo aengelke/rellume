@@ -86,6 +86,78 @@ bool Lifter::LiftSIMD(farmdec::Inst a64) {
         }
         break;
     }
+    case farmdec::A64_AND_VEC:
+        LiftThreeSame(llvm::Instruction::And, a64.rd, va, a64.rn, a64.rm, /*scalar=*/false);
+        break;
+    case farmdec::A64_BIC_VEC_IMM: {
+        auto lhs = GetVec(a64.rd, va);
+        unsigned bits = ElemTypeOf(va)->getPrimitiveSizeInBits();
+        auto rhs = irb.CreateVectorSplat(NumElem(va), irb.getIntN(bits, a64.imm));
+        SetVec(a64.rd, irb.CreateAnd(lhs, irb.CreateNot(rhs)));
+        break;
+    }
+    case farmdec::A64_BIC_VEC_REG:
+        LiftThreeSame(llvm::Instruction::And, a64.rd, va, a64.rn, a64.rm, /*scalar=*/false, /*invert_rhs=*/true);
+        break;
+    case farmdec::A64_BIF:
+    case farmdec::A64_BIT: {
+        // "Bit Insert if True/False"
+        //
+        // BIT: Vd = Vd ^ ((Vd ^ Vn) & Vm);
+        // BIF: Vd = Vd ^ ((Vd ^ Vn) & ~Vm);
+        auto vd = GetVec(a64.rd, va);
+        auto vn = GetVec(a64.rn, va);
+        auto mask = (a64.op == farmdec::A64_BIT) ? GetVec(a64.rm, va) : irb.CreateNot(GetVec(a64.rm, va));
+        auto vec = irb.CreateXor(vd, irb.CreateAnd(irb.CreateXor(vd, vn), mask));
+        SetVec(a64.rd, vec);
+        break;
+    }
+    case farmdec::A64_BSL: {
+        // "Bit Select"
+        //
+        // Vd = Vm ^ ((Vm ^ Vn) & Vd);
+        auto vd = GetVec(a64.rd, va);
+        auto vn = GetVec(a64.rn, va);
+        auto vm = GetVec(a64.rm, va);
+        auto vec = irb.CreateXor(vm, irb.CreateAnd(irb.CreateXor(vm, vn), vd));
+        SetVec(a64.rd, vec);
+        break;
+    }
+    case farmdec::A64_CLS_VEC:
+        return false; // XXX has not been encountered yet
+    case farmdec::A64_CLZ_VEC: {
+        auto val = GetVec(a64.rn, va);
+        auto mod = irb.GetInsertBlock()->getModule();
+        auto fn = llvm::Intrinsic::getDeclaration(mod, llvm::Intrinsic::ctlz, {val->getType()});
+        SetVec(a64.rd, irb.CreateCall(fn, {val, /*is_zero_undef=*/irb.getFalse()}));
+        break;
+    }
+    case farmdec::A64_CNT:
+        SetVec(a64.rd, irb.CreateUnaryIntrinsic(llvm::Intrinsic::ctpop, GetVec(a64.rn, va)));
+        break;
+    case farmdec::A64_EOR_VEC:
+        LiftThreeSame(llvm::Instruction::Xor, a64.rd, va, a64.rn, a64.rm, /*scalar=*/false);
+        break;
+    case farmdec::A64_NOT_VEC: 
+        SetVec(a64.rd, irb.CreateNot(GetVec(a64.rn, va)));
+        break;
+    case farmdec::A64_ORN_VEC:
+        LiftThreeSame(llvm::Instruction::Or, a64.rd, va, a64.rn, a64.rm, /*scalar=*/false, /*invert_rhs=*/true);
+        break;
+    case farmdec::A64_ORR_VEC_IMM: {
+        auto lhs = GetVec(a64.rd, va);
+        unsigned bits = ElemTypeOf(va)->getPrimitiveSizeInBits();
+        auto rhs = irb.CreateVectorSplat(NumElem(va), irb.getIntN(bits, a64.imm));
+        SetVec(a64.rd, irb.CreateOr(lhs, rhs));
+        break;
+    }
+    case farmdec::A64_MOV_VEC:
+    case farmdec::A64_ORR_VEC_REG:
+        LiftThreeSame(llvm::Instruction::Or, a64.rd, va, a64.rn, a64.rm, /*scalar=*/false);
+        break;
+    case farmdec::A64_RBIT_VEC:
+        SetVec(a64.rd, irb.CreateUnaryIntrinsic(llvm::Intrinsic::bitreverse, GetVec(a64.rn, va)));
+        break;
     case farmdec::A64_DUP_ELEM: {
         auto elem = GetElem(a64.rn, va, a64.imm);
         if (scalar) {
@@ -346,6 +418,21 @@ llvm::Type* Lifter::TypeOf(farmdec::VectorArrangement va, bool fp) {
 
 llvm::Type* Lifter::ElemTypeOf(farmdec::VectorArrangement va, bool fp) {
     return llvm::cast<llvm::VectorType>(TypeOf(va, fp))->getElementType();
+}
+
+// Lift SIMD instructions where operands and result have the same vector arrangement
+// and canbe implemented by a single LLVM binary operation.
+void Lifter::LiftThreeSame(llvm::Instruction::BinaryOps op, farmdec::Reg rd, farmdec::VectorArrangement va, farmdec::Reg rn, farmdec::Reg rm, bool scalar, bool invert_rhs) {
+    auto lhs = (scalar) ? GetScalar(rn, static_cast<farmdec::FPSize>(va >> 1)) : GetVec(rn, va);
+    auto rhs = (scalar) ? GetScalar(rn, static_cast<farmdec::FPSize>(va >> 1)) : GetVec(rm, va);
+    if (invert_rhs) {
+        rhs = irb.CreateNot(rhs);
+    }
+    auto val = irb.CreateBinOp(op, lhs, rhs);
+    if (scalar)
+        SetScalar(rd, val);
+    else
+        SetVec(rd, val);
 }
 
 // Lift the SIMD [F]CMxx intructions. There are variants that compare two
