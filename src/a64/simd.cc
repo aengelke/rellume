@@ -198,7 +198,7 @@ bool Lifter::LiftSIMD(farmdec::Inst a64) {
         break;
     }
     case farmdec::A64_FMOV_VEC: {
-        farmdec::FPSize prec = static_cast<farmdec::FPSize>(va >> 1);
+        farmdec::FPSize prec = fad_size_from_vec_arrangement(va);
         Dup(a64.rd, va, llvm::ConstantFP::get(TypeOf(prec), a64.fimm));
         break;
     }
@@ -445,8 +445,8 @@ llvm::Type* Lifter::ElemTypeOf(farmdec::VectorArrangement va, bool fp) {
 // Lift SIMD instructions where operands and result have the same vector arrangement
 // and canbe implemented by a single LLVM binary operation.
 void Lifter::LiftThreeSame(llvm::Instruction::BinaryOps op, farmdec::Reg rd, farmdec::VectorArrangement va, farmdec::Reg rn, farmdec::Reg rm, bool scalar, bool invert_rhs) {
-    auto lhs = (scalar) ? GetScalar(rn, static_cast<farmdec::FPSize>(va >> 1)) : GetVec(rn, va);
-    auto rhs = (scalar) ? GetScalar(rn, static_cast<farmdec::FPSize>(va >> 1)) : GetVec(rm, va);
+    auto lhs = (scalar) ? GetScalar(rn, fad_size_from_vec_arrangement(va)) : GetVec(rn, va);
+    auto rhs = (scalar) ? GetScalar(rn, fad_size_from_vec_arrangement(va)) : GetVec(rm, va);
     if (invert_rhs) {
         rhs = irb.CreateNot(rhs);
     }
