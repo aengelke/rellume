@@ -158,6 +158,17 @@ bool Lifter::LiftSIMD(farmdec::Inst a64) {
     case farmdec::A64_RBIT_VEC:
         SetVec(a64.rd, irb.CreateUnaryIntrinsic(llvm::Intrinsic::bitreverse, GetVec(a64.rn, va)));
         break;
+    case farmdec::A64_SHL_IMM:
+        if (scalar) {
+            auto lhs = GetScalar(a64.rn, fad_size_from_vec_arrangement(va), /*fp=*/false);
+            SetScalar(a64.rd, irb.CreateShl(lhs, a64.imm));
+        } else {
+            auto lhs = GetVec(a64.rn, va);
+            unsigned bits = ElemTypeOf(va)->getPrimitiveSizeInBits();
+            auto rhs = irb.CreateVectorSplat(NumElem(va), irb.getIntN(bits, a64.imm));
+            SetVec(a64.rd, irb.CreateShl(lhs, rhs));
+        }
+        break;
     case farmdec::A64_DUP_ELEM: {
         auto elem = GetElem(a64.rn, va, a64.imm);
         if (scalar) {
