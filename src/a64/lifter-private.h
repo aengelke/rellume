@@ -50,6 +50,8 @@ private:
     void Dup(farmdec::Reg r, farmdec::VectorArrangement va, llvm::Value* elem);
     unsigned NumElem(farmdec::VectorArrangement va);
     Facet FacetOf(farmdec::VectorArrangement va, bool fp = false);
+    llvm::Value* MinMax(llvm::Value* lhs, llvm::Value* rhs, bool sgn, bool min);
+    llvm::Value* Abs(llvm::Value* v);
 
     llvm::Value* GetGp(farmdec::Reg, bool w32, bool ptr = false);
     void SetGp(farmdec::Reg, bool w32, llvm::Value* val);
@@ -105,7 +107,7 @@ private:
     void LiftIntrinsicFP(llvm::Intrinsic::ID op, farmdec::FPSize prec, farmdec::Reg rd, farmdec::Reg rn, farmdec::Reg rm);
     void LiftIntrinsicFP(llvm::Intrinsic::ID op, farmdec::FPSize prec, farmdec::Reg rd, farmdec::Reg rn, farmdec::Reg rm, farmdec::Reg ra);
 
-    void LiftThreeSame(llvm::Instruction::BinaryOps op, farmdec::Reg rd, farmdec::VectorArrangement va, farmdec::Reg rn, farmdec::Reg rm, bool scalar, bool invert_rhs = false);
+    void LiftThreeSame(llvm::Instruction::BinaryOps op, farmdec::Reg rd, farmdec::VectorArrangement va, farmdec::Reg rn, farmdec::Reg rm, bool scalar, bool invert_rhs = false, bool fp = false);
     void LiftCmXX(llvm::CmpInst::Predicate cmp, farmdec::Reg rd, farmdec::VectorArrangement va, farmdec::Reg rn, farmdec::Reg rm, bool zero, bool fp = false);
     void LiftScalarCmXX(llvm::CmpInst::Predicate cmp, farmdec::Reg rd, farmdec::Reg rn, farmdec::Reg rm, bool zero, bool fp = false);
     void TransformSIMDPairwise(farmdec::VectorArrangement va, farmdec::Reg rn, farmdec::Reg rm, llvm::Value** lhs, llvm::Value** rhs, bool fp = false);

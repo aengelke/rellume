@@ -283,8 +283,23 @@ bool Lifter::LiftSIMD(farmdec::Inst a64) {
         break;
     case farmdec::A64_CMTST:
         return false; // XXX
+    case farmdec::A64_ABS_VEC:
+        SetVec(a64.rd, Abs(GetVec(a64.rn, va)));
+        break;
+    case farmdec::A64_NEG_VEC:
+        SetVec(a64.rd, irb.CreateNeg(GetVec(a64.rn, va)));
+        break;
     case farmdec::A64_ADD_VEC:
         LiftThreeSame(llvm::Instruction::Add, a64.rd, va, a64.rn, a64.rm, scalar);
+        break;
+    case farmdec::A64_SUB_VEC:
+        LiftThreeSame(llvm::Instruction::Sub, a64.rd, va, a64.rn, a64.rm, scalar);
+        break;
+    case farmdec::A64_MAX_VEC:
+        SetVec(a64.rd, MinMax(GetVec(a64.rn, va), GetVec(a64.rm, va), sgn, /*min=*/false));
+        break;
+    case farmdec::A64_MIN_VEC:
+        SetVec(a64.rd, MinMax(GetVec(a64.rn, va), GetVec(a64.rm, va), sgn, /*min=*/true));
         break;
     case farmdec::A64_ADDP:
         SetScalar(a64.rd, irb.CreateAddReduce(GetVec(a64.rn, farmdec::VA_2D)));
@@ -304,23 +319,13 @@ bool Lifter::LiftSIMD(farmdec::Inst a64) {
     case farmdec::A64_MAXP: {
         llvm::Value *lhs = nullptr, *rhs = nullptr;
         TransformSIMDPairwise(va, a64.rn, a64.rm, &lhs, &rhs);
-
-        // XXX llvm.umax.*, llvm.smax.* not available in LLVM 11
-        //auto id = (sgn) ? llvm::Intrinsic::smax : llvm::Intrinsic::umax;
-        //return irb.CreateBinaryIntrinsic(id, lhs, rhs);
-        auto is_greater = (sgn) ? irb.CreateICmpSGT(lhs, rhs) : irb.CreateICmpUGT(lhs, rhs);
-        SetVec(a64.rd, irb.CreateSelect(is_greater, lhs, rhs));
+        SetVec(a64.rd, MinMax(lhs, rhs, sgn, /*min=*/false));
         break;
     }
     case farmdec::A64_MINP: {
         llvm::Value *lhs = nullptr, *rhs = nullptr;
         TransformSIMDPairwise(va, a64.rn, a64.rm, &lhs, &rhs);
-
-        // XXX llvm.umin.*, llvm.smin.* not available in LLVM 11
-        //auto id = (sgn) ? llvm::Intrinsic::smin : llvm::Intrinsic::umin;
-        //return irb.CreateBinaryIntrinsic(id, lhs, rhs);
-        auto is_less = (sgn) ? irb.CreateICmpSLT(lhs, rhs) : irb.CreateICmpULT(lhs, rhs);
-        SetVec(a64.rd, irb.CreateSelect(is_less, lhs, rhs));
+        SetVec(a64.rd, MinMax(lhs, rhs, sgn, /*min=*/true));
         break;
     }
     case farmdec::A64_ADDV:
@@ -445,11 +450,29 @@ llvm::Type* Lifter::ElemTypeOf(farmdec::VectorArrangement va, bool fp) {
     return llvm::cast<llvm::VectorType>(TypeOf(va, fp))->getElementType();
 }
 
+llvm::Value* Lifter::MinMax(llvm::Value* lhs, llvm::Value* rhs, bool sgn, bool min) {
+    // XXX llvm.umin.* and friends not available in LLVM 11
+
+    llvm::Value* sel_lhs = nullptr;
+    if (min) {
+        sel_lhs = (sgn) ? irb.CreateICmpSLT(lhs, rhs) : irb.CreateICmpULT(lhs, rhs);
+    } else {
+        sel_lhs = (sgn) ? irb.CreateICmpSGT(lhs, rhs) : irb.CreateICmpUGT(lhs, rhs);
+    }
+    return irb.CreateSelect(sel_lhs, lhs, rhs);
+}
+
+llvm::Value* Lifter::Abs(llvm::Value* v) {
+    // |v| = (v < 0) ? -v : v;
+    auto is_negative = irb.CreateICmpSLT(v, llvm::Constant::getNullValue(v->getType()));
+    return irb.CreateSelect(is_negative, irb.CreateNeg(v), v);
+}
+
 // Lift SIMD instructions where operands and result have the same vector arrangement
-// and canbe implemented by a single LLVM binary operation.
-void Lifter::LiftThreeSame(llvm::Instruction::BinaryOps op, farmdec::Reg rd, farmdec::VectorArrangement va, farmdec::Reg rn, farmdec::Reg rm, bool scalar, bool invert_rhs) {
-    auto lhs = (scalar) ? GetScalar(rn, fad_size_from_vec_arrangement(va)) : GetVec(rn, va);
-    auto rhs = (scalar) ? GetScalar(rn, fad_size_from_vec_arrangement(va)) : GetVec(rm, va);
+// and can be implemented by a single LLVM binary operation.
+void Lifter::LiftThreeSame(llvm::Instruction::BinaryOps op, farmdec::Reg rd, farmdec::VectorArrangement va, farmdec::Reg rn, farmdec::Reg rm, bool scalar, bool invert_rhs, bool fp) {
+    auto lhs = (scalar) ? GetScalar(rn, fad_size_from_vec_arrangement(va), fp) : GetVec(rn, va, fp);
+    auto rhs = (scalar) ? GetScalar(rm, fad_size_from_vec_arrangement(va), fp) : GetVec(rm, va, fp);
     if (invert_rhs) {
         rhs = irb.CreateNot(rhs);
     }

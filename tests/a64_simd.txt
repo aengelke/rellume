@@ -148,3 +148,24 @@ code="not v0.16b, v1.16b" v0=qq:0,0 v1=0f0f0f0f0f0f0f0f0f0f0f0f0f0f0f0f => v0=f0
 +jit code="cnt v0.8b, v1.8b" v0=qq:0,0 v1=bbbbbbbbq:0,0,0xff,0,0xf0,0,0,0,0 => v0=bbbbbbbbq:0,0,8,0,4,0,0,0,0
 
 +jit code="rbit v0.8b, v1.8b" v0=qq:0,0 v1=bbbbbbbbq:1,2,3,4,5,6,7,8,0 => v0=bbbbbbbbq:0x80,0x40,0xc0,0x20,0xa0,0x60,0xe0,0x10,0
+
+#
+### SIMD Integer Arithmetic
+#
+
+code="abs d0, d1" v0=qq:0,0 v1=qq:-100,0 => v0=qq:100,0
+code="abs v0.4s, v1.4s" v0=qq:0,0 v1=llll:0,-100,3455,-2220 => v0=llll:0,100,3455,2220
+
+code="neg d0, d1" v0=qq:0,0 v1=qq:-100,100 => v0=qq:100,-100
+code="neg v0.4s, v1.4s" v0=qq:0,0 v1=llll:0,-100,3455,-2220 => v0=llll:0,100,-3455,2220
+
+code="add d0, d1, d2" v0=qq:0,0 v1=qq:100,0 v2=qq:1,0 => v0=qq:101,0
+code="add v0.8b, v1.8b, v2.8b" v0=qq:0,0 v1=bbbbbbbbq:100,0,-128,255,0,0,0,1,0 v2=bbbbbbbbq:100,-123,-1,1,0,0,0,0,0 => v0=bbbbbbbbq:200,-123,127,0,0,0,0,1,0
+
+code="sub d0, d1, d2" v0=qq:0,0 v1=qq:101,0 v2=qq:100,0 => v0=qq:1,0
+code="sub v0.8b, v1.8b, v2.8b" v0=qq:0,0 v1=bbbbbbbbq:100,0,-128,255,-128,0,0,1,0 v2=bbbbbbbbq:100,-123,-1,1,1,0,0,0,0 => v0=bbbbbbbbq:0,123,-127,254,127,0,0,1,0
+
+code="umax v0.4s, v1.4s, v2.4s" v0=qq:0,0 v1=llll:1,99,3,98 v2=llll:99,1,98,2 => v0=llll:99,99,98,98
+code="umin v0.4s, v1.4s, v2.4s" v0=qq:0,0 v1=llll:1,99,3,98 v2=llll:99,1,98,2 => v0=llll:1,1,3,2
+code="smax v0.4s, v1.4s, v2.4s" v0=qq:0,0 v1=llll:1,-99,3,98 v2=llll:99,1,-98,2 => v0=llll:99,1,3,98
+code="smin v0.4s, v1.4s, v2.4s" v0=qq:0,0 v1=llll:1,-99,3,98 v2=llll:99,1,-98,2 => v0=llll:1,-99,-98,2
