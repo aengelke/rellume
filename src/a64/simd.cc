@@ -86,6 +86,48 @@ bool Lifter::LiftSIMD(farmdec::Inst a64) {
         }
         break;
     }
+    case farmdec::A64_FCVT_VEC: {
+        assert(a64.fcvt.fbits == 0); // XXX fixed-point currently not supported
+
+        if (scalar) {
+            farmdec::FPSize prec = fad_size_from_vec_arrangement(va);
+            auto fp = GetScalar(a64.rn, prec);
+            auto rounded = Round(fp, static_cast<farmdec::FPRounding>(a64.fcvt.mode));
+            auto ity = (prec == farmdec::FSZ_D) ? irb.getInt64Ty() : irb.getInt32Ty();
+            auto ival = (a64.fcvt.sgn) ? irb.CreateFPToSI(rounded, ity) : irb.CreateFPToUI(rounded, ity);
+            SetScalar(a64.rd, ival);
+        } else {
+            auto fpvec = GetVec(a64.rn, va, /*fp=*/true);
+            auto rounded = Round(fpvec, static_cast<farmdec::FPRounding>(a64.fcvt.mode));
+            auto ity = llvm::VectorType::getInteger(llvm::cast<llvm::VectorType>(fpvec->getType()));
+            auto ivec = (a64.fcvt.sgn) ? irb.CreateFPToSI(rounded, ity) : irb.CreateFPToUI(rounded, ity);
+            SetVec(a64.rd, ivec);
+        }
+        break;
+    }
+    case farmdec::A64_CVTF_VEC:
+        assert(a64.fcvt.fbits == 0); // XXX fixed-point currently not supported
+
+        if (scalar) {
+            farmdec::FPSize prec = fad_size_from_vec_arrangement(va);
+            auto ival = GetScalar(a64.rn, prec, /*fp=*/false);
+            auto fp = (a64.fcvt.sgn) ? irb.CreateSIToFP(ival, TypeOf(prec)) : irb.CreateUIToFP(ival, TypeOf(prec));
+            SetScalar(a64.rd, fp);
+        } else {
+            auto ivec = GetVec(a64.rn, va);
+            auto fpty = TypeOf(va, /*fp=*/true);
+            auto fp = (a64.fcvt.sgn) ? irb.CreateSIToFP(ivec, fpty) : irb.CreateUIToFP(ivec, fpty);
+            SetVec(a64.rd, fp);
+        }
+        break;
+    case farmdec::A64_FRINT_VEC:
+    case farmdec::A64_FRINTX_VEC: {
+        assert(a64.frint.bits == 0); // XXX frint32*, frint64* currently not supported
+
+        bool exact = (a64.op == farmdec::A64_FRINTX_VEC);
+        SetVec(a64.rd, Round(GetVec(a64.rn, va, /*fp=*/true), static_cast<farmdec::FPRounding>(a64.frint.mode), exact));
+        break;
+    }
     case farmdec::A64_AND_VEC:
         LiftThreeSame(llvm::Instruction::And, a64.rd, va, a64.rn, a64.rm, /*scalar=*/false);
         break;

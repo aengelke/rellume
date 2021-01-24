@@ -176,3 +176,44 @@ code="smin v0.4s, v1.4s, v2.4s" v0=qq:0,0 v1=llll:1,-99,3,98 v2=llll:99,1,-98,2 
 
 code="shl d0, d1, #8" v0=qq:0,0 v1=qq:1,0 => v0=qq:0x100,0
 code="shl v0.4h, v1.4h, #4" v0=qq:0,0 v1=wwwwq:1,0x10,0x100,0x1000,0 => v0=wwwwq:0x10,0x100,0x1000,0x0,0
+
+#
+### FP Conversion
+#
+
+code="scvtf d0, d1" v0=qq:0,0 v1=qq:-10,0        => v0=dq:-10.0,0
+code="ucvtf d0, d1" v0=qq:0,0 v1=qq:0xffffffff,0 => v0=dq:4294967295.0,0
+
+code="scvtf v0.2d, v1.2d" v0=qq:0,0 v1=qq:-10,31415     => v0=dd:-10.0,31415.0
+code="ucvtf v0.2d, v1.2d" v0=qq:0,0 v1=qq:0xffffffff,5 => v0=dd:4294967295.0,5.0
+
++jit code="fcvtns d1, d0" v1=qq:0,0 v0=dq:-0.5,0 => v1=qq:0,0
++jit code="fcvtnu d1, d0" v1=qq:0,0 v0=dq:0.5,0  => v1=qq:0,0
+
++jit code="fcvtas d1, d0" v1=qq:0,0 v0=dq:-0.5,0 => v1=qq:-1,0
++jit code="fcvtau d1, d0" v1=qq:0,0 v0=dq:0.5,0  => v1=qq:1,0
++jit code="fcvtms d1, d0" v1=qq:0,0 v0=dq:-0.5,0 => v1=qq:-1,0
++jit code="fcvtmu d1, d0" v1=qq:0,0 v0=dq:0.5,0  => v1=qq:0,0
++jit code="fcvtzs d1, d0" v1=qq:0,0 v0=dq:-0.5,0 => v1=qq:0,0
++jit code="fcvtzu d1, d0" v1=qq:0,0 v0=dq:0.5,0  => v1=qq:0,0
++jit code="fcvtps d1, d0" v1=qq:0,0 v0=dq:-0.5,0 => v1=qq:0,0
++jit code="fcvtpu d1, d0" v1=qq:0,0 v0=dq:0.5,0  => v1=qq:1,0
+
++jit code="fcvtas v1.2d, v0.2d" v1=qq:0,0 v0=dd:-0.5,0.5 => v1=qq:-1,1
++jit code="fcvtau v1.2d, v0.2d" v1=qq:0,0 v0=dd:0.5,0.5 => v1=qq:1,1
++jit code="fcvtms v1.2d, v0.2d" v1=qq:0,0 v0=dd:-0.5,0.5 => v1=qq:-1,0
++jit code="fcvtmu v1.2d, v0.2d" v1=qq:0,0 v0=dd:0.5,0.5 => v1=qq:0,0
++jit code="fcvtzs v1.2d, v0.2d" v1=qq:0,0 v0=dd:-0.5,0.5 => v1=qq:0,0
++jit code="fcvtzu v1.2d, v0.2d" v1=qq:0,0 v0=dd:0.5,0.5 => v1=qq:0,0
++jit code="fcvtps v1.2d, v0.2d" v1=qq:0,0 v0=dd:-0.5,0.5 => v1=qq:0,1
++jit code="fcvtpu v1.2d, v0.2d" v1=qq:0,0 v0=dd:0.5,0.5 => v1=qq:1,1
+
++jit code="frintn v0.2d, v1.2d" v0=qq:0,0 v1=dd:3.5,0.0  => v0=dd:4.0,0.0
++jit code="frinti v0.2d, v1.2d" v0=qq:0,0 v1=dd:3.5,-3.5 => v0=dd:4.0,-4.0
++jit code="frinta v0.2d, v1.2d" v0=qq:0,0 v1=dd:3.5,-3.5 => v0=dd:4.0,-4.0
+
++jit code="frintm v0.2d, v1.2d" v0=qq:0,0 v1=dd:-3.5,3.5 => v0=dd:-4.0,3.0
++jit code="frintz v0.2d, v1.2d" v0=qq:0,0 v1=dd:3.5,-3.5 => v0=dd:3.0,-3.0
++jit code="frintp v0.2d, v1.2d" v0=qq:0,0 v1=dd:3.5,-3.5 => v0=dd:4.0,-3.0
+
++jit code="frintx v0.2d, v1.2d" v0=qq:0,0 v1=dd:3.0,-34.0 => v0=dd:3.0,-34.0
