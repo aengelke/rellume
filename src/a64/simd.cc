@@ -296,6 +296,9 @@ bool Lifter::LiftSIMD(farmdec::Inst a64) {
         SetVec(a64.rd, irb.CreateShuffleVector(vn, vm, odd));
         break;
     }
+    case farmdec::A64_XTN:
+        InsertInHalf(a64.rd, va, Narrow(GetVec(a64.rn, DoubleWidth(va))));
+        break;
     case farmdec::A64_ZIP1: {
         auto vn = GetVec(a64.rn, va);
         auto vm = GetVec(a64.rm, va);
@@ -525,6 +528,43 @@ void Lifter::Dup(farmdec::Reg r, farmdec::VectorArrangement va, llvm::Value* ele
     SetVec(r, irb.CreateVectorSplat(NumElem(va), elem));
 }
 
+// If the vector arrangement va indicates a full vector, insert narrow into Vd's
+// upper half without touching other bits. If va indicates a short vector, write
+// narrow to Vd's lower half and clear the upper half.
+//
+// This is the behavior required for the instructions that narrow to a shorter element
+// size, e.g. XTN, XTN2. The "2" suffix indicates inserting into the upper half, but the
+// behavior can be derived from the vector arrangement just as well.  Consequently, there's
+// only one farmdec::Op value A64_XTN.
+void Lifter::InsertInHalf(farmdec::Reg rd, farmdec::VectorArrangement va, llvm::Value* narrow) {
+    bool upper_half = (va == farmdec::VA_4S || va == farmdec::VA_8H || va == farmdec::VA_16B);
+
+    // SetVec already clears upper half when inserting narrow vector.
+    if (!upper_half) {
+        SetVec(rd, narrow);
+        return;
+    }
+
+    // Insert into upper half without modifying lower half.
+    // (1) Extend narrow vector V into full vector V:0, to make shufflevector happy.
+    // (2) Concatenate the the lower half L and V.
+    auto old = GetVec(rd, va);
+    unsigned nelem = NumElem(va);
+
+    auto narrow_zero = llvm::Constant::getNullValue(narrow->getType());
+    llvm::SmallVector<int, 16> extend;
+    for (unsigned i = 0; i < nelem; i++) {
+        extend.push_back(i);
+    }
+    auto extended = irb.CreateShuffleVector(narrow, narrow_zero, extend);
+
+    llvm::SmallVector<int, 16> mask; // nelem = 8: 0, 1, 2, 3, 8, 9, 10, 11
+    for (unsigned i = 0; i < nelem; i++) {
+        mask.push_back((i < nelem/2) ? i : i + nelem/2);
+    }
+    SetVec(rd, irb.CreateShuffleVector(old, extended, mask));
+}
+
 unsigned Lifter::NumElem(farmdec::VectorArrangement va) {
     switch (va) {
     case farmdec::VA_8B:  return 8;
@@ -537,6 +577,23 @@ unsigned Lifter::NumElem(farmdec::VectorArrangement va) {
     case farmdec::VA_2D:  return 2;
     }
     assert(false && "invalid vector arrangement");
+}
+
+// DoubleWidth returns the full-vector arrangement with double width.
+// This is needed for Narrowing instructions, because the vector arrangement
+// is the one of the destination, not the source.
+farmdec::VectorArrangement Lifter::DoubleWidth(farmdec::VectorArrangement va) {
+    switch (va) {
+    case farmdec::VA_8B:  return farmdec::VA_8H;
+    case farmdec::VA_16B: return farmdec::VA_8H;
+    case farmdec::VA_4H:  return farmdec::VA_4S;
+    case farmdec::VA_8H:  return farmdec::VA_4S;
+    case farmdec::VA_2S:  return farmdec::VA_2D;
+    case farmdec::VA_4S:  return farmdec::VA_2D;
+    default:
+        break;
+    }
+    assert(false && "vector arrangement cannot be doubled");
 }
 
 Facet Lifter::FacetOf(farmdec::VectorArrangement va, bool fp) {
@@ -577,6 +634,13 @@ llvm::Value* Lifter::Abs(llvm::Value* v) {
     // |v| = (v < 0) ? -v : v;
     auto is_negative = irb.CreateICmpSLT(v, llvm::Constant::getNullValue(v->getType()));
     return irb.CreateSelect(is_negative, irb.CreateNeg(v), v);
+}
+
+// Truncate every vector element to half its size.
+llvm::Value* Lifter::Narrow(llvm::Value* v) {
+    auto srcty = llvm::cast<llvm::VectorType>(v->getType());
+    auto dstty = llvm::VectorType::getTruncatedElementVectorType(srcty);
+    return irb.CreateTrunc(v, dstty);
 }
 
 // Lift SIMD instructions where operands and result have the same vector arrangement

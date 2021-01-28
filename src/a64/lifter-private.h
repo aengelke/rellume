@@ -48,10 +48,13 @@ private:
     void SetVec(farmdec::Reg r, llvm::Value* val);
     void InsertElem(farmdec::Reg r, unsigned i, llvm::Value* elem);
     void Dup(farmdec::Reg r, farmdec::VectorArrangement va, llvm::Value* elem);
+    void InsertInHalf(farmdec::Reg r, farmdec::VectorArrangement va, llvm::Value* narrow);
     unsigned NumElem(farmdec::VectorArrangement va);
     Facet FacetOf(farmdec::VectorArrangement va, bool fp = false);
+    farmdec::VectorArrangement DoubleWidth(farmdec::VectorArrangement va);
     llvm::Value* MinMax(llvm::Value* lhs, llvm::Value* rhs, bool sgn, bool min);
     llvm::Value* Abs(llvm::Value* v);
+    llvm::Value* Narrow(llvm::Value* v);
 
     llvm::Value* GetGp(farmdec::Reg, bool w32, bool ptr = false);
     void SetGp(farmdec::Reg, bool w32, llvm::Value* val);

@@ -59,6 +59,13 @@ code="movi v0.2s, #1, msl #16"         v0=qq:0,0 => v0=llq:0x1ffff,0x1ffff,0
 code="movi d0, #0x00ff00ff00ff00ff"    v0=qq:0,0 => v0=qq:0x00ff00ff00ff00ff,0
 code="movi v0.2d, #0x00ff00ff00ff00ff" v0=qq:0,0 => v0=qq:0x00ff00ff00ff00ff,0x00ff00ff00ff00ff
 
+code="xtn v0.2s, v1.2d"   v0=qq:0,0 v1=qq:0xffffffffffffffff,1 => v0=llq:0xffffffff,1,0
+code="xtn2 v0.4s, v1.2d"  v0=qq:0,0 v1=qq:0xffffffffffffffff,1 => v0=qll:0,0xffffffff,1
+code="xtn v0.4h, v1.4s"   v0=qq:0,0 v1=llll:0xffffffff,1,2,3   => v0=wwwwq:0xffff,1,2,3,0
+code="xtn2 v0.8h, v1.4s"  v0=qq:0,0 v1=llll:0xffffffff,1,2,3   => v0=qwwww:0,0xffff,1,2,3
+code="xtn v0.8b, v1.8h"   v0=qq:0,0 v1=wwwwwwww:0xffff,1,2,3,4,5,6,7 => v0=bbbbbbbbq:0xff,1,2,3,4,5,6,7,0
+code="xtn2 v0.16b, v1.8h" v0=qq:0,0 v1=wwwwwwww:0xffff,1,2,3,4,5,6,7 => v0=qbbbbbbbb:0,0xff,1,2,3,4,5,6,7
+
 #
 ### SIMD Zip/Unzip
 #
