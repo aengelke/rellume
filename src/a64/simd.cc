@@ -274,6 +274,52 @@ bool Lifter::LiftSIMD(farmdec::Inst a64) {
         SetGp(a64.rd, w32, irb.CreateZExt(elem, (w32) ? irb.getInt32Ty() : irb.getInt64Ty()));
         break;
     }
+    case farmdec::A64_UZP1: {
+        auto vn = GetVec(a64.rn, va);
+        auto vm = GetVec(a64.rm, va);
+        unsigned nelem = NumElem(va);
+        llvm::SmallVector<int, 16> even; // 0, 2, 4, ...
+        for (unsigned i = 0; i < nelem; i++) {
+            even.push_back(2*i);
+        }
+        SetVec(a64.rd, irb.CreateShuffleVector(vn, vm, even));
+        break;
+    }
+    case farmdec::A64_UZP2: {
+        auto vn = GetVec(a64.rn, va);
+        auto vm = GetVec(a64.rm, va);
+        unsigned nelem = NumElem(va);
+        llvm::SmallVector<int, 16> odd; // 1, 3, 5, ...
+        for (unsigned i = 0; i < nelem; i++) {
+            odd.push_back(2*i+1);
+        }
+        SetVec(a64.rd, irb.CreateShuffleVector(vn, vm, odd));
+        break;
+    }
+    case farmdec::A64_ZIP1: {
+        auto vn = GetVec(a64.rn, va);
+        auto vm = GetVec(a64.rm, va);
+        unsigned nelem = NumElem(va);
+        llvm::SmallVector<int, 16> lower_mask; // e.g. nelem = 4: [0, 4, 1, 5]
+        for (unsigned i = 0; i < nelem/2; i++) {
+            lower_mask.push_back(i);
+            lower_mask.push_back(i + nelem);
+        }
+        SetVec(a64.rd, irb.CreateShuffleVector(vn, vm, lower_mask));
+        break;
+    }
+    case farmdec::A64_ZIP2: {
+        auto vn = GetVec(a64.rn, va);
+        auto vm = GetVec(a64.rm, va);
+        unsigned nelem = NumElem(va);
+        llvm::SmallVector<int, 16> upper_mask; // e.g. nelem = 4: [2, 6, 3, 7]
+        for (unsigned i = 0; i < nelem/2; i++) {
+            upper_mask.push_back(nelem/2 + i);
+            upper_mask.push_back(nelem/2 + i + nelem);
+        }
+        SetVec(a64.rd, irb.CreateShuffleVector(vn, vm, upper_mask));
+        break;
+    }
     case farmdec::A64_CMEQ_REG:
         if (scalar)
             LiftScalarCmXX(llvm::CmpInst::Predicate::ICMP_EQ, a64.rd, a64.rn, a64.rm, /*zero=*/false);
@@ -582,8 +628,6 @@ void Lifter::LiftScalarCmXX(llvm::CmpInst::Predicate cmp, farmdec::Reg rd, farmd
 // lhs+rhs: [a+b,c+d,u+v,w+x]
 //
 void Lifter::TransformSIMDPairwise(farmdec::VectorArrangement va, farmdec::Reg rn, farmdec::Reg rm, llvm::Value **lhs, llvm::Value** rhs, bool fp) {
-
-
     auto vn = GetVec(rn, va, fp);
     auto vm = GetVec(rm, va, fp);
 
