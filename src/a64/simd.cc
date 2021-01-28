@@ -380,8 +380,20 @@ bool Lifter::LiftSIMD(farmdec::Inst a64) {
         else
             LiftCmXX(llvm::CmpInst::Predicate::ICMP_SLT, a64.rd, va, a64.rn, a64.rm, /*zero=*/true);
         break;
-    case farmdec::A64_CMTST:
-        return false; // XXX
+    case farmdec::A64_CMTST: {
+        // res = ((lhs & rhs) != 0) ? -1 : 0;
+        auto lhs = (scalar) ? GetScalar(a64.rn, farmdec::FSZ_D, /*fp=*/false) : GetVec(a64.rn, va);
+        auto rhs = (scalar) ? GetScalar(a64.rm, farmdec::FSZ_D, /*fp=*/false) : GetVec(a64.rm, va);
+        auto lhs_and_rhs = irb.CreateAnd(lhs, rhs);
+        auto ty = (scalar) ? irb.getInt64Ty() : TypeOf(va);
+        auto is_true = irb.CreateICmpNE(lhs_and_rhs, llvm::Constant::getNullValue(ty));
+        auto val = irb.CreateSExt(is_true, ty);
+        if (scalar)
+            SetScalar(a64.rd, val);
+        else
+            SetVec(a64.rd, val);
+        break;
+    }
     case farmdec::A64_ABS_VEC:
         SetVec(a64.rd, Abs(GetVec(a64.rn, va)));
         break;
