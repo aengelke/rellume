@@ -274,6 +274,80 @@ bool Lifter::LiftSIMD(farmdec::Inst a64) {
         SetGp(a64.rd, w32, irb.CreateZExt(elem, (w32) ? irb.getInt32Ty() : irb.getInt64Ty()));
         break;
     }
+    case farmdec::A64_TBL:
+    case farmdec::A64_TBX: {
+        // TBL/TBX: "dynamic shufflevector". Given a table of 1..4 vector registers
+        // and an index vector, construct an output vector. If the index is out of
+        // range, TBL writes a 0 while TBX keeps the old value.
+        //
+        // We cannot use shufflevector, which requires a constant index vector.
+        // Thus: concatenate input vectors into table, then use as many insertelement
+        // as required by the target vector arrangement (either VA_8B or VA_16B).
+        // May not be terribly efficient, but is functionally correct.
+
+        // Table vectors always of arrangement VA_16B.
+        auto zero = llvm::Constant::getNullValue(TypeOf(farmdec::VA_16B));
+        llvm::SmallVector<int, 32> concat16; // 0, 1, ..., 2*16 -- for concatenating 16B and 16B
+        llvm::SmallVector<int, 64> concat32; // 0, 1, ..., 4*16 -- for concatenating 32B and 32B
+        for (unsigned i = 0; i < 32; i++) {
+            concat16.push_back(i);
+        }
+        for (unsigned i = 0; i < 64; i++) {
+            concat32.push_back(i);
+        }
+
+        // Construct table using concatenations. shufflevector only accepts input vectors
+        // of matching size.
+        llvm::Value* table = GetVec(a64.rn, farmdec::VA_16B);
+        switch (a64.imm) {
+        case 1:   // nothing to do, entire table already loaded
+            break;
+        case 2:   // r[n] :: r[n+1]
+            table = irb.CreateShuffleVector(table, GetVec((a64.rn + 1) % 32, farmdec::VA_16B), concat16);
+            break;
+        case 3: { // (r[n] :: r[n+1]) :: (r[n+2] :: 0)
+            auto upper = irb.CreateShuffleVector(GetVec((a64.rn + 2) % 32, farmdec::VA_16B), zero, concat16);
+            auto lower = irb.CreateShuffleVector(table, GetVec((a64.rn + 1) % 32, farmdec::VA_16B), concat16);
+            table = irb.CreateShuffleVector(lower, upper, concat32);
+            break;
+        }
+        case 4: { // (r[n] :: r[n+1]) :: (r[n+2] :: r[n+3])
+            auto upper = irb.CreateShuffleVector(GetVec((a64.rn + 2) % 32, farmdec::VA_16B), GetVec((a64.rn + 3) % 32, farmdec::VA_16B), concat16);
+            auto lower = irb.CreateShuffleVector(table, GetVec((a64.rn + 1) % 32, farmdec::VA_16B), concat16);
+            table = irb.CreateShuffleVector(lower, upper, concat32);
+            break;
+        }
+        default:
+            assert(false && "too many vectors for table");
+        }
+
+        bool retain_old_if_out_of_range = (a64.op == farmdec::A64_TBX);
+
+        auto idxvec = GetVec(a64.rm, va);
+        auto oldvec = GetVec(a64.rd, va);
+        auto dstvec = oldvec;
+        auto zero_elem = irb.getInt8(0);
+        auto nentries = irb.getInt8(a64.imm * 16); // in table
+        unsigned nelem = NumElem(va);
+
+        // idx = idxvec[i];
+        // out_of_range_val = (tbx) ? oldvec[i] : 0;
+        // dstvec[i] = (idx >= sizeof(table)) ? out_of_range_val : table[idx];
+        for (unsigned i = 0; i < nelem; i++) {
+            auto idx = irb.CreateExtractElement(idxvec, i);
+            // Note: this may be a poison value, if idx is out of range.
+            // The interpreter complains about this, but as the value is not
+            // propagated, this should actually be fine.
+            auto tblval = irb.CreateExtractElement(table, idx);
+            auto out_of_range_val = (retain_old_if_out_of_range) ? irb.CreateExtractElement(oldvec, i) : zero_elem;
+            auto is_out_of_range = irb.CreateICmpUGE(idx, nentries);
+            auto val = irb.CreateSelect(is_out_of_range, out_of_range_val, tblval);
+            dstvec = irb.CreateInsertElement(dstvec, val, i);
+        }
+
+        SetVec(a64.rd, dstvec);
+        break;
+    }
     case farmdec::A64_UZP1: {
         auto vn = GetVec(a64.rn, va);
         auto vm = GetVec(a64.rm, va);
