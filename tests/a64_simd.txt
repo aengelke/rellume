@@ -101,16 +101,25 @@ code="tbl v0.8b, { v1.16b }, v9.8b" v0=qq:0,0 v1=000102030405060708090a0b0c0d0e0
 ### SIMD Compare
 #
 
-code="cmeq d0, d1, d2" v0=qq:0,0 v1=qq:0,0 v2=qq:0,0 => v0=qq:-1,0
-code="cmeq d0, d1, #0" v0=qq:0,0 v1=qq:1,0           => v0=qq:0,0
+code="fcmeq d0, d1, d2"          v0=qq:0,0 v1=dq:0.0,0 v2=dq:0.0,0           => v0=qq:-1,0
+code="fcmeq d0, d1, #0.0"        v0=qq:0,0 v1=dq:1.0,0                       => v0=qq:0,0
+code="fcmeq v0.2d, v1.2d, v2.2d" v0=qq:0,0 v1=dd:1.0,0.0 v2=dd:0.0,0.0       => v0=qq:0,-1
+code="fcmeq v0.2d, v1.2d, #0.0"  v0=qq:0,0 v1=dd:1.0,0.0                     => v0=qq:0,-1
+code="fcmgt v0.2s, v1.2s, v2.2s" v0=qq:0,0 v1=ffq:1.0,0.0,0 v2=ffq:0.0,1.0,0 => v0=llq:-1,0,0
+code="fcmge v0.2s, v1.2s, v2.2s" v0=qq:0,0 v1=ffq:1.0,0.0,0 v2=ffq:1.0,1.0,0 => v0=llq:-1,0,0
+code="fcmle v0.2d, v1.2d, v2.2d" v0=qq:0,0 v1=dd:1.0,0.0 v2=dd:0.0,0.0       => v0=qq:0,-1
+code="fcmlt v0.2d, v1.2d, #0.0"  v0=qq:0,0 v1=dd:-10.0,0.0                   => v0=qq:-1,0
+
+code="cmeq d0, d1, d2"          v0=qq:0,0 v1=qq:0,0 v2=qq:0,0 => v0=qq:-1,0
+code="cmeq d0, d1, #0"          v0=qq:0,0 v1=qq:1,0           => v0=qq:0,0
 code="cmeq v0.2d, v1.2d, v2.2d" v0=qq:0,0 v1=qq:1,0 v2=qq:0,0 => v0=qq:0,-1
-code="cmeq v0.2d, v1.2d, #0" v0=qq:0,0 v1=qq:1,0 => v0=qq:0,-1
+code="cmeq v0.2d, v1.2d, #0"    v0=qq:0,0 v1=qq:1,0           => v0=qq:0,-1
 code="cmgt v0.2s, v1.2s, v2.2s" v0=qq:0,0 v1=llq:1,0,0 v2=llq:0,1,0 => v0=llq:-1,0,0
 code="cmge v0.2s, v1.2s, v2.2s" v0=qq:0,0 v1=llq:1,0,0 v2=llq:1,1,0 => v0=llq:-1,0,0
 code="cmhi v0.4h, v1.4h, v2.4h" v0=qq:0,0 v1=wwwwq:34,0,1,2,0 v2=wwwwq:0,0,0,0,0 => v0=wwwwq:-1,0,-1,-1,0
 code="cmhs v0.8b, v1.8b, v2.8b" v0=qq:0,0 v1=bbbbbbbbq:0,1,2,3,4,5,6,7,0 v2=bbbbbbbbq:0,0,0,0,0,0,0,0,0 => v0=bbbbbbbbq:-1,-1,-1,-1,-1,-1,-1,-1,0
 code="cmle v0.2d, v1.2d, v2.2d" v0=qq:0,0 v1=qq:1,0 v2=qq:0,0 => v0=qq:0,-1
-code="cmlt v0.2d, v1.2d, #0" v0=qq:0,0 v1=qq:-10,0 => v0=qq:-1,0
+code="cmlt v0.2d, v1.2d, #0"    v0=qq:0,0 v1=qq:-10,0         => v0=qq:-1,0
 
 code="cmtst d0, d1, d2" v0=qq:0,0 v1=qq:0,0 v2=qq:0,0 => v0=qq:0,0
 code="cmtst d0, d1, d2" v0=qq:0,0 v1=qq:1,0 v2=qq:0,0 => v0=qq:0,0

@@ -128,6 +128,54 @@ bool Lifter::LiftSIMD(farmdec::Inst a64) {
         SetVec(a64.rd, Round(GetVec(a64.rn, va, /*fp=*/true), static_cast<farmdec::FPRounding>(a64.frint.mode), exact));
         break;
     }
+    case farmdec::A64_FCMEQ_REG:
+        if (scalar)
+            LiftScalarCmXX(llvm::CmpInst::Predicate::FCMP_OEQ, a64.rd, a64.rn, a64.rm, /*zero=*/false, /*fp=*/true);
+        else
+            LiftCmXX(llvm::CmpInst::Predicate::FCMP_OEQ, a64.rd, va, a64.rn, a64.rm, /*zero=*/false, /*fp=*/true);
+        break;
+    case farmdec::A64_FCMEQ_ZERO:
+        if (scalar)
+            LiftScalarCmXX(llvm::CmpInst::Predicate::FCMP_OEQ, a64.rd, a64.rn, a64.rm, /*zero=*/true, /*fp=*/true);
+        else
+            LiftCmXX(llvm::CmpInst::Predicate::FCMP_OEQ, a64.rd, va, a64.rn, a64.rm, /*zero=*/true, /*fp=*/true);
+        break;
+    case farmdec::A64_FCMGE_REG:
+        if (scalar)
+            LiftScalarCmXX(llvm::CmpInst::Predicate::FCMP_OGE, a64.rd, a64.rn, a64.rm, /*zero=*/false, /*fp=*/true);
+        else
+            LiftCmXX(llvm::CmpInst::Predicate::FCMP_OGE, a64.rd, va, a64.rn, a64.rm, /*zero=*/false, /*fp=*/true);
+        break;
+    case farmdec::A64_FCMGE_ZERO:
+        if (scalar)
+            LiftScalarCmXX(llvm::CmpInst::Predicate::FCMP_OGE, a64.rd, a64.rn, a64.rm, /*zero=*/true, /*fp=*/true);
+        else
+            LiftCmXX(llvm::CmpInst::Predicate::FCMP_OGE, a64.rd, va, a64.rn, a64.rm, /*zero=*/true, /*fp=*/true);
+        break;
+    case farmdec::A64_FCMGT_REG:
+        if (scalar)
+            LiftScalarCmXX(llvm::CmpInst::Predicate::FCMP_OGT, a64.rd, a64.rn, a64.rm, /*zero=*/false, /*fp=*/true);
+        else
+            LiftCmXX(llvm::CmpInst::Predicate::FCMP_OGT, a64.rd, va, a64.rn, a64.rm, /*zero=*/false, /*fp=*/true);
+        break;
+    case farmdec::A64_FCMGT_ZERO:
+        if (scalar)
+            LiftScalarCmXX(llvm::CmpInst::Predicate::FCMP_OGT, a64.rd, a64.rn, a64.rm, /*zero=*/true, /*fp=*/true);
+        else
+            LiftCmXX(llvm::CmpInst::Predicate::FCMP_OGT, a64.rd, va, a64.rn, a64.rm, /*zero=*/true, /*fp=*/true);
+        break;
+    case farmdec::A64_FCMLE_ZERO:
+        if (scalar)
+            LiftScalarCmXX(llvm::CmpInst::Predicate::FCMP_OLE, a64.rd, a64.rn, a64.rm, /*zero=*/true, /*fp=*/true);
+        else
+            LiftCmXX(llvm::CmpInst::Predicate::FCMP_OLE, a64.rd, va, a64.rn, a64.rm, /*zero=*/true, /*fp=*/true);
+        break;
+    case farmdec::A64_FCMLT_ZERO:
+        if (scalar)
+            LiftScalarCmXX(llvm::CmpInst::Predicate::FCMP_OLT, a64.rd, a64.rn, a64.rm, /*zero=*/true, /*fp=*/true);
+        else
+            LiftCmXX(llvm::CmpInst::Predicate::FCMP_OLT, a64.rd, va, a64.rn, a64.rm, /*zero=*/true, /*fp=*/true);
+        break;
     case farmdec::A64_AND_VEC:
         LiftThreeSame(llvm::Instruction::And, a64.rd, va, a64.rn, a64.rm, /*scalar=*/false);
         break;
@@ -757,8 +805,8 @@ void Lifter::LiftThreeSame(llvm::Instruction::BinaryOps op, farmdec::Reg rd, far
 // (zero == true).
 void Lifter::LiftCmXX(llvm::CmpInst::Predicate cmp, farmdec::Reg rd, farmdec::VectorArrangement va, farmdec::Reg rn, farmdec::Reg rm, bool zero, bool fp) {
     auto srcty = TypeOf(va, fp); // may be float or int
-    auto lhs = GetVec(rn, va);
-    auto rhs = (zero) ? llvm::Constant::getNullValue(srcty) : GetVec(rm, va);
+    auto lhs = GetVec(rn, va, fp);
+    auto rhs = (zero) ? llvm::Constant::getNullValue(srcty) : GetVec(rm, va, fp);
 
     auto dstty = llvm::VectorType::getInteger(llvm::cast<llvm::VectorType>(srcty)); // must be int
     auto is_true = irb.CreateCmp(cmp, lhs, rhs);
