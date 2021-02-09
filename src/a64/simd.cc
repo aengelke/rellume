@@ -211,6 +211,17 @@ bool Lifter::LiftSIMD(farmdec::Inst a64) {
             SetVec(a64.rd, irb.CreateShl(lhs, rhs));
         }
         break;
+    case farmdec::A64_SHRN: {
+        assert(!round && "rshrn not supported yet");
+        farmdec::VectorArrangement srcva = DoubleWidth(va);
+
+        auto lhs = GetVec(a64.rn, srcva);
+        unsigned bits = ElemTypeOf(srcva)->getPrimitiveSizeInBits();
+        auto rhs = irb.CreateVectorSplat(NumElem(srcva), irb.getIntN(bits, a64.imm));
+        auto res = irb.CreateLShr(lhs, rhs);
+        InsertInHalf(a64.rd, va, Narrow(res));
+        break;
+    }
     case farmdec::A64_DUP_ELEM: {
         auto elem = GetElem(a64.rn, va, a64.imm);
         if (scalar) {
@@ -653,9 +664,18 @@ unsigned Lifter::NumElem(farmdec::VectorArrangement va) {
     assert(false && "invalid vector arrangement");
 }
 
-// DoubleWidth returns the full-vector arrangement with double width.
-// This is needed for Narrowing instructions, because the vector arrangement
-// is the one of the destination, not the source.
+// DoubleWidth returns the full-vector arrangement with double the element width.
+// This is needed for Narrowing instructions.
+//
+// Examples:
+//
+//    xtn  v0.2s, v1.2d
+//    xtn2 v0.4s, v1.2d
+//
+// xtn narrows the v1 elements and writes them into the lower half of v0 while
+// xtn2 writes the two elements into the high half instead. Farmdec stores the
+// more important "2s" and "4s" as the arrangement since "2d" can be derived
+// using DoubleWidth.
 farmdec::VectorArrangement Lifter::DoubleWidth(farmdec::VectorArrangement va) {
     switch (va) {
     case farmdec::VA_8B:  return farmdec::VA_8H;
