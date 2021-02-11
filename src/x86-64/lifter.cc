@@ -204,10 +204,10 @@ bool Lifter::Lift(const Instr& inst) {
     case FDI_FXSAVE: LiftFxsave(inst); break;
     case FDI_FXRSTOR: LiftFxrstor(inst); break;
     case FDI_FSTCW: LiftFstcw(inst); break;
-    // case FDI_FLDCW: TODO break;
+    case FDI_FLDCW: break; // intentional NOPs. TODO: implement semantics
     case FDI_FSTSW: LiftFstsw(inst); break;
     case FDI_STMXCSR: LiftStmxcsr(inst); break;
-    // case FDI_LDMXCSR: TODO break;
+    case FDI_LDMXCSR: break; // intentional NOPs. TODO: implement semantics
     case FDI_SSE_MOVD: LiftSseMovq(inst, Facet::I32); break;
     case FDI_SSE_MOVQ: LiftSseMovq(inst, Facet::I64); break;
     case FDI_SSE_MOVSS: LiftSseMovScalar(inst, Facet::F32); break;
