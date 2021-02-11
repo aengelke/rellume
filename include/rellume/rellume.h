@@ -56,6 +56,7 @@ RELLUME_API void ll_config_set_instr_impl(LLConfig*, unsigned, LLVMValueRef);
 RELLUME_API void ll_config_set_tail_func(LLConfig*, LLVMValueRef);
 RELLUME_API void ll_config_set_call_func(LLConfig*, LLVMValueRef);
 RELLUME_API void ll_config_set_syscall_impl(LLConfig*, LLVMValueRef);
+RELLUME_API void ll_config_set_cpuinfo_func(LLConfig*, LLVMValueRef);
 RELLUME_API void ll_config_set_instr_marker(LLConfig*, LLVMValueRef);
 RELLUME_API void ll_config_set_call_ret_clobber_flags(LLConfig*, bool);
 RELLUME_API void ll_config_set_use_native_segment_base(LLConfig*, bool);

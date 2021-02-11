@@ -92,6 +92,13 @@ struct LLConfig {
     /// single argument.
     llvm::Function* syscall_implementation = nullptr;
 
+    /// Function for querying CPU information. The signature is
+    /// architecture-specific.
+    ///
+    /// For x86-64: this is used for CPUID with the following signature:
+    ///     { i64 (ecx:eax), i64 (ebx:edx) } (i32 %eax, i32 %ecx)
+    llvm::Function* cpuinfo_function = nullptr;
+
     /// Function which is called before the instruction code is lifted. The
     /// function takes the value of RIP (which points at the end of the
     /// instruction) and a metadata containing an MDString with the FdInstr.

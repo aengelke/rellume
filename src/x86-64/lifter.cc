@@ -90,8 +90,8 @@ bool Lifter::Lift(const Instr& inst) {
     case FDI_CALL: LiftCall(inst); break;
     case FDI_RET: LiftRet(inst); break;
     case FDI_SYSCALL: LiftSyscall(inst); break;
+    case FDI_CPUID: LiftCpuid(inst); break;
     case FDI_RDTSC: LiftRdtsc(inst); break;
-    // case FDI_CPUID: NOT IMPLEMENTED
     // case FDI_CRC32: NOT IMPLEMENTED
     // case FDI_UD2: Intentionally not implemented.
 

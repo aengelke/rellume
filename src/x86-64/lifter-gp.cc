@@ -572,6 +572,29 @@ void Lifter::LiftSyscall(const Instr& inst) {
         CallExternalFunction(cfg.syscall_implementation);
 }
 
+void Lifter::LiftCpuid(const Instr& inst) {
+    // TODO: serialize
+    llvm::Value* eax = irb.getInt64(0);
+    llvm::Value* ecx = irb.getInt64(0);
+    llvm::Value* edx = irb.getInt64(0);
+    llvm::Value* ebx = irb.getInt64(0);
+    if (cfg.cpuinfo_function) {
+        llvm::Value* in_eax = GetReg(ArchReg::RAX, Facet::I32);
+        llvm::Value* in_ecx = GetReg(ArchReg::RCX, Facet::I32);
+        llvm::Value* res = irb.CreateCall(cfg.cpuinfo_function, {in_eax, in_ecx});
+        llvm::Value* ecxeax = irb.CreateExtractValue(res, {0});
+        llvm::Value* ebxedx = irb.CreateExtractValue(res, {1});
+        eax = irb.CreateAnd(ecxeax, irb.getInt64(0xffffffff));
+        ecx = irb.CreateLShr(ecxeax, 32);
+        edx = irb.CreateAnd(ebxedx, irb.getInt64(0xffffffff));
+        ebx = irb.CreateLShr(ebxedx, 32);
+    }
+    SetReg(ArchReg::RAX, Facet::I64, eax);
+    SetReg(ArchReg::RCX, Facet::I64, ecx);
+    SetReg(ArchReg::RDX, Facet::I64, edx);
+    SetReg(ArchReg::RBX, Facet::I64, ebx);
+}
+
 void Lifter::LiftRdtsc(const Instr& inst) {
     llvm::Module* module = irb.GetInsertBlock()->getModule();
     auto id = llvm::Intrinsic::readcyclecounter;
