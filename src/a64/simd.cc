@@ -259,6 +259,31 @@ bool Lifter::LiftSIMD(farmdec::Inst a64) {
             SetVec(a64.rd, irb.CreateShl(lhs, rhs));
         }
         break;
+    case farmdec::A64_SHLL: { // XTL is an alias with shift #0
+        auto vn_half = Halve(GetVec(a64.rn, va), va);
+        farmdec::VectorArrangement dstva = DoubleWidth(va);
+
+        auto extty = TypeOf(dstva);
+        auto lhs = (sgn) ? irb.CreateSExt(vn_half, extty) : irb.CreateZExt(vn_half, extty);
+
+        unsigned bits = ElemTypeOf(dstva)->getPrimitiveSizeInBits();
+        auto rhs = irb.CreateVectorSplat(NumElem(dstva), irb.getIntN(bits, a64.imm));
+
+        SetVec(a64.rd, irb.CreateShl(lhs, rhs));
+        break;
+    }
+    case farmdec::A64_SHR:
+        assert(!round && "rshr not supported yet");
+        if (scalar) {
+            auto lhs = GetScalar(a64.rn, fad_size_from_vec_arrangement(va), /*fp=*/false);
+            SetScalar(a64.rd, (sgn) ? irb.CreateAShr(lhs, a64.imm) : irb.CreateLShr(lhs, a64.imm));
+        } else {
+            auto lhs = GetVec(a64.rn, va);
+            unsigned bits = ElemTypeOf(va)->getPrimitiveSizeInBits();
+            auto rhs = irb.CreateVectorSplat(NumElem(va), irb.getIntN(bits, a64.imm));
+            SetVec(a64.rd, (sgn) ? irb.CreateAShr(lhs, rhs) : irb.CreateLShr(lhs, rhs));
+        }
+        break;
     case farmdec::A64_SHRN: {
         assert(!round && "rshrn not supported yet");
         farmdec::VectorArrangement srcva = DoubleWidth(va);
