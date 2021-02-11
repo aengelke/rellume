@@ -184,8 +184,12 @@ public:
                       cleaned_regs() {
         unsigned ngp, nvec;
         switch (arch) {
+#ifdef RELLUME_WITH_X86_64
         case Arch::X86_64: ngp = 16; nvec = 16; ivec_facet = Facet::I128; break;
+#endif // RELLUME_WITH_X86_64
+#ifdef RELLUME_WITH_RV64
         case Arch::RV64: ngp = 32; nvec = 32; ivec_facet = Facet::I64; break;
+#endif // RELLUME_WITH_RV64
         default: assert(false);
         }
         regs_gp.resize(ngp);

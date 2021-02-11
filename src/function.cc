@@ -111,8 +111,12 @@ bool Function::AddInst(uint64_t block_addr, const Instr& inst)
 
     ArchBasicBlock& ab = *block_map[block_addr];
     switch (cfg->arch) {
+#ifdef RELLUME_WITH_X86_64
     case Arch::X86_64: return x86_64::LiftInstruction(inst, fi, *cfg, ab);
+#endif // RELLUME_WITH_X86_64
+#ifdef RELLUME_WITH_RV64
     case Arch::RV64: return rv64::LiftInstruction(inst, fi, *cfg, ab);
+#endif // RELLUME_WITH_RV64
     default: return false;
     }
 }

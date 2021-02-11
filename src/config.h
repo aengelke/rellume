@@ -59,7 +59,7 @@ struct LLConfig {
     bool position_independent_code = false;
 
     /// Instruction Set Architecture of the code to lift.
-    Arch arch = Arch::X86_64;
+    Arch arch = Arch::DEFAULT;
 
     /// Optimize generated IR for the HHVM calling convention.
     CallConv callconv = CallConv::X86_64_SPTR;

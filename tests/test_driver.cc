@@ -54,23 +54,31 @@ class TestCase {
     std::vector<std::pair<void*, size_t>> mem_maps;
 
     TestCase(std::ostringstream& diagnostic) : diagnostic(diagnostic) {
+        static std::unordered_map<std::string,RegEntry> regs_empty = {};
+#ifdef RELLUME_WITH_X86_64
         static std::unordered_map<std::string,RegEntry> regs_x86_64 = {
 #define RELLUME_NAMED_REG(name,nameu,sz,off) {#name, {sz, off}},
 #include <rellume/cpustruct-x86_64-private.inc>
 #undef RELLUME_NAMED_REG
         };
+#endif // RELLUME_WITH_X86_64
+#ifdef RELLUME_WITH_RV64
         static std::unordered_map<std::string,RegEntry> regs_rv64 = {
 #define RELLUME_NAMED_REG(name,nameu,sz,off) {#name, {sz, off}},
 #include <rellume/cpustruct-rv64-private.inc>
 #undef RELLUME_NAMED_REG
         };
+#endif // RELLUME_WITH_RV64
 
+        regs = &regs_empty;
+#ifdef RELLUME_WITH_X86_64
         if (!strcmp(opt_arch, "x86_64"))
             regs = &regs_x86_64;
-        else if (!strcmp(opt_arch, "rv64"))
+#endif // RELLUME_WITH_X86_64
+#ifdef RELLUME_WITH_RV64
+        if (!strcmp(opt_arch, "rv64"))
             regs = &regs_rv64;
-        else
-            assert(false && "unsupported architecture");
+#endif // RELLUME_WITH_RV64
     }
 
     ~TestCase() {

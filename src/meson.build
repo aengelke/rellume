@@ -1,21 +1,19 @@
 
-sources = [
+rellume_sources = files(
   'basicblock.cc',
   'callconv.cc',
   'facet.cc',
   'function.cc',
   'lldecoder.cc',
   'lifter-base.cc',
-  'x86-64/lifter.cc',
-  'x86-64/lifter-flags.cc',
-  'x86-64/lifter-gp.cc',
-  'x86-64/lifter-sse.cc',
-  'x86-64/lifter-operand.cc',
-  'rv64/lifter.cc',
   'regfile.cc',
   'rellume.cc',
   'transforms.cc',
-]
+)
+
+foreach arch : architectures
+  subdir('-'.join(arch.split('_')))
+endforeach
 
 rellume_inc_priv = include_directories('.')
 rellume_flags = [
@@ -26,9 +24,9 @@ rellume_flags = [
   '-fno-unwind-tables',
   '-fno-rtti',
 ]
-librellume_lib = library('rellume', sources, cpustruct_priv,
+librellume_lib = library('rellume', rellume_sources, cpustruct_priv,
                          include_directories: [rellume_inc, rellume_inc_priv],
-                         dependencies: [libllvm, fadec, frvdec],
+                         dependencies: [libllvm] + archdeps,
                          c_args: rellume_flags,
                          cpp_args: rellume_flags,
                          cpp_pch: 'pch/llvm.h',

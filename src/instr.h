@@ -24,8 +24,12 @@
 #ifndef RELLUME_INSTR_H
 #define RELLUME_INSTR_H
 
+#ifdef RELLUME_WITH_X86_64
 #include <fadec.h>
+#endif // RELLUME_WITH_X86_64
+#ifdef RELLUME_WITH_RV64
 #include <frvdec.h>
+#endif // RELLUME_WITH_RV64
 
 #include <cstdbool>
 #include <cstdint>
@@ -40,13 +44,18 @@ class Instr {
     unsigned char instlen;
     uint64_t addr;
     union {
+#ifdef RELLUME_WITH_X86_64
         FdInstr x86_64;
+#endif // RELLUME_WITH_X86_64
+#ifdef RELLUME_WITH_RV64
         FrvInst rv64;
+#endif // RELLUME_WITH_RV64
     };
 
 public:
-    using Type = FdInstrType;
 
+#ifdef RELLUME_WITH_X86_64
+    using Type = FdInstrType;
     struct Reg {
         uint16_t rt;
         uint16_t ri;
@@ -105,16 +114,19 @@ public:
     const Op op(unsigned idx) const { return Op{&x86_64, idx}; }
     bool has_rep() const { return FD_HAS_REP(&x86_64); }
     bool has_repnz() const { return FD_HAS_REPNZ(&x86_64); }
+#endif // RELLUME_WITH_X86_64
 
 
     size_t len() const { return instlen; }
     uintptr_t start() const { return addr; }
     uintptr_t end() const { return start() + len(); }
 
+#ifdef RELLUME_WITH_RV64
     operator const FrvInst*() const {
         assert(arch == Arch::RV64);
         return &rv64;
     }
+#endif // RELLUME_WITH_RV64
 
     enum class Kind {
         BRANCH,
@@ -125,6 +137,7 @@ public:
     };
     Kind Kind() {
         switch (arch) {
+#ifdef RELLUME_WITH_X86_64
         case Arch::X86_64:
             switch (type()) {
             default:          return Kind::OTHER;
@@ -160,6 +173,8 @@ public:
             case FDI_UD2:     return Kind::UNKNOWN;
             case FDI_HLT:     return Kind::UNKNOWN;
             }
+#endif // RELLUME_WITH_X86_64
+#ifdef RELLUME_WITH_RV64
         case Arch::RV64:
             switch (rv64.mnem) {
             default:          return Kind::OTHER;
@@ -173,12 +188,14 @@ public:
             case FRV_JALR:    return rv64.rd ? Kind::CALL : Kind::BRANCH;
             case FRV_ECALL:   return Kind::UNKNOWN;
             }
+#endif // RELLUME_WITH_RV64
         default:
             return Kind::UNKNOWN;
         }
     }
     std::optional<uintptr_t> JumpTarget() {
         switch (arch) {
+#ifdef RELLUME_WITH_X86_64
         case Arch::X86_64:
             switch (Kind()) {
             case Kind::COND_BRANCH:
@@ -191,6 +208,8 @@ public:
                 break;
             }
             break;
+#endif // RELLUME_WITH_X86_64
+#ifdef RELLUME_WITH_RV64
         case Arch::RV64:
             switch (Kind()) {
             case Kind::COND_BRANCH:
@@ -204,6 +223,9 @@ public:
                 break;
             }
             break;
+#endif // RELLUME_WITH_RV64
+        default:
+            break;
         }
         return std::nullopt;
     }
@@ -216,11 +238,17 @@ public:
         this->addr = addr;
         int res = -1;
         switch (arch) {
+#ifdef RELLUME_WITH_X86_64
         case Arch::X86_64:
             res = fd_decode(buf, len, /*mode=*/64, /*addr=*/0, &x86_64);
             break;
+#endif // RELLUME_WITH_X86_64
+#ifdef RELLUME_WITH_RV64
         case Arch::RV64:
             res = frv_decode(len, buf, FRV_RV64, &rv64);
+            break;
+#endif // RELLUME_WITH_RV64
+        default:
             break;
         }
         if (res >= 0)

@@ -37,6 +37,7 @@ class Value;
 
 namespace rellume {
 
+#ifdef RELLUME_WITH_X86_64
 namespace SptrIdx::x86_64 {
     enum {
 #define RELLUME_NAMED_REG(name,nameu,sz,off) nameu,
@@ -44,6 +45,8 @@ namespace SptrIdx::x86_64 {
 #undef RELLUME_NAMED_REG
     };
 }
+#endif // RELLUME_WITH_X86_64
+#ifdef RELLUME_WITH_RV64
 namespace SptrIdx::rv64 {
     enum {
 #define RELLUME_NAMED_REG(name,nameu,sz,off) nameu,
@@ -51,6 +54,7 @@ namespace SptrIdx::rv64 {
 #undef RELLUME_NAMED_REG
     };
 }
+#endif // RELLUME_WITH_RV64
 
 class BasicBlock;
 

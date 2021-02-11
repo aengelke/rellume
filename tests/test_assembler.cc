@@ -65,13 +65,17 @@ int main(int argc, char** argv) {
         return 1;
     }
 
-    if (!strcmp(argv[1], "x86_64")) {
+    if (false) {
+#ifdef TARGET_X86_64
+    } else if (!strcmp(argv[1], "x86_64")) {
         triplestr = "x86_64-linux-gnu";
         cpufeatures = "+nopl";
         LLVMInitializeX86TargetInfo();
         LLVMInitializeX86Target();
         LLVMInitializeX86TargetMC();
         LLVMInitializeX86AsmParser();
+#endif // TARGET_X86_64
+#ifdef TARGET_RV64
     } else if (!strcmp(argv[1], "rv64")) {
         triplestr = "riscv64-unknown-linux-gnu";
         cpufeatures = "+m,+a,+f,+d,+c";
@@ -79,6 +83,7 @@ int main(int argc, char** argv) {
         LLVMInitializeRISCVTarget();
         LLVMInitializeRISCVTargetMC();
         LLVMInitializeRISCVAsmParser();
+#endif // TARGET_RV64
     } else {
         std::cerr << "unsupported architecture" << std::endl;
         return 1;

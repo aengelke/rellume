@@ -61,8 +61,11 @@ RELLUME_API void ll_config_set_call_ret_clobber_flags(LLConfig*, bool);
 RELLUME_API void ll_config_set_use_native_segment_base(LLConfig*, bool);
 RELLUME_API void ll_config_enable_full_facets(LLConfig*, bool);
 
-/// Sets the architecture. Currently the only valid options is "x86-64", which
+/// Sets the architecture. Currently the only valid options is "x86_64", which
 /// is also default, and "rv64". Return true, if the architecture is supported.
+/// If no architecture is specified explicitly and the lifter is configured
+/// without support for x86-64, th behavior of ll_func_new is undefined.
+/// For backwards compatibility, also "x86-64" is accepted as valid option.
 RELLUME_API bool ll_config_set_architecture(LLConfig*, const char*);
 
 typedef struct LLFunc LLFunc;
