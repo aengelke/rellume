@@ -1,0 +1,2 @@
+option('with_x86_64', type: 'boolean', value: true)
+option('with_rv64', type: 'boolean', value: true)
