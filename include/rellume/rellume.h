@@ -28,7 +28,6 @@
 #include <stddef.h>
 #include <stdint.h>
 
-#include <fadec.h>
 #include <llvm-c/Core.h>
 
 #ifdef __cplusplus
@@ -53,7 +52,7 @@ RELLUME_API void ll_config_enable_fast_math(LLConfig*, bool);
 RELLUME_API void ll_config_enable_verify_ir(LLConfig*, bool);
 RELLUME_API void ll_config_set_position_independent_code(LLConfig*, bool);
 RELLUME_API void ll_config_set_global_base(LLConfig*, uintptr_t, LLVMValueRef);
-RELLUME_API void ll_config_set_instr_impl(LLConfig*, FdInstrType, LLVMValueRef);
+RELLUME_API void ll_config_set_instr_impl(LLConfig*, unsigned, LLVMValueRef);
 RELLUME_API void ll_config_set_tail_func(LLConfig*, LLVMValueRef);
 RELLUME_API void ll_config_set_call_func(LLConfig*, LLVMValueRef);
 RELLUME_API void ll_config_set_syscall_impl(LLConfig*, LLVMValueRef);

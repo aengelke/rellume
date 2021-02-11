@@ -33,8 +33,6 @@
 #include <llvm/IR/Module.h>
 #include <llvm/IR/Value.h>
 
-#include <fadec.h>
-
 #include <cstdbool>
 #include <cstdint>
 #include <cstring>
@@ -76,7 +74,7 @@ void ll_config_set_global_base(LLConfig* cfg, uintptr_t base,
     unwrap(cfg)->global_base_addr = base;
     unwrap(cfg)->global_base_value = llvm::unwrap(value);
 }
-void ll_config_set_instr_impl(LLConfig* cfg, FdInstrType type,
+void ll_config_set_instr_impl(LLConfig* cfg, unsigned type,
                               LLVMValueRef value) {
     unwrap(cfg)->instr_overrides[type] = llvm::unwrap<llvm::Function>(value);
 }
