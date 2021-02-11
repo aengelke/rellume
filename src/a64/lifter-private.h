@@ -55,6 +55,7 @@ private:
     llvm::Value* MinMax(llvm::Value* lhs, llvm::Value* rhs, bool sgn, bool min);
     llvm::Value* Abs(llvm::Value* v);
     llvm::Value* Narrow(llvm::Value* v);
+    llvm::Value* Halve(llvm::Value* v, farmdec::VectorArrangement va);
 
     llvm::Value* GetGp(farmdec::Reg, bool w32, bool ptr = false);
     void SetGp(farmdec::Reg, bool w32, llvm::Value* val);

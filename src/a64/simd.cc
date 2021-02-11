@@ -539,9 +539,43 @@ bool Lifter::LiftSIMD(farmdec::Inst a64) {
     case farmdec::A64_ADD_VEC:
         LiftThreeSame(llvm::Instruction::Add, a64.rd, va, a64.rn, a64.rm, scalar);
         break;
+    case farmdec::A64_ADDL: {
+        auto vn_half = Halve(GetVec(a64.rn, va), va);
+        auto vm_half = Halve(GetVec(a64.rm, va), va);
+        auto extty = TypeOf(DoubleWidth(va));
+        auto lhs = (sgn) ? irb.CreateSExt(vn_half, extty) : irb.CreateZExt(vn_half, extty);
+        auto rhs = (sgn) ? irb.CreateSExt(vm_half, extty) : irb.CreateZExt(vm_half, extty);
+        SetVec(a64.rd, irb.CreateAdd(lhs, rhs));
+        break;
+    }
+    case farmdec::A64_ADDW: {
+        auto lhs = GetVec(a64.rn, DoubleWidth(va));
+        auto vm_half = Halve(GetVec(a64.rm, va), va);
+        auto extty = TypeOf(DoubleWidth(va));
+        auto rhs = (sgn) ? irb.CreateSExt(vm_half, extty) : irb.CreateZExt(vm_half, extty);
+        SetVec(a64.rd, irb.CreateAdd(lhs, rhs));
+        break;
+    }
     case farmdec::A64_SUB_VEC:
         LiftThreeSame(llvm::Instruction::Sub, a64.rd, va, a64.rn, a64.rm, scalar);
         break;
+    case farmdec::A64_SUBL: {
+        auto vn_half = Halve(GetVec(a64.rn, va), va);
+        auto vm_half = Halve(GetVec(a64.rm, va), va);
+        auto extty = TypeOf(DoubleWidth(va));
+        auto lhs = (sgn) ? irb.CreateSExt(vn_half, extty) : irb.CreateZExt(vn_half, extty);
+        auto rhs = (sgn) ? irb.CreateSExt(vm_half, extty) : irb.CreateZExt(vm_half, extty);
+        SetVec(a64.rd, irb.CreateSub(lhs, rhs));
+        break;
+    }
+    case farmdec::A64_SUBW: {
+        auto lhs = GetVec(a64.rn, DoubleWidth(va));
+        auto vm_half = Halve(GetVec(a64.rm, va), va);
+        auto extty = TypeOf(DoubleWidth(va));
+        auto rhs = (sgn) ? irb.CreateSExt(vm_half, extty) : irb.CreateZExt(vm_half, extty);
+        SetVec(a64.rd, irb.CreateSub(lhs, rhs));
+        break;
+    }
     case farmdec::A64_MAX_VEC:
         SetVec(a64.rd, MinMax(GetVec(a64.rn, va), GetVec(a64.rm, va), sgn, /*min=*/false));
         break;
@@ -783,6 +817,24 @@ llvm::Value* Lifter::Narrow(llvm::Value* v) {
     auto srcty = llvm::cast<llvm::VectorType>(v->getType());
     auto dstty = llvm::VectorType::getTruncatedElementVectorType(srcty);
     return irb.CreateTrunc(v, dstty);
+}
+
+// Return the lower or upper half of vector v of arrangement va.
+llvm::Value* Lifter::Halve(llvm::Value* v, farmdec::VectorArrangement va) {
+    // Long vector arrangements <==> upper half of the vector is used (mnemonic suffix 2, as in ADDW2, ADDL2, ...)
+    bool upper_half = (va == farmdec::VA_4S || va == farmdec::VA_8H || va == farmdec::VA_16B);
+
+    // A long vector arrangement <==> upper half, so we need to take nelem/2..nelem,
+    // but conversely: lower half <==> already short vector arrangement, so take 0..nelem.
+    llvm::SmallVector<int, 16> half;
+    unsigned nelem = NumElem(va);
+    unsigned start = (upper_half) ? nelem/2 : 0;     // inclusive
+    unsigned end   = (upper_half) ? nelem   : nelem; // exclusive
+    for (unsigned i = start; i < end; i++) {
+        half.push_back(i);
+    }
+
+    return irb.CreateShuffleVector(v, llvm::Constant::getNullValue(v->getType()), half);
 }
 
 // Lift SIMD instructions where operands and result have the same vector arrangement
