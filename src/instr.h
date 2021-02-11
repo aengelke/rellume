@@ -47,11 +47,6 @@ class Instr {
 public:
     using Type = FdInstrType;
 
-    // Constructors needed for deprecated ll_func_add_inst
-    Instr() {}
-    Instr(FdInstr* fdi)
-        : arch(Arch::X86_64), addr(FD_ADDRESS(fdi)), x86_64(*fdi) {}
-
     struct Reg {
         uint16_t rt;
         uint16_t ri;

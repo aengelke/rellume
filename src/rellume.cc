@@ -126,10 +126,6 @@ LLFunc* ll_func_new(LLVMModuleRef mod, LLConfig* cfg) {
         new rellume::Function(llvm::unwrap(mod), unwrap(cfg)));
 }
 
-void ll_func_add_inst(LLFunc* fn, uint64_t block_addr, FdInstr* instr) {
-    rellume::Instr inst(instr);
-    unwrap(fn)->AddInst(block_addr, inst);
-}
 LLVMValueRef ll_func_lift(LLFunc* fn) { return llvm::wrap(unwrap(fn)->Lift()); }
 void ll_func_dispose(LLFunc* fn) { delete unwrap(fn); }
 
