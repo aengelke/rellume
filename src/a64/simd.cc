@@ -176,6 +176,34 @@ bool Lifter::LiftSIMD(farmdec::Inst a64) {
         else
             LiftCmXX(llvm::CmpInst::Predicate::FCMP_OLT, a64.rd, va, a64.rn, a64.rm, /*zero=*/true, /*fp=*/true);
         break;
+    case farmdec::A64_FABS_VEC:
+        SetVec(a64.rd, irb.CreateUnaryIntrinsic(llvm::Intrinsic::fabs, GetVec(a64.rn, va, /*fp=*/true)));
+        break;
+    case farmdec::A64_FABD_VEC: {
+        auto lhs = GetVec(a64.rn, va, /*fp=*/true);
+        auto rhs = GetVec(a64.rm, va, /*fp=*/true);
+        auto diff = irb.CreateFSub(lhs, rhs);
+        SetVec(a64.rd, irb.CreateUnaryIntrinsic(llvm::Intrinsic::fabs, diff));
+        break;
+    }
+    case farmdec::A64_FNEG_VEC:
+        SetVec(a64.rd, irb.CreateFNeg(GetVec(a64.rn, va, /*fp=*/true)));
+        break;
+    case farmdec::A64_FSQRT_VEC:
+        SetVec(a64.rd, irb.CreateUnaryIntrinsic(llvm::Intrinsic::sqrt, GetVec(a64.rn, va, /*fp=*/true)));
+        break;
+    case farmdec::A64_FMUL_VEC:
+        LiftThreeSame(llvm::Instruction::FMul, a64.rd, va, a64.rn, a64.rm, /*scalar=*/false, /*invert_rhs=*/false, /*fp=*/true);
+        break;
+    case farmdec::A64_FDIV_VEC:
+        LiftThreeSame(llvm::Instruction::FDiv, a64.rd, va, a64.rn, a64.rm, /*scalar=*/false, /*invert_rhs=*/false, /*fp=*/true);
+        break;
+    case farmdec::A64_FADD_VEC:
+        LiftThreeSame(llvm::Instruction::FAdd, a64.rd, va, a64.rn, a64.rm, /*scalar=*/false, /*invert_rhs=*/false, /*fp=*/true);
+        break;
+    case farmdec::A64_FSUB_VEC:
+        LiftThreeSame(llvm::Instruction::FSub, a64.rd, va, a64.rn, a64.rm, /*scalar=*/false, /*invert_rhs=*/false, /*fp=*/true);
+        break;
     case farmdec::A64_AND_VEC:
         LiftThreeSame(llvm::Instruction::And, a64.rd, va, a64.rn, a64.rm, /*scalar=*/false);
         break;
