@@ -65,6 +65,12 @@ public:
     bool Lift(const Instr&);
 
 private:
+    // Helper function for f***ing LLVM providing overloads for signed and
+    // unsigned int, preventing the use of brace initializers.
+    llvm::Value* CreateShuffleVector(llvm::Value* a, llvm::Value* b,
+                                     llvm::ArrayRef<uint32_t> msk) {
+        return irb.CreateShuffleVector(a, b, msk);
+    }
     ArchReg MapReg(const Instr::Reg reg);
 
     void StoreGp(ArchReg reg, llvm::Value* v) {

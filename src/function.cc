@@ -67,7 +67,8 @@ Function::Function(llvm::Module* mod, LLConfig* cfg) : cfg(cfg), fi{}
     llvm->addFnAttr("null-pointer-is-valid", "true");
     llvm->addParamAttr(cpu_param_idx, llvm::Attribute::NoAlias);
     llvm->addParamAttr(cpu_param_idx, llvm::Attribute::NoCapture);
-    llvm->addParamAttr(cpu_param_idx, llvm::Attribute::getWithAlignment(ctx, 16));
+    auto align_attr = llvm::Attribute::get(ctx, llvm::Attribute::Alignment, 16);
+    llvm->addParamAttr(cpu_param_idx, align_attr);
     llvm->addDereferenceableParamAttr(cpu_param_idx, 0x190);
 
     fi.fn = llvm;

@@ -103,7 +103,12 @@ int main(int argc, char** argv) {
         return 1;
     }
 
+    llvm::MCTargetOptions options;
+#if LL_LLVM_MAJOR < 11
     llvm::MCAsmInfo* mai = target->createMCAsmInfo(*mri, triple.str());
+#else
+    llvm::MCAsmInfo* mai = target->createMCAsmInfo(*mri, triple.str(), options);
+#endif
     if (mai == nullptr) {
         std::cerr << "error getting MCAsmInfo" << std::endl;
         return 1;
@@ -124,12 +129,11 @@ int main(int argc, char** argv) {
     for (std::string asmline; std::getline(std::cin, asmline);) {
         llvm::SourceMgr srcmgr;
         llvm::MCObjectFileInfo mofi;
-        llvm::MCTargetOptions options;
 
         std::unique_ptr<llvm::MemoryBuffer> asmbuf = llvm::MemoryBuffer::getMemBuffer(asmline);
         srcmgr.AddNewSourceBuffer(std::move(asmbuf), llvm::SMLoc());
 
-        llvm::MCContext ctx(mai, mri, &mofi, &srcmgr, true);
+        llvm::MCContext ctx(mai, mri, &mofi, &srcmgr);
         mofi.InitMCObjectFileInfo(triple, true, ctx);
 
         auto mab = std::unique_ptr<llvm::MCAsmBackend>(target->createMCAsmBackend(*sti, *mri, options));

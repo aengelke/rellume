@@ -123,7 +123,11 @@ llvm::Function* WrapSysVAbi(llvm::Function* orig_fn, llvm::FunctionType* fn_ty,
 
     llvm::Value* stack_sz_val = irb.getInt64(stack_size);
     llvm::AllocaInst* stack = irb.CreateAlloca(irb.getInt8Ty(), stack_sz_val);
+#if LL_LLVM_MAJOR < 10
     stack->setAlignment(16);
+#else
+    stack->setAlignment(llvm::Align(16));
+#endif
     llvm::Value* sp_ptr = irb.CreateGEP(stack, stack_sz_val);
     llvm::Value* sp = irb.CreatePtrToInt(sp_ptr, irb.getInt64Ty());
     irb.CreateStore(sp, rellume::GepHelper(irb, alloca, {0, 1, 4}));
@@ -162,7 +166,11 @@ llvm::Function* WrapSysVAbi(llvm::Function* orig_fn, llvm::FunctionType* fn_ty,
     }
 
     llvm::InlineFunctionInfo ifi;
+#if LL_LLVM_MAJOR < 10
     llvm::InlineFunction(llvm::CallSite(call), ifi);
+#else
+    llvm::InlineFunction(*call, ifi);
+#endif
 
     if (llvm::verifyFunction(*new_fn, &llvm::errs()))
         return NULL;

@@ -271,7 +271,8 @@ class TestCase {
         if (llvm::ExecutionEngine* engine = builder.create()) {
             // If we have a JIT compiler, get address of compiled code.
             // Otherwise try to run the function using the interpreter.
-            if (auto raw_ptr = engine->getFunctionAddress(fn->getName())) {
+            const auto& name = fn->getName();
+            if (auto raw_ptr = engine->getFunctionAddress(name.str())) {
                 auto fn_ptr = reinterpret_cast<void(*)(CPU*)>(raw_ptr);
                 fn_ptr(&state);
             } else {
