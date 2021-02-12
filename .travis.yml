@@ -24,20 +24,17 @@ matrix:
             - llvm-9-dev
             - gcc-7
             - g++-7
-    # Note: Clang 9 fails to link against LLVM for an unknown reason:
-    #   undefined reference to `llvm::cfg::Update<llvm::BasicBlock*>::dump() const'
-    # Reconsider adding Clang to CI once rebasing to LLVM 10
-    # - compiler: clang
-    #   env:
-    #     - COMPILERC=clang-9
-    #     - COMPILERCXX=clang++-9
-    #     - LLVM_CONFIG=llvm-config-9
-    #   addons:
-    #     apt:
-    #       packages:
-    #         - *default_pkgs
-    #         - llvm-9-dev
-    #         - clang-9
+    - compiler: clang
+      env:
+        - COMPILERC=clang-10
+        - COMPILERCXX=clang++-10
+        - LLVM_CONFIG=llvm-config-10
+      addons:
+        apt:
+          packages:
+            - *default_pkgs
+            - llvm-10-dev
+            - clang-10
 
 install:
   # The meson included in the Xenial repositories is too old (0.29).
