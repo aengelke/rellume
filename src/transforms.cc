@@ -166,7 +166,7 @@ llvm::Function* WrapSysVAbi(llvm::Function* orig_fn, llvm::FunctionType* fn_ty,
     }
 
     llvm::InlineFunctionInfo ifi;
-#if LL_LLVM_MAJOR < 10
+#if LL_LLVM_MAJOR < 11
     llvm::InlineFunction(llvm::CallSite(call), ifi);
 #else
     llvm::InlineFunction(*call, ifi);
