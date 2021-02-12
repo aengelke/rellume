@@ -49,8 +49,8 @@ Facet Facet::Vnt(unsigned num_i, Facet scalar) {
 
 Facet Facet::FromType(llvm::Type* type) {
     if (type->isVectorTy()) {
-        unsigned num = type->getVectorNumElements();
-        return Vnt(num, FromType(type->getVectorElementType()));
+        auto num = llvm::cast<llvm::VectorType>(type)->getElementCount();
+        return Vnt(num.Min, FromType(type->getScalarType()));
     } else if (type->isIntegerTy()) {
         return In(type->getIntegerBitWidth());
     } else if (type->isFloatTy()) {
@@ -86,7 +86,7 @@ llvm::Type* Facet::Type(llvm::LLVMContext& ctx) const {
 #define SCALAR_FP_FACET(fc, sz, ty) case fc: return ty;
 #define SPECIAL_FACET(fc, sz, ty) case fc: return ty;
 #define VECTOR_FACET(fc, num, sc) \
-        case fc: return llvm::VectorType::get(Facet{sc}.Type(ctx), num);
+        case fc: return llvm::VectorType::get(Facet{sc}.Type(ctx), num, false);
 #include "facet.inc"
 #undef SCALAR_INT_FACET
 #undef SCALAR_FP_FACET

@@ -357,8 +357,9 @@ llvm::Value* RegFile::impl::GetReg(ArchReg reg, Facet facet) {
                 res = irb.CreateExtractElement(GetReg(reg, vec_facet), int{0});
             }
         } else {
-            llvm::Type* elem_ty = facetType->getVectorElementType();
-            int targetCnt = facetType->getVectorNumElements();
+            llvm::Type* elem_ty = facetType->getScalarType();
+            auto vec_ty = llvm::cast<llvm::VectorType>(facetType);
+            int targetCnt = vec_ty->getElementCount().Min;
 
             // Prefer 128-bit SSE facet over full vector register.
             if (facetType->getPrimitiveSizeInBits() <= 128)
@@ -370,7 +371,8 @@ llvm::Value* RegFile::impl::GetReg(ArchReg reg, Facet facet) {
             int nativeCnt = nativeBits / elementBits;
 
             // Cast native facet to appropriate type
-            auto native_vec_ty = llvm::VectorType::get(elem_ty, nativeCnt);
+            auto native_vec_ty = llvm::VectorType::get(elem_ty, nativeCnt,
+                                                       /*scalable=*/false);
             res = irb.CreateBitCast(native, native_vec_ty);
 
             // If a shorter vector is required, use shufflevector.

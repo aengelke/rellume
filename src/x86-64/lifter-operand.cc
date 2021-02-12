@@ -141,10 +141,15 @@ static void ll_operand_set_alignment(llvm::Instruction* value, llvm::Type* type,
         alignment = sse ? ALIGN_MAX : ALIGN_NONE;
     unsigned bytes =
         alignment == ALIGN_NONE ? 1 : type->getPrimitiveSizeInBits() / 8;
+#if LL_LLVM_MAJOR < 10
+    unsigned align = bytes;
+#else
+    llvm::Align align(bytes);
+#endif
     if (llvm::LoadInst* load = llvm::dyn_cast<llvm::LoadInst>(value))
-        load->setAlignment(bytes);
+        load->setAlignment(align);
     else if (llvm::StoreInst* store = llvm::dyn_cast<llvm::StoreInst>(value))
-        store->setAlignment(bytes);
+        store->setAlignment(align);
 }
 
 llvm::Value* Lifter::OpLoad(const Instr::Op op, Facet facet,
@@ -254,9 +259,10 @@ void Lifter::OpStoreVec(const Instr::Op op, llvm::Value* value, bool avx,
 
     // Construct the requires vector type of the vector register.
     llvm::Type* element_ty =
-        value_ty->isVectorTy() ? value_ty->getVectorElementType() : value_ty;
+        value_ty->isVectorTy() ? value_ty->getScalarType() : value_ty;
     unsigned full_num = ivec_sz / element_ty->getPrimitiveSizeInBits();
-    llvm::VectorType* full_ty = llvm::VectorType::get(element_ty, full_num);
+    llvm::VectorType* full_ty = llvm::VectorType::get(element_ty, full_num,
+                                                       /*scalable=*/false);
     Facet full_facet = Facet::Vnt(full_num, Facet::FromType(element_ty));
 
     llvm::Value* full = llvm::Constant::getNullValue(full_ty);
@@ -269,7 +275,7 @@ void Lifter::OpStoreVec(const Instr::Op op, llvm::Value* value, bool avx,
     } else {
         // Vector-in-vector insertion require 2 x shufflevector.
         // First, we enlarge the input vector to the full register length.
-        unsigned value_num_elts = value_ty->getVectorNumElements();
+        unsigned value_num_elts = llvm::cast<llvm::VectorType>(value_ty)->getNumElements();
         llvm::SmallVector<uint32_t, 16> mask;
         for (unsigned i = 0; i < full_num; i++)
             mask.push_back(i < value_num_elts ? i : value_num_elts);
