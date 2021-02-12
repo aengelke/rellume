@@ -73,6 +73,8 @@ bool Lifter::Lift(const Instr& inst) {
     case FDI_NOP: /* do nothing */ break;
     case FDI_RDSSP: /* do nothing */ break;
     case FDI_ENDBR64: /* do nothing */ break;
+#if 0
+    // Fadec doesn't support MPX.
     // Intel MPX, behave as NOP on processors without support (SDM Vol 1, 17.4)
     case FDI_BNDLDX: /* do nothing */ break;
     case FDI_BNDMOV: /* do nothing */ break;
@@ -81,6 +83,7 @@ bool Lifter::Lift(const Instr& inst) {
     case FDI_BNDSTX: /* do nothing */ break;
     case FDI_BNDCN: /* do nothing */ break;
     case FDI_BNDMK: /* do nothing */ break;
+#endif
 
     case FDI_PUSH: LiftPush(inst); break;
     case FDI_PUSHF: LiftPushf(inst); break;
@@ -224,8 +227,10 @@ bool Lifter::Lift(const Instr& inst) {
     // TODO: set non-temporal hint
     case FDI_SSE_MOVNTDQA: LiftSseMovdq(inst, Facet::I128, ALIGN_MAX); break;
     case FDI_SSE_MOVLPS: LiftSseMovlp(inst); break;
+    case FDI_SSE_MOVHLPS: LiftSseMovlp(inst); break;
     case FDI_SSE_MOVLPD: LiftSseMovlp(inst); break;
     case FDI_SSE_MOVHPS: LiftSseMovhps(inst); break;
+    case FDI_SSE_MOVLHPS: LiftSseMovhps(inst); break;
     case FDI_SSE_MOVHPD: LiftSseMovhpd(inst); break;
     case FDI_SSE_PUNPCKLBW: LiftSseUnpck(inst, Facet::V16I8); break;
     case FDI_SSE_PUNPCKLWD: LiftSseUnpck(inst, Facet::V8I16); break;
