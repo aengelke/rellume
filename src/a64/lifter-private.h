@@ -115,6 +115,13 @@ private:
     void LiftCmXX(llvm::CmpInst::Predicate cmp, farmdec::Reg rd, farmdec::VectorArrangement va, farmdec::Reg rn, farmdec::Reg rm, bool zero, bool fp = false);
     void LiftScalarCmXX(llvm::CmpInst::Predicate cmp, farmdec::Reg rd, farmdec::Reg rn, farmdec::Reg rm, bool zero, bool fp = false);
     void TransformSIMDPairwise(farmdec::VectorArrangement va, farmdec::Reg rn, farmdec::Reg rm, llvm::Value** lhs, llvm::Value** rhs, bool fp = false);
+
+    llvm::SmallVector<llvm::Value*, 4> LoadMulti(llvm::Type* ty, llvm::Value* addr, unsigned n);
+    void StoreMulti(llvm::Value* addr, llvm::Value* v0);
+    void StoreMulti(llvm::Value* addr, llvm::Value* v0, llvm::Value* v1);
+    void StoreMulti(llvm::Value* addr, llvm::Value* v0, llvm::Value* v1, llvm::Value* v2);
+    void StoreMulti(llvm::Value* addr, llvm::Value* v0, llvm::Value* v1, llvm::Value* v2, llvm::Value* v3);
+    llvm::Value* SIMDLoadStoreAddr(farmdec::Inst a64);
 };
 
 } // namespace

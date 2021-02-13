@@ -40,6 +40,42 @@
 
 namespace rellume::aarch64 {
 
+static llvm::SmallVector<int, 16> even(unsigned n) {
+    llvm::SmallVector<int, 16> mask;
+    for (unsigned i = 0; i < n; i++) {
+        mask.push_back(2*i);
+    }
+    return mask;
+}
+
+static llvm::SmallVector<int, 16> odd(unsigned n) {
+    llvm::SmallVector<int, 16> mask;
+    for (unsigned i = 0; i < n; i++) {
+        mask.push_back(2*i + 1);
+    }
+    return mask;
+}
+
+// [0, 0+n, 1, 1+n, ..., n/2-1]. For ZIP1, ST2.
+static llvm::SmallVector<int, 16> zipmask_lower(unsigned n) {
+    llvm::SmallVector<int, 16> mask;
+    for (unsigned i = 0; i < n/2; i++) {
+        mask.push_back(i);
+        mask.push_back(i + n);
+    }
+    return mask;
+}
+
+// [n/2+0, n/2+0+n, n/2 + 1, n/2 + 1+n, ...]. For ZIP2, ST2.
+static llvm::SmallVector<int, 16> zipmask_upper(unsigned n) {
+    llvm::SmallVector<int, 16> mask;
+    for (unsigned i = 0; i < n/2; i++) {
+        mask.push_back(n/2 + i);
+        mask.push_back(n/2 + i + n);
+    }
+    return mask;
+}
+
 bool Lifter::LiftSIMD(farmdec::Inst a64) {
     bool round = a64.flags & farmdec::SIMD_ROUND;
     bool sgn = a64.flags & farmdec::SIMD_SIGNED;
@@ -49,41 +85,57 @@ bool Lifter::LiftSIMD(farmdec::Inst a64) {
 
     // In the order of farmdec::Op.
     switch (a64.op) {
-    case farmdec::A64_LD1_MULT:
+    case farmdec::A64_LD1_MULT: {
+        auto vecty = TypeOf(fad_get_vec_arrangement(a64.flags));
+        auto addr = SIMDLoadStoreAddr(a64);
+        auto vecs = LoadMulti(vecty, addr, a64.simd_ldst.nreg);
+        farmdec::Reg tt = a64.rt;
+        for (auto v : vecs) {
+            SetVec(tt, v);
+            tt = (tt+1) % 32; // wrap around V31..V0
+        }
+        break;
+    }
+    case farmdec::A64_LD2_MULT: {
+        // Load as many two-element pairs (x_i, y_i) as there are elements in a vector,
+        // then deinterleave, so that we have one vector X := (x_0, x_1, ...) and one
+        // vector Y := (y_0, y_1, ...).
+        auto vecty = TypeOf(fad_get_vec_arrangement(a64.flags));
+        auto addr = SIMDLoadStoreAddr(a64);
+        auto pairs = LoadMulti(vecty, addr, 2);
+        auto p0 = pairs.front();
+        auto p1 = pairs.back();
+
+        unsigned nelem = NumElem(va);
+        auto x = irb.CreateShuffleVector(p0, p1, even(nelem));
+        auto y = irb.CreateShuffleVector(p0, p1, odd(nelem));
+        SetVec(a64.rt, x);
+        SetVec((a64.rt+1) % 32, y);
+        break;
+    }
     case farmdec::A64_ST1_MULT: {
-        bool load = (a64.op == farmdec::A64_LD1_MULT);
-        auto vecty = TypeOf(va);
-
-        llvm::Value* base = nullptr;
-        farmdec::AddrMode mode = fad_get_addrmode(a64.flags);
-        switch (mode) {
-        case farmdec::AM_SIMPLE:
-            base = Addr(vecty, a64.rn);
-            break;
-        case farmdec::AM_POST: {
-            base = Addr(vecty, a64.rn);
-            // Offset/increment can be an immediate or the Rm register.
-            auto offset = (a64.rm == farmdec::ZERO_REG) ? irb.getInt64(a64.simd_ldst.offset) : GetGp(a64.rm, /*w32=*/false);
-            SetGp(a64.rn, /*w32=*/false, irb.CreateAdd(GetGp(a64.rn, /*w32=*/false), offset)); // rn += offset
-            break;
-        }
+        auto addr = SIMDLoadStoreAddr(a64);
+        farmdec::Reg tt = a64.rt;
+        switch (a64.simd_ldst.nreg) {
+        case 1: StoreMulti(addr, GetVec(tt, va)); break;
+        case 2: StoreMulti(addr, GetVec(tt, va), GetVec((tt+1)%32, va)); break;
+        case 3: StoreMulti(addr, GetVec(tt, va), GetVec((tt+1)%32, va), GetVec((tt+2)%32, va)); break;
+        case 4: StoreMulti(addr, GetVec(tt, va), GetVec((tt+1)%32, va), GetVec((tt+2)%32, va), GetVec((tt+3)%32, va)); break;
         default:
-            assert(false && "bad LD1/ST1 addrmode");
+            assert(false && "bad #regs for ST1");
         }
+        break;
+    }
+    case farmdec::A64_ST2_MULT: {
+        // Given X := [x_0, x_1, ...], Y := [y_0, y_1, ...], zip them into pairs p0, p1 and store them.
+        auto addr = SIMDLoadStoreAddr(a64);
+        auto x = GetVec(a64.rt, va);
+        auto y = GetVec((a64.rt+1) % 32, va);
 
-        // For each register Vtt, starting with Vd, wrapping around V31..V0.
-        farmdec::Reg tt = a64.rd;
-        for (unsigned i = 0; i < a64.simd_ldst.nreg; i++) {
-            auto ptr = irb.CreateConstGEP1_64(vecty, base, i);
-            if (load) {
-                auto vec = irb.CreateLoad(vecty, ptr);
-                SetVec(tt, vec);
-            } else {
-                auto vec = GetVec(tt, va);
-                irb.CreateStore(vec, ptr);
-            }
-            tt = (tt+1) % 32;
-        }
+        unsigned nelem = NumElem(va);
+        auto p0 = irb.CreateShuffleVector(x, y, zipmask_lower(nelem));
+        auto p1 = irb.CreateShuffleVector(x, y, zipmask_upper(nelem));
+        StoreMulti(addr, p0, p1);
         break;
     }
     case farmdec::A64_FCVT_VEC: {
@@ -464,22 +516,14 @@ bool Lifter::LiftSIMD(farmdec::Inst a64) {
         auto vn = GetVec(a64.rn, va);
         auto vm = GetVec(a64.rm, va);
         unsigned nelem = NumElem(va);
-        llvm::SmallVector<int, 16> even; // 0, 2, 4, ...
-        for (unsigned i = 0; i < nelem; i++) {
-            even.push_back(2*i);
-        }
-        SetVec(a64.rd, irb.CreateShuffleVector(vn, vm, even));
+        SetVec(a64.rd, irb.CreateShuffleVector(vn, vm, even(nelem)));
         break;
     }
     case farmdec::A64_UZP2: {
         auto vn = GetVec(a64.rn, va);
         auto vm = GetVec(a64.rm, va);
         unsigned nelem = NumElem(va);
-        llvm::SmallVector<int, 16> odd; // 1, 3, 5, ...
-        for (unsigned i = 0; i < nelem; i++) {
-            odd.push_back(2*i+1);
-        }
-        SetVec(a64.rd, irb.CreateShuffleVector(vn, vm, odd));
+        SetVec(a64.rd, irb.CreateShuffleVector(vn, vm, odd(nelem)));
         break;
     }
     case farmdec::A64_XTN:
@@ -489,24 +533,14 @@ bool Lifter::LiftSIMD(farmdec::Inst a64) {
         auto vn = GetVec(a64.rn, va);
         auto vm = GetVec(a64.rm, va);
         unsigned nelem = NumElem(va);
-        llvm::SmallVector<int, 16> lower_mask; // e.g. nelem = 4: [0, 4, 1, 5]
-        for (unsigned i = 0; i < nelem/2; i++) {
-            lower_mask.push_back(i);
-            lower_mask.push_back(i + nelem);
-        }
-        SetVec(a64.rd, irb.CreateShuffleVector(vn, vm, lower_mask));
+        SetVec(a64.rd, irb.CreateShuffleVector(vn, vm, zipmask_lower(nelem)));
         break;
     }
     case farmdec::A64_ZIP2: {
         auto vn = GetVec(a64.rn, va);
         auto vm = GetVec(a64.rm, va);
         unsigned nelem = NumElem(va);
-        llvm::SmallVector<int, 16> upper_mask; // e.g. nelem = 4: [2, 6, 3, 7]
-        for (unsigned i = 0; i < nelem/2; i++) {
-            upper_mask.push_back(nelem/2 + i);
-            upper_mask.push_back(nelem/2 + i + nelem);
-        }
-        SetVec(a64.rd, irb.CreateShuffleVector(vn, vm, upper_mask));
+        SetVec(a64.rd, irb.CreateShuffleVector(vn, vm, zipmask_upper(nelem)));
         break;
     }
     case farmdec::A64_CMEQ_REG:
@@ -965,6 +999,69 @@ void Lifter::TransformSIMDPairwise(farmdec::VectorArrangement va, farmdec::Reg r
 
     *lhs = irb.CreateShuffleVector(vn, vm, even);
     *rhs = irb.CreateShuffleVector(vn, vm, odd);
+}
+
+llvm::SmallVector<llvm::Value*, 4> Lifter::LoadMulti(llvm::Type* ty, llvm::Value* addr, unsigned n) {
+    llvm::SmallVector<llvm::Value*, 4> vecs;
+
+    for (unsigned i = 0; i < n; i++) {
+        auto ptr = irb.CreateConstGEP1_64(ty, addr, i);
+        auto v = irb.CreateLoad(ty, ptr);
+        vecs.push_back(v);
+    }
+
+    return vecs;
+}
+
+void Lifter::StoreMulti(llvm::Value* addr, llvm::Value* v0) {
+    irb.CreateStore(v0, addr);
+}
+
+void Lifter::StoreMulti(llvm::Value* addr, llvm::Value* v0, llvm::Value* v1) {
+    irb.CreateStore(v0, addr);
+    irb.CreateStore(v1, irb.CreateConstGEP1_64(v0->getType(), addr, 1));
+}
+
+void Lifter::StoreMulti(llvm::Value* addr, llvm::Value* v0, llvm::Value* v1, llvm::Value* v2) {
+    irb.CreateStore(v0, addr);
+    irb.CreateStore(v1, irb.CreateConstGEP1_64(v0->getType(), addr, 1));
+    irb.CreateStore(v2, irb.CreateConstGEP1_64(v0->getType(), addr, 2));
+}
+
+void Lifter::StoreMulti(llvm::Value* addr, llvm::Value* v0, llvm::Value* v1, llvm::Value* v2, llvm::Value* v3) {
+    irb.CreateStore(v0, addr);
+    irb.CreateStore(v1, irb.CreateConstGEP1_64(v0->getType(), addr, 1));
+    irb.CreateStore(v2, irb.CreateConstGEP1_64(v0->getType(), addr, 2));
+    irb.CreateStore(v3, irb.CreateConstGEP1_64(v0->getType(), addr, 3));
+}
+
+// SIMDLoadStoreAddr returns the base address of the SIMD LDx/STx (x=1,2,3,4)
+// load/store. We cannot use the usual Addr because these instructions have a
+// post-increment mode distinct from the usual one, and store their immediate
+// in a64.simd_ldst.offset instead of a64.offset.
+//
+// The returned pointer has the type determined by the vector arrangement.
+llvm::Value* Lifter::SIMDLoadStoreAddr(farmdec::Inst a64) {
+    auto vecty = TypeOf(fad_get_vec_arrangement(a64.flags));
+
+    farmdec::AddrMode mode = fad_get_addrmode(a64.flags);
+    switch (mode) {
+    case farmdec::AM_SIMPLE:
+        return Addr(vecty, a64.rn);
+    case farmdec::AM_POST: {
+        auto base = Addr(vecty, a64.rn);
+
+        // Offset/increment can be an immediate or the Rm register.
+        auto offset = (a64.rm == farmdec::ZERO_REG) ? irb.getInt64(a64.simd_ldst.offset) : GetGp(a64.rm, /*w32=*/false);
+        SetGp(a64.rn, /*w32=*/false, irb.CreateAdd(GetGp(a64.rn, /*w32=*/false), offset)); // rn += offset
+
+        return base;
+    }
+    default:
+       assert(false && "bad LDx/STx addrmode");
+    }
+
+    assert("can't happen");
 }
 
 } // namespace rellume::aarch64
