@@ -47,8 +47,12 @@ void Lifter::LiftFence(const Instr& inst) {
 
 void Lifter::LiftPrefetch(const Instr& inst, unsigned rw, unsigned locality) {
     llvm::Module* module = irb.GetInsertBlock()->getModule();
+    llvm::SmallVector<llvm::Type*, 1> tys;
+#if LL_LLVM_MAJOR >= 10
+    tys.push_back(irb.getInt8PtrTy());
+#endif
     auto id = llvm::Intrinsic::prefetch;
-    llvm::Function* intrinsic = llvm::Intrinsic::getDeclaration(module, id, {});
+    llvm::Function* intrinsic = llvm::Intrinsic::getDeclaration(module, id, tys);
 
     llvm::Value* addr = OpAddr(inst.op(0), irb.getInt8Ty(), inst.op(0).seg());
     // Prefetch addr for read/write with given locality into the data cache.
