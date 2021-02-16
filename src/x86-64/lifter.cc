@@ -199,11 +199,14 @@ bool Lifter::Lift(const Instr& inst) {
     case FDI_LFENCE: LiftFence(inst); break;
     case FDI_SFENCE: LiftFence(inst); break;
     case FDI_MFENCE: LiftFence(inst); break;
+    case FDI_PREFETCH: LiftPrefetch(inst, 0, 3); break;
+    case FDI_RESERVED_PREFETCH: LiftPrefetch(inst, 0, 3); break;
     case FDI_PREFETCHT0: LiftPrefetch(inst, 0, 3); break;
     case FDI_PREFETCHT1: LiftPrefetch(inst, 0, 2); break;
     case FDI_PREFETCHT2: LiftPrefetch(inst, 0, 1); break;
     case FDI_PREFETCHNTA: LiftPrefetch(inst, 0, 0); break;
     case FDI_PREFETCHW: LiftPrefetch(inst, 1, 1); break;
+    case FDI_PREFETCHWT1: LiftPrefetch(inst, 1, 2); break;
     case FDI_FXSAVE: LiftFxsave(inst); break;
     case FDI_FXRSTOR: LiftFxrstor(inst); break;
     case FDI_FSTCW: LiftFstcw(inst); break;

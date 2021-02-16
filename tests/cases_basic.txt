@@ -5,6 +5,7 @@
 code="syscall" of=00 sf=00 zf=00 af=00 pf=00 cf=00 df=00 => rcx=q:0x1000002 r11=q:0x202
 # Default implementation is to set everything to zero.
 code="cpuid" rax=q:0 rcx=q:0 => rax=q:0 rcx=q:0 rdx=q:0 rbx=q:0
+code="prefetch [rax]" rax=q:0 =>
 code="jmp foo; hlt; foo:" =>
 code="jmp rax" rax=q:0xf000abcd12345678 => rip=q:0xf000abcd12345678
 code="jrcxz foo; hlt; foo:" rcx=q:0 =>
