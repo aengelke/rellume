@@ -93,7 +93,9 @@ protected:
     void SetFlagUndef(std::initializer_list<Facet> facets) {
         llvm::Value* undef = llvm::UndefValue::get(irb.getInt1Ty());
         for (const auto facet : facets) {
-#if LL_LLVM_MAJOR < 10
+            // Test cases fail as the interpreter doesn't support freeze.
+            // TODO: make use of freeze optional.
+#if LL_LLVM_MAJOR < 10 || 1
             SetFlag(facet, undef);
 #else
             SetFlag(facet, irb.CreateFreeze(undef));
