@@ -92,8 +92,13 @@ protected:
     }
     void SetFlagUndef(std::initializer_list<Facet> facets) {
         llvm::Value* undef = llvm::UndefValue::get(irb.getInt1Ty());
-        for (const auto facet : facets)
+        for (const auto facet : facets) {
+#if LL_LLVM_MAJOR < 10
             SetFlag(facet, undef);
+#else
+            SetFlag(facet, irb.CreateFreeze(undef));
+#endif
+        }
     }
     void SetIP(uint64_t inst_addr, bool nofold = false);
 
