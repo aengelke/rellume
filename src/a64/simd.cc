@@ -373,6 +373,34 @@ bool Lifter::LiftSIMD(farmdec::Inst a64) {
             SetVec(a64.rd, irb.CreateShl(lhs, rhs));
         }
         break;
+    case farmdec::A64_SHL_REG: {
+        assert(!round && "rshl not supported yet");
+        llvm::Value* lhs = nullptr;
+        llvm::Value* rhs = nullptr;
+        llvm::Value* zero = nullptr;
+        if (scalar) {
+            lhs = GetScalar(a64.rn, farmdec::FSZ_D, /*fp=*/false);
+            rhs = GetScalar(a64.rm, farmdec::FSZ_D, /*fp=*/false);
+            zero = irb.getInt64(0);
+        } else {
+            lhs = GetVec(a64.rn, va);
+            rhs = GetVec(a64.rm, va);
+            zero = llvm::Constant::getNullValue(TypeOf(va));
+        }
+
+        // For every element, shift left if shift amount is positive, shift right otherwise.
+        auto do_shift_left = irb.CreateICmpSGE(rhs, zero);
+        auto shl = irb.CreateShl(lhs, rhs);
+        auto shr = (sgn) ? irb.CreateAShr(lhs, irb.CreateNeg(rhs)) : irb.CreateLShr(lhs, irb.CreateNeg(rhs));
+        auto res = irb.CreateSelect(do_shift_left, shl, shr);
+
+        if (scalar) {
+            SetScalar(a64.rd, res);
+        } else {
+            SetVec(a64.rd, res);
+        }
+        break;
+    }
     case farmdec::A64_SHLL: { // XTL is an alias with shift #0
         auto vn_half = Halve(GetVec(a64.rn, va), va);
         farmdec::VectorArrangement dstva = DoubleWidth(va);

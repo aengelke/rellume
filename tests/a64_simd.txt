@@ -314,6 +314,24 @@ code="sshll2 v0.2d, v1.4s, #31" v0=qq:0,0 v1=qll:0,0xffffffff,0x01 => v0=qq:0xff
 code="ushll v0.2d, v1.2s, #4"   v0=qq:0,0 v1=llq:0xffffffff,0x01,0 => v0=qq:0xffffffff0,0x10
 code="ushll2 v0.2d, v1.4s, #31" v0=qq:0,0 v1=qll:0,0xffffffff,0x01 => v0=qq:0x7fffffff80000000,0x80000000
 
+# SHL_REG (USHL, SSHL)
+
+code="sshl d0, d1, d2" v0=qq:0,0 v1=qq:0xff,0 v2=qq:4,0 => v0=qq:0xff0,0
+code="sshl d0, d1, d2" v0=qq:0,0 v1=qq:0xff,0 v2=qq:-4,0 => v0=qq:0xf,0
+code="sshl d0, d1, d2" v0=qq:0,0 v1=qq:0xffffffffffffffff,0 v2=qq:4,0 => v0=qq:0xfffffffffffffff0,0
+
+# Arithmetic Right Shift: -1 >> -4 == -1
+code="sshl d0, d1, d2" v0=qq:0,0 v1=qq:0xffffffffffffffff,0 v2=qq:-4,0 => v0=qq:0xffffffffffffffff,0
+
+# Logical Right Shift
+code="ushl d0, d1, d2" v0=qq:0,0 v1=qq:0xffffffffffffffff,0 v2=qq:-4,0 => v0=qq:0x0fffffffffffffff,0
+
+code="sshl v0.2d, v1.2d, v2.2d" v0=qq:0,0 v1=qq:0xff,0xff v2=qq:4,-4 => v0=qq:0xff0,0xf
+code="sshl v0.2d, v1.2d, v2.2d" v0=qq:0,0 v1=qq:0xff,0xff v2=qq:-4,4 => v0=qq:0xf,0xff0
+code="sshl v0.2d, v1.2d, v2.2d" v0=qq:0,0 v1=qq:0xffffffffffffffff,0 v2=qq:4,0 => v0=qq:0xfffffffffffffff0,0
+code="sshl v0.2d, v1.2d, v2.2d" v0=qq:0,0 v1=qq:0xffffffffffffffff,0 v2=qq:-4,0 => v0=qq:0xffffffffffffffff,0
+code="ushl v0.2d, v1.2d, v2.2d" v0=qq:0,0 v1=qq:0xffffffffffffffff,0 v2=qq:-4,0 => v0=qq:0x0fffffffffffffff,0
+
 #
 ### FP Conversion
 #
