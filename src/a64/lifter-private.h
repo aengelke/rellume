@@ -114,6 +114,8 @@ private:
     void LiftThreeSame(llvm::Instruction::BinaryOps op, farmdec::Reg rd, farmdec::VectorArrangement va, farmdec::Reg rn, farmdec::Reg rm, bool scalar, bool invert_rhs = false, bool fp = false);
     void LiftCmXX(llvm::CmpInst::Predicate cmp, farmdec::Reg rd, farmdec::VectorArrangement va, farmdec::Reg rn, farmdec::Reg rm, bool zero, bool fp = false);
     void LiftScalarCmXX(llvm::CmpInst::Predicate cmp, farmdec::Reg rd, farmdec::Reg rn, farmdec::Reg rm, bool zero, bool fp = false);
+    void LiftMulAcc(farmdec::Inst a64, llvm::Instruction::BinaryOps addsub, llvm::Value* acc, bool extend_long, bool fp = false);
+    void LiftMulAccElem(farmdec::Inst a64, llvm::Instruction::BinaryOps addsub, llvm::Value* acc, bool extend_long, bool fp = false);
     void TransformSIMDPairwise(farmdec::VectorArrangement va, farmdec::Reg rn, farmdec::Reg rm, llvm::Value** lhs, llvm::Value** rhs, bool fp = false);
 
     llvm::SmallVector<llvm::Value*, 4> LoadMulti(llvm::Type* ty, llvm::Value* addr, unsigned n);

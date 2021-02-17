@@ -244,6 +244,16 @@ bool Lifter::LiftSIMD(farmdec::Inst a64) {
     case farmdec::A64_FSQRT_VEC:
         SetVec(a64.rd, irb.CreateUnaryIntrinsic(llvm::Intrinsic::sqrt, GetVec(a64.rn, va, /*fp=*/true)));
         break;
+    case farmdec::A64_FMUL_ELEM:
+        if (scalar) {
+            farmdec::FPSize prec = fad_size_from_vec_arrangement(va);
+            auto lhs = GetScalar(a64.rn, prec);
+            auto rhs = GetElem(a64.rm, va, a64.imm, /*fp=*/true);
+            SetScalar(a64.rd, irb.CreateFMul(lhs, rhs));
+        } else {
+            LiftMulAccElem(a64, llvm::Instruction::FAdd, llvm::Constant::getNullValue(TypeOf(va, /*fp=*/true)), /*extend_long=*/false, /*fp=*/true);
+        }
+        break;
     case farmdec::A64_FMUL_VEC:
         LiftThreeSame(llvm::Instruction::FMul, a64.rd, va, a64.rn, a64.rm, /*scalar=*/false, /*invert_rhs=*/false, /*fp=*/true);
         break;
@@ -256,6 +266,30 @@ bool Lifter::LiftSIMD(farmdec::Inst a64) {
     case farmdec::A64_FSUB_VEC:
         LiftThreeSame(llvm::Instruction::FSub, a64.rd, va, a64.rn, a64.rm, /*scalar=*/false, /*invert_rhs=*/false, /*fp=*/true);
         break;
+    case farmdec::A64_FMLA_ELEM:
+        if (scalar) {
+            farmdec::FPSize prec = fad_size_from_vec_arrangement(va);
+            auto lhs = GetScalar(a64.rn, prec);
+            auto rhs = GetElem(a64.rm, va, a64.imm, /*fp=*/true);
+            auto acc = GetScalar(a64.rd, prec);
+            SetScalar(a64.rd, irb.CreateFAdd(acc, irb.CreateFMul(lhs, rhs)));
+        } else {
+            LiftMulAccElem(a64, llvm::Instruction::FAdd, GetVec(a64.rd, va, /*fp=*/true), /*extend_long=*/false, /*fp=*/true);
+        }
+        break;
+    case farmdec::A64_FMLA_VEC: LiftMulAcc(a64, llvm::Instruction::FAdd, GetVec(a64.rd, va, /*fp=*/true), /*extend_long=*/false, /*fp=*/true); break;
+    case farmdec::A64_FMLS_ELEM:
+        if (scalar) {
+            farmdec::FPSize prec = fad_size_from_vec_arrangement(va);
+            auto lhs = GetScalar(a64.rn, prec);
+            auto rhs = GetElem(a64.rm, va, a64.imm, /*fp=*/true);
+            auto acc = GetScalar(a64.rd, prec);
+            SetScalar(a64.rd, irb.CreateFSub(acc, irb.CreateFMul(lhs, rhs)));
+        } else {
+            LiftMulAccElem(a64, llvm::Instruction::FSub, GetVec(a64.rd, va, /*fp=*/true), /*extend_long=*/false, /*fp=*/true);
+        }
+        break;
+    case farmdec::A64_FMLS_VEC: LiftMulAcc(a64, llvm::Instruction::FSub, GetVec(a64.rd, va, /*fp=*/true), /*extend_long=*/false, /*fp=*/true); break;
     case farmdec::A64_AND_VEC:
         LiftThreeSame(llvm::Instruction::And, a64.rd, va, a64.rn, a64.rm, /*scalar=*/false);
         break;
@@ -623,6 +657,10 @@ bool Lifter::LiftSIMD(farmdec::Inst a64) {
     case farmdec::A64_NEG_VEC:
         SetVec(a64.rd, irb.CreateNeg(GetVec(a64.rn, va)));
         break;
+    case farmdec::A64_MUL_ELEM: LiftMulAccElem(a64, llvm::Instruction::Add, llvm::Constant::getNullValue(TypeOf(va)), /*extend_long=*/false); break;
+    case farmdec::A64_MUL_VEC: LiftMulAcc(a64, llvm::Instruction::Add, llvm::Constant::getNullValue(TypeOf(va)), /*extend_long=*/false); break;
+    case farmdec::A64_MULL_ELEM: LiftMulAccElem(a64, llvm::Instruction::Add, llvm::Constant::getNullValue(TypeOf(DoubleWidth(va))), /*extend_long=*/true); break;
+    case farmdec::A64_MULL_VEC: LiftMulAcc(a64, llvm::Instruction::Add, llvm::Constant::getNullValue(TypeOf(DoubleWidth(va))), /*extend_long=*/true); break;
     case farmdec::A64_ADD_VEC:
         LiftThreeSame(llvm::Instruction::Add, a64.rd, va, a64.rn, a64.rm, scalar);
         break;
@@ -669,6 +707,14 @@ bool Lifter::LiftSIMD(farmdec::Inst a64) {
     case farmdec::A64_MIN_VEC:
         SetVec(a64.rd, MinMax(GetVec(a64.rn, va), GetVec(a64.rm, va), sgn, /*min=*/true));
         break;
+    case farmdec::A64_MLA_ELEM: LiftMulAccElem(a64, llvm::Instruction::Add, GetVec(a64.rd, va), /*extend_long=*/false); break;
+    case farmdec::A64_MLA_VEC: LiftMulAcc(a64, llvm::Instruction::Add, GetVec(a64.rd, va), /*extend_long=*/false); break;
+    case farmdec::A64_MLS_ELEM: LiftMulAccElem(a64, llvm::Instruction::Sub, GetVec(a64.rd, va), /*extend_long=*/false); break;
+    case farmdec::A64_MLS_VEC: LiftMulAcc(a64, llvm::Instruction::Sub, GetVec(a64.rd, va), /*extend_long=*/false); break;
+    case farmdec::A64_MLAL_ELEM: LiftMulAccElem(a64, llvm::Instruction::Add, GetVec(a64.rd, DoubleWidth(va)), /*extend_long=*/true); break;
+    case farmdec::A64_MLAL_VEC: LiftMulAcc(a64, llvm::Instruction::Add, GetVec(a64.rd, DoubleWidth(va)), /*extend_long=*/true); break;
+    case farmdec::A64_MLSL_ELEM: LiftMulAccElem(a64, llvm::Instruction::Sub, GetVec(a64.rd, DoubleWidth(va)), /*extend_long=*/true); break;
+    case farmdec::A64_MLSL_VEC: LiftMulAcc(a64, llvm::Instruction::Sub, GetVec(a64.rd, DoubleWidth(va)), /*extend_long=*/true); break;
     case farmdec::A64_ADDP:
         SetScalar(a64.rd, irb.CreateAddReduce(GetVec(a64.rn, farmdec::VA_2D)));
         break;
@@ -965,6 +1011,79 @@ void Lifter::LiftScalarCmXX(llvm::CmpInst::Predicate cmp, farmdec::Reg rd, farmd
     auto val = irb.CreateSExt(is_true, irb.getInt64Ty());
 
     SetScalar(rd, val);
+}
+
+// Lift a "normal" multiply-accumulate: acc ± (Vn * Vm). This implements MLA_VEC, MLS_VEC, MUL_VEC.
+// If extend_long is true, only halves of Vn and Vm are loaded, extended to double width,
+// multiply-accumulated, and stored to Vd. This implements MLAL_VEC, MLSL_VEC, MULL_VEC. In the
+// same vein, if fp is true, this also covers FMLA_VEC, FMLS_VEC, and FMUL_VEC.
+//
+// If extend_long is true, acc must of the extended destination data type.
+//
+// (FMLAL_VEC, FMLSL_VEC use unsupported half-precision and are not handled).
+void Lifter::LiftMulAcc(farmdec::Inst a64, llvm::Instruction::BinaryOps addsub, llvm::Value* acc, bool extend_long, bool fp) {
+    farmdec::VectorArrangement va = fad_get_vec_arrangement(a64.flags);
+    bool sgn = a64.flags & farmdec::SIMD_SIGNED;
+    llvm::Value* lhs = nullptr;
+    llvm::Value* rhs = nullptr;
+
+    if (extend_long) {
+        assert(!fp && "FMLAL, FMLSL not supported");
+
+        auto vn_half = Halve(GetVec(a64.rn, va), va);
+        auto vm_half = Halve(GetVec(a64.rm, va), va);
+        auto extty = TypeOf(DoubleWidth(va));
+        lhs = (sgn) ? irb.CreateSExt(vn_half, extty) : irb.CreateZExt(vn_half, extty);
+        rhs = (sgn) ? irb.CreateSExt(vm_half, extty) : irb.CreateZExt(vm_half, extty);
+    } else {
+        lhs = GetVec(a64.rn, va, fp);
+        rhs = GetVec(a64.rm, va, fp);
+    }
+
+    // XXX use fmuladd intrinsic where possible
+
+    llvm::Value* product = (fp) ? irb.CreateFMul(lhs, rhs) : irb.CreateMul(lhs, rhs);
+    SetVec(a64.rd, irb.CreateBinOp(addsub, acc, product)); // acc ± (lhs * rhs)
+}
+
+// Lift a multiply-accumulate with element: acc ± (Vn * Vm[i]). This alone implements MLA_ELEM,
+// MLS_ELEM, MUL_ELEM. If extend_long is true, only halves of Vn and Vm are loaded, extended to
+// double width, multiply-accumulated, and stored to Vd. This implements MLAL_ELEM, MLSL_ELEM,
+// MULL_ELEM. In the same vein, if fp is true, this also covers FMLA_ELEM, FMLS_ELEM, FMUL_ELEM
+// in their non-scalar variants.
+//
+// If extend_long is true, acc must of the extended destination data type.
+//
+// (FMLAL_ELEM, FMLSL_ELEM use unsupported half-precision and are not handled).
+void Lifter::LiftMulAccElem(farmdec::Inst a64, llvm::Instruction::BinaryOps addsub, llvm::Value* acc, bool extend_long, bool fp) {
+    farmdec::VectorArrangement va = fad_get_vec_arrangement(a64.flags);
+    bool sgn = a64.flags & farmdec::SIMD_SIGNED;
+    llvm::Value* lhs = nullptr;
+    llvm::Value* rhs = nullptr;
+
+    if (extend_long) {
+        assert(!fp && "FMLAL, FMLSL not supported");
+
+        auto vn_half = Halve(GetVec(a64.rn, va), va);
+        auto elem = GetElem(a64.rm, va, a64.imm);
+        // See Halve() for a discussion of NumElem differences.
+        bool upper_half = (va == farmdec::VA_4S || va == farmdec::VA_8H || va == farmdec::VA_16B);
+        unsigned nelem = upper_half ? NumElem(va)/2 : NumElem(va);
+        auto elemsplat = irb.CreateVectorSplat(nelem, elem);
+        auto extty = TypeOf(DoubleWidth(va));
+        lhs = (sgn) ? irb.CreateSExt(vn_half, extty) : irb.CreateZExt(vn_half, extty);
+        rhs = (sgn) ? irb.CreateSExt(elemsplat, extty) : irb.CreateZExt(elemsplat, extty);
+    } else {
+        lhs = GetVec(a64.rn, va, fp);
+        auto elem = GetElem(a64.rm, va, a64.imm, fp);
+        rhs = irb.CreateVectorSplat(NumElem(va), elem);
+
+    }
+
+    // XXX use fmuladd intrinsic where possible
+
+    llvm::Value* product = (fp) ? irb.CreateFMul(lhs, rhs) : irb.CreateMul(lhs, rhs);
+    SetVec(a64.rd, irb.CreateBinOp(addsub, acc, product)); // acc ± (lhs * rhs)
 }
 
 // Transform SIMD pairwise vectors into a (lhs, rhs) pair allowing normal SIMD instructions.
