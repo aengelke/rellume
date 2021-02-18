@@ -76,6 +76,18 @@ static llvm::SmallVector<int, 16> zipmask_upper(unsigned n) {
     return mask;
 }
 
+// Reverse m runs of n elements: [a0,a1,a2,a3, b0,b1,b2,b3] -> [a3,a2,a1,a0, b3,b2,b1,b0]
+// where n = 4 (subscripts 0,1,2,3) and m = 2 (a,b).
+static llvm::SmallVector<int, 16> reverse(unsigned n, unsigned m) {
+    llvm::SmallVector<int, 16> mask;
+    for (unsigned i = 0; i < m; i++) {
+        for (unsigned j = 0; j < n; j++) {
+            mask.push_back(i*n + (n-j-1));
+        }
+    }
+    return mask;
+}
+
 bool Lifter::LiftSIMD(farmdec::Inst a64) {
     bool round = a64.flags & farmdec::SIMD_ROUND;
     bool sgn = a64.flags & farmdec::SIMD_SIGNED;
@@ -362,6 +374,51 @@ bool Lifter::LiftSIMD(farmdec::Inst a64) {
     case farmdec::A64_RBIT_VEC:
         SetVec(a64.rd, irb.CreateUnaryIntrinsic(llvm::Intrinsic::bitreverse, GetVec(a64.rn, va)));
         break;
+    case farmdec::A64_REV16_VEC: {
+        auto vn = GetVec(a64.rn, va);
+        llvm::SmallVector<int, 16> mask = reverse(2, NumElem(va)/2); // i8 elems in 16-bit runs, [a0,a1,b0,b1, ...] -> [a1,a0,b1,b0, ...]
+        SetVec(a64.rd, irb.CreateShuffleVector(vn, llvm::Constant::getNullValue(TypeOf(va)), mask));
+        break;
+    }
+    case farmdec::A64_REV32_VEC: {
+        auto vn = GetVec(a64.rn, va);
+        llvm::SmallVector<int, 16> mask;
+
+        switch (va) {
+        case farmdec::VA_8B: case farmdec::VA_16B:
+            mask = reverse(4, NumElem(va)/4); // i8 elems in 32-bit runs, [a0,a1,a2,a3,b0,b1,b2,b3] -> [a3,a2,a1,a0,b3,b2,b1,b0]
+            break;
+        case farmdec::VA_4H: case farmdec::VA_8H:
+            mask = reverse(2, NumElem(va)/2); // i16 elems in 32-bit runs, [a0,a1,b0,b1] -> [a1,a0,b1,b0]
+            break;
+        default:
+            assert(false && "bad vector arrangement for REV32");
+        }
+
+        SetVec(a64.rd, irb.CreateShuffleVector(vn, llvm::Constant::getNullValue(TypeOf(va)), mask));
+        break;
+    }
+    case farmdec::A64_REV64_VEC: {
+        auto vn = GetVec(a64.rn, va);
+        llvm::SmallVector<int, 16> mask;
+
+        switch (va) {
+        case farmdec::VA_8B: case farmdec::VA_16B:
+            mask = reverse(8, NumElem(va)/8); // i8 elems in 64-bit runs, [a0,a1,a2,a3,a4,a5,a6,a7, ...] -> [a7,a6,a5, ...]
+            break;
+        case farmdec::VA_4H: case farmdec::VA_8H:
+            mask = reverse(4, NumElem(va)/4); // i16 elems in 64-bit runs, [a0,a1,a2,a3, ...] -> [a3,a2,a1,a0, ...]
+            break;
+        case farmdec::VA_2S: case farmdec::VA_4S:
+            mask = reverse(2, NumElem(va)/2); // i32 elems in 64-bit runs, [a0,a1,b1,b2, ...] -> [a1,a0,b1,b0, ...]
+            break;
+        default:
+            assert(false && "bad vector arrangement for REV32");
+        }
+
+        SetVec(a64.rd, irb.CreateShuffleVector(vn, llvm::Constant::getNullValue(TypeOf(va)), mask));
+        break;
+    }
     case farmdec::A64_SHL_IMM:
         if (scalar) {
             auto lhs = GetScalar(a64.rn, fad_size_from_vec_arrangement(va), /*fp=*/false);
