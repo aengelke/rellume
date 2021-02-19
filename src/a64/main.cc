@@ -872,14 +872,19 @@ bool Lifter::Lift(const Instr& inst) {
     }
     case farmdec::A64_FMOV_VEC2GPR: {
         farmdec::FPSize prec = fad_get_prec(a64.flags);
-        auto fp = GetScalar(a64.rn, prec);
-        SetGp(a64.rd, w32, irb.CreateBitCast(fp, irb.getIntNTy(bits)));
+        SetGp(a64.rd, w32, GetScalar(a64.rn, prec, /*fp=*/false));
         break;
     }
     case farmdec::A64_FMOV_GPR2VEC: {
-        farmdec::FPSize prec = fad_get_prec(a64.flags);
-        auto ival = GetGp(a64.rn, w32);
-        SetScalar(a64.rd, irb.CreateBitCast(ival, TypeOf(prec)));
+        SetScalar(a64.rd, GetGp(a64.rn, w32));
+        break;
+    }
+    case farmdec::A64_FMOV_TOP2GPR: {
+        SetGp(a64.rd, w32, GetElem(a64.rn, farmdec::VA_2D, 1));
+        break;
+    }
+    case farmdec::A64_FMOV_GPR2TOP: {
+        InsertElem(a64.rd, 1, GetGp(a64.rn, /*w32=*/false));
         break;
     }
     case farmdec::A64_FMOV_REG:
