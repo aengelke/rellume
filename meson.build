@@ -39,3 +39,11 @@ librellume = declare_dependency(include_directories: rellume_inc,
 
 subdir('tests')
 subdir('examples')
+
+pkg = import('pkgconfig')
+pkg.generate(librellume_lib,
+             subdirs: ['rellume'],
+             version: '0.1',
+             name: 'rellume',
+             filebase: 'rellume',
+             description: 'Lift machine code to LLVM-IR')
