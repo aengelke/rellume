@@ -155,7 +155,7 @@ void Lifter::LiftSseMovntStore(const Instr& inst, Facet facet) {
 void Lifter::LiftSseMovlp(const Instr& inst) {
     if (inst.op(0).is_reg() && inst.op(1).is_reg()) {
         // move high 64-bit from src to low 64-bit from dst
-        assert(inst.type() == FDI_SSE_MOVLPS); // the official mnemonic is MOVHLPS.
+        assert(inst.type() == FDI_SSE_MOVHLPS);
         llvm::Value* op2 = OpLoad(inst.op(1), Facet::V4F32);
         llvm::Value* zero = llvm::Constant::getNullValue(op2->getType());
         OpStoreVec(inst.op(0), CreateShuffleVector(op2, zero, {2, 3}));
