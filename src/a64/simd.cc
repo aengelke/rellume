@@ -99,10 +99,12 @@ bool Lifter::LiftSIMD(farmdec::Inst a64) {
     switch (a64.op) {
     case farmdec::A64_LD1_MULT: {
         auto vecty = TypeOf(fad_get_vec_arrangement(a64.flags));
-        auto addr = SIMDLoadStoreAddr(a64);
-        auto vecs = LoadMulti(vecty, addr, a64.simd_ldst.nreg);
+        auto addr = SIMDLoadStoreAddr(a64, vecty);
         farmdec::Reg tt = a64.rt;
-        for (auto v : vecs) {
+
+        for (unsigned i = 0; i < a64.simd_ldst.nreg; i++) {
+            auto ptr = irb.CreateConstGEP1_64(vecty, addr, i);
+            auto v = irb.CreateLoad(vecty, ptr);
             SetVec(tt, v);
             tt = (tt+1) % 32; // wrap around V31..V0
         }
@@ -113,10 +115,9 @@ bool Lifter::LiftSIMD(farmdec::Inst a64) {
         // then deinterleave, so that we have one vector X := (x_0, x_1, ...) and one
         // vector Y := (y_0, y_1, ...).
         auto vecty = TypeOf(fad_get_vec_arrangement(a64.flags));
-        auto addr = SIMDLoadStoreAddr(a64);
-        auto pairs = LoadMulti(vecty, addr, 2);
-        auto p0 = pairs.front();
-        auto p1 = pairs.back();
+        auto addr = SIMDLoadStoreAddr(a64, vecty);
+        auto p0 = irb.CreateLoad(vecty, addr);
+        auto p1 = irb.CreateLoad(vecty, irb.CreateConstGEP1_64(vecty, addr, 1));
 
         unsigned nelem = NumElem(va);
         auto x = irb.CreateShuffleVector(p0, p1, even(nelem));
@@ -126,7 +127,8 @@ bool Lifter::LiftSIMD(farmdec::Inst a64) {
         break;
     }
     case farmdec::A64_ST1_MULT: {
-        auto addr = SIMDLoadStoreAddr(a64);
+        auto vecty = TypeOf(fad_get_vec_arrangement(a64.flags));
+        auto addr = SIMDLoadStoreAddr(a64, vecty);
         farmdec::Reg tt = a64.rt;
         switch (a64.simd_ldst.nreg) {
         case 1: StoreMulti(addr, GetVec(tt, va)); break;
@@ -140,7 +142,8 @@ bool Lifter::LiftSIMD(farmdec::Inst a64) {
     }
     case farmdec::A64_ST2_MULT: {
         // Given X := [x_0, x_1, ...], Y := [y_0, y_1, ...], zip them into pairs p0, p1 and store them.
-        auto addr = SIMDLoadStoreAddr(a64);
+        auto vecty = TypeOf(fad_get_vec_arrangement(a64.flags));
+        auto addr = SIMDLoadStoreAddr(a64, vecty);
         auto x = GetVec(a64.rt, va);
         auto y = GetVec((a64.rt+1) % 32, va);
 
@@ -148,6 +151,120 @@ bool Lifter::LiftSIMD(farmdec::Inst a64) {
         auto p0 = irb.CreateShuffleVector(x, y, zipmask_lower(nelem));
         auto p1 = irb.CreateShuffleVector(x, y, zipmask_upper(nelem));
         StoreMulti(addr, p0, p1);
+        break;
+    }
+    case farmdec::A64_LD1_SINGLE: {
+        auto ty = ElemTypeOf(fad_get_vec_arrangement(a64.flags));
+        auto addr = SIMDLoadStoreAddr(a64, ty);
+        auto e0 = irb.CreateLoad(ty, addr);
+        InsertElem(a64.rt, a64.simd_ldst.index, e0);
+        break;
+    }
+    case farmdec::A64_LD2_SINGLE: {
+        auto ty = ElemTypeOf(fad_get_vec_arrangement(a64.flags));
+        auto addr = SIMDLoadStoreAddr(a64, ty);
+        auto e0 = irb.CreateLoad(ty, addr);
+        auto e1 = irb.CreateLoad(ty, irb.CreateConstGEP1_64(ty, addr, 1));
+        InsertElem(a64.rt, a64.simd_ldst.index, e0);
+        InsertElem((a64.rt+1) % 32, a64.simd_ldst.index, e1);
+        break;
+    }
+    case farmdec::A64_LD3_SINGLE: {
+        auto ty = ElemTypeOf(fad_get_vec_arrangement(a64.flags));
+        auto addr = SIMDLoadStoreAddr(a64, ty);
+        auto e0 = irb.CreateLoad(ty, addr);
+        auto e1 = irb.CreateLoad(ty, irb.CreateConstGEP1_64(ty, addr, 1));
+        auto e2 = irb.CreateLoad(ty, irb.CreateConstGEP1_64(ty, addr, 2));
+        InsertElem(a64.rt, a64.simd_ldst.index, e0);
+        InsertElem((a64.rt+1) % 32, a64.simd_ldst.index, e1);
+        InsertElem((a64.rt+2) % 32, a64.simd_ldst.index, e2);
+        break;
+    }
+    case farmdec::A64_LD4_SINGLE: {
+        auto ty = ElemTypeOf(fad_get_vec_arrangement(a64.flags));
+        auto addr = SIMDLoadStoreAddr(a64, ty);
+        auto e0 = irb.CreateLoad(ty, addr);
+        auto e1 = irb.CreateLoad(ty, irb.CreateConstGEP1_64(ty, addr, 1));
+        auto e2 = irb.CreateLoad(ty, irb.CreateConstGEP1_64(ty, addr, 2));
+        auto e3 = irb.CreateLoad(ty, irb.CreateConstGEP1_64(ty, addr, 3));
+        InsertElem(a64.rt, a64.simd_ldst.index, e0);
+        InsertElem((a64.rt+1) % 32, a64.simd_ldst.index, e1);
+        InsertElem((a64.rt+2) % 32, a64.simd_ldst.index, e2);
+        InsertElem((a64.rt+3) % 32, a64.simd_ldst.index, e3);
+        break;
+    }
+    case farmdec::A64_ST1_SINGLE: {
+        auto ty = ElemTypeOf(fad_get_vec_arrangement(a64.flags));
+        auto addr = SIMDLoadStoreAddr(a64, ty);
+        auto e0 = GetElem(a64.rt, va, a64.simd_ldst.index);
+        StoreMulti(addr, e0);
+        break;
+    }
+    case farmdec::A64_ST2_SINGLE: {
+        auto ty = ElemTypeOf(fad_get_vec_arrangement(a64.flags));
+        auto addr = SIMDLoadStoreAddr(a64, ty);
+        auto e0 = GetElem(a64.rt, va, a64.simd_ldst.index);
+        auto e1 = GetElem((a64.rt+1) % 32, va, a64.simd_ldst.index);
+        StoreMulti(addr, e0, e1);
+        break;
+    }
+    case farmdec::A64_ST3_SINGLE: {
+        auto ty = ElemTypeOf(fad_get_vec_arrangement(a64.flags));
+        auto addr = SIMDLoadStoreAddr(a64, ty);
+        auto e0 = GetElem(a64.rt, va, a64.simd_ldst.index);
+        auto e1 = GetElem((a64.rt+1) % 32, va, a64.simd_ldst.index);
+        auto e2 = GetElem((a64.rt+2) % 32, va, a64.simd_ldst.index);
+        StoreMulti(addr, e0, e1, e2);
+        break;
+    }
+    case farmdec::A64_ST4_SINGLE: {
+        auto ty = ElemTypeOf(fad_get_vec_arrangement(a64.flags));
+        auto addr = SIMDLoadStoreAddr(a64, ty);
+        auto e0 = GetElem(a64.rt, va, a64.simd_ldst.index);
+        auto e1 = GetElem((a64.rt+1) % 32, va, a64.simd_ldst.index);
+        auto e2 = GetElem((a64.rt+2) % 32, va, a64.simd_ldst.index);
+        auto e3 = GetElem((a64.rt+3) % 32, va, a64.simd_ldst.index);
+        StoreMulti(addr, e0, e1, e2, e3);
+        break;
+    }
+    case farmdec::A64_LD1R: {
+        auto ty = ElemTypeOf(fad_get_vec_arrangement(a64.flags));
+        auto addr = SIMDLoadStoreAddr(a64, ty);
+        auto e0 = irb.CreateLoad(ty, addr);
+        Dup(a64.rt, va, e0);
+        break;
+    }
+    case farmdec::A64_LD2R: {
+        auto ty = ElemTypeOf(fad_get_vec_arrangement(a64.flags));
+        auto addr = SIMDLoadStoreAddr(a64, ty);
+        auto e0 = irb.CreateLoad(ty, addr);
+        auto e1 = irb.CreateLoad(ty, irb.CreateConstGEP1_64(ty, addr, 1));
+        Dup(a64.rt, va, e0);
+        Dup((a64.rt+1) % 32, va, e1);
+        break;
+    }
+    case farmdec::A64_LD3R: {
+        auto ty = ElemTypeOf(fad_get_vec_arrangement(a64.flags));
+        auto addr = SIMDLoadStoreAddr(a64, ty);
+        auto e0 = irb.CreateLoad(ty, addr);
+        auto e1 = irb.CreateLoad(ty, irb.CreateConstGEP1_64(ty, addr, 1));
+        auto e2 = irb.CreateLoad(ty, irb.CreateConstGEP1_64(ty, addr, 2));
+        Dup(a64.rt, va, e0);
+        Dup((a64.rt+1) % 32, va, e1);
+        Dup((a64.rt+2) % 32, va, e2);
+        break;
+    }
+    case farmdec::A64_LD4R: {
+        auto ty = ElemTypeOf(fad_get_vec_arrangement(a64.flags));
+        auto addr = SIMDLoadStoreAddr(a64, ty);
+        auto e0 = irb.CreateLoad(ty, addr);
+        auto e1 = irb.CreateLoad(ty, irb.CreateConstGEP1_64(ty, addr, 1));
+        auto e2 = irb.CreateLoad(ty, irb.CreateConstGEP1_64(ty, addr, 2));
+        auto e3 = irb.CreateLoad(ty, irb.CreateConstGEP1_64(ty, addr, 3));
+        Dup(a64.rt, va, e0);
+        Dup((a64.rt+1) % 32, va, e1);
+        Dup((a64.rt+2) % 32, va, e2);
+        Dup((a64.rt+3) % 32, va, e3);
         break;
     }
     case farmdec::A64_FCVT_VEC: {
@@ -1205,18 +1322,6 @@ void Lifter::TransformSIMDPairwise(farmdec::VectorArrangement va, farmdec::Reg r
     *rhs = irb.CreateShuffleVector(vn, vm, odd);
 }
 
-llvm::SmallVector<llvm::Value*, 4> Lifter::LoadMulti(llvm::Type* ty, llvm::Value* addr, unsigned n) {
-    llvm::SmallVector<llvm::Value*, 4> vecs;
-
-    for (unsigned i = 0; i < n; i++) {
-        auto ptr = irb.CreateConstGEP1_64(ty, addr, i);
-        auto v = irb.CreateLoad(ty, ptr);
-        vecs.push_back(v);
-    }
-
-    return vecs;
-}
-
 void Lifter::StoreMulti(llvm::Value* addr, llvm::Value* v0) {
     irb.CreateStore(v0, addr);
 }
@@ -1243,17 +1348,13 @@ void Lifter::StoreMulti(llvm::Value* addr, llvm::Value* v0, llvm::Value* v1, llv
 // load/store. We cannot use the usual Addr because these instructions have a
 // post-increment mode distinct from the usual one, and store their immediate
 // in a64.simd_ldst.offset instead of a64.offset.
-//
-// The returned pointer has the type determined by the vector arrangement.
-llvm::Value* Lifter::SIMDLoadStoreAddr(farmdec::Inst a64) {
-    auto vecty = TypeOf(fad_get_vec_arrangement(a64.flags));
-
+llvm::Value* Lifter::SIMDLoadStoreAddr(farmdec::Inst a64, llvm::Type* ty) {
     farmdec::AddrMode mode = fad_get_addrmode(a64.flags);
     switch (mode) {
     case farmdec::AM_SIMPLE:
-        return Addr(vecty, a64.rn);
+        return Addr(ty, a64.rn);
     case farmdec::AM_POST: {
-        auto base = Addr(vecty, a64.rn);
+        auto base = Addr(ty, a64.rn);
 
         // Offset/increment can be an immediate or the Rm register.
         auto offset = (a64.rm == farmdec::ZERO_REG) ? irb.getInt64(a64.simd_ldst.offset) : GetGp(a64.rm, /*w32=*/false);
