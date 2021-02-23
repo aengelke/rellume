@@ -1370,6 +1370,12 @@ void Lifter::LiftLoadStore(farmdec::Inst a64, bool w32, bool fp) {
     farmdec::MemOrdering mo = farmdec::MO_NONE;
     if (mode == farmdec::AM_SIMPLE) { // AM_SIMPLE → LDAR, LDLAR, STLR, STLLR, ...
         mo = static_cast<farmdec::MemOrdering>(a64.ldst_order.load);
+
+        // If AM_SIMPLE, some memory ordering _must_ be set. Use this fact to
+        // avoid checking whether the instruction loads or stores.
+        if (mo == farmdec::MO_NONE) {
+            mo = static_cast<farmdec::MemOrdering>(a64.ldst_order.store);
+        }
     }
 
     // General: The type of the value to load/store depends on the in-memory
