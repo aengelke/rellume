@@ -611,6 +611,34 @@ bool Lifter::LiftSIMD(farmdec::Inst a64) {
         InsertInHalf(a64.rd, va, Narrow(res));
         break;
     }
+    case farmdec::A64_SRA: {
+        // Scalar mode exists, but only for FSZ_D, so we can simply handle it as VA_1D,
+        // without adding a duplicative special case.
+        if (scalar) {
+            va = farmdec::VA_1D;
+        }
+
+        auto acc = GetVec(a64.rd, va);
+        auto lhs = GetVec(a64.rn, va);
+
+        // If rounding is active, add the round_const to make sure we round up to the next-higher
+        // integer where appropriate, instead of truncating. Really, the same mechanism as for HADD,
+        // except shifted up. Since adding the constant may overflow the elements, we need to extend
+        // each vector element, i.e. the vector may blow up to 256 bits! We can avoid this in the
+        // non-rounding case.
+        if (round) {
+            auto extty = llvm::VectorType::getExtendedElementVectorType(llvm::cast<llvm::VectorType>(TypeOf(va)));
+            lhs = (sgn) ? irb.CreateSExt(lhs, extty) : irb.CreateZExt(lhs, extty);
+            uint64_t round_const = 1 << (a64.imm - 1);
+            lhs = irb.CreateAdd(lhs, irb.CreateVectorSplat(NumElem(va), irb.getIntN(extty->getScalarSizeInBits(), round_const)));
+        }
+
+        unsigned bits = lhs->getType()->getScalarSizeInBits();
+        auto rhs = irb.CreateVectorSplat(NumElem(va), irb.getIntN(bits, a64.imm));
+        auto shifted = (sgn) ? irb.CreateAShr(lhs, rhs) : irb.CreateLShr(lhs, rhs);
+        SetVec(a64.rd, irb.CreateAdd(acc, irb.CreateTruncOrBitCast(shifted, TypeOf(va))));
+        break;
+    }
     case farmdec::A64_DUP_ELEM: {
         auto elem = GetElem(a64.rn, va, a64.imm);
         if (scalar) {
@@ -856,6 +884,36 @@ bool Lifter::LiftSIMD(farmdec::Inst a64) {
     case farmdec::A64_ABS_VEC:
         SetVec(a64.rd, Abs(GetVec(a64.rn, va)));
         break;
+    case farmdec::A64_ABD:
+    case farmdec::A64_ABA: {
+        auto acc = (a64.op == farmdec::A64_ABA) ? GetVec(a64.rd, va) : llvm::Constant::getNullValue(TypeOf(va));
+        auto vn = GetVec(a64.rn, va);
+        auto vm = GetVec(a64.rm, va);
+
+        // Need to extend to enough precision, see HADD.
+        // Note that this may blow up these temporary vectors to 256 bits!
+        auto extty = llvm::VectorType::getExtendedElementVectorType(llvm::cast<llvm::VectorType>(TypeOf(va)));
+        auto lhs = (sgn) ? irb.CreateSExt(vn, extty) : irb.CreateZExt(vn, extty);
+        auto rhs = (sgn) ? irb.CreateSExt(vm, extty) : irb.CreateZExt(vm, extty);
+
+        auto diff = irb.CreateSub(lhs, rhs);
+        auto absdiff = irb.CreateTrunc(Abs(diff), TypeOf(va));
+        SetVec(a64.rd, irb.CreateAdd(acc, absdiff));
+        break;
+    }
+    case farmdec::A64_ABDL:
+    case farmdec::A64_ABAL: {
+        auto extty = TypeOf(DoubleWidth(va));
+        auto acc = (a64.op == farmdec::A64_ABAL) ? GetVec(a64.rd, DoubleWidth(va)) : llvm::Constant::getNullValue(extty);
+        auto vn_half = Halve(GetVec(a64.rn, va), va);
+        auto vm_half = Halve(GetVec(a64.rm, va), va);
+        auto lhs = (sgn) ? irb.CreateSExt(vn_half, extty) : irb.CreateZExt(vn_half, extty);
+        auto rhs = (sgn) ? irb.CreateSExt(vm_half, extty) : irb.CreateZExt(vm_half, extty);
+
+        auto diff = irb.CreateSub(lhs, rhs);
+        SetVec(a64.rd, irb.CreateAdd(acc, Abs(diff)));
+        break;
+    }
     case farmdec::A64_NEG_VEC:
         SetVec(a64.rd, irb.CreateNeg(GetVec(a64.rn, va)));
         break;
@@ -883,6 +941,25 @@ bool Lifter::LiftSIMD(farmdec::Inst a64) {
         SetVec(a64.rd, irb.CreateAdd(lhs, rhs));
         break;
     }
+    case farmdec::A64_HADD: {
+        auto vn = GetVec(a64.rn, va);
+        auto vm = GetVec(a64.rm, va);
+
+        // Need to extend to enough precision: for byte elements, hadd(255, 1) = 256/2 = 128 and not 0!
+        // Note that this may blow up these temporary vectors to 256 bits!
+        auto extty = llvm::VectorType::getExtendedElementVectorType(llvm::cast<llvm::VectorType>(TypeOf(va)));
+        auto lhs = (sgn) ? irb.CreateSExt(vn, extty) : irb.CreateZExt(vn, extty);
+        auto rhs = (sgn) ? irb.CreateSExt(vm, extty) : irb.CreateZExt(vm, extty);
+
+        // Rounded halving: rhalve(x) = (x+1) / 2, rounding away instead of truncating towards zero.
+        if (round) {
+            rhs = irb.CreateAdd(rhs, irb.CreateVectorSplat(NumElem(va), irb.getIntN(extty->getScalarSizeInBits(), 1)));
+        }
+        auto sum = irb.CreateAdd(lhs, rhs);
+        auto halved = (sgn) ? irb.CreateAShr(sum, 1) : irb.CreateLShr(sum, 1);
+        SetVec(a64.rd, irb.CreateTrunc(halved, TypeOf(va)));
+        break;
+    }
     case farmdec::A64_SUB_VEC:
         LiftThreeSame(llvm::Instruction::Sub, a64.rd, va, a64.rn, a64.rm, scalar);
         break;
@@ -901,6 +978,21 @@ bool Lifter::LiftSIMD(farmdec::Inst a64) {
         auto extty = TypeOf(DoubleWidth(va));
         auto rhs = (sgn) ? irb.CreateSExt(vm_half, extty) : irb.CreateZExt(vm_half, extty);
         SetVec(a64.rd, irb.CreateSub(lhs, rhs));
+        break;
+    }
+    case farmdec::A64_HSUB: {
+        auto vn = GetVec(a64.rn, va);
+        auto vm = GetVec(a64.rm, va);
+
+        // See HADD, we need enough precision.
+        auto extty = llvm::VectorType::getExtendedElementVectorType(llvm::cast<llvm::VectorType>(TypeOf(va)));
+        auto lhs = (sgn) ? irb.CreateSExt(vn, extty) : irb.CreateZExt(vn, extty);
+        auto rhs = (sgn) ? irb.CreateSExt(vm, extty) : irb.CreateZExt(vm, extty);
+
+        // Unlike HADD, there are no rounded variants of HSUB.
+        auto diff = irb.CreateSub(lhs, rhs);
+        auto halved = (sgn) ? irb.CreateAShr(diff, 1) : irb.CreateLShr(diff, 1);
+        SetVec(a64.rd, irb.CreateTrunc(halved, TypeOf(va)));
         break;
     }
     case farmdec::A64_MAX_VEC:

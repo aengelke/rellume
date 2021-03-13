@@ -290,6 +290,22 @@ code="rev64 v0.2s, v1.2s"   v0=qq:0,0 v1=00000000111111112222222233333333 => v0=
 code="abs d0, d1" v0=qq:0,0 v1=qq:-100,0 => v0=qq:100,0
 code="abs v0.4s, v1.4s" v0=qq:0,0 v1=llll:0,-100,3455,-2220 => v0=llll:0,100,3455,2220
 
+code="sabd v0.2s, v1.2s, v2.2s" v0=qq:0,0 v1=llq:-1,-1,0 v2=llq:-10,0x80000000,0 => v0=llq:9,0x7fffffff,0
+code="uabd v0.2s, v1.2s, v2.2s" v0=qq:0,0 v1=llq:100,0,0 v2=llq:1,0x80000000,0   => v0=llq:99,0x80000000,0
+
+code="saba v0.2s, v1.2s, v2.2s" v0=llq:-10,1,0 v1=llq:-1,-1,0 v2=llq:-10,0x80000000,0 => v0=llq:-1,0x80000000,0
+code="uaba v0.2s, v1.2s, v2.2s" v0=llq:1,1,0 v1=llq:100,0,0 v2=llq:1,0x80000000,0     => v0=llq:100,0x80000001,0
+
+code="sabdl v0.2d, v1.2s, v2.2s"  v0=qq:0,0 v1=llq:0x80000000,1,0 v2=llq:0x7fffffff,-1,0 => v0=qq:0xffffffff,2
+code="sabal v0.2d, v1.2s, v2.2s"  v0=qq:1,-2 v1=llq:0x80000000,1,0 v2=llq:0x7fffffff,-1,0 => v0=qq:0x100000000,0
+code="sabdl2 v0.2d, v1.4s, v2.4s"  v0=qq:0,0 v1=qll:0,0x80000000,1 v2=qll:0,0x7fffffff,-1 => v0=qq:0xffffffff,2
+code="sabal2 v0.2d, v1.4s, v2.4s"  v0=qq:1,-2 v1=qll:0,0x80000000,1 v2=qll:0,0x7fffffff,-1 => v0=qq:0x100000000,0
+
+code="uabdl v0.2d, v1.2s, v2.2s"  v0=qq:0,0 v1=llq:0x80000000,1,0 v2=llq:0x7fffffff,-1,0 => v0=qq:1,0xfffffffe
+code="uabal v0.2d, v1.2s, v2.2s"  v0=qq:1,-2 v1=llq:0x80000000,1,0 v2=llq:0x7fffffff,-1,0 => v0=qq:2,0xfffffffc
+code="uabdl2 v0.2d, v1.4s, v2.4s"  v0=qq:0,0 v1=qll:0,0x80000000,1 v2=qll:0,0x7fffffff,-1 => v0=qq:1,0xfffffffe
+code="uabal2 v0.2d, v1.4s, v2.4s"  v0=qq:1,-2 v1=qll:0,0x80000000,1 v2=qll:0,0x7fffffff,-1 => v0=qq:2,0xfffffffc
+
 code="neg d0, d1" v0=qq:0,0 v1=qq:-100,100 => v0=qq:100,-100
 code="neg v0.4s, v1.4s" v0=qq:0,0 v1=llll:0,-100,3455,-2220 => v0=llll:0,100,-3455,2220
 
@@ -306,6 +322,15 @@ code="saddw2 v0.2d, v1.2d, v2.4s" v0=qq:0,0 v1=qq:-1,1 v2=qll:0,-1,-1 => v0=qq:-
 code="uaddw v0.2d, v1.2d, v2.2s"  v0=qq:0,0 v1=qq:0xf000000000000000,1 v2=llq:0xffffffff,0xffffffff,0 => v0=qq:0xf0000000ffffffff,0x100000000
 code="uaddw2 v0.2d, v1.2d, v2.4s" v0=qq:0,0 v1=qq:0xf000000000000000,1 v2=qll:0,0xffffffff,0xffffffff => v0=qq:0xf0000000ffffffff,0x100000000
 
+# Corner case: -1 + (-2^31) would overflow, but shadd(-1, -2^31) ought to arrive at trunc((-2^31 - 1) / 2) = -2^30 + 1,
+# while srhadd should yield the rounded-down -2^30.
+code="shadd v0.2s, v1.2s, v2.2s"  v0=qq:0,0 v1=llq:0,-1,0 v2=llq:1,0x80000000,0 => v0=llq:0,0xbfffffff,0
+code="srhadd v0.2s, v1.2s, v2.2s" v0=qq:0,0 v1=llq:0,-1,0 v2=llq:1,0x80000000,0 => v0=llq:1,0xc0000000,0
+
+# 0xffffffff + 1 = 0x100000000; halving yields 0x80000000. 0xffffffff + 2 = 0x10000001 (odd), so truncate/round.
+code="uhadd v0.2s, v1.2s, v2.2s"  v0=qq:0,0 v1=llq:0xffffffff,0xffffffff,0 v2=llq:1,2,0 => v0=llq:0x80000000,0x80000000,0
+code="urhadd v0.2s, v1.2s, v2.2s" v0=qq:0,0 v1=llq:0xffffffff,0xffffffff,0 v2=llq:1,2,0 => v0=llq:0x80000000,0x80000001,0
+
 code="sub d0, d1, d2" v0=qq:0,0 v1=qq:101,0 v2=qq:100,0 => v0=qq:1,0
 code="sub v0.8b, v1.8b, v2.8b" v0=qq:0,0 v1=bbbbbbbbq:100,0,-128,255,-128,0,0,1,0 v2=bbbbbbbbq:100,-123,-1,1,1,0,0,0,0 => v0=bbbbbbbbq:0,123,-127,254,127,0,0,1,0
 
@@ -318,6 +343,12 @@ code="ssubw v0.2d, v1.2d, v2.2s"  v0=qq:0,0 v1=qq:-1,1 v2=llq:-1,-1,0 => v0=qq:0
 code="ssubw2 v0.2d, v1.2d, v2.4s" v0=qq:0,0 v1=qq:-1,1 v2=qll:0,-1,-1 => v0=qq:0,2
 code="usubw v0.2d, v1.2d, v2.2s"  v0=qq:0,0 v1=qq:0x100000000,1 v2=llq:0xffffffff,1,0 => v0=qq:1,0
 code="usubw2 v0.2d, v1.2d, v2.4s" v0=qq:0,0 v1=qq:0x100000000,1 v2=qll:0,0xffffffff,1 => v0=qq:1,0
+
+# Corner case: 0 - 0x80000000 = 0 - (-2^31) = 2^31 outside the range of signed 32-bit,
+# but shsub(0, 0x8000000) ought to correctly halve to 0x40000000 = 2^31/2 = 2^30.
+code="shsub v0.2s, v1.2s, v2.2s" v0=qq:0,0 v1=llq:2,0,0 v2=llq:1,0x80000000,0 => v0=llq:0,0x40000000,0
+
+code="uhsub v0.2s, v1.2s, v2.2s" v0=qq:0,0 v1=llq:2,0x80000002,0 v2=llq:1,0x80000000,0 => v0=llq:0,1,0
 
 code="umax v0.4s, v1.4s, v2.4s" v0=qq:0,0 v1=llll:1,99,3,98 v2=llll:99,1,98,2 => v0=llll:99,99,98,98
 code="umin v0.4s, v1.4s, v2.4s" v0=qq:0,0 v1=llll:1,99,3,98 v2=llll:99,1,98,2 => v0=llll:1,1,3,2
@@ -369,6 +400,16 @@ code="ushr v0.2d, v1.2d, #12" v0=qq:0,0 v1=qq:0xfff000,0xf0f0f0 => v0=qq:0xfff,0
 # Arithmetic Right Shift (with sign extension), hence 0xffffffff -> 0xffffffff
 code="sshr v0.4s, v1.4s, #12" v0=qq:0,0 v1=llll:0xfff000,0xf0f0f0,0x1,0xffffffff => v0=llll:0xfff,0xf0f,0,0xffffffff
 
+code="usra d0, d1, #12"  v0=qq:1,2 v1=qq:0xfff000,0xf0f0f0 => v0=qq:0x1000,0
+code="ssra d0, d1, #12"  v0=qq:1,2 v1=qq:0xfff000,0xf0f0f0 => v0=qq:0x1000,0
+code="ursra d0, d1, #12" v0=qq:1,2 v1=qq:0xfff800,0xf0f8f0 => v0=qq:0x1001,0
+code="srsra d0, d1, #12" v0=qq:1,2 v1=qq:0xfff800,0xf0f8f0 => v0=qq:0x1001,0
+
+code="usra v0.2d, v1.2d, #12" v0=qq:1,2 v1=qq:0xfff000,0xf0f0f0 => v0=qq:0x1000,0xf11
+code="ssra v0.4s, v1.4s, #12" v0=llll:1,2,3,4 v1=llll:0xfff000,0xf0f0f0,0x1,0xffffffff => v0=llll:0x1000,0xf11,3,3
+code="ursra v0.2d, v1.2d, #12" v0=qq:1,2 v1=qq:0xfff800,0xf0f8f0 => v0=qq:0x1001,0xf12
+code="srsra v0.4s, v1.4s, #12" v0=llll:1,2,3,4 v1=llll:0xfff000,0xf0f0f0,0x800,0xffffffff => v0=llll:0x1000,0xf11,4,4
+
 code="shrn  v0.2s, v1.2d, #12" v0=qq:0,0 v1=qq:0xfff000,0xf0f0f0 => v0=llq:0xfff,0xf0f,0
 code="shrn2 v0.4s, v1.2d, #12" v0=qq:0,0 v1=qq:0xfff000,0xf0f0f0 => v0=qll:0,0xfff,0xf0f
 
@@ -376,8 +417,6 @@ code="sshll v0.2d, v1.2s, #4"   v0=qq:0,0 v1=llq:0xffffffff,0x01,0 => v0=qq:0xff
 code="sshll2 v0.2d, v1.4s, #31" v0=qq:0,0 v1=qll:0,0xffffffff,0x01 => v0=qq:0xffffffff80000000,0x80000000
 code="ushll v0.2d, v1.2s, #4"   v0=qq:0,0 v1=llq:0xffffffff,0x01,0 => v0=qq:0xffffffff0,0x10
 code="ushll2 v0.2d, v1.4s, #31" v0=qq:0,0 v1=qll:0,0xffffffff,0x01 => v0=qq:0x7fffffff80000000,0x80000000
-
-# SHL_REG (USHL, SSHL)
 
 code="sshl d0, d1, d2" v0=qq:0,0 v1=qq:0xff,0 v2=qq:4,0 => v0=qq:0xff0,0
 code="sshl d0, d1, d2" v0=qq:0,0 v1=qq:0xff,0 v2=qq:-4,0 => v0=qq:0xf,0
