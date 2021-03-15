@@ -1039,6 +1039,38 @@ bool Lifter::LiftSIMD(farmdec::Inst a64) {
     case farmdec::A64_ADDV:
         SetScalar(a64.rd, irb.CreateAddReduce(GetVec(a64.rn, va)));
         break;
+    case farmdec::A64_ADALP:
+    case farmdec::A64_ADDLP: {
+        // These instructions take _one_ source operand, extend it to double width,
+        // then add its elements pairwise, so that the result has half the elements.
+        farmdec::VectorArrangement dstva;
+        switch (va) {
+        case farmdec::VA_8B: dstva = farmdec::VA_4H; break;
+        case farmdec::VA_16B: dstva = farmdec::VA_8H; break;
+        case farmdec::VA_4H: dstva = farmdec::VA_2S; break;
+        case farmdec::VA_8H: dstva = farmdec::VA_4S; break;
+        case farmdec::VA_2S: dstva = farmdec::VA_1D; break;
+        case farmdec::VA_4S: dstva = farmdec::VA_2D; break;
+        default:
+            assert(false && "bad ADDLP/ADALP source operand vector arrangement");
+        }
+
+        // Destination vector -> half the elements
+        unsigned nelem_dst = NumElem(dstva);
+        auto zero_dst = llvm::Constant::getNullValue(TypeOf(dstva));
+        auto acc = (a64.op == farmdec::A64_ADALP) ? GetVec(a64.rd, dstva) : zero_dst;
+
+        // Extended vector -> same number of elements, but of double the size
+        auto extty = TypeOf(DoubleWidth(va));
+        auto zero_ext = llvm::Constant::getNullValue(extty);
+        auto vn = GetVec(a64.rn, va);
+        auto extended = (sgn) ? irb.CreateSExt(vn, extty) : irb.CreateZExt(vn, extty);
+
+        auto lhs = irb.CreateShuffleVector(extended, zero_ext, even(nelem_dst));
+        auto rhs = irb.CreateShuffleVector(extended, zero_ext, odd(nelem_dst));
+        SetVec(a64.rd, irb.CreateAdd(acc, irb.CreateAdd(lhs, rhs)));
+        break;
+    }
     case farmdec::A64_FMAXV:
     case farmdec::A64_FMAXNMV:
         SetScalar(a64.rd, irb.CreateFPMaxReduce(GetVec(a64.rn, va, /*fp=*/true)));
@@ -1400,18 +1432,9 @@ void Lifter::LiftMulAccElem(farmdec::Inst a64, llvm::Instruction::BinaryOps adds
 void Lifter::TransformSIMDPairwise(farmdec::VectorArrangement va, farmdec::Reg rn, farmdec::Reg rm, llvm::Value **lhs, llvm::Value** rhs, bool fp) {
     auto vn = GetVec(rn, va, fp);
     auto vm = GetVec(rm, va, fp);
-
-    llvm::SmallVector<int, 16> odd, even;
     unsigned nelem = NumElem(va);
-    for (unsigned i = 0; i < 2*nelem; i++) {
-        if ((i % 2) == 0)
-            even.push_back(i);
-        else
-            odd.push_back(i);
-     }
-
-    *lhs = irb.CreateShuffleVector(vn, vm, even);
-    *rhs = irb.CreateShuffleVector(vn, vm, odd);
+    *lhs = irb.CreateShuffleVector(vn, vm, even(nelem));
+    *rhs = irb.CreateShuffleVector(vn, vm, odd(nelem));
 }
 
 void Lifter::StoreMulti(llvm::Value* addr, llvm::Value* v0) {

@@ -150,11 +150,15 @@ code="addp v0.16b, v1.16b, v2.16b" v0=qq:0,0 v1=bbbbbbbbbbbbbbbb:1,99,2,98,3,97,
 code="faddp v0.4s, v1.4s, v2.4s" v0=qq:0,0 v1=ffff:1,99,2,98 v2=ffff:1,99,2,98 => v0=ffff:100,100,100,100
 code="addp v0.4s, v1.4s, v2.4s" v0=qq:0,0 v1=llll:1,99,2,98 v2=llll:1,99,2,98 => v0=llll:100,100,100,100
 
+code="saddlp v0.1d, v1.2s" v0=qq:0,0 v1=llq:-1,-1,0 => v0=qq:-2,0
+code="uaddlp v0.1d, v1.2s" v0=qq:0,0 v1=llq:0xffffffff,0xffffffff,0 => v0=qq:0x1fffffffe,0
+code="sadalp v0.1d, v1.2s" v0=qq:2,0 v1=llq:-1,-1,0 => v0=qq:0,0
+code="uadalp v0.1d, v1.2s" v0=qq:2,0 v1=llq:0xffffffff,0xffffffff,0 => v0=qq:0x200000000,0
+
 code="umaxp v0.4s, v1.4s, v2.4s" v0=qq:0,0 v1=llll:1,99,2,98 v2=llll:2,98,1,99 => v0=llll:99,98,98,99
 code="uminp v0.4s, v1.4s, v2.4s" v0=qq:0,0 v1=llll:1,99,2,98 v2=llll:2,98,1,99 => v0=llll:1,2,2,1
 
 code="uminp v0.16b, v0.16b, v0.16b" v0=612020636161657220696c2020666320 => v0=20206165202020202020616520202020
-
 code="smaxp v0.4s, v1.4s, v2.4s" v0=qq:0,0 v1=llll:1,99,2,98 v2=llll:1,99,2,98 => v0=llll:99,98,99,98
 code="sminp v0.4s, v1.4s, v2.4s" v0=qq:0,0 v1=llll:1,99,2,98 v2=llll:1,99,2,98 => v0=llll:1,2,1,2
 
