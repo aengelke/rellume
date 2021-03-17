@@ -27,9 +27,9 @@
 namespace rellume {
 
 class ArchBasicBlock;
-class FunctionInfo;
+struct FunctionInfo;
 class Instr;
-class LLConfig;
+struct LLConfig;
 
 namespace rv64 {
 

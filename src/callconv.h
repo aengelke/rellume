@@ -35,7 +35,7 @@
 
 namespace rellume {
 
-class FunctionInfo;
+struct FunctionInfo;
 
 class CallConv {
 public:
