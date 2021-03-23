@@ -460,6 +460,21 @@ code="ucvtf v0.2d, v1.2d" v0=qq:0,0 v1=qq:0xffffffff,5 => v0=dd:4294967295.0,5.0
 +jit code="fcvtps d1, d0" v1=qq:0,0 v0=dq:-0.5,0 => v1=qq:0,0
 +jit code="fcvtpu d1, d0" v1=qq:0,0 v0=dq:0.5,0  => v1=qq:1,0
 
+
+# Fixed-point conversion
+code="fcvtzs d1, d0, #1" v1=qq:0,0 v0=dq:0.5,0 => v1=qq:0x01,0
+code="fcvtzu d1, d0, #8" v1=qq:0,0 v0=dq:0.5,0 => v1=qq:0x80,0
+code="fcvtzs d1, d0, #1" v1=qq:0,0 v0=dq:-0.5,0 => v1=qq:0xffffffffffffffff,0
+code="fcvtzu d1, d0, #1" v1=qq:0,0 v0=dq:0.25,0 => v1=qq:0x0,0
+code="scvtf d0, d1, #8" v0=qq:0,0 v1=qq:0x80,0 => v0=dq:0.5,0
+code="scvtf d0, d1, #1" v0=qq:0,0 v1=qq:0xffffffffffffffff,0 => v0=dq:-0.5,0
+code="ucvtf s0, s1, #8" v0=qq:0,0 v1=llq:0xffffffff10,0,0 => v0=flq:16777215.0625,0,0
+
++jit code="fcvtzs v1.2d, v0.2d, #1" v1=qq:0,0 v0=dd:0.5,-0.25 => v1=qq:0x01,0
++jit code="fcvtzu v1.2d, v0.2d, #8" v1=qq:0,0 v0=dd:0.0625,16777215.0625 => v1=qq:0x10,0xffffff10
+code="scvtf v0.2d, v1.2d, #1" v0=qq:0,0 v1=qq:0xffffffffffffffff,0xfffffffffffffffe => v0=dd:-0.5,-1.0
+code="ucvtf v0.2s, v1.2s, #8" v0=qq:0,0 v1=llq:0xffffff10,0x10,0 => v0=ffq:16777215.0625,0.0625,0
+
 +jit code="fcvtas v1.2d, v0.2d" v1=qq:0,0 v0=dd:-0.5,0.5 => v1=qq:-1,1
 +jit code="fcvtau v1.2d, v0.2d" v1=qq:0,0 v0=dd:0.5,0.5 => v1=qq:1,1
 +jit code="fcvtms v1.2d, v0.2d" v1=qq:0,0 v0=dd:-0.5,0.5 => v1=qq:-1,0

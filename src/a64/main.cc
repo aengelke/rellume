@@ -726,9 +726,14 @@ bool Lifter::Lift(const Instr& inst) {
         LiftLoadStore(a64, w32, /*fp=*/true);
         break;
     case farmdec::A64_FCVT_GPR: {
-        assert(a64.fcvt.fbits == 0); // XXX fixed-point currently not supported
-
         auto fp = GetScalar(a64.rn, fad_get_prec(a64.flags));
+
+        // Fixed-point, so move binary point by multiplying by 2^{fbits}.
+        if (a64.fcvt.fbits > 0) {
+            auto scale = llvm::ConstantFP::get(TypeOf(fad_get_prec(a64.flags)), pow(2.0, (double) a64.fcvt.fbits));
+            fp = irb.CreateFMul(fp, scale);
+        }
+
         auto rounded = Round(fp, static_cast<farmdec::FPRounding>(a64.fcvt.mode));
         auto ity = irb.getIntNTy((w32) ? 32 : 64);
         auto ival = (a64.fcvt.sgn) ? irb.CreateFPToSI(rounded, ity) : irb.CreateFPToUI(rounded, ity);
@@ -737,10 +742,15 @@ bool Lifter::Lift(const Instr& inst) {
     }
     case farmdec::A64_CVTF: {     // GPR(int|fixed) → Sca(fp)
         farmdec::FPSize prec = fad_get_prec(a64.flags);
-        assert(a64.fcvt.fbits == 0); // XXX fixed-point currently not supported
 
         auto ival = GetGp(a64.rn, w32);
         auto fp = (a64.fcvt.sgn) ? irb.CreateSIToFP(ival, TypeOf(prec)) : irb.CreateUIToFP(ival, TypeOf(prec));
+
+        // Fixed-point, so move binary point right by dividing by 2^{fbits}.
+        if (a64.fcvt.fbits > 0) {
+            auto scale = llvm::ConstantFP::get(TypeOf(fad_get_prec(a64.flags)), pow(2.0, (double) a64.fcvt.fbits));
+            fp = irb.CreateFDiv(fp, scale);
+        }
         SetScalar(a64.rd, fp);
         break;
     }

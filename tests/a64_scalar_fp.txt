@@ -36,6 +36,15 @@ code="fcvtnu x1, d0" x1=q:0 v0=dq:0.5,0  => x1=q:0
 +jit code="fcvtps x1, d0" x1=q:0 v0=dq:-0.5,0 => x1=q:0
 +jit code="fcvtpu x1, d0" x1=q:0 v0=dq:0.5,0  => x1=q:1
 
+# Fixed-point conversion
+code="fcvtzs x1, d0, #1" x1=q:0 v0=dq:0.5,0 => x1=q:0x01
+code="fcvtzu x1, d0, #8" x1=q:0 v0=dq:0.5,0 => x1=q:0x80
+code="fcvtzs x1, d0, #1" x1=q:0 v0=dq:-0.5,0 => x1=q:0xffffffffffffffff
+code="fcvtzu x1, d0, #1" x1=q:0 v0=dq:0.25,0 => x1=q:0x0
+code="scvtf d0, x1, #8" v0=qq:0,0 x1=q:0x80 => v0=dq:0.5,0
+code="scvtf d0, x1, #1" v0=qq:0,0 x1=q:0xffffffffffffffff => v0=dq:-0.5,0
+code="ucvtf s0, w1, #8" v0=qq:0,0 x1=q:0xffffffff10 => v0=flq:16777215.0625,0,0
+
 +jit code="frintn d0, d1" v0=qq:0,0 v1=dq:3.5,0 => v0=dq:4.0,0
 +jit code="frinti d0, d1" v0=qq:0,0 v1=dq:3.5,0 => v0=dq:4.0,0
 +jit code="frinta d0, d1" v0=qq:0,0 v1=dq:3.5,0 => v0=dq:4.0,0

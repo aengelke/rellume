@@ -268,17 +268,31 @@ bool Lifter::LiftSIMD(farmdec::Inst a64) {
         break;
     }
     case farmdec::A64_FCVT_VEC: {
-        assert(a64.fcvt.fbits == 0); // XXX fixed-point currently not supported
-
         if (scalar) {
             farmdec::FPSize prec = fad_size_from_vec_arrangement(va);
             auto fp = GetScalar(a64.rn, prec);
+
+            // Fixed-point, so move binary point by multiplying by 2^{fbits}.
+            if (a64.fcvt.fbits > 0) {
+                auto scale = llvm::ConstantFP::get(TypeOf(prec), pow(2.0, (double) a64.fcvt.fbits));
+                fp = irb.CreateFMul(fp, scale);
+            }
+
             auto rounded = Round(fp, static_cast<farmdec::FPRounding>(a64.fcvt.mode));
             auto ity = (prec == farmdec::FSZ_D) ? irb.getInt64Ty() : irb.getInt32Ty();
             auto ival = (a64.fcvt.sgn) ? irb.CreateFPToSI(rounded, ity) : irb.CreateFPToUI(rounded, ity);
             SetScalar(a64.rd, ival);
         } else {
             auto fpvec = GetVec(a64.rn, va, /*fp=*/true);
+
+            // Fixed-point, so move binary point by multiplying by 2^{fbits}.
+            if (a64.fcvt.fbits > 0) {
+                farmdec::FPSize prec = fad_size_from_vec_arrangement(va);
+                auto scale = llvm::ConstantFP::get(TypeOf(prec), pow(2.0, (double) a64.fcvt.fbits));
+                auto scalevec = irb.CreateVectorSplat(NumElem(va), scale);
+                fpvec = irb.CreateFMul(fpvec, scalevec);
+            }
+
             auto rounded = Round(fpvec, static_cast<farmdec::FPRounding>(a64.fcvt.mode));
             auto ity = llvm::VectorType::getInteger(llvm::cast<llvm::VectorType>(fpvec->getType()));
             auto ivec = (a64.fcvt.sgn) ? irb.CreateFPToSI(rounded, ity) : irb.CreateFPToUI(rounded, ity);
@@ -287,17 +301,31 @@ bool Lifter::LiftSIMD(farmdec::Inst a64) {
         break;
     }
     case farmdec::A64_CVTF_VEC:
-        assert(a64.fcvt.fbits == 0); // XXX fixed-point currently not supported
-
         if (scalar) {
             farmdec::FPSize prec = fad_size_from_vec_arrangement(va);
             auto ival = GetScalar(a64.rn, prec, /*fp=*/false);
             auto fp = (a64.fcvt.sgn) ? irb.CreateSIToFP(ival, TypeOf(prec)) : irb.CreateUIToFP(ival, TypeOf(prec));
+
+            // Fixed-point, so move binary point right by dividing by 2^{fbits}.
+            if (a64.fcvt.fbits > 0) {
+                auto scale = llvm::ConstantFP::get(TypeOf(prec), pow(2.0, (double) a64.fcvt.fbits));
+                fp = irb.CreateFDiv(fp, scale);
+            }
+
             SetScalar(a64.rd, fp);
         } else {
             auto ivec = GetVec(a64.rn, va);
             auto fpty = TypeOf(va, /*fp=*/true);
             auto fp = (a64.fcvt.sgn) ? irb.CreateSIToFP(ivec, fpty) : irb.CreateUIToFP(ivec, fpty);
+
+            // Fixed-point, so move binary point right by dividing by 2^{fbits}.
+            if (a64.fcvt.fbits > 0) {
+                farmdec::FPSize prec = fad_size_from_vec_arrangement(va);
+                auto scale = llvm::ConstantFP::get(TypeOf(prec), pow(2.0, (double) a64.fcvt.fbits));
+                auto scalevec = irb.CreateVectorSplat(NumElem(va), scale);
+                fp = irb.CreateFDiv(fp, scalevec);
+            }
+
             SetVec(a64.rd, fp);
         }
         break;
