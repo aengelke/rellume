@@ -941,12 +941,12 @@ void Lifter::LiftScalarCmXX(llvm::CmpInst::Predicate cmp, farmdec::Reg rd, farmd
 //
 //     Vn: [a,b,c,d]
 //     Vm: [u,v,w,x]
-//  Vm:Vn: [a,b,c,d,u,v,w,x] (yes, Vn is after Vm)
+//  Vm:Vn: [a,b,c,d,u,v,w,x]
 //     Vd: [a+b,c+d,u+v,w+x] ('+' stands for binary op, e.g. addition, max/min)
 //
 // This can be expressed using two shuffled vectors and then normal vector binary operation:
 //
-//     lhs: [a,c,u,w] (even elements of Vn:Vm, starting with i=0)
+//     lhs: [a,c,u,w] (even elements of Vm:Vn, starting with i=0)
 //     rhs: [b,d,v,x] (odd elements)
 // lhs+rhs: [a+b,c+d,u+v,w+x]
 //
@@ -963,8 +963,8 @@ void Lifter::TransformSIMDPairwise(farmdec::VectorArrangement va, farmdec::Reg r
             odd.push_back(i);
      }
 
-    *lhs = irb.CreateShuffleVector(vm, vn, even);
-    *rhs = irb.CreateShuffleVector(vm, vn, odd);
+    *lhs = irb.CreateShuffleVector(vn, vm, even);
+    *rhs = irb.CreateShuffleVector(vn, vm, odd);
 }
 
 } // namespace rellume::aarch64

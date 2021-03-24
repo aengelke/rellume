@@ -150,8 +150,11 @@ code="addp v0.16b, v1.16b, v2.16b" v0=qq:0,0 v1=bbbbbbbbbbbbbbbb:1,99,2,98,3,97,
 code="faddp v0.4s, v1.4s, v2.4s" v0=qq:0,0 v1=ffff:1,99,2,98 v2=ffff:1,99,2,98 => v0=ffff:100,100,100,100
 code="addp v0.4s, v1.4s, v2.4s" v0=qq:0,0 v1=llll:1,99,2,98 v2=llll:1,99,2,98 => v0=llll:100,100,100,100
 
-code="umaxp v0.4s, v1.4s, v2.4s" v0=qq:0,0 v1=llll:1,99,2,98 v2=llll:1,99,2,98 => v0=llll:99,98,99,98
-code="uminp v0.4s, v1.4s, v2.4s" v0=qq:0,0 v1=llll:1,99,2,98 v2=llll:1,99,2,98 => v0=llll:1,2,1,2
+code="umaxp v0.4s, v1.4s, v2.4s" v0=qq:0,0 v1=llll:1,99,2,98 v2=llll:2,98,1,99 => v0=llll:99,98,98,99
+code="uminp v0.4s, v1.4s, v2.4s" v0=qq:0,0 v1=llll:1,99,2,98 v2=llll:2,98,1,99 => v0=llll:1,2,2,1
+
+code="uminp v0.16b, v0.16b, v0.16b" v0=612020636161657220696c2020666320 => v0=20206165202020202020616520202020
+
 code="smaxp v0.4s, v1.4s, v2.4s" v0=qq:0,0 v1=llll:1,99,2,98 v2=llll:1,99,2,98 => v0=llll:99,98,99,98
 code="sminp v0.4s, v1.4s, v2.4s" v0=qq:0,0 v1=llll:1,99,2,98 v2=llll:1,99,2,98 => v0=llll:1,2,1,2
 
