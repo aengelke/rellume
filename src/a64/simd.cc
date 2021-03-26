@@ -40,20 +40,21 @@
 
 namespace rellume::aarch64 {
 
-static llvm::SmallVector<int, 16> even(unsigned n) {
+// [a*i + t | i < n].
+static llvm::SmallVector<int, 16> linear(unsigned n, unsigned a, unsigned t) {
     llvm::SmallVector<int, 16> mask;
     for (unsigned i = 0; i < n; i++) {
-        mask.push_back(2*i);
+        mask.push_back(a*i + t);
     }
     return mask;
 }
 
+static llvm::SmallVector<int, 16> even(unsigned n) {
+    return linear(n, 2, 0);
+}
+
 static llvm::SmallVector<int, 16> odd(unsigned n) {
-    llvm::SmallVector<int, 16> mask;
-    for (unsigned i = 0; i < n; i++) {
-        mask.push_back(2*i + 1);
-    }
-    return mask;
+    return linear(n, 2, 1);
 }
 
 // [0, 0+n, 1, 1+n, ..., n/2-1]. For ZIP1, ST2.
@@ -126,6 +127,52 @@ bool Lifter::LiftSIMD(farmdec::Inst a64) {
         SetVec((a64.rt+1) % 32, y);
         break;
     }
+    case farmdec::A64_LD3_MULT: {
+        // Load as many triples (x_i, y_i, z_i) as there are elements in a vector,
+        // then deinterleave, so that we have one vector X := (x_0, x_1, ...), and so on.
+        auto vecty = TypeOf(fad_get_vec_arrangement(a64.flags));
+        auto addr = SIMDLoadStoreAddr(a64, vecty);
+        auto a = irb.CreateAlignedLoad(vecty, addr, llvm::Align(1));
+        auto b = irb.CreateAlignedLoad(vecty, irb.CreateConstGEP1_64(vecty, addr, 1), llvm::Align(1));
+        auto c = irb.CreateAlignedLoad(vecty, irb.CreateConstGEP1_64(vecty, addr, 2), llvm::Align(1));
+
+        // Deinterleaving: concatenate ld0, ld1, ld2 plus a dummy value (since shufflevector
+        // needs two same-sized arguments), then extract the x's at positions 0, 3, 6, ...,
+        // the y's at positions 1, 4, 7, ..., and the z's at 2, 5, 8, ...
+        auto abc0 = Concat(va, a, b, c, llvm::Constant::getNullValue(TypeOf(va)));
+        unsigned nelem = NumElem(va);
+        auto zero = llvm::Constant::getNullValue(abc0->getType());
+        auto x = irb.CreateShuffleVector(abc0, zero, linear(nelem, 3, 0)); // 0, 3, 6, ..., 3*(nelem-1)
+        auto y = irb.CreateShuffleVector(abc0, zero, linear(nelem, 3, 1)); // 1, 4, 7, ..., 3*(nelem-1) + 1
+        auto z = irb.CreateShuffleVector(abc0, zero, linear(nelem, 3, 2)); // 2, 5, 8, ..., 3*(nelem-1) + 2
+
+        SetVec(a64.rt, x);
+        SetVec((a64.rt+1) % 32, y);
+        SetVec((a64.rt+2) % 32, z);
+        break;
+    }
+    case farmdec::A64_LD4_MULT: {
+        auto vecty = TypeOf(fad_get_vec_arrangement(a64.flags));
+        auto addr = SIMDLoadStoreAddr(a64, vecty);
+        auto a = irb.CreateAlignedLoad(vecty, addr, llvm::Align(1));
+        auto b = irb.CreateAlignedLoad(vecty, irb.CreateConstGEP1_64(vecty, addr, 1), llvm::Align(1));
+        auto c = irb.CreateAlignedLoad(vecty, irb.CreateConstGEP1_64(vecty, addr, 2), llvm::Align(1));
+        auto d = irb.CreateAlignedLoad(vecty, irb.CreateConstGEP1_64(vecty, addr, 3), llvm::Align(1));
+
+        auto abcd = Concat(va, a, b, c, d);
+        unsigned nelem = NumElem(va);
+        auto zero = llvm::Constant::getNullValue(abcd->getType());
+        auto x = irb.CreateShuffleVector(abcd, zero, linear(nelem, 4, 0)); // 0, 4, 8, ..., 4*(nelem-1)
+        auto y = irb.CreateShuffleVector(abcd, zero, linear(nelem, 4, 1)); // 1, 5, 9, ..., 4*(nelem-1) + 1
+        auto z = irb.CreateShuffleVector(abcd, zero, linear(nelem, 4, 2)); // 2, 6, 10, ..., 4*(nelem-1) + 2
+        auto w = irb.CreateShuffleVector(abcd, zero, linear(nelem, 4, 3)); // 3, 7, 11, ..., 4*(nelem-1) + 3
+
+        SetVec(a64.rt, x);
+        SetVec((a64.rt+1) % 32, y);
+        SetVec((a64.rt+2) % 32, z);
+        SetVec((a64.rt+3) % 32, w);
+        break;
+    }
     case farmdec::A64_ST1_MULT: {
         auto vecty = TypeOf(fad_get_vec_arrangement(a64.flags));
         auto addr = SIMDLoadStoreAddr(a64, vecty);
@@ -151,6 +198,85 @@ bool Lifter::LiftSIMD(farmdec::Inst a64) {
         auto p0 = irb.CreateShuffleVector(x, y, zipmask_lower(nelem));
         auto p1 = irb.CreateShuffleVector(x, y, zipmask_upper(nelem));
         StoreMulti(addr, p0, p1);
+        break;
+    }
+    case farmdec::A64_ST3_MULT: {
+        auto vecty = TypeOf(fad_get_vec_arrangement(a64.flags));
+        auto addr = SIMDLoadStoreAddr(a64, vecty);
+        auto x = GetVec(a64.rt, va);
+        auto y = GetVec((a64.rt+1) % 32, va);
+        auto z = GetVec((a64.rt+2) % 32, va);
+
+        // We zip X and Y into
+        //
+        //     XY = [x0, y0, x1, y1, ..., x_(n-1), y_(n-1)] of size 2*n,
+        //
+        // then sprinkle in Z to get
+        //
+        //     XYZ = [x0, y0, z0, x1, y1, z1, ..., x_(n-1), y_(n-1), z_(n-1)] of size 3*n (!).
+        //
+        // It's pointless to split XYZ into smaller vectors just to store them,
+        // so we instead generate a single store for the entire XYZ vector.
+        unsigned nelem = NumElem(va);
+
+        llvm::SmallVector<int, 16> xymask; // [0, n, 1, n+1, ..., n-1, 2*n-1]
+        for (unsigned i = 0; i < nelem; i++) {
+            xymask.push_back(i);
+            xymask.push_back(i + nelem);
+        }
+        auto xy = irb.CreateShuffleVector(x, y, xymask);
+
+        llvm::SmallVector<int, 16> xyzmask; // [0, 1, 2*n, 2, 3, 2*n+1, ..., 2*(n-1), 2*(n-1) + 1, 2*n + (n-1)]
+        for (unsigned i = 0; i < nelem; i++) {
+            xyzmask.push_back(2*i);
+            xyzmask.push_back(2*i + 1);
+            xyzmask.push_back(i + 2*nelem); // 2*n, since XY was created by combining X (size n) and Y (size n)
+        }
+        // Concat(z, 0), since both sides of shufflevector must have same size.
+        auto xyz = irb.CreateShuffleVector(xy, Concat(va, z, llvm::Constant::getNullValue(TypeOf(va))), xyzmask);
+        auto ptrty = irb.CreatePointerCast(addr, xyz->getType()->getPointerTo());
+        irb.CreateAlignedStore(xyz, ptrty, llvm::Align(1));
+        break;
+    }
+    case farmdec::A64_ST4_MULT: {
+        auto vecty = TypeOf(fad_get_vec_arrangement(a64.flags));
+        auto addr = SIMDLoadStoreAddr(a64, vecty);
+        auto x = GetVec(a64.rt, va);
+        auto y = GetVec((a64.rt+1) % 32, va);
+        auto z = GetVec((a64.rt+2) % 32, va);
+        auto w = GetVec((a64.rt+3) % 32, va);
+
+        // We zip X and Y as well as Z and W into
+        //
+        //     XY = [x0, y0, x1, y1, ..., x_(n-1), y_(n-1)] of size 2*n,
+        //     ZW = [z0, w0, z1, w1, ..., z_(n-1), w_(n-1)] of size 2*n,
+        //
+        // then sprinkle in Z to get
+        //
+        //     XYZ = [x0, y0, z0, x1, y1, z1, ..., x_(n-1), y_(n-1), z_(n-1)] of size 3*n (!).
+        //
+        // It's pointless to split XYZ into smaller vectors just to store them,
+        // so we instead generate a single store for the entire XYZW vector.
+        unsigned nelem = NumElem(va);
+
+        llvm::SmallVector<int, 16> zipmask; // [0, n, 1, n+1, ..., n-1, 2*n-1]
+        for (unsigned i = 0; i < nelem; i++) {
+            zipmask.push_back(i);
+            zipmask.push_back(i + nelem);
+        }
+        auto xy = irb.CreateShuffleVector(x, y, zipmask);
+        auto zw = irb.CreateShuffleVector(z, w, zipmask);
+
+        llvm::SmallVector<int, 16> xyzwmask; // [0, 1, 2*n, 2*n+1, 2, 3, 2*n+2, 2*n+2+1, ..., 2*(n-1), 2*(n-1) + 1, 2*n + 2*(n-1), 2*n + 2*(n-1) + 1]
+        for (unsigned i = 0; i < nelem; i++) {
+            xyzwmask.push_back(2*i);
+            xyzwmask.push_back(2*i + 1);
+            xyzwmask.push_back(2*i + 2*nelem);
+            xyzwmask.push_back(2*i + 2*nelem + 1);
+        }
+        auto xyzw = irb.CreateShuffleVector(xy, zw, xyzwmask);
+        auto ptrty = irb.CreatePointerCast(addr, xyzw->getType()->getPointerTo());
+        irb.CreateAlignedStore(xyzw, ptrty, llvm::Align(1));
         break;
     }
     case farmdec::A64_LD1_SINGLE: {
@@ -1415,6 +1541,18 @@ llvm::Value* Lifter::Halve(llvm::Value* v, farmdec::VectorArrangement va) {
     }
 
     return irb.CreateShuffleVector(v, llvm::Constant::getNullValue(v->getType()), half);
+}
+
+// Return the concatenation of vectors a, b.
+llvm::Value* Lifter::Concat(farmdec::VectorArrangement va, llvm::Value* a, llvm::Value* b) {
+    return irb.CreateShuffleVector(a, b, linear(2*NumElem(va), 1, 0)); // 0, 1, 2, ..., 2*nelem
+}
+
+// Return the concatenation of vectors a, b, c and d.
+llvm::Value* Lifter::Concat(farmdec::VectorArrangement va, llvm::Value* a, llvm::Value* b, llvm::Value* c, llvm::Value* d) {
+    auto ab = Concat(va, a, b);
+    auto cd = Concat(va, c, d);
+    return irb.CreateShuffleVector(ab, cd, linear(4*NumElem(va), 1, 0)); // 0, 1, 2, ..., 4*nelem
 }
 
 // Lift SIMD instructions where operands and result have the same vector arrangement

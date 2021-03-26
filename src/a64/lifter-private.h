@@ -56,6 +56,8 @@ private:
     llvm::Value* Abs(llvm::Value* v);
     llvm::Value* Narrow(llvm::Value* v);
     llvm::Value* Halve(llvm::Value* v, farmdec::VectorArrangement va);
+    llvm::Value* Concat(farmdec::VectorArrangement va, llvm::Value* a, llvm::Value* b);
+    llvm::Value* Concat(farmdec::VectorArrangement va, llvm::Value* a, llvm::Value* b, llvm::Value* c, llvm::Value* d);
 
     llvm::Value* GetGp(farmdec::Reg, bool w32, bool ptr = false);
     void SetGp(farmdec::Reg, bool w32, llvm::Value* val);
