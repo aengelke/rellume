@@ -339,6 +339,16 @@ bool Lifter::LiftSIMD(farmdec::Inst a64) {
         SetVec(a64.rd, Round(GetVec(a64.rn, va, /*fp=*/true), static_cast<farmdec::FPRounding>(a64.frint.mode), exact));
         break;
     }
+    case farmdec::A64_FCVTN: {
+        if (va != farmdec::VA_2S && va != farmdec::VA_4S)
+            goto unhandled;
+        farmdec::VectorArrangement doubleva = DoubleWidth(va);
+        auto vn = GetVec(a64.rn, doubleva, /*fp=*/true);
+        auto narrowty = llvm::VectorType::get(irb.getFloatTy(), NumElem(doubleva), false);
+        auto narrowed = irb.CreateFPTrunc(vn, narrowty);
+        InsertInHalf(a64.rd, va, narrowed);
+        break;
+    }
     case farmdec::A64_FCMEQ_REG:
         if (scalar)
             LiftScalarCmXX(llvm::CmpInst::Predicate::FCMP_OEQ, a64.rd, a64.rn, a64.rm, /*zero=*/false, /*fp=*/true);
@@ -1231,10 +1241,12 @@ void Lifter::InsertInHalf(farmdec::Reg rd, farmdec::VectorArrangement va, llvm::
         return;
     }
 
+    bool fp = narrow->getType()->isFPOrFPVectorTy();
+
     // Insert into upper half without modifying lower half.
     // (1) Extend narrow vector V into full vector V:0, to make shufflevector happy.
     // (2) Concatenate the the lower half L and V.
-    auto old = GetVec(rd, va);
+    auto old = GetVec(rd, va, fp);
     unsigned nelem = NumElem(va);
 
     auto narrow_zero = llvm::Constant::getNullValue(narrow->getType());
@@ -1331,7 +1343,7 @@ llvm::Value* Lifter::Abs(llvm::Value* v) {
     return irb.CreateSelect(is_negative, irb.CreateNeg(v), v);
 }
 
-// Truncate every vector element to half its size.
+// Truncate every vector element to half its size. Integer-only.
 llvm::Value* Lifter::Narrow(llvm::Value* v) {
     auto srcty = llvm::cast<llvm::VectorType>(v->getType());
     auto dstty = llvm::VectorType::getTruncatedElementVectorType(srcty);
