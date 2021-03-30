@@ -1093,10 +1093,34 @@ bool Lifter::LiftSIMD(farmdec::Inst a64) {
         SetVec(a64.rd, MinMax(lhs, rhs, sgn, /*min=*/false));
         break;
     }
+    case farmdec::A64_FMAXP_VEC: {
+        llvm::Value *lhs = nullptr, *rhs = nullptr;
+        TransformSIMDPairwise(va, a64.rn, a64.rm, &lhs, &rhs, /*fp=*/true);
+        SetVec(a64.rd, irb.CreateBinaryIntrinsic(llvm::Intrinsic::maximum, lhs, rhs));
+        break;
+    }
+    case farmdec::A64_FMAXNMP_VEC: {
+        llvm::Value *lhs = nullptr, *rhs = nullptr;
+        TransformSIMDPairwise(va, a64.rn, a64.rm, &lhs, &rhs, /*fp=*/true);
+        SetVec(a64.rd, irb.CreateBinaryIntrinsic(llvm::Intrinsic::maxnum, lhs, rhs));
+        break;
+    }
     case farmdec::A64_MINP: {
         llvm::Value *lhs = nullptr, *rhs = nullptr;
         TransformSIMDPairwise(va, a64.rn, a64.rm, &lhs, &rhs);
         SetVec(a64.rd, MinMax(lhs, rhs, sgn, /*min=*/true));
+        break;
+    }
+    case farmdec::A64_FMINP_VEC: {
+        llvm::Value *lhs = nullptr, *rhs = nullptr;
+        TransformSIMDPairwise(va, a64.rn, a64.rm, &lhs, &rhs, /*fp=*/true);
+        SetVec(a64.rd, irb.CreateBinaryIntrinsic(llvm::Intrinsic::minimum, lhs, rhs));
+        break;
+    }
+    case farmdec::A64_FMINNMP_VEC: {
+        llvm::Value *lhs = nullptr, *rhs = nullptr;
+        TransformSIMDPairwise(va, a64.rn, a64.rm, &lhs, &rhs, /*fp=*/true);
+        SetVec(a64.rd, irb.CreateBinaryIntrinsic(llvm::Intrinsic::minnum, lhs, rhs));
         break;
     }
     case farmdec::A64_ADDV:
@@ -1138,6 +1162,8 @@ bool Lifter::LiftSIMD(farmdec::Inst a64) {
     }
     case farmdec::A64_FMAXV:
     case farmdec::A64_FMAXNMV:
+    case farmdec::A64_FMAXP:  // Scalar FMAX[NM]P is literally just a reduce.
+    case farmdec::A64_FMAXNMP:
         SetScalar(a64.rd, irb.CreateFPMaxReduce(GetVec(a64.rn, va, /*fp=*/true)));
         break;
     case farmdec::A64_MAXV:
@@ -1145,6 +1171,8 @@ bool Lifter::LiftSIMD(farmdec::Inst a64) {
         break;
     case farmdec::A64_FMINV:
     case farmdec::A64_FMINNMV:
+    case farmdec::A64_FMINP:
+    case farmdec::A64_FMINNMP:
         SetScalar(a64.rd, irb.CreateFPMinReduce(GetVec(a64.rn, va, /*fp=*/true)));
         break;
     case farmdec::A64_MINV:
