@@ -435,6 +435,10 @@ bool Lifter::LiftSIMD(farmdec::Inst a64) {
     case farmdec::A64_FSUB_VEC:
         LiftThreeSame(llvm::Instruction::FSub, a64.rd, va, a64.rn, a64.rm, /*scalar=*/false, /*invert_rhs=*/false, /*fp=*/true);
         break;
+    case farmdec::A64_FMAX_VEC: LiftIntrinsicFPVec(llvm::Intrinsic::maximum, va, a64.rd, a64.rn, a64.rm); break;
+    case farmdec::A64_FMAXNM_VEC: LiftIntrinsicFPVec(llvm::Intrinsic::maxnum, va, a64.rd, a64.rn, a64.rm); break;
+    case farmdec::A64_FMIN_VEC: LiftIntrinsicFPVec(llvm::Intrinsic::minimum, va, a64.rd, a64.rn, a64.rm); break;
+    case farmdec::A64_FMINNM_VEC: LiftIntrinsicFPVec(llvm::Intrinsic::minnum, va, a64.rd, a64.rn, a64.rm); break;
     case farmdec::A64_FMLA_ELEM:
         if (scalar) {
             farmdec::FPSize prec = fad_size_from_vec_arrangement(va);
@@ -1554,6 +1558,12 @@ llvm::Value* Lifter::SIMDLoadStoreAddr(farmdec::Inst a64, llvm::Type* ty) {
     }
 
     assert("can't happen");
+}
+
+void Lifter::LiftIntrinsicFPVec(llvm::Intrinsic::ID op, farmdec::VectorArrangement va, farmdec::Reg rd, farmdec::Reg rn, farmdec::Reg rm) {
+    auto lhs = GetVec(rn, va, /*fp=*/true);
+    auto rhs = GetVec(rm, va, /*fp=*/true);
+    SetVec(rd, irb.CreateBinaryIntrinsic(op, lhs, rhs));
 }
 
 } // namespace rellume::aarch64
