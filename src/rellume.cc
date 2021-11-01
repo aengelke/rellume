@@ -74,6 +74,10 @@ void ll_config_set_global_base(LLConfig* cfg, uintptr_t base,
     unwrap(cfg)->global_base_addr = base;
     unwrap(cfg)->global_base_value = llvm::unwrap(value);
 }
+void ll_config_set_pc_base(LLConfig* cfg, uintptr_t base, LLVMValueRef value) {
+    unwrap(cfg)->pc_base_addr = base;
+    unwrap(cfg)->pc_base_value = llvm::unwrap(value);
+}
 void ll_config_set_instr_impl(LLConfig* cfg, unsigned type,
                               LLVMValueRef value) {
     unwrap(cfg)->instr_overrides[type] = llvm::unwrap<llvm::Function>(value);

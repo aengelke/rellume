@@ -77,6 +77,12 @@ Function::Function(llvm::Module* mod, LLConfig* cfg) : cfg(cfg), fi{}
 
     fi.fn = llvm;
     fi.sptr_raw = &llvm->arg_begin()[cpu_param_idx];
+    if (cfg->pc_base_value) {
+        fi.pc_base_addr = cfg->pc_base_addr;
+        fi.pc_base_value = cfg->pc_base_value;
+    } else {
+        fi.pc_base_value = nullptr;
+    }
 
     // Create entry basic block as first block in the function.
     entry_block = std::make_unique<ArchBasicBlock>(llvm,
@@ -86,9 +92,6 @@ Function::Function(llvm::Module* mod, LLConfig* cfg) : cfg(cfg), fi{}
     cfg->callconv.InitSptrs(entry_block->GetInsertBlock(), fi);
     // And initially fill register file.
     cfg->callconv.UnpackParams(entry_block->GetInsertBlock(), fi);
-
-    RegFile* entry_regfile = entry_block->GetInsertBlock()->GetRegFile();
-    fi.entry_ip_value = entry_regfile->GetReg(ArchReg::IP, Facet::I64);
 }
 
 Function::~Function() {
@@ -100,11 +103,16 @@ Function::~Function() {
 
 bool Function::AddInst(uint64_t block_addr, const Instr& inst)
 {
-    if (block_map.size() == 0) {
+    if (block_map.size() == 0)
         fi.entry_ip = block_addr;
+    if (!fi.pc_base_value) {
+        fi.pc_base_addr = fi.entry_ip;
         if (!cfg->position_independent_code) {
             llvm::Type* i64 = llvm::Type::getInt64Ty(llvm->getContext());
-            fi.entry_ip_value = llvm::ConstantInt::get(i64, fi.entry_ip);
+            fi.pc_base_value = llvm::ConstantInt::get(i64, fi.pc_base_addr);
+        } else {
+            RegFile* entry_rf = entry_block->GetInsertBlock()->GetRegFile();
+            fi.pc_base_value = entry_rf->GetReg(ArchReg::IP, Facet::I64);
         }
     }
     if (block_map.find(block_addr) == block_map.end()) {
@@ -128,14 +136,28 @@ bool Function::AddInst(uint64_t block_addr, const Instr& inst)
 
 ArchBasicBlock& Function::ResolveAddr(llvm::Value* addr) {
     uint64_t addr_skew = 0;
-    if (cfg->position_independent_code) {
-        addr_skew = fi.entry_ip;
-        // Strip off the base_rip from the expression.
-        auto binop = llvm::dyn_cast<llvm::BinaryOperator>(addr);
-        if (!binop || binop->getOpcode() != llvm::Instruction::Add ||
-            binop->getOperand(0) != fi.entry_ip_value)
-            return *exit_block;
-        addr = binop->getOperand(1);
+
+    // Strip off the base_rip from the expression.
+    // Trivial case: no offset has ever been added.
+    if (addr == fi.pc_base_value) {
+        addr_skew = fi.pc_base_addr;
+        addr = llvm::ConstantInt::get(addr->getType(), 0);
+    }
+    // We can either have an instruction...
+    if (auto binop = llvm::dyn_cast<llvm::BinaryOperator>(addr)) {
+        if (binop->getOpcode() == llvm::Instruction::Add &&
+            binop->getOperand(0) == fi.pc_base_value) {
+            addr_skew = fi.pc_base_addr;
+            addr = binop->getOperand(1);
+        }
+    }
+    // ... or a constant expression for this.
+    if (auto expr = llvm::dyn_cast<llvm::ConstantExpr>(addr)) {
+        if (expr->getOpcode() == llvm::Instruction::Add &&
+            expr->getOperand(0) == fi.pc_base_value) {
+            addr_skew = fi.pc_base_addr;
+            addr = expr->getOperand(1);
+        }
     }
 
     if (auto const_addr = llvm::dyn_cast<llvm::ConstantInt>(addr)) {

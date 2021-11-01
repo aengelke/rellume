@@ -32,8 +32,8 @@
 namespace rellume {
 
 void LifterBase::SetIP(uint64_t inst_addr, bool nofold) {
-    llvm::Value* off = irb.getInt64(inst_addr - fi.entry_ip);
-    llvm::Value* rip = irb.CreateAdd(fi.entry_ip_value, off);
+    llvm::Value* off = irb.getInt64(inst_addr - fi.pc_base_addr);
+    llvm::Value* rip = irb.CreateAdd(fi.pc_base_value, off);
     if (nofold) {
         auto bitcast = llvm::Instruction::BitCast;
         rip = irb.Insert(llvm::CastInst::Create(bitcast, rip, rip->getType()));

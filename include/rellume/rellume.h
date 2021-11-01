@@ -51,6 +51,7 @@ RELLUME_API void ll_config_enable_overflow_intrinsics(LLConfig*, bool);
 RELLUME_API void ll_config_enable_fast_math(LLConfig*, bool);
 RELLUME_API void ll_config_enable_verify_ir(LLConfig*, bool);
 RELLUME_API void ll_config_set_position_independent_code(LLConfig*, bool);
+RELLUME_API void ll_config_set_pc_base(LLConfig*, uintptr_t, LLVMValueRef);
 RELLUME_API void ll_config_set_global_base(LLConfig*, uintptr_t, LLVMValueRef);
 RELLUME_API void ll_config_set_instr_impl(LLConfig*, unsigned,
                                           LLVMValueRef) RELLUME_DEPRECATED;

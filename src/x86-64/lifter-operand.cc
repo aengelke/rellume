@@ -102,8 +102,12 @@ llvm::Value* Lifter::OpAddr(const Instr::Op op, llvm::Type* element_type,
         base = GetReg(MapReg(op.base()), Facet::PTR);
         if (llvm::isa<llvm::Constant>(base)) {
             llvm::Value* base_int = GetReg(MapReg(op.base()), Facet::I64);
-            auto* addr = llvm::cast<llvm::ConstantInt>(base_int);
-            base = AddrConst(addr->getZExtValue() + op.off(), elem_ptr_ty);
+            base_int = irb.CreateAdd(base_int, irb.getInt64(op.off()));
+            if (auto* addr = llvm::dyn_cast<llvm::ConstantInt>(base_int)) {
+                base = AddrConst(addr->getZExtValue(), elem_ptr_ty);
+            } else {
+                base = irb.CreateIntToPtr(base_int, elem_ptr_ty);
+            }
         } else if (op.off() != 0) {
             if (op.scale() != 0 && (op.off() % op.scale()) == 0) {
                 base = irb.CreatePointerCast(base, scale_type);

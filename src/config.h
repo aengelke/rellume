@@ -72,6 +72,11 @@ struct LLConfig {
     /// globalOffsetBase.
     llvm::Value* global_base_value = nullptr;
 
+    /// Base address for PC-relative addressing.
+    uintptr_t pc_base_addr = 0;
+    /// Base address value for PC-relative addressing.
+    llvm::Value* pc_base_value = nullptr;
+
     /// Overridden implementations for specific instruction. The function must
     /// take a pointer to the CPU state as a single argument.
     std::unordered_map<uint32_t, llvm::Function*> instr_overrides;

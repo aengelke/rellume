@@ -76,8 +76,12 @@ public:
         llvm::Value* base = LoadGp(rvi->rs1, Facet::PTR);
         if (llvm::isa<llvm::Constant>(base)) {
             llvm::Value* base_int = LoadGp(rvi->rs1, Facet::I64);
-            auto* addr = llvm::cast<llvm::ConstantInt>(base_int);
-            base = AddrConst(addr->getZExtValue() + rvi->imm, ptr_ty);
+            base_int = irb.CreateAdd(base_int, irb.getInt64(rvi->imm));
+            if (auto* addr = llvm::dyn_cast<llvm::ConstantInt>(base_int)) {
+                base = AddrConst(addr->getZExtValue(), ptr_ty);
+            } else {
+                base = irb.CreateIntToPtr(base_int, ptr_ty);
+            }
         } else if (rvi->imm) {
             base = irb.CreatePointerCast(base, irb.getInt8PtrTy());
             base = irb.CreateGEP(base, irb.getInt64(rvi->imm));

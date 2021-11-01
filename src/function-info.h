@@ -72,7 +72,8 @@ struct FunctionInfo {
     std::vector<llvm::Value*> sptr;
 
     uint64_t entry_ip;
-    llvm::Value* entry_ip_value;
+    uint64_t pc_base_addr;
+    llvm::Value* pc_base_value;
 
     std::vector<CallConvPack> call_conv_packs;
 };
