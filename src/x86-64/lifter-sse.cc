@@ -396,6 +396,10 @@ void Lifter::LiftSsePextr(const Instr& inst, Facet vec_op, unsigned mask) {
     llvm::Value* ext = irb.CreateExtractElement(src, count);
     if (inst.op(0).is_reg()) {
         assert(inst.op(0).reg().rt == FD_RT_GPL);
+        if (!ext->getType()->isIntegerTy()) {
+            unsigned bitsize = ext->getType()->getPrimitiveSizeInBits();
+            ext = irb.CreateBitCast(ext, irb.getIntNTy(bitsize));
+        }
         ext = irb.CreateZExt(ext, irb.getInt64Ty());
         StoreGp(ArchReg::GP(inst.op(0).reg().ri), ext);
     } else {

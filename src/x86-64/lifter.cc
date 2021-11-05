@@ -253,6 +253,7 @@ bool Lifter::Lift(const Instr& inst) {
     case FDI_SSE_PSHUFLW: LiftSsePshufw(inst, 0); break;
     case FDI_SSE_PSHUFHW: LiftSsePshufw(inst, 4); break;
     case FDI_SSE_INSERTPS: LiftSseInsertps(inst); break;
+    case FDI_SSE_EXTRACTPS: LiftSsePextr(inst, Facet::VF32, 0x03); break;
     case FDI_SSE_ADDSS: LiftSseBinOp(inst, llvm::Instruction::FAdd, Facet::F32); break;
     case FDI_SSE_ADDSD: LiftSseBinOp(inst, llvm::Instruction::FAdd, Facet::F64); break;
     case FDI_SSE_ADDPS: LiftSseBinOp(inst, llvm::Instruction::FAdd, Facet::VF32); break;
