@@ -192,6 +192,7 @@ private:
     void LiftSseInsertps(const Instr&);
     void LiftSsePinsr(const Instr&, Facet, Facet, unsigned);
     void LiftSsePextr(const Instr&, Facet, unsigned);
+    void LiftSseMovdup(const Instr&, Facet, unsigned off);
     void LiftSsePshiftElement(const Instr&, llvm::Instruction::BinaryOps op, Facet op_type);
     void LiftSsePshiftBytes(const Instr&);
     void LiftSsePavg(const Instr&, Facet);

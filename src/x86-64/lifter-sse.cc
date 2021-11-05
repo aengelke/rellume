@@ -424,6 +424,16 @@ void Lifter::LiftSsePextr(const Instr& inst, Facet vec_op, unsigned mask) {
     }
 }
 
+void Lifter::LiftSseMovdup(const Instr& inst, Facet op_type, unsigned off) {
+    llvm::Value* src = OpLoad(inst.op(1), op_type, ALIGN_MAX);
+    auto el_ty = llvm::cast<llvm::VectorType>(src->getType())->getElementType();
+
+    llvm::SmallVector<unsigned, 4> mask;
+    for (unsigned i = 0; i < 128/el_ty->getPrimitiveSizeInBits(); i++)
+        mask.push_back((i & 0xfe) + off);
+    OpStoreVec(inst.op(0), CreateShuffleVector(src, src, mask));
+}
+
 void Lifter::LiftSsePshiftElement(const Instr& inst,
                                   llvm::Instruction::BinaryOps op,
                                   Facet op_type) {
