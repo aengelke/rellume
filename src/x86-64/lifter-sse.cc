@@ -209,6 +209,23 @@ void Lifter::LiftSseBinOp(const Instr& inst, llvm::Instruction::BinaryOps op,
                ALIGN_IMP);
 }
 
+void Lifter::LiftSseHorzOp(const Instr& inst, llvm::Instruction::BinaryOps op,
+                           Facet op_type) {
+    llvm::Value* op1 = OpLoad(inst.op(0), op_type, ALIGN_MAX);
+    llvm::Value* op2 = OpLoad(inst.op(1), op_type, ALIGN_MAX);
+    auto cnt = llvm::cast<llvm::VectorType>(op1->getType())->getElementCount();
+
+    llvm::SmallVector<unsigned, 16> mask1, mask2;
+    for (unsigned i = 0; i < cnt.Min; i++) {
+        mask1.push_back(2 * i);
+        mask2.push_back(2 * i + 1);
+    }
+
+    llvm::Value* shuf1 = CreateShuffleVector(op1, op2, mask1);
+    llvm::Value* shuf2 = CreateShuffleVector(op1, op2, mask2);
+    OpStoreVec(inst.op(0), irb.CreateBinOp(op, shuf1, shuf2));
+}
+
 void Lifter::LiftSseAndn(const Instr& inst, Facet op_type) {
     llvm::Value* op1 = OpLoad(inst.op(0), op_type, ALIGN_MAX);
     llvm::Value* op2 = OpLoad(inst.op(1), op_type, ALIGN_MAX);

@@ -170,6 +170,8 @@ private:
     void LiftSseMovq(const Instr&, Facet type);
     void LiftSseBinOp(const Instr&, llvm::Instruction::BinaryOps op,
                       Facet type);
+    void LiftSseHorzOp(const Instr&, llvm::Instruction::BinaryOps op,
+                      Facet type);
     void LiftSseMovScalar(const Instr&, Facet);
     void LiftSseMovdq(const Instr&, Facet, Alignment);
     void LiftSseMovntStore(const Instr&, Facet);

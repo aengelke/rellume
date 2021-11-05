@@ -270,6 +270,10 @@ bool Lifter::Lift(const Instr& inst) {
     case FDI_SSE_DIVSD: LiftSseBinOp(inst, llvm::Instruction::FDiv, Facet::F64); break;
     case FDI_SSE_DIVPS: LiftSseBinOp(inst, llvm::Instruction::FDiv, Facet::VF32); break;
     case FDI_SSE_DIVPD: LiftSseBinOp(inst, llvm::Instruction::FDiv, Facet::VF64); break;
+    case FDI_SSE_HADDPS: LiftSseHorzOp(inst, llvm::Instruction::FAdd, Facet::VF32); break;
+    case FDI_SSE_HADDPD: LiftSseHorzOp(inst, llvm::Instruction::FAdd, Facet::VF64); break;
+    case FDI_SSE_HSUBPS: LiftSseHorzOp(inst, llvm::Instruction::FSub, Facet::VF32); break;
+    case FDI_SSE_HSUBPD: LiftSseHorzOp(inst, llvm::Instruction::FSub, Facet::VF64); break;
     case FDI_SSE_MINSS: LiftSseMinmax(inst, llvm::CmpInst::FCMP_OLT, Facet::F32); break;
     case FDI_SSE_MINSD: LiftSseMinmax(inst, llvm::CmpInst::FCMP_OLT, Facet::F64); break;
     case FDI_SSE_MINPS: LiftSseMinmax(inst, llvm::CmpInst::FCMP_OLT, Facet::VF32); break;
@@ -327,6 +331,10 @@ bool Lifter::Lift(const Instr& inst) {
     case FDI_SSE_PSUBW: LiftSseBinOp(inst, llvm::Instruction::Sub, Facet::V8I16); break;
     case FDI_SSE_PSUBD: LiftSseBinOp(inst, llvm::Instruction::Sub, Facet::V4I32); break;
     case FDI_SSE_PSUBQ: LiftSseBinOp(inst, llvm::Instruction::Sub, Facet::V2I64); break;
+    case FDI_SSE_PHADDW: LiftSseHorzOp(inst, llvm::Instruction::Add, Facet::VI16); break;
+    case FDI_SSE_PHADDD: LiftSseHorzOp(inst, llvm::Instruction::Add, Facet::VI32); break;
+    case FDI_SSE_PHSUBW: LiftSseHorzOp(inst, llvm::Instruction::Sub, Facet::VI16); break;
+    case FDI_SSE_PHSUBD: LiftSseHorzOp(inst, llvm::Instruction::Sub, Facet::VI32); break;
     case FDI_SSE_PADDSB: LiftSsePaddsubSaturate(inst, llvm::Instruction::Add, /*sign=*/true, Facet::V16I8); break;
     case FDI_SSE_PADDSW: LiftSsePaddsubSaturate(inst, llvm::Instruction::Add, /*sign=*/true, Facet::V8I16); break;
     case FDI_SSE_PADDUSB: LiftSsePaddsubSaturate(inst, llvm::Instruction::Add, /*sign=*/false, Facet::V16I8); break;
