@@ -387,6 +387,9 @@ bool Lifter::Lift(const Instr& inst) {
     case FDI_SSE_PMAXSB: LiftSsePminmax(inst, llvm::CmpInst::ICMP_SGT, Facet::VI8); break;
     case FDI_SSE_PMAXSW: LiftSsePminmax(inst, llvm::CmpInst::ICMP_SGT, Facet::VI16); break;
     case FDI_SSE_PMAXSD: LiftSsePminmax(inst, llvm::CmpInst::ICMP_SGT, Facet::VI32); break;
+    case FDI_SSE_PABSB: LiftSsePabs(inst, Facet::VI8); break;
+    case FDI_SSE_PABSW: LiftSsePabs(inst, Facet::VI16); break;
+    case FDI_SSE_PABSD: LiftSsePabs(inst, Facet::VI32); break;
     case FDI_SSE_PMOVMSKB: LiftSseMovmsk(inst, Facet::VI8); break;
     case FDI_SSE_MOVMSKPS: LiftSseMovmsk(inst, Facet::VI32); break;
     case FDI_SSE_MOVMSKPD: LiftSseMovmsk(inst, Facet::VI64); break;

@@ -203,6 +203,7 @@ private:
     void LiftSsePack(const Instr&, Facet, bool sign);
     void LiftSsePcmp(const Instr&, llvm::CmpInst::Predicate, Facet);
     void LiftSsePminmax(const Instr&, llvm::CmpInst::Predicate, Facet);
+    void LiftSsePabs(const Instr&, Facet);
     void LiftSseMovmsk(const Instr&, Facet op_type);
     void LiftSsePmovx(const Instr&, llvm::Instruction::CastOps ext, Facet from, Facet to);
 };

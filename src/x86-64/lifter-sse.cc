@@ -606,6 +606,14 @@ void Lifter::LiftSsePminmax(const Instr& inst, llvm::CmpInst::Predicate pred,
     OpStoreVec(inst.op(0), irb.CreateSelect(cmp, op1, op2));
 }
 
+void Lifter::LiftSsePabs(const Instr& inst, Facet type) {
+    llvm::Value* src = OpLoad(inst.op(1), type, ALIGN_MAX);
+    llvm::Value* zero = llvm::Constant::getNullValue(src->getType());
+    llvm::Value* neg = irb.CreateSub(zero, src);
+    llvm::Value* cmp = irb.CreateICmpSGE(src, zero);
+    OpStoreVec(inst.op(0), irb.CreateSelect(cmp, src, neg));
+}
+
 void Lifter::LiftSseMovmsk(const Instr& inst, Facet op_type) {
     llvm::Value* src = OpLoad(inst.op(1), op_type, ALIGN_MAX);
     llvm::Value* zero = llvm::Constant::getNullValue(src->getType());
