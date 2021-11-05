@@ -481,13 +481,13 @@ void Lifter::LiftSsePmulhw(const Instr& inst, llvm::Instruction::CastOps cast) {
     OpStoreVec(inst.op(0), res);
 }
 
-void Lifter::LiftSsePmuludq(const Instr& inst) {
+void Lifter::LiftSsePmuldq(const Instr& inst, llvm::Instruction::CastOps ext) {
     llvm::Value* src1 = OpLoad(inst.op(0), Facet::VI32);
     llvm::Value* src2 = OpLoad(inst.op(1), Facet::VI32);
 
     llvm::Type* ext_ty = llvm::VectorType::get(irb.getInt64Ty(), 2, false);
-    src1 = irb.CreateZExt(CreateShuffleVector(src1, src1, {0, 2}), ext_ty);
-    src2 = irb.CreateZExt(CreateShuffleVector(src2, src2, {0, 2}), ext_ty);
+    src1 = irb.CreateCast(ext, CreateShuffleVector(src1, src1, {0, 2}), ext_ty);
+    src2 = irb.CreateCast(ext, CreateShuffleVector(src2, src2, {0, 2}), ext_ty);
 
     OpStoreVec(inst.op(0), irb.CreateMul(src1, src2));
 }
