@@ -204,6 +204,7 @@ private:
     void LiftSsePcmp(const Instr&, llvm::CmpInst::Predicate, Facet);
     void LiftSsePminmax(const Instr&, llvm::CmpInst::Predicate, Facet);
     void LiftSseMovmsk(const Instr&, Facet op_type);
+    void LiftSsePmovx(const Instr&, llvm::Instruction::CastOps ext, Facet from, Facet to);
 };
 
 } // namespace::x86_64

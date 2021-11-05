@@ -390,6 +390,18 @@ bool Lifter::Lift(const Instr& inst) {
     case FDI_SSE_PMOVMSKB: LiftSseMovmsk(inst, Facet::VI8); break;
     case FDI_SSE_MOVMSKPS: LiftSseMovmsk(inst, Facet::VI32); break;
     case FDI_SSE_MOVMSKPD: LiftSseMovmsk(inst, Facet::VI64); break;
+    case FDI_SSE_PMOVSXBW: LiftSsePmovx(inst, llvm::Instruction::SExt, Facet::V8I8, Facet::V8I16); break;
+    case FDI_SSE_PMOVSXBD: LiftSsePmovx(inst, llvm::Instruction::SExt, Facet::V4I8, Facet::V4I32); break;
+    case FDI_SSE_PMOVSXBQ: LiftSsePmovx(inst, llvm::Instruction::SExt, Facet::V2I8, Facet::V2I64); break;
+    case FDI_SSE_PMOVSXWD: LiftSsePmovx(inst, llvm::Instruction::SExt, Facet::V4I16, Facet::V4I32); break;
+    case FDI_SSE_PMOVSXWQ: LiftSsePmovx(inst, llvm::Instruction::SExt, Facet::V2I16, Facet::V2I64); break;
+    case FDI_SSE_PMOVSXDQ: LiftSsePmovx(inst, llvm::Instruction::SExt, Facet::V2I32, Facet::V2I64); break;
+    case FDI_SSE_PMOVZXBW: LiftSsePmovx(inst, llvm::Instruction::ZExt, Facet::V8I8, Facet::V8I16); break;
+    case FDI_SSE_PMOVZXBD: LiftSsePmovx(inst, llvm::Instruction::ZExt, Facet::V4I8, Facet::V4I32); break;
+    case FDI_SSE_PMOVZXBQ: LiftSsePmovx(inst, llvm::Instruction::ZExt, Facet::V2I8, Facet::V2I64); break;
+    case FDI_SSE_PMOVZXWD: LiftSsePmovx(inst, llvm::Instruction::ZExt, Facet::V4I16, Facet::V4I32); break;
+    case FDI_SSE_PMOVZXWQ: LiftSsePmovx(inst, llvm::Instruction::ZExt, Facet::V2I16, Facet::V2I64); break;
+    case FDI_SSE_PMOVZXDQ: LiftSsePmovx(inst, llvm::Instruction::ZExt, Facet::V2I32, Facet::V2I64); break;
 
     // Jumps are handled in the basic block generation code.
     case FDI_JMP: LiftJmp(inst); break;

@@ -616,6 +616,13 @@ void Lifter::LiftSseMovmsk(const Instr& inst, Facet op_type) {
     OpStoreGp(inst.op(0), irb.CreateZExt(bits, irb.getInt64Ty()));
 }
 
+void Lifter::LiftSsePmovx(const Instr& inst, llvm::Instruction::CastOps ext,
+                          Facet from, Facet to) {
+    llvm::Value* src = OpLoad(inst.op(1), from);
+    llvm::Type* dst_ty = to.Type(irb.getContext());
+    OpStoreVec(inst.op(0), irb.CreateCast(ext, src, dst_ty));
+}
+
 } // namespace::x86_64
 
 /**
