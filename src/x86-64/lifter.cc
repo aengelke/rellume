@@ -224,6 +224,7 @@ bool Lifter::Lift(const Instr& inst) {
     case FDI_SSE_MOVAPD: LiftSseMovdq(inst, Facet::V2F64, ALIGN_MAX); break;
     case FDI_SSE_MOVDQU: LiftSseMovdq(inst, Facet::I128, ALIGN_NONE); break;
     case FDI_SSE_MOVDQA: LiftSseMovdq(inst, Facet::I128, ALIGN_MAX); break;
+    case FDI_SSE_LDDQU: LiftSseMovdq(inst, Facet::I128, ALIGN_NONE); break;
     case FDI_SSE_MOVNTPS: LiftSseMovntStore(inst, Facet::VF32); break;
     case FDI_SSE_MOVNTPD: LiftSseMovntStore(inst, Facet::VF64); break;
     case FDI_SSE_MOVNTDQ: LiftSseMovntStore(inst, Facet::VI64); break;
