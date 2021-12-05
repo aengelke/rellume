@@ -685,6 +685,40 @@ void Lifter::LiftLods(const Instr& inst) {
 }
 
 void Lifter::LiftStos(const Instr& inst) {
+    if (inst.has_rep() && inst.opsz() == 1) {
+        // TODO: respect address size
+        // TODO: support stosw/stosd/stosq if rax == 0
+        llvm::Type* op_ty = irb.getIntNTy(inst.opsz() * 8)->getPointerTo();
+        auto di = irb.CreatePointerCast(GetReg(ArchReg::RDI, Facet::PTR), op_ty);
+        auto cx = GetReg(ArchReg::RCX, Facet::I64);
+        auto ax = GetReg(ArchReg::RAX, Facet::I8);
+        auto ip = GetReg(ArchReg::IP, Facet::I64);
+
+        auto* df0_block = ablock.AddBlock();
+        auto* df1_block = ablock.AddBlock();
+        auto* cont_block = ablock.AddBlock();
+
+        llvm::Value* df = GetFlag(Facet::DF);
+        ablock.GetInsertBlock()->BranchTo(df, *df1_block, *df0_block);
+
+        SetInsertBlock(df0_block);
+        irb.CreateMemSet(di, ax, cx, llvm::Align());
+        SetRegPtr(ArchReg::RDI, irb.CreateGEP(di, cx));
+        ablock.GetInsertBlock()->BranchTo(*cont_block);
+
+        SetInsertBlock(df1_block);
+        auto adj = irb.CreateSub(irb.getInt64(1), cx);
+        auto base = irb.CreateGEP(di, adj);
+        irb.CreateMemSet(base, ax, cx, llvm::Align());
+        SetRegPtr(ArchReg::RDI, irb.CreateGEP(base, irb.getInt64(-1)));
+        ablock.GetInsertBlock()->BranchTo(*cont_block);
+
+        SetInsertBlock(cont_block);
+        SetReg(ArchReg::RCX, Facet::I64, irb.getInt64(0));
+        SetReg(ArchReg::IP, Facet::I64, ip);
+        return;
+    }
+
     // TODO: optimize REP STOSB and other sizes with constant zero to llvm
     // memset intrinsic.
     RepInfo rep_info = RepBegin(inst); // NOTE: this modifies control flow!
