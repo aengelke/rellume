@@ -28,6 +28,7 @@
 #include "callconv.h"
 #include "config.h"
 #include "function-info.h"
+#include "instr.h"
 #include "x86-64/lifter.h"
 #include "rv64/lifter.h"
 #include "regfile.h"
@@ -100,6 +101,15 @@ Function::~Function() {
     // from the module -- it is probably invalid LLVM-IR.
     if (llvm)
         llvm->eraseFromParent();
+}
+
+int Function::AddInst(uint64_t block_addr, uint64_t addr, size_t bufsz,
+                      const uint8_t* buf) {
+    Instr inst;
+    int ret = inst.DecodeFrom(cfg->arch, buf, bufsz, addr);
+    if (ret <= 0)
+        return ret;
+    return AddInst(block_addr, inst) ? ret : -1;
 }
 
 bool Function::AddInst(uint64_t block_addr, const Instr& inst)

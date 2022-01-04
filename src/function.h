@@ -50,6 +50,8 @@ public:
     Function(const Function&) = delete;
     Function& operator=(const Function&) = delete;
 
+    int AddInst(uint64_t block_addr, uint64_t addr, size_t bufsz,
+                const uint8_t* buf);
     bool AddInst(uint64_t block_addr, const Instr& inst);
     llvm::Function* Lift();
 
