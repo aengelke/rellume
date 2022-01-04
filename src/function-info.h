@@ -32,6 +32,7 @@
 
 namespace llvm {
 class Function;
+class StoreInst;
 class Value;
 }
 

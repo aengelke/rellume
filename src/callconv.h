@@ -27,6 +27,8 @@
 #include "basicblock.h"
 #include "regfile.h"
 
+#include <llvm/IR/DerivedTypes.h>
+#include <llvm/IR/Instructions.h>
 #include <llvm/IR/Type.h>
 #include <llvm/IR/Value.h>
 #include <cstddef>

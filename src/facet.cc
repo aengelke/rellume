@@ -23,6 +23,7 @@
 
 #include "facet.h"
 
+#include <llvm/IR/DerivedTypes.h>
 #include <llvm/IR/Type.h>
 #include <cassert>
 
