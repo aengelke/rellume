@@ -250,13 +250,14 @@ void Lifter::OpStoreVec(const Instr::Op op, llvm::Value* value, bool avx,
 
     ArchReg reg = MapReg(op.reg());
 
-    llvm::Type* ivec_ty = Facet{Facet::IVEC}.Type(irb.getContext());
-    unsigned ivec_sz = ivec_ty->getIntegerBitWidth();
+    Facet ivec_facet = Facet::V2I64;
+    llvm::Type* ivec_ty = ivec_facet.Type(irb.getContext());
+    unsigned ivec_sz = ivec_ty->getPrimitiveSizeInBits();
     llvm::Type* value_ty = value->getType();
 
     // Handle case where the value fills the entire register.
     if (value_ty->getPrimitiveSizeInBits() == ivec_sz) {
-        SetReg(reg, Facet::IVEC, irb.CreateBitCast(value, ivec_ty));
+        SetReg(reg, ivec_facet, irb.CreateBitCast(value, ivec_ty));
         SetRegFacet(reg, Facet::FromType(value_ty), value);
         return;
     }
@@ -292,7 +293,7 @@ void Lifter::OpStoreVec(const Instr::Op op, llvm::Value* value, bool avx,
         full = irb.CreateShuffleVector(ext_vec, full, mask);
     }
 
-    SetReg(reg, Facet::IVEC, irb.CreateBitCast(full, ivec_ty));
+    SetReg(reg, ivec_facet, irb.CreateBitCast(full, ivec_ty));
     SetRegFacet(reg, full_facet, full);
     SetRegFacet(reg, Facet::FromType(value_ty), value);
 }
