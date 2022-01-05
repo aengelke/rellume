@@ -127,10 +127,16 @@ int main(int argc, char** argv) {
     }
 
     for (std::string asmline; std::getline(std::cin, asmline);) {
+        if (asmline.rfind("!ASM", 0) != 0) {
+            std::cout << asmline << std::endl;
+            continue;
+        }
+
         llvm::SourceMgr srcmgr;
         llvm::MCObjectFileInfo mofi;
 
-        std::unique_ptr<llvm::MemoryBuffer> asmbuf = llvm::MemoryBuffer::getMemBuffer(asmline);
+        llvm::StringRef asmline_ref = asmline;
+        std::unique_ptr<llvm::MemoryBuffer> asmbuf = llvm::MemoryBuffer::getMemBuffer(asmline_ref.drop_front(4));
         srcmgr.AddNewSourceBuffer(std::move(asmbuf), llvm::SMLoc());
 
         llvm::MCContext ctx(mai, mri, &mofi, &srcmgr);

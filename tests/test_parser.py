@@ -20,7 +20,7 @@ class Assembler:
     def assemble(self, code):
         if self.arch == "x86_64":
             code = ".intel_syntax noprefix;" + code
-        self.proc.stdin.write(code + "\n")
+        self.proc.stdin.write("!ASM " + code + "\n")
         self.proc.stdin.flush()
         res = bytes.fromhex(self.proc.stdout.readline().strip())
         if self.arch == "x86_64":
