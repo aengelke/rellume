@@ -60,6 +60,7 @@ int main(int argc, char** argv) {
 
     std::string triplestr;
     std::string cpufeatures;
+    unsigned dialect = 0;
     if (argc != 2) {
         std::cerr << "usage: " << argv[0] << " [architecture]" << std::endl;
         return 1;
@@ -70,6 +71,7 @@ int main(int argc, char** argv) {
     } else if (!strcmp(argv[1], "x86_64")) {
         triplestr = "x86_64-linux-gnu";
         cpufeatures = "+nopl";
+        dialect = 1;
         LLVMInitializeX86TargetInfo();
         LLVMInitializeX86Target();
         LLVMInitializeX86TargetMC();
@@ -176,6 +178,7 @@ int main(int argc, char** argv) {
             std::cerr << "error getting MCAsmParser" << std::endl;
             return 1;
         }
+        map->setAssemblerDialect(dialect);
 
         llvm::MCTargetAsmParser* tap = target->createMCAsmParser(*sti, *map,
                                                                  *mcii,

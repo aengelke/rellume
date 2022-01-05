@@ -18,8 +18,6 @@ class Assembler:
         self.proc = subprocess.Popen([proc, arch], stdin=subprocess.PIPE, stdout=subprocess.PIPE, universal_newlines=True)
         self.arch = arch
     def assemble(self, code):
-        if self.arch == "x86_64":
-            code = ".intel_syntax noprefix;" + code
         self.proc.stdin.write("!ASM " + code + "\n")
         self.proc.stdin.flush()
         res = bytes.fromhex(self.proc.stdout.readline().strip())
