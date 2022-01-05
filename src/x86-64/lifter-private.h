@@ -77,7 +77,7 @@ private:
         StoreGpFacet(reg, Facet::In(v->getType()->getIntegerBitWidth()), v);
     }
     void StoreGpFacet(ArchReg reg, Facet facet, llvm::Value* value);
-    llvm::Value* OpAddr(const Instr::Op op, llvm::Type* element_type, unsigned seg);
+    llvm::Value* OpAddr(const Instr::Op op, llvm::Type* element_type, unsigned seg = 7);
     llvm::Value* OpLoad(const Instr::Op op, Facet facet, Alignment alignment = ALIGN_NONE, unsigned force_seg = 7);
     void OpStoreGp(const Instr::Op op, llvm::Value* value, Alignment alignment = ALIGN_NONE);
     void OpStoreVec(const Instr::Op op, llvm::Value* value, bool avx = false, Alignment alignment = ALIGN_IMP);

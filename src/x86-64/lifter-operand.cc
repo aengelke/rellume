@@ -57,6 +57,8 @@ ArchReg Lifter::MapReg(const Instr::Reg reg) {
 
 llvm::Value* Lifter::OpAddr(const Instr::Op op, llvm::Type* element_type,
                                 unsigned seg) {
+    if (seg == 7)
+        seg = op.seg();
     if (seg == FD_REG_FS || seg == FD_REG_GS || op.addrsz() != 8) {
         // For segment offsets, use inttoptr because the pointer base is stored
         // in the segment register. (And LLVM has some problems with addrspace
@@ -181,8 +183,6 @@ llvm::Value* Lifter::OpLoad(const Instr::Op op, Facet facet,
         return GetReg(MapReg(op.reg()), facet);
     } else if (op.is_mem()) {
         llvm::Type* type = facet.Type(irb.getContext());
-        if (seg == 7)
-            seg = op.seg();
         llvm::Value* addr = OpAddr(op, type, seg);
         llvm::LoadInst* result = irb.CreateLoad(type, addr);
         // FIXME: forward SSE information to increase alignment.
@@ -222,7 +222,7 @@ void Lifter::StoreGpFacet(ArchReg reg, Facet facet, llvm::Value* value) {
 void Lifter::OpStoreGp(const Instr::Op op, llvm::Value* value,
                            Alignment alignment) {
     if (op.is_mem()) {
-        llvm::Value* addr = OpAddr(op, value->getType(), op.seg());
+        llvm::Value* addr = OpAddr(op, value->getType());
         llvm::StoreInst* store = irb.CreateStore(value, addr);
         ll_operand_set_alignment(store, value->getType(), alignment);
     } else if (op.is_reg()) {
@@ -240,7 +240,7 @@ void Lifter::OpStoreGp(const Instr::Op op, llvm::Value* value,
 void Lifter::OpStoreVec(const Instr::Op op, llvm::Value* value, bool avx,
                             Alignment alignment) {
     if (op.is_mem()) {
-        llvm::Value* addr = OpAddr(op, value->getType(), op.seg());
+        llvm::Value* addr = OpAddr(op, value->getType());
         llvm::StoreInst* store = irb.CreateStore(value, addr);
         ll_operand_set_alignment(store, value->getType(), alignment, !avx);
         return;

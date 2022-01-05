@@ -54,14 +54,14 @@ void Lifter::LiftPrefetch(const Instr& inst, unsigned rw, unsigned locality) {
     auto id = llvm::Intrinsic::prefetch;
     llvm::Function* intrinsic = llvm::Intrinsic::getDeclaration(module, id, tys);
 
-    llvm::Value* addr = OpAddr(inst.op(0), irb.getInt8Ty(), inst.op(0).seg());
+    llvm::Value* addr = OpAddr(inst.op(0), irb.getInt8Ty());
     // Prefetch addr for read/write with given locality into the data cache.
     irb.CreateCall(intrinsic, {addr, irb.getInt32(rw), irb.getInt32(locality),
                                irb.getInt32(1)});
 }
 
 void Lifter::LiftFxsave(const Instr& inst) {
-    llvm::Value* buf = OpAddr(inst.op(0), irb.getInt8Ty(), inst.op(0).seg());
+    llvm::Value* buf = OpAddr(inst.op(0), irb.getInt8Ty());
     llvm::Module* mod = irb.GetInsertBlock()->getModule();
     irb.CreateAlignmentAssumption(mod->getDataLayout(), buf, 16);
 
@@ -81,7 +81,7 @@ void Lifter::LiftFxsave(const Instr& inst) {
 }
 
 void Lifter::LiftFxrstor(const Instr& inst) {
-    llvm::Value* buf = OpAddr(inst.op(0), irb.getInt8Ty(), inst.op(0).seg());
+    llvm::Value* buf = OpAddr(inst.op(0), irb.getInt8Ty());
     llvm::Module* mod = irb.GetInsertBlock()->getModule();
     irb.CreateAlignmentAssumption(mod->getDataLayout(), buf, 16);
 
@@ -138,7 +138,7 @@ void Lifter::LiftSseMovdq(const Instr& inst, Facet facet, Alignment alignment) {
 
 void Lifter::LiftSseMovntStore(const Instr& inst, Facet facet) {
     llvm::Value* value = OpLoad(inst.op(1), facet, ALIGN_MAX);
-    llvm::Value* addr = OpAddr(inst.op(0), value->getType(), inst.op(0).seg());
+    llvm::Value* addr = OpAddr(inst.op(0), value->getType());
     llvm::StoreInst* store = irb.CreateStore(value, addr);
     unsigned align = value->getType()->getPrimitiveSizeInBits() / 8;
 #if LL_LLVM_MAJOR < 10

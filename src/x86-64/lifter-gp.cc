@@ -425,7 +425,7 @@ void Lifter::LiftBittest(const Instr& inst) {
     if (inst.op(0).is_reg()) {
         val = OpLoad(inst.op(0), Facet::I);
     } else { // LL_OP_MEM
-        addr = OpAddr(inst.op(0), irb.getIntNTy(op_size), inst.op(0).seg());
+        addr = OpAddr(inst.op(0), irb.getIntNTy(op_size));
         // Immediate operands are truncated, register operands are sign-extended
         if (inst.op(1).is_reg()) {
             llvm::Value* off = irb.CreateAShr(index, __builtin_ctz(op_size));
