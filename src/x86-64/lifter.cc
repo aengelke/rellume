@@ -122,10 +122,10 @@ bool Lifter::Lift(const Instr& inst) {
     case FDI_NEG: LiftNeg(inst); break;
     case FDI_INC: LiftIncDec(inst); break;
     case FDI_DEC: LiftIncDec(inst); break;
-    case FDI_AND: LiftAndOrXor(inst, llvm::Instruction::And); break;
-    case FDI_OR: LiftAndOrXor(inst, llvm::Instruction::Or); break;
-    case FDI_XOR: LiftAndOrXor(inst, llvm::Instruction::Xor); break;
-    case FDI_TEST: LiftAndOrXor(inst, llvm::Instruction::And, /*wb=*/false); break;
+    case FDI_AND: LiftAndOrXor(inst, llvm::Instruction::And, llvm::AtomicRMWInst::And); break;
+    case FDI_OR: LiftAndOrXor(inst, llvm::Instruction::Or, llvm::AtomicRMWInst::Or); break;
+    case FDI_XOR: LiftAndOrXor(inst, llvm::Instruction::Xor, llvm::AtomicRMWInst::Xor); break;
+    case FDI_TEST: LiftAndOrXor(inst, llvm::Instruction::And, llvm::AtomicRMWInst::And, /*wb=*/false); break;
     case FDI_IMUL: LiftMul(inst); break;
     case FDI_MUL: LiftMul(inst); break;
     case FDI_IDIV: LiftDiv(inst); break;
@@ -141,10 +141,10 @@ bool Lifter::Lift(const Instr& inst) {
     case FDI_TZCNT: LiftBitscan(inst, /*trailing=*/true); break; // TODO: support TZCNT
     case FDI_BSR: LiftBitscan(inst, /*trailing=*/false); break;
     case FDI_LZCNT: LiftBitscan(inst, /*trailing=*/false); break; // TODO: support LZCNT
-    case FDI_BT: LiftBittest(inst); break;
-    case FDI_BTC: LiftBittest(inst); break;
-    case FDI_BTR: LiftBittest(inst); break;
-    case FDI_BTS: LiftBittest(inst); break;
+    case FDI_BT: LiftBittest(inst, llvm::Instruction::Or, llvm::AtomicRMWInst::Or); break;
+    case FDI_BTC: LiftBittest(inst, llvm::Instruction::Xor, llvm::AtomicRMWInst::Xor); break;
+    case FDI_BTR: LiftBittest(inst, llvm::Instruction::And, llvm::AtomicRMWInst::And); break;
+    case FDI_BTS: LiftBittest(inst, llvm::Instruction::Or, llvm::AtomicRMWInst::Or); break;
     case FDI_BSWAP: LiftBswap(inst); break;
     case FDI_C_EX: LiftCext(inst); break;
     case FDI_C_SEP: LiftCsep(inst); break;

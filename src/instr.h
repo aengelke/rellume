@@ -114,6 +114,7 @@ public:
     const Op op(unsigned idx) const { return Op{&x86_64, idx}; }
     bool has_rep() const { return FD_HAS_REP(&x86_64); }
     bool has_repnz() const { return FD_HAS_REPNZ(&x86_64); }
+    bool has_lock() const { return FD_HAS_LOCK(&x86_64); }
 #endif // RELLUME_WITH_X86_64
 
 

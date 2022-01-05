@@ -106,7 +106,7 @@ private:
     void LiftCmpxchg(const Instr&);
     void LiftXchg(const Instr&);
     void LiftAndOrXor(const Instr& inst, llvm::Instruction::BinaryOps op,
-                      bool writeback = true);
+                      llvm::AtomicRMWInst::BinOp a_op, bool writeback = true);
     void LiftNot(const Instr&);
     void LiftNeg(const Instr&);
     void LiftIncDec(const Instr&);
@@ -122,7 +122,8 @@ private:
     void LiftCext(const Instr& inst);
     void LiftCsep(const Instr& inst);
     void LiftBitscan(const Instr& inst, bool trailing);
-    void LiftBittest(const Instr& inst);
+    void LiftBittest(const Instr& inst, llvm::Instruction::BinaryOps op,
+                     llvm::AtomicRMWInst::BinOp atomic_op);
     void LiftMovbe(const Instr& inst);
     void LiftBswap(const Instr& inst);
 

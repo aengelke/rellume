@@ -52,15 +52,25 @@ void Lifter::LiftMovgp(const Instr& inst, llvm::Instruction::CastOps cast) {
 
 // Implementation of ADD, ADC, SUB, SBB, CMP, and XADD
 void Lifter::LiftArith(const Instr& inst, bool sub) {
-    llvm::Value* op1 = OpLoad(inst.op(0), Facet::I);
+    llvm::Value* op1;
     llvm::Value* op2 = OpLoad(inst.op(1), Facet::I);
     if (inst.type() == FDI_ADC || inst.type() == FDI_SBB)
         op2 = irb.CreateAdd(op2, irb.CreateZExt(GetFlag(Facet::CF), op2->getType()));
 
     auto arith_op = sub ? llvm::Instruction::Sub : llvm::Instruction::Add;
+    auto atomic_op = sub ? llvm::AtomicRMWInst::Sub : llvm::AtomicRMWInst::Add;
+    if (!inst.has_lock()) {
+        op1 = OpLoad(inst.op(0), Facet::I);
+    } else {
+        auto ordering = llvm::AtomicOrdering::SequentiallyConsistent;
+        llvm::Value* addr = OpAddr(inst.op(0), op2->getType());
+        // Add op2 to *addr and return previous value
+        op1 = irb.CreateAtomicRMW(atomic_op, addr, op2, ordering);
+    }
+
     llvm::Value* res = irb.CreateBinOp(arith_op, op1, op2);
 
-    if (inst.type() != FDI_CMP)
+    if (inst.type() != FDI_CMP && !inst.has_lock()) // atomicrmw stored already
         OpStoreGp(inst.op(0), res);
     if (inst.type() == FDI_XADD)
         OpStoreGp(inst.op(1), op1);
@@ -72,33 +82,60 @@ void Lifter::LiftArith(const Instr& inst, bool sub) {
 }
 
 void Lifter::LiftCmpxchg(const Instr& inst) {
-    auto acc = GetReg(ArchReg::RAX, Facet::In(inst.op(0).bits()));
-    auto dst = OpLoad(inst.op(0), Facet::I);
-    auto src = OpLoad(inst.op(1), Facet::I);
+    llvm::Value* acc = GetReg(ArchReg::RAX, Facet::In(inst.op(0).bits()));
+    llvm::Value* src = OpLoad(inst.op(1), Facet::I);
+    llvm::Value* dst;
 
-    // Full compare with acc and dst
-    llvm::Value* cmp_res = irb.CreateSub(acc, dst);
-    FlagCalcSub(cmp_res, acc, dst);
+    if (inst.has_lock()) {
+        auto ord = llvm::AtomicOrdering::SequentiallyConsistent;
+        llvm::Value* ptr = OpAddr(inst.op(0), src->getType());
+        // Do an atomic cmpxchg, compare *ptr with acc and set to src if equal
+        llvm::Value* cmpxchg = irb.CreateAtomicCmpXchg(ptr, acc, src, ord, ord);
+        dst = irb.CreateExtractValue(cmpxchg, {0});
+        FlagCalcSub(irb.CreateSub(acc, dst), acc, dst);
+        SetFlag(Facet::ZF, irb.CreateExtractValue(cmpxchg, {1}));
+    } else {
+        dst = OpLoad(inst.op(0), Facet::I);
+        // Full compare with acc and dst
+        llvm::Value* cmp_res = irb.CreateSub(acc, dst);
+        FlagCalcSub(cmp_res, acc, dst);
 
-    // Store SRC if DST=ACC, else store DST again (i.e. don't change memory).
-    OpStoreGp(inst.op(0), irb.CreateSelect(GetFlag(Facet::ZF), src, dst));
+        // Store SRC if DST=ACC, else store DST again (i.e. don't change memory).
+        OpStoreGp(inst.op(0), irb.CreateSelect(GetFlag(Facet::ZF), src, dst));
+    }
+
     // ACC gets the value from memory.
     StoreGp(ArchReg::RAX, dst);
 }
 
 void Lifter::LiftXchg(const Instr& inst) {
-    // TODO: atomic memory operation
-    llvm::Value* op1 = OpLoad(inst.op(0), Facet::I);
+    llvm::Value* op1;
     llvm::Value* op2 = OpLoad(inst.op(1), Facet::I);
-    OpStoreGp(inst.op(0), op2);
+    if (inst.op(0).is_mem()) { // always atomic
+        auto ord = llvm::AtomicOrdering::SequentiallyConsistent;
+        llvm::Value* addr = OpAddr(inst.op(0), op2->getType());
+        op1 = irb.CreateAtomicRMW(llvm::AtomicRMWInst::Xchg, addr, op2, ord);
+    } else {
+        op1 = OpLoad(inst.op(0), Facet::I);
+        OpStoreGp(inst.op(0), op2);
+    }
     OpStoreGp(inst.op(1), op1);
 }
 
 void Lifter::LiftAndOrXor(const Instr& inst, llvm::Instruction::BinaryOps op,
-                           bool writeback) {
-    llvm::Value* res = irb.CreateBinOp(op, OpLoad(inst.op(0), Facet::I),
-                                       OpLoad(inst.op(1), Facet::I));
-    if (writeback)
+                          llvm::AtomicRMWInst::BinOp armw_op, bool writeback) {
+    llvm::Value* op1;
+    llvm::Value* op2 = OpLoad(inst.op(1), Facet::I);
+    if (!inst.has_lock()) {
+        op1 = OpLoad(inst.op(0), Facet::I);
+    } else {
+        auto ord = llvm::AtomicOrdering::SequentiallyConsistent;
+        llvm::Value* addr = OpAddr(inst.op(0), op2->getType());
+        op1 = irb.CreateAtomicRMW(armw_op, addr, op2, ord);
+    }
+
+    llvm::Value* res = irb.CreateBinOp(op, op1, op2);
+    if (writeback && !inst.has_lock())
         OpStoreGp(inst.op(0), res);
 
     FlagCalcZ(res);
@@ -110,10 +147,18 @@ void Lifter::LiftAndOrXor(const Instr& inst, llvm::Instruction::BinaryOps op,
 }
 
 void Lifter::LiftNot(const Instr& inst) {
-    OpStoreGp(inst.op(0), irb.CreateNot(OpLoad(inst.op(0), Facet::I)));
+    if (!inst.has_lock()) {
+        OpStoreGp(inst.op(0), irb.CreateNot(OpLoad(inst.op(0), Facet::I)));
+    } else {
+        auto ord = llvm::AtomicOrdering::SequentiallyConsistent;
+        llvm::Value* mask = irb.getIntN(inst.op(0).bits(), -1);
+        llvm::Value* addr = OpAddr(inst.op(0), mask->getType());
+        irb.CreateAtomicRMW(llvm::AtomicRMWInst::Xor, addr, mask, ord);
+    }
 }
 
 void Lifter::LiftNeg(const Instr& inst) {
+    assert(!inst.has_lock() && "atomic NEG not implemented");
     llvm::Value* op1 = OpLoad(inst.op(0), Facet::I);
     llvm::Value* res = irb.CreateNeg(op1);
     llvm::Value* zero = llvm::Constant::getNullValue(res->getType());
@@ -122,17 +167,27 @@ void Lifter::LiftNeg(const Instr& inst) {
 }
 
 void Lifter::LiftIncDec(const Instr& inst) {
-    llvm::Value* op1 = OpLoad(inst.op(0), Facet::I);
+    llvm::Value* op1;
     llvm::Value* op2 = irb.getIntN(inst.op(0).bits(), 1);
     llvm::Value* res = nullptr;
-    if (inst.type() == FDI_INC) {
-        res = irb.CreateAdd(op1, op2);
-        FlagCalcAdd(res, op1, op2, /*skip_carry=*/true);
-    } else if (inst.type() == FDI_DEC) {
-        res = irb.CreateSub(op1, op2);
-        FlagCalcSub(res, op1, op2, /*skip_carry=*/true);
+
+    bool sub = inst.type() == FDI_DEC;
+    auto arith_op = sub ? llvm::Instruction::Sub : llvm::Instruction::Add;
+    auto atomic_op = sub ? llvm::AtomicRMWInst::Sub : llvm::AtomicRMWInst::Add;
+    if (!inst.has_lock()) {
+        op1 = OpLoad(inst.op(0), Facet::I);
+        res = irb.CreateBinOp(arith_op, op1, op2);
+        OpStoreGp(inst.op(0), res);
+    } else {
+        auto ord = llvm::AtomicOrdering::SequentiallyConsistent;
+        llvm::Value* addr = OpAddr(inst.op(0), op2->getType());
+        op1 = irb.CreateAtomicRMW(atomic_op, addr, op2, ord);
+        res = irb.CreateBinOp(arith_op, op1, op2);
     }
-    OpStoreGp(inst.op(0), res);
+    if (sub)
+        FlagCalcSub(res, op1, op2, /*skip_carry=*/true);
+    else
+        FlagCalcAdd(res, op1, op2, /*skip_carry=*/true);
 }
 
 void Lifter::LiftShift(const Instr& inst, llvm::Instruction::BinaryOps op) {
@@ -414,48 +469,50 @@ void Lifter::LiftBitscan(const Instr& inst, bool trailing) {
     SetFlagUndef({Facet::OF, Facet::SF, Facet::AF, Facet::PF, Facet::CF});
 }
 
-void Lifter::LiftBittest(const Instr& inst) {
+void Lifter::LiftBittest(const Instr& inst, llvm::Instruction::BinaryOps op,
+                         llvm::AtomicRMWInst::BinOp atomic_op) {
     llvm::Value* index = OpLoad(inst.op(1), Facet::I);
     unsigned op_size = inst.op(0).bits();
     assert((op_size == 16 || op_size == 32 || op_size == 64) &&
             "invalid bittest operation size");
 
-    llvm::Value* val;
     llvm::Value* addr = nullptr;
-    if (inst.op(0).is_reg()) {
-        val = OpLoad(inst.op(0), Facet::I);
-    } else { // LL_OP_MEM
+    if (inst.op(0).is_mem()) {
         addr = OpAddr(inst.op(0), irb.getIntNTy(op_size));
         // Immediate operands are truncated, register operands are sign-extended
         if (inst.op(1).is_reg()) {
             llvm::Value* off = irb.CreateAShr(index, __builtin_ctz(op_size));
             addr = irb.CreateGEP(addr, irb.CreateSExt(off, irb.getInt64Ty()));
         }
-        val = irb.CreateLoad(addr);
     }
 
     // Truncated here because memory operand may need full value.
     index = irb.CreateAnd(index, irb.getIntN(op_size, op_size-1));
     llvm::Value* mask = irb.CreateShl(irb.getIntN(op_size, 1), index);
+    llvm::Value* modmask = inst.type() != FDI_BTR ? mask : irb.CreateNot(mask);
 
-    llvm::Value* bit = irb.CreateAnd(val, mask);
-
-    if (inst.type() == FDI_BT) {
+    llvm::Value* val;
+    if (inst.has_lock()) {
+        auto ord = llvm::AtomicOrdering::SequentiallyConsistent;
+        val = irb.CreateAtomicRMW(atomic_op, addr, modmask, ord);
         goto skip_writeback;
-    } else if (inst.type() == FDI_BTC) {
-        val = irb.CreateXor(val, mask);
-    } else if (inst.type() == FDI_BTR) {
-        val = irb.CreateAnd(val, irb.CreateNot(mask));
-    } else if (inst.type() == FDI_BTS) {
-        val = irb.CreateOr(val, mask);
     }
 
     if (inst.op(0).is_reg())
-        OpStoreGp(inst.op(0), val);
-    else // LL_OP_MEM
-        irb.CreateStore(val, addr);
+        val = OpLoad(inst.op(0), Facet::I);
+    else
+        val = irb.CreateLoad(addr);
 
-skip_writeback:
+    if (inst.type() != FDI_BT) {
+        llvm::Value* newval = irb.CreateBinOp(op, val, modmask);
+        if (inst.op(0).is_reg())
+            OpStoreGp(inst.op(0), newval);
+        else // LL_OP_MEM
+            irb.CreateStore(newval, addr);
+    }
+
+skip_writeback:;
+    llvm::Value* bit = irb.CreateAnd(val, mask);
     // Zero flag is not modified
     SetFlag(Facet::CF, irb.CreateICmpNE(bit, irb.getIntN(op_size, 0)));
     SetFlagUndef({Facet::OF, Facet::SF, Facet::AF, Facet::PF});
