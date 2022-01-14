@@ -451,7 +451,8 @@ void Lifter::LiftXlat(const Instr& inst) {
         bx = irb.CreateIntToPtr(bx, irb.getInt8PtrTy());
     }
 
-    llvm::Value* ptr = irb.CreateGEP(bx, irb.CreateZExt(al, irb.getInt32Ty()));
+    llvm::Value* off = irb.CreateZExt(al, irb.getInt32Ty());
+    llvm::Value* ptr = irb.CreateGEP(irb.getInt8Ty(), bx, off);
     StoreGp(ArchReg::RAX, irb.CreateLoad(irb.getInt8Ty(), ptr));
 }
 
@@ -506,7 +507,8 @@ void Lifter::LiftBittest(const Instr& inst, llvm::Instruction::BinaryOps op,
         // Immediate operands are truncated, register operands are sign-extended
         if (inst.op(1).is_reg()) {
             llvm::Value* off = irb.CreateAShr(index, __builtin_ctz(op_size));
-            addr = irb.CreateGEP(addr, irb.CreateSExt(off, irb.getInt64Ty()));
+            off = irb.CreateSExt(off, irb.getInt64Ty());
+            addr = irb.CreateGEP(irb.getIntNTy(op_size), addr, off);
         }
     }
 
@@ -529,7 +531,7 @@ void Lifter::LiftBittest(const Instr& inst, llvm::Instruction::BinaryOps op,
     if (inst.op(0).is_reg())
         val = OpLoad(inst.op(0), Facet::I);
     else
-        val = irb.CreateLoad(addr);
+        val = irb.CreateLoad(irb.getIntNTy(op_size), addr);
 
     if (inst.type() != FDI_BT) {
         llvm::Value* newval = irb.CreateBinOp(op, val, modmask);
@@ -638,7 +640,7 @@ void Lifter::LiftRet(const Instr& inst) {
     if (inst.op(0)) {
         llvm::Value* rsp = GetReg(ArchReg::RSP, Facet::PTR);
         rsp = irb.CreatePointerCast(rsp, irb.getInt8PtrTy());
-        rsp = irb.CreateConstGEP1_64(rsp, inst.op(0).imm());
+        rsp = irb.CreateConstGEP1_64(irb.getInt8Ty(), rsp, inst.op(0).imm());
         SetRegPtr(ArchReg::RSP, rsp);
     }
 
@@ -717,7 +719,8 @@ Lifter::RepInfo Lifter::RepBegin(const Instr& inst) {
         SetInsertBlock(info.loop_block);
     }
 
-    llvm::Type* op_ty = irb.getIntNTy(inst.opsz() * 8)->getPointerTo();
+    info.ty = irb.getIntNTy(inst.opsz() * 8);
+    llvm::Type* op_ty = info.ty->getPointerTo();
     if (inst.type() != FDI_LODS)
         info.di = irb.CreatePointerCast(GetReg(ArchReg::RDI, Facet::PTR), op_ty);
     if (inst.type() != FDI_STOS && inst.type() != FDI_SCAS)
@@ -732,9 +735,9 @@ void Lifter::RepEnd(RepInfo info) {
     llvm::Value* adj = irb.CreateSelect(df, irb.getInt64(-1), irb.getInt64(1));
 
     if (info.di)
-        SetRegPtr(ArchReg::RDI, irb.CreateGEP(info.di, adj));
+        SetRegPtr(ArchReg::RDI, irb.CreateGEP(info.ty, info.di, adj));
     if (info.si)
-        SetRegPtr(ArchReg::RSI, irb.CreateGEP(info.si, adj));
+        SetRegPtr(ArchReg::RSI, irb.CreateGEP(info.ty, info.si, adj));
 
     // If instruction has REP/REPZ/REPNZ, add branching logic
     if (info.mode == RepInfo::NO_REP)
@@ -773,8 +776,9 @@ void Lifter::LiftStos(const Instr& inst) {
     if (inst.has_rep() && inst.opsz() == 1) {
         // TODO: respect address size
         // TODO: support stosw/stosd/stosq if rax == 0
-        llvm::Type* op_ty = irb.getIntNTy(inst.opsz() * 8)->getPointerTo();
-        auto di = irb.CreatePointerCast(GetReg(ArchReg::RDI, Facet::PTR), op_ty);
+        llvm::Type* ty = irb.getIntNTy(inst.opsz() * 8);
+        llvm::Type* ptr_ty = ty->getPointerTo();
+        auto di = irb.CreatePointerCast(GetReg(ArchReg::RDI, Facet::PTR), ptr_ty);
         auto cx = GetReg(ArchReg::RCX, Facet::I64);
         auto ax = GetReg(ArchReg::RAX, Facet::I8);
         auto ip = GetReg(ArchReg::IP, Facet::I64);
@@ -788,14 +792,14 @@ void Lifter::LiftStos(const Instr& inst) {
 
         SetInsertBlock(df0_block);
         irb.CreateMemSet(di, ax, cx, llvm::Align());
-        SetRegPtr(ArchReg::RDI, irb.CreateGEP(di, cx));
+        SetRegPtr(ArchReg::RDI, irb.CreateGEP(ty, di, cx));
         ablock.GetInsertBlock()->BranchTo(*cont_block);
 
         SetInsertBlock(df1_block);
         auto adj = irb.CreateSub(irb.getInt64(1), cx);
-        auto base = irb.CreateGEP(di, adj);
+        auto base = irb.CreateGEP(ty, di, adj);
         irb.CreateMemSet(base, ax, cx, llvm::Align());
-        SetRegPtr(ArchReg::RDI, irb.CreateGEP(base, irb.getInt64(-1)));
+        SetRegPtr(ArchReg::RDI, irb.CreateGEP(ty, base, irb.getInt64(-1)));
         ablock.GetInsertBlock()->BranchTo(*cont_block);
 
         SetInsertBlock(cont_block);
@@ -818,7 +822,7 @@ void Lifter::LiftMovs(const Instr& inst) {
     // TODO: optimize REP MOVSB to use llvm memcpy intrinsic.
     RepInfo rep_info = RepBegin(inst); // NOTE: this modifies control flow!
 
-    irb.CreateStore(irb.CreateLoad(rep_info.si), rep_info.di);
+    irb.CreateStore(irb.CreateLoad(rep_info.ty, rep_info.si), rep_info.di);
 
     RepEnd(rep_info); // NOTE: this modifies control flow!
 }
@@ -827,7 +831,7 @@ void Lifter::LiftScas(const Instr& inst) {
     RepInfo rep_info = RepBegin(inst); // NOTE: this modifies control flow!
 
     auto src = GetReg(ArchReg::RAX, Facet::In(inst.opsz() * 8));
-    llvm::Value* dst = irb.CreateLoad(rep_info.di);
+    llvm::Value* dst = irb.CreateLoad(rep_info.ty, rep_info.di);
     // Perform a normal CMP operation.
     FlagCalcSub(irb.CreateSub(src, dst), src, dst);
 
@@ -837,8 +841,8 @@ void Lifter::LiftScas(const Instr& inst) {
 void Lifter::LiftCmps(const Instr& inst) {
     RepInfo rep_info = RepBegin(inst); // NOTE: this modifies control flow!
 
-    llvm::Value* src = irb.CreateLoad(rep_info.si);
-    llvm::Value* dst = irb.CreateLoad(rep_info.di);
+    llvm::Value* src = irb.CreateLoad(rep_info.ty, rep_info.si);
+    llvm::Value* dst = irb.CreateLoad(rep_info.ty, rep_info.di);
     // Perform a normal CMP operation.
     FlagCalcSub(irb.CreateSub(src, dst), src, dst);
 

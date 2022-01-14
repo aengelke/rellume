@@ -82,7 +82,8 @@ llvm::Value* Lifter::OpAddr(const Instr::Op op, llvm::Type* element_type,
             } else {
                 unsigned idx = seg == FD_REG_FS ? SptrIdx::x86_64::FSBASE
                                                 : SptrIdx::x86_64::GSBASE;
-                res = irb.CreateAdd(res, irb.CreateLoad(fi.sptr[idx]));
+                auto base = irb.CreateLoad(irb.getInt64Ty(), fi.sptr[idx]);
+                res = irb.CreateAdd(res, base);
             }
         }
 
@@ -92,11 +93,11 @@ llvm::Value* Lifter::OpAddr(const Instr::Op op, llvm::Type* element_type,
 
     llvm::PointerType* elem_ptr_ty = element_type->getPointerTo();
 
-    llvm::PointerType* scale_type = nullptr;
+    llvm::Type* scale_type = nullptr;
     if (op.scale() * 8u == element_type->getPrimitiveSizeInBits())
-        scale_type = elem_ptr_ty;
+        scale_type = element_type;
     else if (op.scale() != 0)
-        scale_type = irb.getIntNTy(op.scale() * 8)->getPointerTo();
+        scale_type = irb.getIntNTy(op.scale() * 8);
 
     // GEPs are safe because null-pointer-is-valid attribute is set.
     llvm::Value* base;
@@ -112,11 +113,11 @@ llvm::Value* Lifter::OpAddr(const Instr::Op op, llvm::Type* element_type,
             }
         } else if (op.off() != 0) {
             if (op.scale() != 0 && (op.off() % op.scale()) == 0) {
-                base = irb.CreatePointerCast(base, scale_type);
-                base = irb.CreateGEP(base, irb.getInt64(op.off() / op.scale()));
+                base = irb.CreatePointerCast(base, scale_type->getPointerTo());
+                base = irb.CreateGEP(scale_type, base, irb.getInt64(op.off() / op.scale()));
             } else {
                 base = irb.CreatePointerCast(base, irb.getInt8PtrTy());
-                base = irb.CreateGEP(base, irb.getInt64(op.off()));
+                base = irb.CreateGEP(irb.getInt8Ty(), base, irb.getInt64(op.off()));
             }
         }
     } else {
@@ -133,8 +134,8 @@ llvm::Value* Lifter::OpAddr(const Instr::Op op, llvm::Type* element_type,
             base = irb.CreateMul(offset, irb.getInt64(op.scale()));
             base = irb.CreateIntToPtr(base, elem_ptr_ty);
         } else {
-            base = irb.CreatePointerCast(base, scale_type);
-            base = irb.CreateGEP(base, offset);
+            base = irb.CreatePointerCast(base, scale_type->getPointerTo());
+            base = irb.CreateGEP(scale_type, base, offset);
         }
     }
 
@@ -281,7 +282,7 @@ void Lifter::OpStoreVec(const Instr::Op op, llvm::Value* value, bool avx,
         // Vector-in-vector insertion require 2 x shufflevector.
         // First, we enlarge the input vector to the full register length.
         unsigned value_num_elts = VectorElementCount(value_ty);
-        llvm::SmallVector<uint32_t, 16> mask;
+        llvm::SmallVector<int, 16> mask;
         for (unsigned i = 0; i < full_num; i++)
             mask.push_back(i < value_num_elts ? i : value_num_elts);
         llvm::Value* zero = llvm::Constant::getNullValue(value_ty);
@@ -301,7 +302,7 @@ void Lifter::OpStoreVec(const Instr::Op op, llvm::Value* value, bool avx,
 void Lifter::StackPush(llvm::Value* value) {
     llvm::Value* rsp = GetReg(ArchReg::RSP, Facet::PTR);
     rsp = irb.CreatePointerCast(rsp, value->getType()->getPointerTo());
-    rsp = irb.CreateConstGEP1_64(rsp, -1);
+    rsp = irb.CreateConstGEP1_64(value->getType(), rsp, -1);
     irb.CreateStore(value, rsp);
 
     SetRegPtr(ArchReg::RSP, rsp);
@@ -311,9 +312,9 @@ llvm::Value* Lifter::StackPop(const ArchReg sp_src_reg) {
     llvm::Value* rsp = GetReg(sp_src_reg, Facet::PTR);
     rsp = irb.CreatePointerCast(rsp, irb.getInt64Ty()->getPointerTo());
 
-    SetRegPtr(ArchReg::RSP, irb.CreateConstGEP1_64(rsp, 1));
+    SetRegPtr(ArchReg::RSP, irb.CreateConstGEP1_64(irb.getInt64Ty(), rsp, 1));
 
-    return irb.CreateLoad(rsp);
+    return irb.CreateLoad(irb.getInt64Ty(), rsp);
 }
 
 } // namespace rellume::x86_64

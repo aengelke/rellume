@@ -381,7 +381,7 @@ llvm::Value* RegFile::impl::GetReg(ArchReg reg, Facet facet) {
 
             // If a shorter vector is required, use shufflevector.
             if (nativeCnt > targetCnt) {
-                llvm::SmallVector<uint32_t, 16> mask;
+                llvm::SmallVector<int, 16> mask;
                 for (int i = 0; i < targetCnt; i++)
                     mask.push_back(i);
                 llvm::Value* undef = llvm::UndefValue::get(native_vec_ty);

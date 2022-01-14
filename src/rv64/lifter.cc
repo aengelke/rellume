@@ -85,7 +85,7 @@ public:
             }
         } else if (rvi->imm) {
             base = irb.CreatePointerCast(base, irb.getInt8PtrTy());
-            base = irb.CreateGEP(base, irb.getInt64(rvi->imm));
+            base = irb.CreateGEP(irb.getInt8Ty(), base, irb.getInt64(rvi->imm));
         }
         return irb.CreatePointerCast(base, ptr_ty);
     }

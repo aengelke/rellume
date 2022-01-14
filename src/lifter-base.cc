@@ -46,8 +46,8 @@ llvm::Value* LifterBase::AddrConst(uint64_t addr, llvm::PointerType* ptr_ty) {
         return llvm::ConstantPointerNull::get(ptr_ty);
 
     if (cfg.global_base_value) {
-        uintptr_t offset = addr - cfg.global_base_addr;
-        auto ptr = irb.CreateGEP(cfg.global_base_value, irb.getInt64(offset));
+        auto offset = irb.getInt64(addr - cfg.global_base_addr);
+        auto ptr = irb.CreateGEP(irb.getInt8Ty(), cfg.global_base_value, offset);
         return irb.CreatePointerCast(ptr, ptr_ty);
     }
 

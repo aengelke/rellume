@@ -61,7 +61,8 @@ void Lifter::LiftPrefetch(const Instr& inst, unsigned rw, unsigned locality) {
 }
 
 void Lifter::LiftFxsave(const Instr& inst) {
-    llvm::Value* buf = OpAddr(inst.op(0), irb.getInt8Ty());
+    llvm::Type* i8 = irb.getInt8Ty();
+    llvm::Value* buf = OpAddr(inst.op(0), i8);
     llvm::Module* mod = irb.GetInsertBlock()->getModule();
     irb.CreateAlignmentAssumption(mod->getDataLayout(), buf, 16);
 
@@ -74,21 +75,23 @@ void Lifter::LiftFxsave(const Instr& inst) {
 #endif
     irb.CreateMemSet(buf, irb.getInt8(0), 0xa0, align);
     for (unsigned i = 0; i < 16; i++) {
-        llvm::Value* ptr = irb.CreateConstGEP1_32(buf, 0xa0 + 0x10 * i);
+        llvm::Value* ptr = irb.CreateConstGEP1_32(i8, buf, 0xa0 + 0x10 * i);
         ptr = irb.CreatePointerCast(ptr, irb.getIntNTy(128)->getPointerTo());
         irb.CreateStore(GetReg(ArchReg::VEC(i), Facet::I128), ptr);
     }
 }
 
 void Lifter::LiftFxrstor(const Instr& inst) {
-    llvm::Value* buf = OpAddr(inst.op(0), irb.getInt8Ty());
+    llvm::Type* i8 = irb.getInt8Ty();
+    llvm::Type* i128 = irb.getIntNTy(128);
+    llvm::Value* buf = OpAddr(inst.op(0), i8);
     llvm::Module* mod = irb.GetInsertBlock()->getModule();
     irb.CreateAlignmentAssumption(mod->getDataLayout(), buf, 16);
 
     for (unsigned i = 0; i < 16; i++) {
-        llvm::Value* ptr = irb.CreateConstGEP1_32(buf, 0xa0 + 0x10 * i);
-        ptr = irb.CreatePointerCast(ptr, irb.getIntNTy(128)->getPointerTo());
-        SetReg(ArchReg::VEC(i), Facet::I128, irb.CreateLoad(ptr));
+        llvm::Value* ptr = irb.CreateConstGEP1_32(i8, buf, 0xa0 + 0x10 * i);
+        ptr = irb.CreatePointerCast(ptr, i128->getPointerTo());
+        SetReg(ArchReg::VEC(i), Facet::I128, irb.CreateLoad(i128, ptr));
     }
 }
 
@@ -215,14 +218,14 @@ void Lifter::LiftSseHorzOp(const Instr& inst, llvm::Instruction::BinaryOps op,
     llvm::Value* op2 = OpLoad(inst.op(1), op_type, ALIGN_MAX);
     auto cnt = VectorElementCount(op1->getType());
 
-    llvm::SmallVector<unsigned, 16> mask1, mask2;
+    llvm::SmallVector<int, 16> mask1, mask2;
     for (unsigned i = 0; i < cnt; i++) {
         mask1.push_back(2 * i);
         mask2.push_back(2 * i + 1);
     }
 
-    llvm::Value* shuf1 = CreateShuffleVector(op1, op2, mask1);
-    llvm::Value* shuf2 = CreateShuffleVector(op1, op2, mask2);
+    llvm::Value* shuf1 = irb.CreateShuffleVector(op1, op2, mask1);
+    llvm::Value* shuf2 = irb.CreateShuffleVector(op1, op2, mask2);
     OpStoreVec(inst.op(0), irb.CreateBinOp(op, shuf1, shuf2));
 }
 
@@ -336,38 +339,38 @@ void Lifter::LiftSseUnpck(const Instr& inst, Facet op_type) {
 }
 
 void Lifter::LiftSseShufpd(const Instr& inst) {
-    uint32_t mask[2] = { inst.op(2).imm()&1 ? 1u:0u, inst.op(2).imm()&2 ? 3u:2u };
+    int mask[2] = { inst.op(2).imm()&1 ? 1 : 0, inst.op(2).imm()&2 ? 3 : 2 };
     llvm::Value* op1 = OpLoad(inst.op(0), Facet::VF64);
     llvm::Value* op2 = OpLoad(inst.op(1), Facet::VF64, ALIGN_MAX);
-    llvm::Value* res = CreateShuffleVector(op1, op2, mask);
+    llvm::Value* res = irb.CreateShuffleVector(op1, op2, mask);
     OpStoreVec(inst.op(0), res);
 }
 
 void Lifter::LiftSseShufps(const Instr& inst) {
-    uint32_t mask[4];
+    int mask[4];
     for (int i = 0; i < 4; i++)
         mask[i] = (i < 2 ? 0 : 4) + ((inst.op(2).imm() >> 2*i) & 3);
     llvm::Value* op1 = OpLoad(inst.op(0), Facet::VF32);
     llvm::Value* op2 = OpLoad(inst.op(1), Facet::VF32, ALIGN_MAX);
-    llvm::Value* res = CreateShuffleVector(op1, op2, mask);
+    llvm::Value* res = irb.CreateShuffleVector(op1, op2, mask);
     OpStoreVec(inst.op(0), res);
 }
 
 void Lifter::LiftSsePshufd(const Instr& inst) {
-    uint32_t mask[4];
+    int mask[4];
     for (int i = 0; i < 4; i++)
         mask[i] = ((inst.op(2).imm() >> 2*i) & 3);
     llvm::Value* src = OpLoad(inst.op(1), Facet::VI32, ALIGN_MAX);
-    llvm::Value* res = CreateShuffleVector(src, src, mask);
+    llvm::Value* res = irb.CreateShuffleVector(src, src, mask);
     OpStoreVec(inst.op(0), res);
 }
 
 void Lifter::LiftSsePshufw(const Instr& inst, unsigned off) {
-    uint32_t mask[8] = {0, 1, 2, 3, 4, 5, 6, 7};
+    int mask[8] = {0, 1, 2, 3, 4, 5, 6, 7};
     for (unsigned i = off; i < off+4; i++)
         mask[i] = off + ((inst.op(2).imm() >> 2*i) & 3);
     llvm::Value* src = OpLoad(inst.op(1), Facet::VI16, ALIGN_MAX);
-    llvm::Value* res = CreateShuffleVector(src, src, mask);
+    llvm::Value* res = irb.CreateShuffleVector(src, src, mask);
     OpStoreVec(inst.op(0), res);
 }
 
@@ -389,11 +392,11 @@ void Lifter::LiftSseInsertps(const Instr& inst) {
     dst = irb.CreateInsertElement(dst, src, count_d);
 
     if (zmask) {
-        uint32_t mask[4];
+        int mask[4];
         for (int i = 0; i < 4; i++)
             mask[i] = zmask & (1 << i) ? 4 : i;
         llvm::Value* zero = llvm::Constant::getNullValue(dst->getType());
-        dst = CreateShuffleVector(dst, zero, mask);
+        dst = irb.CreateShuffleVector(dst, zero, mask);
     }
 
     OpStoreVec(inst.op(0), dst);
@@ -428,10 +431,10 @@ void Lifter::LiftSseMovdup(const Instr& inst, Facet op_type, unsigned off) {
     llvm::Value* src = OpLoad(inst.op(1), op_type, ALIGN_MAX);
     auto el_ty = llvm::cast<llvm::VectorType>(src->getType())->getElementType();
 
-    llvm::SmallVector<unsigned, 4> mask;
+    llvm::SmallVector<int, 4> mask;
     for (unsigned i = 0; i < 128/el_ty->getPrimitiveSizeInBits(); i++)
         mask.push_back((i & 0xfe) + off);
-    OpStoreVec(inst.op(0), CreateShuffleVector(src, src, mask));
+    OpStoreVec(inst.op(0), irb.CreateShuffleVector(src, src, mask));
 }
 
 void Lifter::LiftSsePshiftElement(const Instr& inst,
@@ -469,15 +472,15 @@ void Lifter::LiftSsePshiftElement(const Instr& inst,
 void Lifter::LiftSsePshiftBytes(const Instr& inst) {
     uint32_t shift = std::min(static_cast<uint32_t>(inst.op(1).imm()), 16u);
     bool right = inst.type() == FDI_SSE_PSRLDQ;
-    uint32_t mask[16];
+    int mask[16];
     for (int i = 0; i < 16; i++)
         mask[i] = i + (right ? shift : (16 - shift));
     llvm::Value* src = OpLoad(inst.op(0), Facet::V16I8);
     llvm::Value* zero = llvm::Constant::getNullValue(src->getType());
     if (right)
-        OpStoreVec(inst.op(0), CreateShuffleVector(src, zero, mask));
+        OpStoreVec(inst.op(0), irb.CreateShuffleVector(src, zero, mask));
     else
-        OpStoreVec(inst.op(0), CreateShuffleVector(zero, src, mask));
+        OpStoreVec(inst.op(0), irb.CreateShuffleVector(zero, src, mask));
 }
 
 void Lifter::LiftSsePavg(const Instr& inst, Facet op_type) {
@@ -608,13 +611,13 @@ void Lifter::LiftSsePack(const Instr& inst, Facet src_type, bool sign) {
     op1 = SaturateTrunc(irb, op1, sign);
     op2 = SaturateTrunc(irb, op2, sign);
 
-    llvm::SmallVector<unsigned, 16> mask;
+    llvm::SmallVector<int, 16> mask;
     for (unsigned i = 0; i < cnt; i++)
         mask.push_back(i);
     for (unsigned i = 0; i < cnt; i++)
         mask.push_back(i + cnt);
 
-    OpStoreVec(inst.op(0), CreateShuffleVector(op1, op2, mask));
+    OpStoreVec(inst.op(0), irb.CreateShuffleVector(op1, op2, mask));
 }
 
 void Lifter::LiftSsePcmp(const Instr& inst, llvm::CmpInst::Predicate pred,

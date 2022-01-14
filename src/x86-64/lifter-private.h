@@ -68,7 +68,7 @@ private:
     // Helper function for f***ing LLVM providing overloads for signed and
     // unsigned int, preventing the use of brace initializers.
     llvm::Value* CreateShuffleVector(llvm::Value* a, llvm::Value* b,
-                                     llvm::ArrayRef<uint32_t> msk) {
+                                     llvm::ArrayRef<int> msk) {
         return irb.CreateShuffleVector(a, b, msk);
     }
     unsigned VectorElementCount(llvm::Type* ty) {
@@ -102,6 +102,7 @@ private:
         BasicBlock* loop_block;
         BasicBlock* cont_block;
 
+        llvm::Type* ty;
         llvm::Value* di;
         llvm::Value* si;
         llvm::Value* ip;

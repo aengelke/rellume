@@ -163,11 +163,12 @@ static span<const CPUStructEntry> CPUStructEntries(CallConv cconv) {
 void CallConv::InitSptrs(BasicBlock* bb, FunctionInfo& fi) {
     llvm::IRBuilder<> irb(bb->GetRegFile()->GetInsertBlock());
     unsigned as = fi.sptr_raw->getType()->getPointerAddressSpace();
+    llvm::Type* i8 = irb.getInt8Ty();
 
     const auto& cpu_struct_entries = CPUStructEntries(*this);
     fi.sptr.resize(cpu_struct_entries.size());
     for (const auto& [sptr_idx, off, reg, facet] : cpu_struct_entries) {
-        llvm::Value* ptr = irb.CreateConstGEP1_64(fi.sptr_raw, off);
+        llvm::Value* ptr = irb.CreateConstGEP1_64(i8, fi.sptr_raw, off);
         llvm::Type* ty = facet.Type(irb.getContext())->getPointerTo(as);
         fi.sptr[sptr_idx] = irb.CreatePointerCast(ptr, ty);
     }
@@ -236,7 +237,8 @@ static void Unpack(CallConv cconv, BasicBlock* bb, FunctionInfo& fi, F hhvm_fn) 
             continue;
         }
 
-        llvm::Value* reg_val = irb.CreateLoad(fi.sptr[sptr_idx]);
+        llvm::Type* reg_ty = facet.Type(irb.getContext());
+        llvm::Value* reg_val = irb.CreateLoad(reg_ty, fi.sptr[sptr_idx]);
         // Mark register as clean if it was loaded from the sptr.
         regfile.SetReg(reg, facet, reg_val, false);
         regfile.DirtyRegs()[RegisterSetBitIdx(reg, facet)] = false;
