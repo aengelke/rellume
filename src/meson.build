@@ -29,5 +29,4 @@ librellume_lib = library('rellume', rellume_sources, cpustruct_priv,
                          dependencies: [libllvm] + archdeps,
                          c_args: rellume_flags,
                          cpp_args: rellume_flags,
-                         cpp_pch: 'pch/llvm.h',
                          install: true)
