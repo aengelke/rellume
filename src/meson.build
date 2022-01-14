@@ -8,7 +8,6 @@ rellume_sources = files(
   'lifter-base.cc',
   'regfile.cc',
   'rellume.cc',
-  'transforms.cc',
 )
 
 foreach arch : architectures

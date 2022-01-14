@@ -27,7 +27,6 @@
 #include "config.h"
 #include "function.h"
 #include "instr.h"
-#include "transforms.h"
 
 #include <llvm-c/Core.h>
 #include <llvm/IR/Module.h>
@@ -174,14 +173,4 @@ int ll_func_decode_cfg(LLFunc* func, uintptr_t addr, RellumeMemAccessCb mem_acc,
                        void* user_arg) {
     return ll_func_decode(func, addr, rellume::Function::DecodeStop::ALL,
                           mem_acc, user_arg);
-}
-
-void ll_func_fast_opt(LLVMValueRef llvm_fn) {
-    rellume::FastOpt(llvm::unwrap<llvm::Function>(llvm_fn));
-}
-LLVMValueRef ll_func_wrap_sysv(LLVMValueRef fn, LLVMTypeRef ty,
-                               LLVMModuleRef mod, size_t stack_sz) {
-    return llvm::wrap(rellume::WrapSysVAbi(llvm::unwrap<llvm::Function>(fn),
-                                           llvm::unwrap<llvm::FunctionType>(ty),
-                                           stack_sz));
 }
