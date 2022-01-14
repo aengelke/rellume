@@ -117,7 +117,7 @@ class TestCase {
         size_t paged_size = value_len + (addr - paged_addr);
         void* map = mmap(reinterpret_cast<void*>(paged_addr), paged_size,
                          PROT_READ|PROT_WRITE,
-                         MAP_PRIVATE|MAP_ANONYMOUS|MAP_FIXED, -1, 0);
+                         MAP_PRIVATE|MAP_ANONYMOUS|MAP_FIXED_NOREPLACE, -1, 0);
         if (map == MAP_FAILED || reinterpret_cast<uintptr_t>(map) != paged_addr) {
             diagnostic << "# error mapping address " << std::hex << addr << std::endl;
             return true;
