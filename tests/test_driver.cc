@@ -22,6 +22,11 @@
 #include <unordered_set>
 #include <vector>
 
+
+#ifndef MAP_FIXED_NOREPLACE
+#define MAP_FIXED_NOREPLACE 0x100000
+#endif
+
 static bool opt_verbose = false;
 static bool opt_jit = false;
 static bool opt_overflow_intrinsics = false;
