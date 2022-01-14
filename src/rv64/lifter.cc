@@ -195,7 +195,11 @@ public:
         llvm::Value* val = LoadGp(rvi->rs2, f);
         llvm::Value* ptr = LoadGp(rvi->rs1, Facet::PTR);
         ptr = irb.CreatePointerCast(ptr, f.Type(irb.getContext())->getPointerTo());
+#if LL_LLVM_MAJOR >= 13
+        StoreGp(rvi->rd, irb.CreateAtomicRMW(op, ptr, val, {}, ordering));
+#else
         StoreGp(rvi->rd, irb.CreateAtomicRMW(op, ptr, val, ordering));
+#endif
     }
 
     void LiftFpArith(const FrvInst* rvi, llvm::Instruction::BinaryOps op,
