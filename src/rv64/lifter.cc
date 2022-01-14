@@ -65,7 +65,8 @@ public:
         // Construct the requires vector type of the vector register.
         llvm::Type* element_ty = v->getType();
         unsigned full_num = ivec_sz / element_ty->getPrimitiveSizeInBits();
-        llvm::VectorType* full_ty = llvm::VectorType::get(element_ty, full_num);
+        llvm::VectorType* full_ty = llvm::VectorType::get(element_ty, full_num,
+                                                          false);
         llvm::Value* full = llvm::Constant::getNullValue(full_ty);
         full = irb.CreateInsertElement(full, v, 0ul);
 

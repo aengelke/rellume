@@ -280,7 +280,7 @@ void Lifter::OpStoreVec(const Instr::Op op, llvm::Value* value, bool avx,
     } else {
         // Vector-in-vector insertion require 2 x shufflevector.
         // First, we enlarge the input vector to the full register length.
-        unsigned value_num_elts = llvm::cast<llvm::VectorType>(value_ty)->getNumElements();
+        unsigned value_num_elts = VectorElementCount(value_ty);
         llvm::SmallVector<uint32_t, 16> mask;
         for (unsigned i = 0; i < full_num; i++)
             mask.push_back(i < value_num_elts ? i : value_num_elts);

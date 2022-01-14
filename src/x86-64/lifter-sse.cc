@@ -213,10 +213,10 @@ void Lifter::LiftSseHorzOp(const Instr& inst, llvm::Instruction::BinaryOps op,
                            Facet op_type) {
     llvm::Value* op1 = OpLoad(inst.op(0), op_type, ALIGN_MAX);
     llvm::Value* op2 = OpLoad(inst.op(1), op_type, ALIGN_MAX);
-    auto cnt = llvm::cast<llvm::VectorType>(op1->getType())->getElementCount();
+    auto cnt = VectorElementCount(op1->getType());
 
     llvm::SmallVector<unsigned, 16> mask1, mask2;
-    for (unsigned i = 0; i < cnt.Min; i++) {
+    for (unsigned i = 0; i < cnt; i++) {
         mask1.push_back(2 * i);
         mask2.push_back(2 * i + 1);
     }
@@ -443,7 +443,7 @@ void Lifter::LiftSsePshiftElement(const Instr& inst,
     llvm::VectorType* vec_ty = llvm::cast<llvm::VectorType>(src->getType());
     llvm::Type* elem_ty = vec_ty->getElementType();
     unsigned elem_size = elem_ty->getIntegerBitWidth();
-    unsigned elem_cnt = vec_ty->getElementCount().Min;
+    unsigned elem_cnt = VectorElementCount(vec_ty);
 
     // For arithmetical shifts, if shift >= elem_size, result is sign bit.
     // So, we max shift at elem_size-1
@@ -487,7 +487,7 @@ void Lifter::LiftSsePavg(const Instr& inst, Facet op_type) {
     llvm::VectorType* vec_ty = llvm::cast<llvm::VectorType>(src1->getType());
     llvm::Type* elem_ty = vec_ty->getScalarType();
     unsigned elem_size = elem_ty->getIntegerBitWidth();
-    unsigned elem_cnt = vec_ty->getElementCount().Min;
+    unsigned elem_cnt = VectorElementCount(vec_ty);
 
     llvm::Type* ext_ty = llvm::VectorType::getExtendedElementVectorType(vec_ty);
     llvm::Value* ones = irb.CreateVectorSplat(elem_cnt, irb.getIntN(elem_size*2, 1));
@@ -603,16 +603,16 @@ void Lifter::LiftSsePsadbw(const Instr& inst) {
 void Lifter::LiftSsePack(const Instr& inst, Facet src_type, bool sign) {
     llvm::Value* op1 = OpLoad(inst.op(0), src_type, ALIGN_MAX);
     llvm::Value* op2 = OpLoad(inst.op(1), src_type, ALIGN_MAX);
-    auto cnt = llvm::cast<llvm::VectorType>(op1->getType())->getElementCount();
+    auto cnt = VectorElementCount(op1->getType());
 
     op1 = SaturateTrunc(irb, op1, sign);
     op2 = SaturateTrunc(irb, op2, sign);
 
     llvm::SmallVector<unsigned, 16> mask;
-    for (unsigned i = 0; i < cnt.Min; i++)
+    for (unsigned i = 0; i < cnt; i++)
         mask.push_back(i);
-    for (unsigned i = 0; i < cnt.Min; i++)
-        mask.push_back(i + cnt.Min);
+    for (unsigned i = 0; i < cnt; i++)
+        mask.push_back(i + cnt);
 
     OpStoreVec(inst.op(0), CreateShuffleVector(op1, op2, mask));
 }
@@ -645,8 +645,7 @@ void Lifter::LiftSseMovmsk(const Instr& inst, Facet op_type) {
     llvm::Value* src = OpLoad(inst.op(1), op_type, ALIGN_MAX);
     llvm::Value* zero = llvm::Constant::getNullValue(src->getType());
     llvm::Value* bitvec = irb.CreateICmpSLT(src, zero);
-    auto cnt = llvm::cast<llvm::VectorType>(src->getType())->getElementCount();
-    unsigned bit_count = cnt.Min;
+    unsigned bit_count = VectorElementCount(src->getType());
     llvm::Value* bits = irb.CreateBitCast(bitvec, irb.getIntNTy(bit_count));
     OpStoreGp(inst.op(0), irb.CreateZExt(bits, irb.getInt64Ty()));
 }

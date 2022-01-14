@@ -51,7 +51,11 @@ Facet Facet::Vnt(unsigned num_i, Facet scalar) {
 Facet Facet::FromType(llvm::Type* type) {
     if (type->isVectorTy()) {
         auto num = llvm::cast<llvm::VectorType>(type)->getElementCount();
+#if LL_LLVM_MAJOR >= 12
+        return Vnt(num.getFixedValue(), FromType(type->getScalarType()));
+#else
         return Vnt(num.Min, FromType(type->getScalarType()));
+#endif
     } else if (type->isIntegerTy()) {
         return In(type->getIntegerBitWidth());
     } else if (type->isFloatTy()) {

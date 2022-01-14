@@ -7,7 +7,7 @@ project('rellume', ['cpp'], meson_version: '>=0.49',
 
 add_project_arguments(['-Wno-unused-parameter', '-Wshadow=local'], language: 'cpp')
 
-libllvm = dependency('llvm', version: ['>=9', '<12'])
+libllvm = dependency('llvm', version: ['>=11', '<13'])
 add_project_arguments(['-DLL_LLVM_MAJOR='+libllvm.version().split('.')[0]], language: 'cpp')
 
 architectures = []

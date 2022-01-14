@@ -71,6 +71,14 @@ private:
                                      llvm::ArrayRef<uint32_t> msk) {
         return irb.CreateShuffleVector(a, b, msk);
     }
+    unsigned VectorElementCount(llvm::Type* ty) {
+        auto ec = llvm::cast<llvm::VectorType>(ty)->getElementCount();
+#if LL_LLVM_MAJOR >= 12
+        return ec.getFixedValue();
+#else
+        return ec.Min;
+#endif
+    }
     ArchReg MapReg(const Instr::Reg reg);
 
     void StoreGp(ArchReg reg, llvm::Value* v) {

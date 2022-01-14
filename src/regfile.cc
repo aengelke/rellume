@@ -359,7 +359,11 @@ llvm::Value* RegFile::impl::GetReg(ArchReg reg, Facet facet) {
         } else {
             llvm::Type* elem_ty = facetType->getScalarType();
             auto vec_ty = llvm::cast<llvm::VectorType>(facetType);
+#if LL_LLVM_MAJOR >= 12
+            int targetCnt = vec_ty->getElementCount().getFixedValue();
+#else
             int targetCnt = vec_ty->getElementCount().Min;
+#endif
 
             // Prefer 128-bit SSE facet over full vector register.
             if (facetType->getPrimitiveSizeInBits() <= 128)
