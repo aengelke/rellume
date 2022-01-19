@@ -216,8 +216,10 @@ bool Lifter::Lift(const Instr& inst) {
     case FDI_LDMXCSR: break; // intentional NOPs. TODO: implement semantics
     case FDI_SSE_MOVD: LiftSseMovq(inst, Facet::I32); break;
     case FDI_SSE_MOVQ: LiftSseMovq(inst, Facet::I64); break;
-    case FDI_SSE_MOVSS: LiftSseMovScalar(inst, Facet::F32); break;
-    case FDI_SSE_MOVSD: LiftSseMovScalar(inst, Facet::F64); break;
+    // Note: We load I32/I64 instead of F32/F64. Bit-casting a double to a
+    // pointer triggers some bug in CodeGen, leading to incorrect compiled code.
+    case FDI_SSE_MOVSS: LiftSseMovScalar(inst, Facet::I32); break;
+    case FDI_SSE_MOVSD: LiftSseMovScalar(inst, Facet::I64); break;
     case FDI_SSE_MOVUPS: LiftSseMovdq(inst, Facet::V4F32, ALIGN_NONE); break;
     case FDI_SSE_MOVUPD: LiftSseMovdq(inst, Facet::V2F64, ALIGN_NONE); break;
     case FDI_SSE_MOVAPS: LiftSseMovdq(inst, Facet::V4F32, ALIGN_MAX); break;
