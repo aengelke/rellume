@@ -148,11 +148,7 @@ static void ll_operand_set_alignment(llvm::Instruction* value, llvm::Type* type,
         alignment = sse ? ALIGN_MAX : ALIGN_NONE;
     unsigned bytes =
         alignment == ALIGN_NONE ? 1 : type->getPrimitiveSizeInBits() / 8;
-#if LL_LLVM_MAJOR < 10
-    unsigned align = bytes;
-#else
     llvm::Align align(bytes);
-#endif
     if (llvm::LoadInst* load = llvm::dyn_cast<llvm::LoadInst>(value))
         load->setAlignment(align);
     else if (llvm::StoreInst* store = llvm::dyn_cast<llvm::StoreInst>(value))

@@ -106,11 +106,7 @@ int main(int argc, char** argv) {
     }
 
     llvm::MCTargetOptions options;
-#if LL_LLVM_MAJOR < 10
-    llvm::MCAsmInfo* mai = target->createMCAsmInfo(*mri, triple.str());
-#else
     llvm::MCAsmInfo* mai = target->createMCAsmInfo(*mri, triple.str(), options);
-#endif
     if (mai == nullptr) {
         std::cerr << "error getting MCAsmInfo" << std::endl;
         return 1;

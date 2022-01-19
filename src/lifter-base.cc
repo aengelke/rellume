@@ -115,11 +115,7 @@ void LifterBase::CallExternalFunction(llvm::Function* fn) {
     // Directly inline alwaysinline functions
     if (fn->hasFnAttribute(llvm::Attribute::AlwaysInline)) {
         llvm::InlineFunctionInfo ifi;
-#if LL_LLVM_MAJOR < 11
-        llvm::InlineFunction(llvm::CallSite(call), ifi);
-#else
         llvm::InlineFunction(*call, ifi);
-#endif
     }
 }
 

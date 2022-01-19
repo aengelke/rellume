@@ -48,9 +48,7 @@ void Lifter::LiftFence(const Instr& inst) {
 void Lifter::LiftPrefetch(const Instr& inst, unsigned rw, unsigned locality) {
     llvm::Module* module = irb.GetInsertBlock()->getModule();
     llvm::SmallVector<llvm::Type*, 1> tys;
-#if LL_LLVM_MAJOR >= 10
     tys.push_back(irb.getInt8PtrTy());
-#endif
     auto id = llvm::Intrinsic::prefetch;
     llvm::Function* intrinsic = llvm::Intrinsic::getDeclaration(module, id, tys);
 
@@ -68,11 +66,7 @@ void Lifter::LiftFxsave(const Instr& inst) {
 
     // Zero FPU status
     // TODO: FCW=0x37f, MXCSR=0x1f80, MXCSR_MASK=0xffff
-#if LL_LLVM_MAJOR < 10
-    unsigned align = 16;
-#else
     llvm::Align align(16);
-#endif
     irb.CreateMemSet(buf, irb.getInt8(0), 0xa0, align);
     for (unsigned i = 0; i < 16; i++) {
         llvm::Value* ptr = irb.CreateConstGEP1_32(i8, buf, 0xa0 + 0x10 * i);
@@ -144,11 +138,7 @@ void Lifter::LiftSseMovntStore(const Instr& inst, Facet facet) {
     llvm::Value* addr = OpAddr(inst.op(0), value->getType());
     llvm::StoreInst* store = irb.CreateStore(value, addr);
     unsigned align = value->getType()->getPrimitiveSizeInBits() / 8;
-#if LL_LLVM_MAJOR < 10
-    store->setAlignment(align);
-#else
     store->setAlignment(llvm::Align(align));
-#endif
 
     llvm::Metadata* const_1 = llvm::ConstantAsMetadata::get(irb.getInt32(1));
     llvm::MDNode* node = llvm::MDNode::get(store->getContext(), const_1);

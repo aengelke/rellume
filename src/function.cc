@@ -66,11 +66,7 @@ Function::Function(llvm::Module* mod, LLConfig* cfg) : cfg(cfg), fi{}
 
     // CPU struct pointer parameters has some extra properties.
     unsigned cpu_param_idx = cfg->callconv.CpuStructParamIdx();
-#if LL_LLVM_MAJOR < 11
-    llvm->addFnAttr("null-pointer-is-valid", "true");
-#else
     llvm->addFnAttr(llvm::Attribute::NullPointerIsValid);
-#endif
     llvm->addParamAttr(cpu_param_idx, llvm::Attribute::NoAlias);
     llvm->addParamAttr(cpu_param_idx, llvm::Attribute::NoCapture);
     auto align_attr = llvm::Attribute::get(ctx, llvm::Attribute::Alignment, 16);
@@ -240,18 +236,7 @@ llvm::Function* Function::Lift() {
 
     // Remove blocks without predecessors. This can happen if constants get
     // folded already during construction, e.g. xor eax,eax;test eax,eax;jz
-#if LL_LLVM_MAJOR >= 9
     llvm::EliminateUnreachableBlocks(*llvm);
-#else
-    llvm::df_iterator_default_set<llvm::BasicBlock*> reachable;
-    for (llvm::BasicBlock* block : llvm::depth_first_ext(llvm, reachable))
-        (void) block;
-    llvm::SmallVector<llvm::BasicBlock*, 8> dead_blocks;
-    for (llvm::BasicBlock& bb : *llvm)
-        if (!reachable.count(&bb))
-            dead_blocks.push_back(&bb);
-    llvm::DeleteDeadBlocks(dead_blocks);
-#endif
 
     if (cfg->verify_ir && llvm::verifyFunction(*(llvm), &llvm::errs()))
         return nullptr;
