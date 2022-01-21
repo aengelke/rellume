@@ -16,6 +16,61 @@ code="mov eax, fs:[0]" fsbase=q:0x20000000 m20000000=11223344 => rax=q:0x4433221
 code="mov eax, 0; test eax, eax; jz 1f; nop; 1:" => rax=q:0 of=00 sf=00 zf=01 af=undef pf=01 cf=00
 code="mov eax, [rip+1f]; jmp 2f; 1: .int 0x12345678; 2:" => rax=q:0x12345678
 
+code="mov eax, 0; seto al" of=00 => rax=q:0
+code="mov eax, 0; seto al" of=01 => rax=q:1
+code="mov eax, 0; setno al" of=00 => rax=q:1
+code="mov eax, 0; setno al" of=01 => rax=q:0
+code="mov eax, 0; setc al" cf=00 => rax=q:0
+code="mov eax, 0; setc al" cf=01 => rax=q:1
+code="mov eax, 0; setnc al" cf=00 => rax=q:1
+code="mov eax, 0; setnc al" cf=01 => rax=q:0
+code="mov eax, 0; setz al" zf=00 => rax=q:0
+code="mov eax, 0; setz al" zf=01 => rax=q:1
+code="mov eax, 0; setnz al" zf=00 => rax=q:1
+code="mov eax, 0; setnz al" zf=01 => rax=q:0
+code="mov eax, 0; setbe al" zf=00 cf=00 => rax=q:0
+code="mov eax, 0; setbe al" zf=00 cf=01 => rax=q:1
+code="mov eax, 0; setbe al" zf=01 cf=00 => rax=q:1
+code="mov eax, 0; setbe al" zf=01 cf=01 => rax=q:1
+code="mov eax, 0; seta al" zf=00 cf=00 => rax=q:1
+code="mov eax, 0; seta al" zf=00 cf=01 => rax=q:0
+code="mov eax, 0; seta al" zf=01 cf=00 => rax=q:0
+code="mov eax, 0; seta al" zf=01 cf=01 => rax=q:0
+code="mov eax, 0; setp al" pf=00 => rax=q:0
+code="mov eax, 0; setp al" pf=01 => rax=q:1
+code="mov eax, 0; setnp al" pf=00 => rax=q:1
+code="mov eax, 0; setnp al" pf=01 => rax=q:0
+code="mov eax, 0; setl al" of=00 sf=00 => rax=q:0
+code="mov eax, 0; setl al" of=01 sf=00 => rax=q:1
+code="mov eax, 0; setl al" of=00 sf=01 => rax=q:1
+code="mov eax, 0; setl al" of=01 sf=01 => rax=q:0
+code="mov eax, 0; setge al" of=00 sf=00 => rax=q:1
+code="mov eax, 0; setge al" of=01 sf=00 => rax=q:0
+code="mov eax, 0; setge al" of=00 sf=01 => rax=q:0
+code="mov eax, 0; setge al" of=01 sf=01 => rax=q:1
+code="mov eax, 0; setle al" of=00 sf=00 zf=00 => rax=q:0
+code="mov eax, 0; setle al" of=01 sf=00 zf=00 => rax=q:1
+code="mov eax, 0; setle al" of=00 sf=01 zf=00 => rax=q:1
+code="mov eax, 0; setle al" of=01 sf=01 zf=00 => rax=q:0
+code="mov eax, 0; setle al" of=00 sf=00 zf=01 => rax=q:1
+code="mov eax, 0; setle al" of=01 sf=00 zf=01 => rax=q:1
+code="mov eax, 0; setle al" of=00 sf=01 zf=01 => rax=q:1
+code="mov eax, 0; setle al" of=01 sf=01 zf=01 => rax=q:1
+code="mov eax, 0; setg al" of=00 sf=00 zf=00 => rax=q:1
+code="mov eax, 0; setg al" of=01 sf=00 zf=00 => rax=q:0
+code="mov eax, 0; setg al" of=00 sf=01 zf=00 => rax=q:0
+code="mov eax, 0; setg al" of=01 sf=01 zf=00 => rax=q:1
+code="mov eax, 0; setg al" of=00 sf=00 zf=01 => rax=q:0
+code="mov eax, 0; setg al" of=01 sf=00 zf=01 => rax=q:0
+code="mov eax, 0; setg al" of=00 sf=01 zf=01 => rax=q:0
+code="mov eax, 0; setg al" of=01 sf=01 zf=01 => rax=q:0
+
+code="test rax, rax" rax=q:0 => of=00 sf=00 zf=01 af=undef pf=01 cf=00
+code="test rax, rax" rax=q:0x78 => of=00 sf=00 zf=00 af=undef pf=01 cf=00
+code="test rax, rax" rax=q:0x79 => of=00 sf=00 zf=00 af=undef pf=00 cf=00
+code="test rax, rax" rax=q:0x0000111122223333 => of=00 sf=00 zf=00 af=undef pf=01 cf=00
+code="test rax, rax" rax=q:0x8000111122223333 => of=00 sf=01 zf=00 af=undef pf=01 cf=00
+
 code="ret" rsp=q:0x20000000 m20000000=1011121314151617 => rip=q:0x1716151413121110 rsp=q:0x20000008
 code="ret 8" rsp=q:0x20000000 m20000000=1011121314151617 => rip=q:0x1716151413121110 rsp=q:0x20000010
 code="ret -8" rsp=q:0x20000000 m20000000=1011121314151617 => rip=q:0x1716151413121110 rsp=q:0x20000000
