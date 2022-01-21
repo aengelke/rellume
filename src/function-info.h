@@ -41,18 +41,18 @@ namespace rellume {
 #ifdef RELLUME_WITH_X86_64
 namespace SptrIdx::x86_64 {
     enum {
-#define RELLUME_NAMED_REG(name,nameu,sz,off) nameu,
+#define RELLUME_MAPPED_REG(nameu,...) nameu,
 #include <rellume/cpustruct-x86_64-private.inc>
-#undef RELLUME_NAMED_REG
+#undef RELLUME_MAPPED_REG
     };
 }
 #endif // RELLUME_WITH_X86_64
 #ifdef RELLUME_WITH_RV64
 namespace SptrIdx::rv64 {
     enum {
-#define RELLUME_NAMED_REG(name,nameu,sz,off) nameu,
+#define RELLUME_MAPPED_REG(nameu,...) nameu,
 #include <rellume/cpustruct-rv64-private.inc>
-#undef RELLUME_NAMED_REG
+#undef RELLUME_MAPPED_REG
     };
 }
 #endif // RELLUME_WITH_RV64
