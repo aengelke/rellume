@@ -54,6 +54,13 @@ void Lifter::FlagCalcA(llvm::Value* res, llvm::Value* lhs,
     SetFlag(Facet::AF, irb.CreateICmpNE(masked, llvm::Constant::getNullValue(res->getType())));
 }
 
+void Lifter::FlagCalcSAPLogic(llvm::Value* res) {
+    auto zero = llvm::Constant::getNullValue(res->getType());
+    SetFlag(Facet::SF, irb.CreateICmpSLT(res, zero));
+    FlagCalcP(res);
+    SetFlagUndef({Facet::AF});
+}
+
 void Lifter::FlagCalcAdd(llvm::Value* res, llvm::Value* lhs,
                          llvm::Value* rhs, bool skip_carry) {
     auto zero = llvm::Constant::getNullValue(res->getType());

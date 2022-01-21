@@ -155,9 +155,7 @@ void Lifter::LiftAndOrXor(const Instr& inst, llvm::Instruction::BinaryOps op,
         OpStoreGp(inst.op(0), res);
 
     FlagCalcZ(res);
-    FlagCalcS(res);
-    FlagCalcP(res);
-    SetFlagUndef({Facet::AF});
+    FlagCalcSAPLogic(res);
     SetFlag(Facet::CF, irb.getFalse());
     SetFlag(Facet::OF, irb.getFalse());
 }
@@ -246,13 +244,11 @@ void Lifter::LiftShift(const Instr& inst, llvm::Instruction::BinaryOps op) {
     }
 
     // TODO: flags are only affected if shift != 0
-    FlagCalcS(res);
     FlagCalcZ(res);
-    FlagCalcP(res);
+    FlagCalcSAPLogic(res);
     SetFlag(Facet::CF, irb.CreateTrunc(cf_big, irb.getInt1Ty()));
     llvm::Value* zero = llvm::ConstantInt::get(src->getType(), 0);
     SetFlag(Facet::OF, irb.CreateICmpSLT(irb.CreateXor(src, res), zero));
-    SetFlagUndef({Facet::AF});
 }
 
 void Lifter::LiftShiftdouble(const Instr& inst) {
@@ -282,9 +278,8 @@ void Lifter::LiftShiftdouble(const Instr& inst) {
 
     // TODO: calculate flags correctly
     FlagCalcZ(res);
-    FlagCalcS(res);
-    FlagCalcP(res);
-    SetFlagUndef({Facet::OF, Facet::AF, Facet::CF});
+    FlagCalcSAPLogic(res);
+    SetFlagUndef({Facet::OF, Facet::CF});
 }
 
 void Lifter::LiftRotate(const Instr& inst) {
