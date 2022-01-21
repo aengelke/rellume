@@ -92,6 +92,21 @@ private:
     void StackPush(llvm::Value* value);
     llvm::Value* StackPop(const ArchReg sp_src_reg = ArchReg::RSP);
 
+    void FlagCalcZ(llvm::Value* value) {
+        auto zero = llvm::Constant::getNullValue(value->getType());
+        SetFlag(Facet::ZF, irb.CreateICmpEQ(value, zero));
+    }
+    void FlagCalcS(llvm::Value* value) {
+        auto zero = llvm::Constant::getNullValue(value->getType());
+        SetFlag(Facet::SF, irb.CreateICmpSLT(value, zero));
+    }
+    void FlagCalcP(llvm::Value* value);
+    void FlagCalcA(llvm::Value* res, llvm::Value* lhs, llvm::Value* rhs);
+    void FlagCalcAdd(llvm::Value* res, llvm::Value* lhs, llvm::Value* rhs,
+                     bool skip_carry = false);
+    void FlagCalcSub(llvm::Value* res, llvm::Value* lhs, llvm::Value* rhs,
+                     bool skip_carry = false, bool alt_zf = false);
+
     llvm::Value* FlagCond(Condition cond);
     llvm::Value* FlagAsReg(unsigned size);
     void FlagFromReg(llvm::Value* val);
