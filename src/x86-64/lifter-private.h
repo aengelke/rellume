@@ -96,8 +96,6 @@ private:
         auto zero = llvm::Constant::getNullValue(value->getType());
         SetFlag(Facet::ZF, irb.CreateICmpEQ(value, zero));
     }
-    void FlagCalcP(llvm::Value* value);
-    void FlagCalcA(llvm::Value* res, llvm::Value* lhs, llvm::Value* rhs);
     // Set SF and PF according to result, AF is undefined.
     void FlagCalcSAPLogic(llvm::Value* res);
     void FlagCalcAdd(llvm::Value* res, llvm::Value* lhs, llvm::Value* rhs,

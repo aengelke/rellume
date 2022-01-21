@@ -41,23 +41,23 @@
 
 namespace rellume::x86_64 {
 
-void Lifter::FlagCalcP(llvm::Value* value) {
+static llvm::Value* FlagParity(llvm::IRBuilder<>& irb, llvm::Value* value) {
     llvm::Value* trunc = irb.CreateTruncOrBitCast(value, irb.getInt8Ty());
-    llvm::Value* count = CreateUnaryIntrinsic(llvm::Intrinsic::ctpop, trunc);
-    SetFlag(Facet::PF, irb.CreateNot(irb.CreateTrunc(count, irb.getInt1Ty())));
+    llvm::Value* count = irb.CreateUnaryIntrinsic(llvm::Intrinsic::ctpop, trunc);
+    return irb.CreateNot(irb.CreateTrunc(count, irb.getInt1Ty()));
 }
 
-void Lifter::FlagCalcA(llvm::Value* res, llvm::Value* lhs,
-                       llvm::Value* rhs) {
+static llvm::Value* FlagAux(llvm::IRBuilder<>& irb, llvm::Value* res,
+                            llvm::Value* lhs, llvm::Value* rhs) {
     llvm::Value* tmp = irb.CreateXor(irb.CreateXor(lhs, rhs), res);
     llvm::Value* masked = irb.CreateAnd(tmp, llvm::ConstantInt::get(res->getType(), 16));
-    SetFlag(Facet::AF, irb.CreateICmpNE(masked, llvm::Constant::getNullValue(res->getType())));
+    return irb.CreateICmpNE(masked, llvm::Constant::getNullValue(res->getType()));
 }
 
 void Lifter::FlagCalcSAPLogic(llvm::Value* res) {
     auto zero = llvm::Constant::getNullValue(res->getType());
     SetFlag(Facet::SF, irb.CreateICmpSLT(res, zero));
-    FlagCalcP(res);
+    SetFlag(Facet::PF, FlagParity(irb, res));
     SetFlagUndef({Facet::AF});
 }
 
@@ -66,8 +66,8 @@ void Lifter::FlagCalcAdd(llvm::Value* res, llvm::Value* lhs,
     auto zero = llvm::Constant::getNullValue(res->getType());
     SetFlag(Facet::ZF, irb.CreateICmpEQ(res, zero));
     SetFlag(Facet::SF, irb.CreateICmpSLT(res, zero));
-    FlagCalcP(res);
-    FlagCalcA(res, lhs, rhs);
+    SetFlag(Facet::PF, FlagParity(irb, res));
+    SetFlag(Facet::AF, FlagAux(irb, res, lhs, rhs));
     if (!skip_carry)
         SetFlag(Facet::CF, irb.CreateICmpULT(res, lhs));
 
@@ -92,8 +92,8 @@ void Lifter::FlagCalcSub(llvm::Value* res, llvm::Value* lhs,
     else
         SetFlag(Facet::ZF, irb.CreateICmpEQ(res, zero));
     SetFlag(Facet::SF, sf);
-    FlagCalcP(res);
-    FlagCalcA(res, lhs, rhs);
+    SetFlag(Facet::PF, FlagParity(irb, res));
+    SetFlag(Facet::AF, FlagAux(irb, res, lhs, rhs));
     if (!skip_carry)
         SetFlag(Facet::CF, irb.CreateICmpULT(lhs, rhs));
 
