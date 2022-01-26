@@ -18,6 +18,9 @@ test_architectures = []
 test_assembler_flags = []
 cpp = meson.get_compiler('cpp')
 foreach arch : architectures
+  if not llvm_targets.has_key(arch)
+    continue
+  endif
   tgt_init = 'LLVMInitialize@0@Target'.format(llvm_targets[arch])
   test_code = '#include<llvm/Support/TargetSelect.h>\nint main(){@0@();}'.format(tgt_init)
   if cpp.compiles(test_code, dependencies: libllvm)
