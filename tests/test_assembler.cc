@@ -86,6 +86,14 @@ int main(int argc, char** argv) {
         LLVMInitializeRISCVTargetMC();
         LLVMInitializeRISCVAsmParser();
 #endif // TARGET_RV64
+#ifdef TARGET_AARCH64
+    } else if (!strcmp(argv[1], "aarch64")) {
+        triplestr = "aarch64-linux-gnu";
+        LLVMInitializeAArch64TargetInfo();
+        LLVMInitializeAArch64Target();
+        LLVMInitializeAArch64TargetMC();
+        LLVMInitializeAArch64AsmParser();
+#endif // TARGET_AARCH64
     } else {
         std::cerr << "unsupported architecture" << std::endl;
         return 1;

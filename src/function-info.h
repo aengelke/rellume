@@ -56,15 +56,38 @@ namespace SptrIdx::rv64 {
     };
 }
 #endif // RELLUME_WITH_RV64
+#ifdef RELLUME_WITH_AARCH64
+namespace SptrIdx::aarch64 {
+    enum {
+#define RELLUME_NAMED_REG(name,nameu,sz,off) nameu,
+#include <rellume/cpustruct-aarch64-private.inc>
+#undef RELLUME_NAMED_REG
+    };
+}
+#endif // RELLUME_WITH_AARCH64
 
 class BasicBlock;
 
+/// CallConvPack records which registers were changed in a basic block,
+/// and pre-computed LLVM store instructions for them.
+///
+/// After the function is lifted, its packs are optimised to avoid
+/// passing unnecessary store instructions to the LLVM optimiser, which
+/// would struggle with the many superfluous stores.
 struct CallConvPack {
     RegisterSet block_dirty_regs;
     BasicBlock* bb;
     std::vector<llvm::StoreInst*> stores;
 };
 
+/// FunctionInfo holds the LLVM objects of the lifted function and its
+/// environment: sptr is the single argument of the function and stands
+/// for "CPU struct pointer". A CPU struct stores a register set. See
+/// data/rellume/*cpu.json for the architecture-dependent definitions.
+///
+/// The CPU struct concept allows passing arguments and returning values
+/// without requiring knowledge of the calling convention or the function
+/// signature.
 struct FunctionInfo {
     /// The function itself
     llvm::Function* fn;
@@ -72,6 +95,8 @@ struct FunctionInfo {
     llvm::Value* sptr_raw;
     std::vector<llvm::Value*> sptr;
 
+    /// Address of the first lifted instruction. The LLVM entry block
+    /// immediately branches to it.
     uint64_t entry_ip;
     uint64_t pc_base_addr;
     llvm::Value* pc_base_value;

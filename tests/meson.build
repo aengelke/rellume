@@ -8,10 +8,14 @@ casefiles = {
   'rv64': [
     'cases_rv64_basic.txt',
   ],
+  'aarch64': [
+    'a64_data_proc.txt',
+  ]
 }
 llvm_targets = {
   'x86_64': 'X86',
   'rv64': 'RISCV',
+  'aarch64': 'AArch64',
 }
 
 test_architectures = []

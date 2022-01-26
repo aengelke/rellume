@@ -30,6 +30,9 @@
 #ifdef RELLUME_WITH_RV64
 #include <frvdec.h>
 #endif // RELLUME_WITH_RV64
+#ifdef RELLUME_WITH_AARCH64
+#include <farmdec.h>
+#endif // RELLUME_WITH_AARCH64
 
 #include <cstdbool>
 #include <cstdint>
@@ -50,6 +53,9 @@ class Instr {
 #ifdef RELLUME_WITH_RV64
         FrvInst rv64;
 #endif // RELLUME_WITH_RV64
+#ifdef RELLUME_WITH_AARCH64
+        farmdec::Inst _a64;
+#endif // RELLUME_WITH_AARCH64
     };
 
 public:
@@ -128,6 +134,12 @@ public:
         return &rv64;
     }
 #endif // RELLUME_WITH_RV64
+#ifdef RELLUME_WITH_AARCH64
+    operator const farmdec::Inst*() const {
+        assert(arch == Arch::AArch64);
+        return &_a64;
+    }
+#endif // RELLUME_WITH_AARCH64
 
     enum class Kind {
         BRANCH,
@@ -190,6 +202,30 @@ public:
             case FRV_ECALL:   return Kind::UNKNOWN;
             }
 #endif // RELLUME_WITH_RV64
+#ifdef RELLUME_WITH_AARCH64
+        case Arch::AArch64:
+            switch (_a64.op) {
+            default:                 return Kind::OTHER;
+            case farmdec::A64_BCOND: return Kind::COND_BRANCH;
+            case farmdec::A64_CBZ:   return Kind::COND_BRANCH;
+            case farmdec::A64_CBNZ:  return Kind::COND_BRANCH;
+            case farmdec::A64_TBZ:   return Kind::COND_BRANCH;
+            case farmdec::A64_TBNZ:  return Kind::COND_BRANCH;
+            case farmdec::A64_B:     return Kind::BRANCH;
+            case farmdec::A64_BL:    return Kind::CALL;
+            case farmdec::A64_BR:    return Kind::BRANCH;
+            case farmdec::A64_BLR:   return Kind::CALL;
+            case farmdec::A64_RET:   return Kind::UNKNOWN;
+            case farmdec::A64_SVC:   return Kind::UNKNOWN;
+            case farmdec::A64_HVC:   return Kind::UNKNOWN;
+            case farmdec::A64_SMC:   return Kind::UNKNOWN;
+            case farmdec::A64_BRK:   return Kind::UNKNOWN;
+            case farmdec::A64_HLT:   return Kind::UNKNOWN;
+            case farmdec::A64_DCPS1: return Kind::UNKNOWN;
+            case farmdec::A64_DCPS2: return Kind::UNKNOWN;
+            case farmdec::A64_DCPS3: return Kind::UNKNOWN;
+            }
+#endif // RELLUME_WITH_AARCH64
         default:
             return Kind::UNKNOWN;
         }
@@ -219,12 +255,30 @@ public:
             case Kind::CALL:
                 if (rv64.mnem == FRV_JAL)
                     return start() + rv64.imm;
-                break;
             default:
                 break;
             }
             break;
 #endif // RELLUME_WITH_RV64
+#ifdef RELLUME_WITH_AARCH64
+        case Arch::AArch64:
+            switch (Kind()) {
+            case Kind::COND_BRANCH:
+                if (_a64.op == farmdec::A64_TBZ || _a64.op == farmdec::A64_TBNZ) {
+                    return start() + _a64.tbz.offset;
+                }
+                /* FALLTHROUGH */
+            case Kind::BRANCH:
+            case Kind::CALL:
+                // ARM PC points at current instruction → start()
+                if (_a64.op != farmdec::A64_BR && _a64.op != farmdec::A64_BLR)
+                    return start() + _a64.offset;
+                break;
+            default:
+                break;
+            }
+            break;
+#endif // RELLUME_WITH_AARCH64
         default:
             break;
         }
@@ -249,9 +303,25 @@ public:
             res = frv_decode(len, buf, FRV_RV64, &rv64);
             break;
 #endif // RELLUME_WITH_RV64
+#ifdef RELLUME_WITH_AARCH64
+        case Arch::AArch64: {
+            if (len < 4) {
+                return -1;
+            }
+
+            uint32_t binst = buf[0] | (buf[1] << 8) | (buf[2] << 16) | (buf[3] << 24);
+            fad_decode(&binst, 1, &_a64);
+            if (_a64.op == farmdec::A64_ERROR || _a64.op == farmdec::A64_UNKNOWN) {
+                return -1;
+            }
+            res = 4; // all instructions are 32 bits long
+            break;
+        }
+#endif // RELLUME_WITH_AARCH64
         default:
             break;
         }
+
         if (res >= 0)
             instlen = res;
         return res;

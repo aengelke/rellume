@@ -74,6 +74,13 @@ class TestCase {
 #undef RELLUME_NAMED_REG
         };
 #endif // RELLUME_WITH_RV64
+#ifdef RELLUME_WITH_AARCH64
+        static std::unordered_map<std::string,RegEntry> regs_aarch64 = {
+#define RELLUME_NAMED_REG(name,nameu,sz,off) {#name, {sz, off}},
+#include <rellume/cpustruct-aarch64-private.inc>
+#undef RELLUME_NAMED_REG
+        };
+#endif // RELLUME_WITH_AARCH64
 
         regs = &regs_empty;
 #ifdef RELLUME_WITH_X86_64
@@ -84,6 +91,10 @@ class TestCase {
         if (!strcmp(opt_arch, "rv64"))
             regs = &regs_rv64;
 #endif // RELLUME_WITH_RV64
+#ifdef RELLUME_WITH_AARCH64
+        if (!strcmp(opt_arch, "aarch64"))
+            regs = &regs_aarch64;
+#endif // RELLUME_WITH_AARCH64
     }
 
     ~TestCase() {

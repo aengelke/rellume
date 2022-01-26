@@ -24,6 +24,7 @@
 #ifndef RELLUME_CALLCONV_H
 #define RELLUME_CALLCONV_H
 
+#include "arch.h"
 #include "basicblock.h"
 #include "regfile.h"
 
@@ -41,8 +42,13 @@ struct FunctionInfo;
 
 class CallConv {
 public:
+    /// HHVM: x86_64 calling convention that uses many registers for passing arguments
+    /// and return values. See LLVM documentation on that topic.
+    ///
+    /// SPTR: Cdecl callconv with one argument, the CPU struct pointer (sptr). See
+    /// FunctionInfo.
     enum Value {
-        INVALID, X86_64_SPTR, X86_64_HHVM, RV64_SPTR,
+        INVALID, X86_64_SPTR, X86_64_HHVM, RV64_SPTR, AArch64_SPTR,
     };
 
     static CallConv FromFunction(llvm::Function* fn, Arch arch);
@@ -57,13 +63,17 @@ public:
     // Pack values from regfile into the CPU struct. The return value for the
     // function is returned (or NULL for void).
     llvm::ReturnInst* Return(BasicBlock* bb, FunctionInfo& fi) const;
+
     // Unpack values from val (usually the function) into the register file. For
     // SPTR, val can also be the CPU struct pointer directly.
     void UnpackParams(BasicBlock* bb, FunctionInfo& fi) const;
 
+    /// Call the function fn at the end of block bb of the lifted function fi.
     llvm::CallInst* Call(llvm::Function* fn, BasicBlock* bb, FunctionInfo& fi,
                          bool tail_call = false);
 
+    /// Optimize a function's CallConvPacks to minimize the number of store
+    /// instructions passed to the LLVM optimizer.
     void OptimizePacks(FunctionInfo& fi, BasicBlock* entry);
 
     CallConv() = default;

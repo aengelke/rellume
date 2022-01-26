@@ -24,6 +24,7 @@
 #include "x86-64/lifter.h"
 #include "x86-64/lifter-private.h"
 
+#include "arch.h"
 #include "facet.h"
 #include "instr.h"
 #include "regfile.h"
