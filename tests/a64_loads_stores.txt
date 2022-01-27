@@ -141,10 +141,10 @@ code="dc zva, x0" x0=q:0x2000034 m2000000=aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa
 #
 
 # LLVM-IR manually checked.
-code="prfm pldL1keep, [sp, #8]"          sp=q:0x200000 m200000=0000000000000000 =>
-code="foo: prfm pliL2strm, foo"          sp=q:0x200000 =>
-code="prfm pstL3keep, [sp, w0, sxtw #3]" sp=q:0x200000 m200000=0000000000000000 =>
-code="prfum pldL1strm, [sp, #-43]"       sp=q:0x200000 m200000=0000000000000000 =>
+-jit code="prfm pldL1keep, [sp, #8]"          sp=q:0x200000 m200000=0000000000000000 =>
+-jit code="foo: prfm pliL2strm, foo"          sp=q:0x200000 =>
+-jit code="prfm pstL3keep, [sp, w0, sxtw #3]" sp=q:0x200000 m200000=0000000000000000 =>
+-jit code="prfum pldL1strm, [sp, #-43]"       sp=q:0x200000 m200000=0000000000000000 =>
 
 #
 ### Exclusive Load/Store, Fences

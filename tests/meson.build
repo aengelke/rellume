@@ -52,4 +52,6 @@ foreach arch : test_architectures
                                output: 'parsed_cases_@0@.txt'.format(arch))
   test('emulation-@0@'.format(arch), driver,
        args: ['-A', arch, parsed_cases], protocol: 'tap')
+  test('emulation-@0@-jit'.format(arch), driver,
+       args: ['-A', arch, '-j', parsed_cases], protocol: 'tap')
 endforeach
