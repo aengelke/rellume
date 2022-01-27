@@ -210,6 +210,8 @@ class TestCase {
                 use_jit = true;
             } else if (arg == "-jit") {
                 use_jit = false;
+            } else if (arg.substr(0, 1) == "~") {
+                continue;
             } else if (arg == "=>") {
                 goto run_function;
             } else {
@@ -304,6 +306,8 @@ class TestCase {
 
         std::unordered_set<std::string> skip_regs;
         while (argstream >> arg) {
+            if (arg.substr(0, 1) == "~")
+                continue;
             auto kv = split_arg(arg);
             if (kv.first[0] == 'm') {
                 fail |= CheckMem(kv.first, kv.second);

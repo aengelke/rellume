@@ -1,6 +1,7 @@
 #!/usr/bin/python3
 
 import argparse
+import os.path
 import shlex
 import struct
 import subprocess
@@ -73,24 +74,26 @@ if __name__ == "__main__":
     parser.add_argument("-o", "--output", type=argparse.FileType("w"), default='-')
     parser.add_argument("-a", "--assembler")
     parser.add_argument("-A", "--arch")
-    parser.add_argument("casefiles", type=argparse.FileType("r"), nargs="+")
+    parser.add_argument("casefiles", nargs="+")
     args = parser.parse_args()
 
     asm = Assembler(args.assembler, args.arch) if args.assembler else None
 
-    for file in args.casefiles:
-        for i, line in enumerate(file.readlines()):
-            line = line.strip()
-            if not line or line[0] == "#":
-                continue
+    for filename in args.casefiles:
+        with open(filename, "r") as file:
+            for i, line in enumerate(file.readlines()):
+                line = line.strip()
+                if not line or line[0] == "#":
+                    continue
 
-            try:
-                case = parse_case(line, asm)
-                assert not any(" " in part for part in case)
-                args.output.write(" ".join(case) + "\n")
-            except Exception as e:
-                print("error parsing line", i+1, e)
-                raise e
+                try:
+                    case = parse_case(line, asm)
+                    case.append(f"~src={os.path.basename(filename)}:{i+1}")
+                    assert not any(" " in part for part in case)
+                    args.output.write(" ".join(case) + "\n")
+                except Exception as e:
+                    print("error parsing line", i+1, e)
+                    raise e
 
     if asm.close() != 0:
         raise Exception("assembly failed")
