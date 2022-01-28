@@ -415,7 +415,11 @@ code="ushr v0.2d, v1.2d, #12" v0=qq:0,0 v1=qq:0xfff000,0xf0f0f0 => v0=qq:0xfff,0
 code="sshr v0.4s, v1.4s, #12" v0=qq:0,0 v1=llll:0xfff000,0xf0f0f0,0x1,0xffffffff => v0=llll:0xfff,0xf0f,0,0xffffffff
 
 code="usra d0, d1, #12"  v0=qq:1,2 v1=qq:0xfff000,0xf0f0f0 => v0=qq:0x1000,0
+code="usra d0, d1, #64"  v0=qq:0x4b1e4c35739581ce,0x2387050d33681aeb v1=qq:0x6aebede07e0908ef,0x07c6d8d825d8ac36 => v0=qq:0x4b1e4c35739581ce,0
+code="usra d0, d1, #64"  v0=qq:0x4b1e4c35739581ce,0x2387050d33681aeb v1=qq:0xfaebede07e0908ef,0x07c6d8d825d8ac36 => v0=qq:0x4b1e4c35739581ce,0
 code="ssra d0, d1, #12"  v0=qq:1,2 v1=qq:0xfff000,0xf0f0f0 => v0=qq:0x1000,0
+code="ssra d0, d1, #64"  v0=qq:0x4b1e4c35739581ce,0x2387050d33681aeb v1=qq:0x6aebede07e0908ef,0x07c6d8d825d8ac36 => v0=qq:0x4b1e4c35739581ce,0
+code="ssra d0, d1, #64"  v0=qq:0x4b1e4c35739581ce,0x2387050d33681aeb v1=qq:0xfaebede07e0908ef,0x07c6d8d825d8ac36 => v0=qq:0x4b1e4c35739581cd,0
 code="ursra d0, d1, #12" v0=qq:1,2 v1=qq:0xfff800,0xf0f8f0 => v0=qq:0x1001,0
 code="srsra d0, d1, #12" v0=qq:1,2 v1=qq:0xfff800,0xf0f8f0 => v0=qq:0x1001,0
 

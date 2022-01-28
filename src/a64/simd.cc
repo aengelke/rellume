@@ -667,7 +667,16 @@ bool Lifter::LiftSIMD(farmdec::Inst a64) {
         }
 
         unsigned bits = lhs->getType()->getScalarSizeInBits();
-        auto rhs = irb.CreateVectorSplat(NumElem(va), irb.getIntN(bits, a64.imm));
+        unsigned shift = a64.imm;
+        if (shift >= bits) {
+            if (sgn) {
+                shift = bits - 1; // fill with sign bit
+            } else {
+                lhs = llvm::Constant::getNullValue(lhs->getType());
+                shift = 0;
+            }
+        }
+        auto rhs = irb.CreateVectorSplat(NumElem(va), irb.getIntN(bits, shift));
         auto shifted = (sgn) ? irb.CreateAShr(lhs, rhs) : irb.CreateLShr(lhs, rhs);
         SetVec(a64.rd, irb.CreateAdd(acc, irb.CreateTruncOrBitCast(shifted, TypeOf(va))));
         break;
