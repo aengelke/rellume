@@ -443,6 +443,7 @@ code="usra v0.2d, v1.2d, #12" v0=qq:1,2 v1=qq:0xfff000,0xf0f0f0 => v0=qq:0x1000,
 code="ssra v0.4s, v1.4s, #12" v0=llll:1,2,3,4 v1=llll:0xfff000,0xf0f0f0,0x1,0xffffffff => v0=llll:0x1000,0xf11,3,3
 code="ursra v0.2d, v1.2d, #12" v0=qq:1,2 v1=qq:0xfff800,0xf0f8f0 => v0=qq:0x1001,0xf12
 code="srsra v0.4s, v1.4s, #12" v0=llll:1,2,3,4 v1=llll:0xfff000,0xf0f0f0,0x800,0xffffffff => v0=llll:0x1000,0xf11,4,4
+code="srsra v6.2d, v27.2d, #32" v6=qq:0x56ce892d9eb8413d,0x71e361c0134d8303 v27=qq:0x245f3c4d877f23f1,0xaed4a740ee942fed => v6=qq:0x56ce892dc3177d8b,0x71e361bfc2222a44
 
 code="shrn  v0.2s, v1.2d, #12" v0=qq:0,0 v1=qq:0xfff000,0xf0f0f0 => v0=llq:0xfff,0xf0f,0
 code="shrn2 v0.4s, v1.2d, #12" v0=qq:0,0 v1=qq:0xfff000,0xf0f0f0 => v0=qll:0,0xfff,0xf0f

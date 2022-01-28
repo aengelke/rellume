@@ -676,7 +676,7 @@ bool Lifter::LiftSIMD(farmdec::Inst a64) {
         if (round) {
             auto extty = llvm::VectorType::getExtendedElementVectorType(llvm::cast<llvm::VectorType>(TypeOf(va)));
             lhs = (sgn) ? irb.CreateSExt(lhs, extty) : irb.CreateZExt(lhs, extty);
-            uint64_t round_const = 1 << (a64.imm - 1);
+            uint64_t round_const = uint64_t{1} << (a64.imm - 1);
             lhs = irb.CreateAdd(lhs, irb.CreateVectorSplat(NumElem(va), irb.getIntN(extty->getScalarSizeInBits(), round_const)));
         }
 
