@@ -1132,6 +1132,14 @@ llvm::Value* Lifter::GetVec(farmdec::Reg r, farmdec::VectorArrangement va, bool 
 }
 
 llvm::Value* Lifter::GetElem(farmdec::Reg r, farmdec::VectorArrangement va, unsigned i, bool fp) {
+    // Always get element from full-sized vector.
+    switch (va) {
+    case farmdec::VA_8B: va = farmdec::VA_16B; break;
+    case farmdec::VA_4H: va = farmdec::VA_8H; break;
+    case farmdec::VA_2S: va = farmdec::VA_4S; break;
+    case farmdec::VA_1D: va = farmdec::VA_2D; break;
+    default: break;
+    }
     return irb.CreateExtractElement(GetVec(r, va, fp), i);
 }
 

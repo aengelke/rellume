@@ -13,8 +13,15 @@ code="dup s0, v1.s[2]"  v1=llll:0,0,0xf00ff00f,0                             => 
 code="dup d0, v1.d[1]"  v1=qq:0,0x1234567812345678                           => v0=qq:0x1234567812345678,0
 
 code="dup v0.16b, v1.b[15]" v1=bbbbbbbbbbbbbbbb:0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,42 => v0=bbbbbbbbbbbbbbbb:42,42,42,42,42,42,42,42,42,42,42,42,42,42,42,42
+code="dup v0.8b, v1.b[15]"  v1=bbbbbbbbbbbbbbbb:0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,42 => v0=bbbbbbbbq:42,42,42,42,42,42,42,42,0
 code="dup v0.8h, v1.h[2]"   v1=wwwwwwww:0,0,0xff00,0,0,0,0,0,0                   => v0=wwwwwwww:0xff00,0xff00,0xff00,0xff00,0xff00,0xff00,0xff00,0xff00
+code="dup v0.8h, v1.h[6]"   v1=wwwwwwww:0x1111,0x2222,0x3333,0x4444,0x5555,0x6666,0x7777,0x8888 => v0=wwwwwwww:0x7777,0x7777,0x7777,0x7777,0x7777,0x7777,0x7777,0x7777
+code="dup v0.8h, v1.h[7]"   v1=wwwwwwww:0x1111,0x2222,0x3333,0x4444,0x5555,0x6666,0x7777,0x8888 => v0=wwwwwwww:0x8888,0x8888,0x8888,0x8888,0x8888,0x8888,0x8888,0x8888
+code="dup v0.4h, v1.h[7]"   v1=wwwwwwww:0x1111,0x2222,0x3333,0x4444,0x5555,0x6666,0x7777,0x8888 => v0=wwwwq:0x8888,0x8888,0x8888,0x8888,0
+code="dup v0.8h, v1.h[7]"   v1=wwwwwwww:0,0,0,0,0,0,0,0xff00                   => v0=wwwwwwww:0xff00,0xff00,0xff00,0xff00,0xff00,0xff00,0xff00,0xff00
+code="dup v0.4h, v1.h[7]"   v1=wwwwwwww:0,0,0,0,0,0,0,0xff00                   => v0=wwwwq:0xff00,0xff00,0xff00,0xff00,0
 code="dup v0.4s, v1.s[2]"   v1=llll:0,0,0xf00ff00f,0                             => v0=llll:0xf00ff00f,0xf00ff00f,0xf00ff00f,0xf00ff00f
+code="dup v0.2s, v1.s[3]"   v1=llll:0,0,0,0xf00ff00f                             => v0=llq:0xf00ff00f,0xf00ff00f,0
 code="dup v0.2d, v1.d[1]"   v1=qq:0,0x1234567812345678                           => v0=qq:0x1234567812345678,0x1234567812345678
 
 code="smov w0, v1.b[2]" v1=bbbbbbbbq:0,0,0xff,0,0,0,0,0,0  => x0=q:0xffffffff
