@@ -82,6 +82,7 @@ bool Lifter::Lift(const Instr& inst) {
             break;
         }
 
+    unhandled:
         SetIP(inst.start(), /*nofold=*/true);
         return false;
 
@@ -758,23 +759,27 @@ bool Lifter::Lift(const Instr& inst) {
     case farmdec::A64_FRINT:
     case farmdec::A64_FRINTX: {
         farmdec::FPSize prec = fad_get_prec(a64.flags);
-        assert(a64.frint.bits == 0); // XXX frint32*, frint64* currently not supported
+        // XXX frint32*, frint64* currently not supported
+        if (a64.frint.bits != 0 || prec == farmdec::FSZ_H)
+            goto unhandled;
 
         bool exact = (a64.op == farmdec::A64_FRINTX);
         SetScalar(a64.rd, Round(GetScalar(a64.rn, prec), static_cast<farmdec::FPRounding>(a64.frint.mode), exact));
         break;
     }
-    case farmdec::A64_FCVT_H:
-        assert(false && "FP half precision not supported");
-        break;
+    // case farmdec::A64_FCVT_H: half precision not implemented
     case farmdec::A64_FCVT_S: {
         farmdec::FPSize prec = fad_get_prec(a64.flags);
+        if (prec == farmdec::FSZ_H)
+            goto unhandled;
         auto val = GetScalar(a64.rn, prec);
         SetScalar(a64.rd, irb.CreateFPCast(val, irb.getFloatTy()));
         break;
     }
     case farmdec::A64_FCVT_D: {
         farmdec::FPSize prec = fad_get_prec(a64.flags);
+        if (prec == farmdec::FSZ_H)
+            goto unhandled;
         auto val = GetScalar(a64.rn, prec);
         SetScalar(a64.rd, irb.CreateFPCast(val, irb.getDoubleTy()));
         break;

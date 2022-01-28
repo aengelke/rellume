@@ -331,7 +331,9 @@ bool Lifter::LiftSIMD(farmdec::Inst a64) {
         break;
     case farmdec::A64_FRINT_VEC:
     case farmdec::A64_FRINTX_VEC: {
-        assert(a64.frint.bits == 0); // XXX frint32*, frint64* currently not supported
+        // XXX frint32*, frint64* currently not supported
+        if (a64.frint.bits != 0)
+            goto unhandled;
 
         bool exact = (a64.op == farmdec::A64_FRINTX_VEC);
         SetVec(a64.rd, Round(GetVec(a64.rn, va, /*fp=*/true), static_cast<farmdec::FPRounding>(a64.frint.mode), exact));
@@ -576,7 +578,8 @@ bool Lifter::LiftSIMD(farmdec::Inst a64) {
         }
         break;
     case farmdec::A64_SHL_REG: {
-        assert(!round && "rshl not supported yet");
+        if (round)
+            goto unhandled; // rshl not yet implemented
         llvm::Value* lhs = nullptr;
         llvm::Value* rhs = nullptr;
         llvm::Value* zero = nullptr;
@@ -617,7 +620,8 @@ bool Lifter::LiftSIMD(farmdec::Inst a64) {
         break;
     }
     case farmdec::A64_SHR:
-        assert(!round && "rshr not supported yet");
+        if (round)
+            goto unhandled; // rshr not yet implemented
         if (scalar) {
             auto lhs = GetScalar(a64.rn, fad_size_from_vec_arrangement(va), /*fp=*/false);
             SetScalar(a64.rd, (sgn) ? irb.CreateAShr(lhs, a64.imm) : irb.CreateLShr(lhs, a64.imm));
@@ -629,7 +633,8 @@ bool Lifter::LiftSIMD(farmdec::Inst a64) {
         }
         break;
     case farmdec::A64_SHRN: {
-        assert(!round && "rshrn not supported yet");
+        if (round)
+            goto unhandled; // rshrn not yet implemented
         farmdec::VectorArrangement srcva = DoubleWidth(va);
 
         auto lhs = GetVec(a64.rn, srcva);
@@ -1121,6 +1126,7 @@ bool Lifter::LiftSIMD(farmdec::Inst a64) {
         SetScalar(a64.rd, irb.CreateIntMinReduce(GetVec(a64.rn, va), sgn));
         break;
     default:
+    unhandled:
         return false;
     }
 
