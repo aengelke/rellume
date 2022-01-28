@@ -1100,15 +1100,17 @@ bool Lifter::LiftSIMD(farmdec::Inst a64) {
         auto zero_dst = llvm::Constant::getNullValue(TypeOf(dstva));
         auto acc = (a64.op == farmdec::A64_ADALP) ? GetVec(a64.rd, dstva) : zero_dst;
 
-        // Extended vector -> same number of elements, but of double the size
-        auto extty = TypeOf(DoubleWidth(va));
-        auto zero_ext = llvm::Constant::getNullValue(extty);
         auto vn = GetVec(a64.rn, va);
-        auto extended = (sgn) ? irb.CreateSExt(vn, extty) : irb.CreateZExt(vn, extty);
+        auto zero_ext = llvm::Constant::getNullValue(vn->getType());
+        auto lhs = irb.CreateShuffleVector(vn, zero_ext, even(nelem_dst));
+        auto rhs = irb.CreateShuffleVector(vn, zero_ext, odd(nelem_dst));
 
-        auto lhs = irb.CreateShuffleVector(extended, zero_ext, even(nelem_dst));
-        auto rhs = irb.CreateShuffleVector(extended, zero_ext, odd(nelem_dst));
-        SetVec(a64.rd, irb.CreateAdd(acc, irb.CreateAdd(lhs, rhs)));
+        // Extended vector -> same number of elements, but of double the size
+        auto extty = TypeOf(dstva);
+        auto cast_op = (sgn) ? llvm::Instruction::SExt : llvm::Instruction::ZExt;
+        auto ext_lhs = irb.CreateCast(cast_op, lhs, extty);
+        auto ext_rhs = irb.CreateCast(cast_op, rhs, extty);
+        SetVec(a64.rd, irb.CreateAdd(acc, irb.CreateAdd(ext_lhs, ext_rhs)));
         break;
     }
     case farmdec::A64_FMAXV:
