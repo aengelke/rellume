@@ -499,6 +499,15 @@ bool Lifter::Lift(const Instr& inst) {
                                                     /*zeroundef=*/irb.getFalse()));
         break;
     }
+    case farmdec::A64_CLS: {
+        auto val = GetGp(a64.rn, w32);
+        auto sgnext = irb.CreateAShr(val, (w32) ? 0x1f : 0x3f);
+        auto intr = llvm::Intrinsic::ctlz;
+        auto lz = irb.CreateBinaryIntrinsic(intr, irb.CreateXor(val, sgnext),
+                                            /*zeroundef=*/irb.getFalse());
+        SetGp(a64.rd, w32, irb.CreateSub(lz, irb.getIntN(w32 ? 32 : 64, 1)));
+        break;
+    }
     case farmdec::A64_AND_SHIFTED:
     case farmdec::A64_TST_SHIFTED:
         LiftBinOp(a64, w32, llvm::Instruction::And, BinOpKind::SHIFT, set_flags);
