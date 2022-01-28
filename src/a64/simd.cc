@@ -1037,6 +1037,13 @@ bool Lifter::LiftSIMD(farmdec::Inst a64) {
     case farmdec::A64_MLAL_VEC: LiftMulAcc(a64, llvm::Instruction::Add, GetVec(a64.rd, DoubleWidth(va)), /*extend_long=*/true); break;
     case farmdec::A64_MLSL_ELEM: LiftMulAccElem(a64, llvm::Instruction::Sub, GetVec(a64.rd, DoubleWidth(va)), /*extend_long=*/true); break;
     case farmdec::A64_MLSL_VEC: LiftMulAcc(a64, llvm::Instruction::Sub, GetVec(a64.rd, DoubleWidth(va)), /*extend_long=*/true); break;
+    case farmdec::A64_FADDP: {
+        auto vec = GetVec(a64.rn, va, /*fp=*/true);
+        auto lhs = irb.CreateExtractElement(vec, uint64_t{0});
+        auto rhs = irb.CreateExtractElement(vec, uint64_t{1});
+        SetScalar(a64.rd, irb.CreateFAdd(lhs, rhs));
+        break;
+    }
     case farmdec::A64_ADDP:
         SetScalar(a64.rd, irb.CreateAddReduce(GetVec(a64.rn, farmdec::VA_2D)));
         break;
