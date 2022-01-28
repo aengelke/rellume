@@ -1348,7 +1348,7 @@ void Lifter::LiftCCmp(llvm::Value* lhs, llvm::Value* rhs, farmdec::Cond cond, ui
 void Lifter::Load(farmdec::Reg rt, bool w32, llvm::Type* srcty,
                   llvm::Value* ptr, farmdec::ExtendType ext,
                   farmdec::MemOrdering mo) {
-    llvm::LoadInst* load = irb.CreateLoad(srcty, ptr);
+    llvm::LoadInst* load = irb.CreateAlignedLoad(srcty, ptr, llvm::Align(1));
     if (mo != farmdec::MO_NONE) {
         load->setOrdering(Ordering(mo));
         load->setAlignment(llvm::Align(srcty->getPrimitiveSizeInBits() / 8));
@@ -1359,7 +1359,7 @@ void Lifter::Load(farmdec::Reg rt, bool w32, llvm::Type* srcty,
 
 // Loads into the SIMD&FP register Vt.
 void Lifter::Load(farmdec::Reg rt, llvm::Type* srcty, llvm::Value* ptr, farmdec::MemOrdering mo) {
-    llvm::LoadInst* load = irb.CreateLoad(srcty, ptr);
+    llvm::LoadInst* load = irb.CreateAlignedLoad(srcty, ptr, llvm::Align(1));
     if (mo != farmdec::MO_NONE) {
         load->setOrdering(Ordering(mo));
         load->setAlignment(llvm::Align(srcty->getPrimitiveSizeInBits() / 8));
@@ -1374,6 +1374,8 @@ void Lifter::Store(llvm::Value* ptr, llvm::Value* val, farmdec::MemOrdering mo) 
     if (mo != farmdec::MO_NONE) {
         store->setOrdering(Ordering(mo));
         store->setAlignment(llvm::Align(val->getType()->getPrimitiveSizeInBits() / 8));
+    } else {
+        store->setAlignment(llvm::Align(1));
     }
 }
 

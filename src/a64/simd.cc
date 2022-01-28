@@ -104,7 +104,7 @@ bool Lifter::LiftSIMD(farmdec::Inst a64) {
 
         for (unsigned i = 0; i < a64.simd_ldst.nreg; i++) {
             auto ptr = irb.CreateConstGEP1_64(vecty, addr, i);
-            auto v = irb.CreateLoad(vecty, ptr);
+            auto v = irb.CreateAlignedLoad(vecty, ptr, llvm::Align(1));
             SetVec(tt, v);
             tt = (tt+1) % 32; // wrap around V31..V0
         }
@@ -116,8 +116,8 @@ bool Lifter::LiftSIMD(farmdec::Inst a64) {
         // vector Y := (y_0, y_1, ...).
         auto vecty = TypeOf(fad_get_vec_arrangement(a64.flags));
         auto addr = SIMDLoadStoreAddr(a64, vecty);
-        auto p0 = irb.CreateLoad(vecty, addr);
-        auto p1 = irb.CreateLoad(vecty, irb.CreateConstGEP1_64(vecty, addr, 1));
+        auto p0 = irb.CreateAlignedLoad(vecty, addr, llvm::Align(1));
+        auto p1 = irb.CreateAlignedLoad(vecty, irb.CreateConstGEP1_64(vecty, addr, 1), llvm::Align(1));
 
         unsigned nelem = NumElem(va);
         auto x = irb.CreateShuffleVector(p0, p1, even(nelem));
@@ -156,15 +156,15 @@ bool Lifter::LiftSIMD(farmdec::Inst a64) {
     case farmdec::A64_LD1_SINGLE: {
         auto ty = ElemTypeOf(fad_get_vec_arrangement(a64.flags));
         auto addr = SIMDLoadStoreAddr(a64, ty);
-        auto e0 = irb.CreateLoad(ty, addr);
+        auto e0 = irb.CreateAlignedLoad(ty, addr, llvm::Align(1));
         InsertElem(a64.rt, a64.simd_ldst.index, e0);
         break;
     }
     case farmdec::A64_LD2_SINGLE: {
         auto ty = ElemTypeOf(fad_get_vec_arrangement(a64.flags));
         auto addr = SIMDLoadStoreAddr(a64, ty);
-        auto e0 = irb.CreateLoad(ty, addr);
-        auto e1 = irb.CreateLoad(ty, irb.CreateConstGEP1_64(ty, addr, 1));
+        auto e0 = irb.CreateAlignedLoad(ty, addr, llvm::Align(1));
+        auto e1 = irb.CreateAlignedLoad(ty, irb.CreateConstGEP1_64(ty, addr, 1), llvm::Align(1));
         InsertElem(a64.rt, a64.simd_ldst.index, e0);
         InsertElem((a64.rt+1) % 32, a64.simd_ldst.index, e1);
         break;
@@ -172,9 +172,9 @@ bool Lifter::LiftSIMD(farmdec::Inst a64) {
     case farmdec::A64_LD3_SINGLE: {
         auto ty = ElemTypeOf(fad_get_vec_arrangement(a64.flags));
         auto addr = SIMDLoadStoreAddr(a64, ty);
-        auto e0 = irb.CreateLoad(ty, addr);
-        auto e1 = irb.CreateLoad(ty, irb.CreateConstGEP1_64(ty, addr, 1));
-        auto e2 = irb.CreateLoad(ty, irb.CreateConstGEP1_64(ty, addr, 2));
+        auto e0 = irb.CreateAlignedLoad(ty, addr, llvm::Align(1));
+        auto e1 = irb.CreateAlignedLoad(ty, irb.CreateConstGEP1_64(ty, addr, 1), llvm::Align(1));
+        auto e2 = irb.CreateAlignedLoad(ty, irb.CreateConstGEP1_64(ty, addr, 2), llvm::Align(1));
         InsertElem(a64.rt, a64.simd_ldst.index, e0);
         InsertElem((a64.rt+1) % 32, a64.simd_ldst.index, e1);
         InsertElem((a64.rt+2) % 32, a64.simd_ldst.index, e2);
@@ -183,10 +183,10 @@ bool Lifter::LiftSIMD(farmdec::Inst a64) {
     case farmdec::A64_LD4_SINGLE: {
         auto ty = ElemTypeOf(fad_get_vec_arrangement(a64.flags));
         auto addr = SIMDLoadStoreAddr(a64, ty);
-        auto e0 = irb.CreateLoad(ty, addr);
-        auto e1 = irb.CreateLoad(ty, irb.CreateConstGEP1_64(ty, addr, 1));
-        auto e2 = irb.CreateLoad(ty, irb.CreateConstGEP1_64(ty, addr, 2));
-        auto e3 = irb.CreateLoad(ty, irb.CreateConstGEP1_64(ty, addr, 3));
+        auto e0 = irb.CreateAlignedLoad(ty, addr, llvm::Align(1));
+        auto e1 = irb.CreateAlignedLoad(ty, irb.CreateConstGEP1_64(ty, addr, 1), llvm::Align(1));
+        auto e2 = irb.CreateAlignedLoad(ty, irb.CreateConstGEP1_64(ty, addr, 2), llvm::Align(1));
+        auto e3 = irb.CreateAlignedLoad(ty, irb.CreateConstGEP1_64(ty, addr, 3), llvm::Align(1));
         InsertElem(a64.rt, a64.simd_ldst.index, e0);
         InsertElem((a64.rt+1) % 32, a64.simd_ldst.index, e1);
         InsertElem((a64.rt+2) % 32, a64.simd_ldst.index, e2);
@@ -230,15 +230,15 @@ bool Lifter::LiftSIMD(farmdec::Inst a64) {
     case farmdec::A64_LD1R: {
         auto ty = ElemTypeOf(fad_get_vec_arrangement(a64.flags));
         auto addr = SIMDLoadStoreAddr(a64, ty);
-        auto e0 = irb.CreateLoad(ty, addr);
+        auto e0 = irb.CreateAlignedLoad(ty, addr, llvm::Align(1));
         Dup(a64.rt, va, e0);
         break;
     }
     case farmdec::A64_LD2R: {
         auto ty = ElemTypeOf(fad_get_vec_arrangement(a64.flags));
         auto addr = SIMDLoadStoreAddr(a64, ty);
-        auto e0 = irb.CreateLoad(ty, addr);
-        auto e1 = irb.CreateLoad(ty, irb.CreateConstGEP1_64(ty, addr, 1));
+        auto e0 = irb.CreateAlignedLoad(ty, addr, llvm::Align(1));
+        auto e1 = irb.CreateAlignedLoad(ty, irb.CreateConstGEP1_64(ty, addr, 1), llvm::Align(1));
         Dup(a64.rt, va, e0);
         Dup((a64.rt+1) % 32, va, e1);
         break;
@@ -246,9 +246,9 @@ bool Lifter::LiftSIMD(farmdec::Inst a64) {
     case farmdec::A64_LD3R: {
         auto ty = ElemTypeOf(fad_get_vec_arrangement(a64.flags));
         auto addr = SIMDLoadStoreAddr(a64, ty);
-        auto e0 = irb.CreateLoad(ty, addr);
-        auto e1 = irb.CreateLoad(ty, irb.CreateConstGEP1_64(ty, addr, 1));
-        auto e2 = irb.CreateLoad(ty, irb.CreateConstGEP1_64(ty, addr, 2));
+        auto e0 = irb.CreateAlignedLoad(ty, addr, llvm::Align(1));
+        auto e1 = irb.CreateAlignedLoad(ty, irb.CreateConstGEP1_64(ty, addr, 1), llvm::Align(1));
+        auto e2 = irb.CreateAlignedLoad(ty, irb.CreateConstGEP1_64(ty, addr, 2), llvm::Align(1));
         Dup(a64.rt, va, e0);
         Dup((a64.rt+1) % 32, va, e1);
         Dup((a64.rt+2) % 32, va, e2);
@@ -257,10 +257,10 @@ bool Lifter::LiftSIMD(farmdec::Inst a64) {
     case farmdec::A64_LD4R: {
         auto ty = ElemTypeOf(fad_get_vec_arrangement(a64.flags));
         auto addr = SIMDLoadStoreAddr(a64, ty);
-        auto e0 = irb.CreateLoad(ty, addr);
-        auto e1 = irb.CreateLoad(ty, irb.CreateConstGEP1_64(ty, addr, 1));
-        auto e2 = irb.CreateLoad(ty, irb.CreateConstGEP1_64(ty, addr, 2));
-        auto e3 = irb.CreateLoad(ty, irb.CreateConstGEP1_64(ty, addr, 3));
+        auto e0 = irb.CreateAlignedLoad(ty, addr, llvm::Align(1));
+        auto e1 = irb.CreateAlignedLoad(ty, irb.CreateConstGEP1_64(ty, addr, 1), llvm::Align(1));
+        auto e2 = irb.CreateAlignedLoad(ty, irb.CreateConstGEP1_64(ty, addr, 2), llvm::Align(1));
+        auto e3 = irb.CreateAlignedLoad(ty, irb.CreateConstGEP1_64(ty, addr, 3), llvm::Align(1));
         Dup(a64.rt, va, e0);
         Dup((a64.rt+1) % 32, va, e1);
         Dup((a64.rt+2) % 32, va, e2);
@@ -1542,25 +1542,25 @@ void Lifter::TransformSIMDPairwise(farmdec::VectorArrangement va, farmdec::Reg r
 }
 
 void Lifter::StoreMulti(llvm::Value* addr, llvm::Value* v0) {
-    irb.CreateStore(v0, addr);
+    irb.CreateAlignedStore(v0, addr, llvm::Align(1));
 }
 
 void Lifter::StoreMulti(llvm::Value* addr, llvm::Value* v0, llvm::Value* v1) {
-    irb.CreateStore(v0, addr);
-    irb.CreateStore(v1, irb.CreateConstGEP1_64(v0->getType(), addr, 1));
+    irb.CreateAlignedStore(v0, addr, llvm::Align(1));
+    irb.CreateAlignedStore(v1, irb.CreateConstGEP1_64(v0->getType(), addr, 1), llvm::Align(1));
 }
 
 void Lifter::StoreMulti(llvm::Value* addr, llvm::Value* v0, llvm::Value* v1, llvm::Value* v2) {
-    irb.CreateStore(v0, addr);
-    irb.CreateStore(v1, irb.CreateConstGEP1_64(v0->getType(), addr, 1));
-    irb.CreateStore(v2, irb.CreateConstGEP1_64(v0->getType(), addr, 2));
+    irb.CreateAlignedStore(v0, addr, llvm::Align(1));
+    irb.CreateAlignedStore(v1, irb.CreateConstGEP1_64(v0->getType(), addr, 1), llvm::Align(1));
+    irb.CreateAlignedStore(v2, irb.CreateConstGEP1_64(v0->getType(), addr, 2), llvm::Align(1));
 }
 
 void Lifter::StoreMulti(llvm::Value* addr, llvm::Value* v0, llvm::Value* v1, llvm::Value* v2, llvm::Value* v3) {
-    irb.CreateStore(v0, addr);
-    irb.CreateStore(v1, irb.CreateConstGEP1_64(v0->getType(), addr, 1));
-    irb.CreateStore(v2, irb.CreateConstGEP1_64(v0->getType(), addr, 2));
-    irb.CreateStore(v3, irb.CreateConstGEP1_64(v0->getType(), addr, 3));
+    irb.CreateAlignedStore(v0, addr, llvm::Align(1));
+    irb.CreateAlignedStore(v1, irb.CreateConstGEP1_64(v0->getType(), addr, 1), llvm::Align(1));
+    irb.CreateAlignedStore(v2, irb.CreateConstGEP1_64(v0->getType(), addr, 2), llvm::Align(1));
+    irb.CreateAlignedStore(v3, irb.CreateConstGEP1_64(v0->getType(), addr, 3), llvm::Align(1));
 }
 
 // SIMDLoadStoreAddr returns the base address of the SIMD LDx/STx (x=1,2,3,4)
