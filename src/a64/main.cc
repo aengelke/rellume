@@ -218,7 +218,7 @@ bool Lifter::Lift(const Instr& inst) {
         SetGp(a64.rd, w32, irb.CreateTrunc(long_val, (w32) ? irb.getInt32Ty() : irb.getInt64Ty()));
         break;
     }
-    case farmdec::A64_ROR_IMM: 
+    case farmdec::A64_ROR_IMM:
         SetGp(a64.rd, w32, Shift(GetGp(a64.rn, w32), farmdec::SH_ROR, a64.imm));
         break;
     case farmdec::A64_BCOND:
@@ -818,13 +818,13 @@ bool Lifter::Lift(const Instr& inst) {
         LiftBinOpFP(llvm::Instruction::FSub, fad_get_prec(a64.flags), a64.rd, a64.rn, a64.rm);
         break;
     case farmdec::A64_FMAX:
-        LiftIntrinsicFP(llvm::Intrinsic::maximum, fad_get_prec(a64.flags), a64.rd, a64.rn, a64.rm);
+        LiftIntrinsicFP(llvm::Intrinsic::maxnum, fad_get_prec(a64.flags), a64.rd, a64.rn, a64.rm);
         break;
     case farmdec::A64_FMAXNM:
         LiftIntrinsicFP(llvm::Intrinsic::maxnum, fad_get_prec(a64.flags), a64.rd, a64.rn, a64.rm);
         break;
     case farmdec::A64_FMIN:
-        LiftIntrinsicFP(llvm::Intrinsic::minimum, fad_get_prec(a64.flags), a64.rd, a64.rn, a64.rm);
+        LiftIntrinsicFP(llvm::Intrinsic::minnum, fad_get_prec(a64.flags), a64.rd, a64.rn, a64.rm);
         break;
     case farmdec::A64_FMINNM:
         LiftIntrinsicFP(llvm::Intrinsic::minnum, fad_get_prec(a64.flags), a64.rd, a64.rn, a64.rm);

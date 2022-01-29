@@ -562,8 +562,9 @@ code="fsub v0.2d, v1.2d, v2.2d" v0=qq:0,0 v1=dd:-1.0,1.0 v2=dd:1.0,1.0 => v0=dd:
 # LLVM ERROR: Code generator does not support intrinsic function 'llvm.maximum.v4f32'!
 # But cannot JIT either: on x86-64 hosts, there are no appropriate instructions, so FMIN and FMAX
 # cannot be tested.
-#code="fmax v0.4s, v1.4s, v2.4s" v0=qq:0,0 v1=ffff:1.0,99.0,3.0,98.0 v2=ffff:99.0,1.0,98.0,2.0 => v0=ffff:99.0,99.0,98.0,98.0
-#code="fmin v0.2d, v1.2d, v2.2d" v0=qq:0,0 v1=dd:0.0,-1.0e10 v2=dd:1.0,0.0 => v0=dd:0.0,-1.0e10
+# Workaround: lift to maxnum/minnum insteadof maximum/minimum.
++jit code="fmax v0.4s, v1.4s, v2.4s" v0=qq:0,0 v1=ffff:1.0,99.0,3.0,98.0 v2=ffff:99.0,1.0,98.0,2.0 => v0=ffff:99.0,99.0,98.0,98.0
++jit code="fmin v0.2d, v1.2d, v2.2d" v0=qq:0,0 v1=dd:0.0,-1.0e10 v2=dd:1.0,0.0 => v0=dd:0.0,-1.0e10
 +jit code="fmaxnm v0.4s, v1.4s, v2.4s" v0=qq:0,0 v1=ffff:1.0,99.0,3.0,98.0 v2=ffff:99.0,1.0,98.0,2.0 => v0=ffff:99.0,99.0,98.0,98.0
 +jit code="fminnm v0.2d, v1.2d, v2.2d" v0=qq:0,0 v1=dd:0.0,-1.0e10 v2=dd:1.0,0.0 => v0=dd:0.0,-1.0e10
 

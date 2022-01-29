@@ -435,9 +435,9 @@ bool Lifter::LiftSIMD(farmdec::Inst a64) {
     case farmdec::A64_FSUB_VEC:
         LiftThreeSame(llvm::Instruction::FSub, a64.rd, va, a64.rn, a64.rm, /*scalar=*/false, /*invert_rhs=*/false, /*fp=*/true);
         break;
-    case farmdec::A64_FMAX_VEC: LiftIntrinsicFPVec(llvm::Intrinsic::maximum, va, a64.rd, a64.rn, a64.rm); break;
+    case farmdec::A64_FMAX_VEC: LiftIntrinsicFPVec(llvm::Intrinsic::maxnum, va, a64.rd, a64.rn, a64.rm); break;
     case farmdec::A64_FMAXNM_VEC: LiftIntrinsicFPVec(llvm::Intrinsic::maxnum, va, a64.rd, a64.rn, a64.rm); break;
-    case farmdec::A64_FMIN_VEC: LiftIntrinsicFPVec(llvm::Intrinsic::minimum, va, a64.rd, a64.rn, a64.rm); break;
+    case farmdec::A64_FMIN_VEC: LiftIntrinsicFPVec(llvm::Intrinsic::minnum, va, a64.rd, a64.rn, a64.rm); break;
     case farmdec::A64_FMINNM_VEC: LiftIntrinsicFPVec(llvm::Intrinsic::minnum, va, a64.rd, a64.rn, a64.rm); break;
     case farmdec::A64_FMLA_ELEM:
         if (scalar) {
@@ -515,7 +515,7 @@ bool Lifter::LiftSIMD(farmdec::Inst a64) {
     case farmdec::A64_EOR_VEC:
         LiftThreeSame(llvm::Instruction::Xor, a64.rd, va, a64.rn, a64.rm, /*scalar=*/false);
         break;
-    case farmdec::A64_NOT_VEC: 
+    case farmdec::A64_NOT_VEC:
         SetVec(a64.rd, irb.CreateNot(GetVec(a64.rn, va)));
         break;
     case farmdec::A64_ORN_VEC:
@@ -1096,7 +1096,7 @@ bool Lifter::LiftSIMD(farmdec::Inst a64) {
     case farmdec::A64_FMAXP_VEC: {
         llvm::Value *lhs = nullptr, *rhs = nullptr;
         TransformSIMDPairwise(va, a64.rn, a64.rm, &lhs, &rhs, /*fp=*/true);
-        SetVec(a64.rd, irb.CreateBinaryIntrinsic(llvm::Intrinsic::maximum, lhs, rhs));
+        SetVec(a64.rd, irb.CreateBinaryIntrinsic(llvm::Intrinsic::maxnum, lhs, rhs));
         break;
     }
     case farmdec::A64_FMAXNMP_VEC: {
@@ -1114,7 +1114,7 @@ bool Lifter::LiftSIMD(farmdec::Inst a64) {
     case farmdec::A64_FMINP_VEC: {
         llvm::Value *lhs = nullptr, *rhs = nullptr;
         TransformSIMDPairwise(va, a64.rn, a64.rm, &lhs, &rhs, /*fp=*/true);
-        SetVec(a64.rd, irb.CreateBinaryIntrinsic(llvm::Intrinsic::minimum, lhs, rhs));
+        SetVec(a64.rd, irb.CreateBinaryIntrinsic(llvm::Intrinsic::minnum, lhs, rhs));
         break;
     }
     case farmdec::A64_FMINNMP_VEC: {
