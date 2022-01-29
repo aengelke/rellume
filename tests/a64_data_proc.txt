@@ -30,6 +30,7 @@ code="mov x0, x1" x0=q:0x0 x1=ffffffffffffffff => x0=ffffffffffffffff
 code="mov wsp, w1" sp=q:0x0 x1=aabbccddffffffff => sp=aabbccdd00000000
 code="mov x0, sp"  x0=q:0x0 sp=ffffffffffffffff => x0=ffffffffffffffff
 code="mvn x0, x1" x0=q:0x0 x1=fff0fff00fff00ff => x0=000f000ff000ff00
+code="mvn x0, x1, lsr 8" x1=q:0x1122334455667788 => x0=q:0xffeeddccbbaa9988
 
 code="mov w0, #1234"   x0=q:0x0            => x0=q:1234
 code="mov w0, #0xffff" x0=q:0x0            => x0=ffff000000000000

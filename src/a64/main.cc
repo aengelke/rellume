@@ -514,12 +514,12 @@ bool Lifter::Lift(const Instr& inst) {
         break;
     case farmdec::A64_BIC:         LiftBinOp(a64, w32, llvm::Instruction::And, BinOpKind::SHIFT, set_flags, /*invert_rhs=*/true); break;
     case farmdec::A64_ORR_SHIFTED: LiftBinOp(a64, w32, llvm::Instruction::Or, BinOpKind::SHIFT, set_flags); break;
-    case farmdec::A64_ORN:         LiftBinOp(a64, w32, llvm::Instruction::Or, BinOpKind::SHIFT, set_flags, /*invert_rhs=*/true); break;
+    case farmdec::A64_ORN:
+    case farmdec::A64_MVN: // MVN is just an alias for ORN.
+        LiftBinOp(a64, w32, llvm::Instruction::Or, BinOpKind::SHIFT, set_flags, /*invert_rhs=*/true);
+        break;
     case farmdec::A64_MOV_REG:
         SetGp(a64.rd, w32, GetGp(a64.rm, w32)); // rd := rm
-        break;
-    case farmdec::A64_MVN:
-        SetGp(a64.rd, w32, irb.CreateNot(GetGp(a64.rm, w32))); // rd := ~rm
         break;
     case farmdec::A64_EOR_SHIFTED: LiftBinOp(a64, w32, llvm::Instruction::Xor, BinOpKind::SHIFT, set_flags); break;
     case farmdec::A64_EON:         LiftBinOp(a64, w32, llvm::Instruction::Xor, BinOpKind::SHIFT, set_flags, /*invert_rhs=*/true); break;
