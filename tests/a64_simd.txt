@@ -330,7 +330,7 @@ code="rev64 v0.2s, v1.2s"   v0=qq:0,0 v1=00000000111111112222222233333333 => v0=
 ### SIMD Integer Arithmetic
 #
 
-code="abs d0, d1" v0=qq:0,0 v1=qq:-100,0 => v0=qq:100,0
+code="abs d0, d1" v0=qq:0,0 v1=qq:-100,-10 => v0=qq:100,0
 code="abs v0.4s, v1.4s" v0=qq:0,0 v1=llll:0,-100,3455,-2220 => v0=llll:0,100,3455,2220
 
 code="sabd v0.2s, v1.2s, v2.2s" v0=qq:0,0 v1=llq:-1,-1,0 v2=llq:-10,0x80000000,0 => v0=llq:9,0x7fffffff,0
@@ -349,7 +349,7 @@ code="uabal v0.2d, v1.2s, v2.2s"  v0=qq:1,-2 v1=llq:0x80000000,1,0 v2=llq:0x7fff
 code="uabdl2 v0.2d, v1.4s, v2.4s"  v0=qq:0,0 v1=qll:0,0x80000000,1 v2=qll:0,0x7fffffff,-1 => v0=qq:1,0xfffffffe
 code="uabal2 v0.2d, v1.4s, v2.4s"  v0=qq:1,-2 v1=qll:0,0x80000000,1 v2=qll:0,0x7fffffff,-1 => v0=qq:2,0xfffffffc
 
-code="neg d0, d1" v0=qq:0,0 v1=qq:-100,100 => v0=qq:100,-100
+code="neg d0, d1" v0=qq:0,0 v1=qq:-100,100 => v0=qq:100,0
 code="neg v0.4s, v1.4s" v0=qq:0,0 v1=llll:0,-100,3455,-2220 => v0=llll:0,100,-3455,2220
 
 code="add d0, d1, d2" v0=qq:0,0 v1=qq:100,0 v2=qq:1,0 => v0=qq:101,0

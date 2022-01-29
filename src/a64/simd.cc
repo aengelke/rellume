@@ -401,10 +401,15 @@ bool Lifter::LiftSIMD(farmdec::Inst a64) {
         SetVec(a64.rd, irb.CreateUnaryIntrinsic(llvm::Intrinsic::fabs, GetVec(a64.rn, va, /*fp=*/true)));
         break;
     case farmdec::A64_FABD_VEC: {
-        auto lhs = GetVec(a64.rn, va, /*fp=*/true);
-        auto rhs = GetVec(a64.rm, va, /*fp=*/true);
+        auto lhs = (scalar) ? GetScalar(a64.rn, fad_size_from_vec_arrangement(va), /*fp=*/true) : GetVec(a64.rn, va, /*fp=*/true);
+        auto rhs = (scalar) ? GetScalar(a64.rm, fad_size_from_vec_arrangement(va), /*fp=*/true) : GetVec(a64.rm, va, /*fp=*/true);
+
         auto diff = irb.CreateFSub(lhs, rhs);
-        SetVec(a64.rd, irb.CreateUnaryIntrinsic(llvm::Intrinsic::fabs, diff));
+        auto val = irb.CreateUnaryIntrinsic(llvm::Intrinsic::fabs, diff);
+        if (scalar)
+            SetScalar(a64.rd, val);
+        else
+            SetVec(a64.rd, val);
         break;
     }
     case farmdec::A64_FNEG_VEC:
@@ -937,9 +942,15 @@ bool Lifter::LiftSIMD(farmdec::Inst a64) {
             SetVec(a64.rd, val);
         break;
     }
-    case farmdec::A64_ABS_VEC:
-        SetVec(a64.rd, Abs(GetVec(a64.rn, va)));
+    case farmdec::A64_ABS_VEC: {
+        auto vn = (scalar) ? GetScalar(a64.rn, fad_size_from_vec_arrangement(va), /*fp=*/false) : GetVec(a64.rn, va, /*fp=*/false);
+        auto val = Abs(vn);
+        if (scalar)
+            SetScalar(a64.rd, val);
+        else
+            SetVec(a64.rd, val);
         break;
+    }
     case farmdec::A64_ABD:
     case farmdec::A64_ABA: {
         auto acc = (a64.op == farmdec::A64_ABA) ? GetVec(a64.rd, va) : llvm::Constant::getNullValue(TypeOf(va));
@@ -970,9 +981,15 @@ bool Lifter::LiftSIMD(farmdec::Inst a64) {
         SetVec(a64.rd, irb.CreateAdd(acc, Abs(diff)));
         break;
     }
-    case farmdec::A64_NEG_VEC:
-        SetVec(a64.rd, irb.CreateNeg(GetVec(a64.rn, va)));
+    case farmdec::A64_NEG_VEC: {
+        auto vn = (scalar) ? GetScalar(a64.rn, fad_size_from_vec_arrangement(va), /*fp=*/false) : GetVec(a64.rn, va, /*fp=*/false);
+        auto val = irb.CreateNeg(vn);
+        if (scalar)
+            SetScalar(a64.rd, val);
+        else
+            SetVec(a64.rd, val);
         break;
+    }
     case farmdec::A64_MUL_ELEM: LiftMulAccElem(a64, llvm::Instruction::Add, llvm::Constant::getNullValue(TypeOf(va)), /*extend_long=*/false); break;
     case farmdec::A64_MUL_VEC: LiftMulAcc(a64, llvm::Instruction::Add, llvm::Constant::getNullValue(TypeOf(va)), /*extend_long=*/false); break;
     case farmdec::A64_MULL_ELEM: LiftMulAccElem(a64, llvm::Instruction::Add, llvm::Constant::getNullValue(TypeOf(DoubleWidth(va))), /*extend_long=*/true); break;
