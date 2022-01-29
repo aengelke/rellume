@@ -1053,6 +1053,7 @@ void Lifter::SetScalar(farmdec::Reg r, llvm::Value* val) {
 // Shift or rotate the value v. No spurious instruction is generated if the shift
 // amount is zero.
 llvm::Value* Lifter::Shift(llvm::Value* v, farmdec::Shift sh, uint32_t amount) {
+    assert(amount < v->getType()->getPrimitiveSizeInBits());
     if (amount == 0) {
         return v;
     }

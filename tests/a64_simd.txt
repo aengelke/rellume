@@ -53,18 +53,26 @@ code="fmov v0.2s, #0.5"  v0=qq:0,0 => v0=ffll:0.5,0.5,0,0
 code="fmov v0.4s, #1.0"  v0=qq:0,0 => v0=ffff:1.0,1.0,1.0,1.0
 code="fmov v0.2d, #3.5"  v0=qq:0,0 => v0=dd:3.5,3.5
 
-code="movi v0.16b, #1"                 v0=qq:0,0 => v0=bbbbbbbbbbbbbbbb:1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1
-code="movi v0.8h, #1, lsl #8"          v0=qq:0,0 => v0=wwwwwwww:0x100,0x100,0x100,0x100,0x100,0x100,0x100,0x100
-code="mvni v0.8h, #1, lsl #8"          v0=qq:0,0 => v0=wwwwwwww:0xfeff,0xfeff,0xfeff,0xfeff,0xfeff,0xfeff,0xfeff,0xfeff
-code="movi v0.2s, #1, lsl #0"          v0=qq:0,0 => v0=llq:1,1,0
-code="movi v0.2s, #1, lsl #8"          v0=qq:0,0 => v0=llq:0x100,0x100,0
-code="movi v0.2s, #1, lsl #16"         v0=qq:0,0 => v0=llq:0x10000,0x10000,0
-code="movi v0.2s, #1, lsl #24"         v0=qq:0,0 => v0=llq:0x1000000,0x1000000,0
-code="mvni v0.2s, #1, lsl #24"         v0=qq:0,0 => v0=llq:0xfeffffff,0xfeffffff,0
-code="movi v0.2s, #1, msl #8"          v0=qq:0,0 => v0=llq:0x1ff,0x1ff,0
-code="movi v0.2s, #1, msl #16"         v0=qq:0,0 => v0=llq:0x1ffff,0x1ffff,0
-code="movi d0, #0x00ff00ff00ff00ff"    v0=qq:0,0 => v0=qq:0x00ff00ff00ff00ff,0
-code="movi v0.2d, #0x00ff00ff00ff00ff" v0=qq:0,0 => v0=qq:0x00ff00ff00ff00ff,0x00ff00ff00ff00ff
+code="movi v0.4s, #0"                  => v0=qq:0,0
+code="movi v0.4s, #4"                  => v0=llll:4,4,4,4
+code="movi v0.4s, #0xf"                => v0=llll:0xf,0xf,0xf,0xf
+code="movi v0.4s, #0x70, lsl #8"       => v0=llll:0x7000,0x7000,0x7000,0x7000
+code="movi v0.4s, #0xf, msl #8"        => v0=llll:0xfff,0xfff,0xfff,0xfff
+code="movi v0.2s, #0x80, lsl #16"      => v0=llll:0x800000,0x800000,0,0
+code="movi v0.2s, #0x80, lsl #24"      => v0=llll:0x80000000,0x80000000,0,0
+code="movi v0.16b, #1"                 => v0=bbbbbbbbbbbbbbbb:1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1
+code="movi v0.8h, #1, lsl #8"          => v0=wwwwwwww:0x100,0x100,0x100,0x100,0x100,0x100,0x100,0x100
+code="mvni v0.8h, #1, lsl #8"          => v0=wwwwwwww:0xfeff,0xfeff,0xfeff,0xfeff,0xfeff,0xfeff,0xfeff,0xfeff
+code="movi v0.2s, #1, lsl #0"          => v0=llq:1,1,0
+code="movi v0.2s, #1, lsl #8"          => v0=llq:0x100,0x100,0
+code="movi v0.2s, #1, lsl #16"         => v0=llq:0x10000,0x10000,0
+code="movi v0.2s, #1, lsl #24"         => v0=llq:0x1000000,0x1000000,0
+code="mvni v0.2s, #1, lsl #24"         => v0=llq:0xfeffffff,0xfeffffff,0
+code="movi v0.2s, #1, msl #8"          => v0=llq:0x1ff,0x1ff,0
+code="movi v0.2s, #1, msl #16"         => v0=llq:0x1ffff,0x1ffff,0
+code="movi d0, #0x00ff00ff00ff00ff"    => v0=qq:0x00ff00ff00ff00ff,0
+code="movi d0, #0"                     => v0=qq:0,0
+code="movi v0.2d, #0x00ff00ff00ff00ff" => v0=qq:0x00ff00ff00ff00ff,0x00ff00ff00ff00ff
 
 code="xtn v0.2s, v1.2d"   v0=qq:0,0 v1=qq:0xffffffffffffffff,1 => v0=llq:0xffffffff,1,0
 code="xtn2 v0.4s, v1.2d"  v0=qq:0,0 v1=qq:0xffffffffffffffff,1 => v0=qll:0,0xffffffff,1
@@ -301,6 +309,11 @@ code="not v0.16b, v1.16b" v0=qq:0,0 v1=0f0f0f0f0f0f0f0f0f0f0f0f0f0f0f0f => v0=f0
 
 # JIT because of LLVM Interpreter Bug: llvm.ctpop.i8(i8 0xff) returns 64 instead of the expected 8.
 +jit code="cnt v0.8b, v1.8b" v0=qq:0,0 v1=bbbbbbbbq:0,0,0xff,0,0xf0,0,0,0,0 => v0=bbbbbbbbq:0,0,8,0,4,0,0,0,0
++jit code="cnt v0.8b, v1.8b" v1=bbbbbbbbq:0x1b,0x23,0x00,0x3f,0x12,0xff,0x7f,0x81,0 => v0=bbbbbbbbq:4,3,0,6,2,8,7,2,0
++jit code="cnt v0.8b, v1.8b" v1=bbbbbbbbq:0xff,0xff,0xff,0xff,0xff,0xff,0xff,0xff,0 => v0=bbbbbbbbq:8,8,8,8,8,8,8,8,0
++jit code="cnt v0.8b, v1.8b" v1=bbbbbbbbq:0,0,0,0,0,0,0,0,0 => v0=bbbbbbbbq:0,0,0,0,0,0,0,0,0
++jit code="cnt v0.8b, v1.8b; addv b0, v0.8b" v1=bbbbbbbbq:0xff,0xff,0xff,0xff,0xff,0xff,0xff,0xff,0 => v0=qq:64,0
++jit code="cnt v0.8b, v1.8b; addv b0, v0.8b" v1=bbbbbbbbq:0x1b,0x23,0x00,0x3f,0x12,0xff,0x7f,0x81,0 => v0=qq:32,0
 
 +jit code="rbit v0.8b, v1.8b" v0=qq:0,0 v1=bbbbbbbbq:1,2,3,4,5,6,7,8,0 => v0=bbbbbbbbq:0x80,0x40,0xc0,0x20,0xa0,0x60,0xe0,0x10,0
 
