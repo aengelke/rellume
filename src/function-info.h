@@ -59,9 +59,9 @@ namespace SptrIdx::rv64 {
 #ifdef RELLUME_WITH_AARCH64
 namespace SptrIdx::aarch64 {
     enum {
-#define RELLUME_NAMED_REG(name,nameu,sz,off) nameu,
+#define RELLUME_MAPPED_REG(nameu,...) nameu,
 #include <rellume/cpustruct-aarch64-private.inc>
-#undef RELLUME_NAMED_REG
+#undef RELLUME_MAPPED_REG
     };
 }
 #endif // RELLUME_WITH_AARCH64
