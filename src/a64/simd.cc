@@ -601,21 +601,21 @@ bool Lifter::LiftSIMD(farmdec::Inst a64) {
             goto unhandled; // rshl not yet implemented
         llvm::Value* lhs = nullptr;
         llvm::Value* rhs = nullptr;
-        llvm::Value* zero = nullptr;
         if (scalar) {
             lhs = GetScalar(a64.rn, farmdec::FSZ_D, /*fp=*/false);
-            rhs = GetScalar(a64.rm, farmdec::FSZ_D, /*fp=*/false);
-            zero = irb.getInt64(0);
+            rhs = GetScalar(a64.rm, farmdec::FSZ_B, /*fp=*/false);
         } else {
+            auto rhsty = llvm::VectorType::get(irb.getInt8Ty(), NumElem(va), false);
             lhs = GetVec(a64.rn, va);
-            rhs = GetVec(a64.rm, va);
-            zero = llvm::Constant::getNullValue(TypeOf(va));
+            rhs = irb.CreateTruncOrBitCast(GetVec(a64.rm, va), rhsty);
         }
 
         // For every element, shift left if shift amount is positive, shift right otherwise.
+        auto zero = llvm::Constant::getNullValue(rhs->getType());
         auto do_shift_left = irb.CreateICmpSGE(rhs, zero);
-        auto shl = irb.CreateShl(lhs, rhs);
-        auto shr = (sgn) ? irb.CreateAShr(lhs, irb.CreateNeg(rhs)) : irb.CreateLShr(lhs, irb.CreateNeg(rhs));
+        auto ext_rhs = irb.CreateSExtOrBitCast(rhs, lhs->getType());
+        auto shl = irb.CreateShl(lhs, ext_rhs);
+        auto shr = (sgn) ? irb.CreateAShr(lhs, irb.CreateNeg(ext_rhs)) : irb.CreateLShr(lhs, irb.CreateNeg(ext_rhs));
         auto res = irb.CreateSelect(do_shift_left, shl, shr);
 
         if (scalar) {

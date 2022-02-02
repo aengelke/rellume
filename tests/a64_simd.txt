@@ -474,7 +474,12 @@ code="sshl d0, d1, d2" v0=qq:0,0 v1=qq:0xffffffffffffffff,0 v2=qq:4,0 => v0=qq:0
 code="sshl d0, d1, d2" v0=qq:0,0 v1=qq:0xffffffffffffffff,0 v2=qq:-4,0 => v0=qq:0xffffffffffffffff,0
 
 # Logical Right Shift
-code="ushl d0, d1, d2" v0=qq:0,0 v1=qq:0xffffffffffffffff,0 v2=qq:-4,0 => v0=qq:0x0fffffffffffffff,0
+code="ushl d0, d1, d2" v1=qq:0xffffffffffffffff,0 v2=qq:-4,0 => v0=qq:0x0fffffffffffffff,0
+code="ushl d0, d1, d2" v1=qq:0xffffffffffffffff,0 v2=qq:0x101,0 => v0=qq:0xffffffffffffffffe,0
+# shift amount in the byte > #bits continues shifting, but is UB in LLVM-IR.
+#code="ushl d0, d1, d2" v1=qq:0xffffffffffffffff,0 v2=qq:0xbc71330e9b,0 => v0=qq:0,0
+code="ushl d0, d1, d2" v1=qq:0xffffffffffffffff,0 v2=qq:0xbc71330e00,0 => v0=qq:0xffffffffffffffff,0
+code="ushl d0, d1, d2" v1=qq:0xffffffffffffffff,0 v2=qq:0xbc71330efc,0 => v0=qq:0x0fffffffffffffff,0
 
 code="sshl v0.2d, v1.2d, v2.2d" v0=qq:0,0 v1=qq:0xff,0xff v2=qq:4,-4 => v0=qq:0xff0,0xf
 code="sshl v0.2d, v1.2d, v2.2d" v0=qq:0,0 v1=qq:0xff,0xff v2=qq:-4,4 => v0=qq:0xf,0xff0
