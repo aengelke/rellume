@@ -132,7 +132,7 @@ code="cmeq v0.2d, v1.2d, #0"    v0=qq:0,0 v1=qq:1,0           => v0=qq:0,-1
 code="cmgt v0.2s, v1.2s, v2.2s" v0=qq:0,0 v1=llq:1,0,0 v2=llq:0,1,0 => v0=llq:-1,0,0
 code="cmge v0.2s, v1.2s, v2.2s" v0=qq:0,0 v1=llq:1,0,0 v2=llq:1,1,0 => v0=llq:-1,0,0
 code="cmhi v0.4h, v1.4h, v2.4h" v0=qq:0,0 v1=wwwwq:34,0,1,2,0 v2=wwwwq:0,0,0,0,0 => v0=wwwwq:-1,0,-1,-1,0
-code="cmhs v0.8b, v1.8b, v2.8b" v0=qq:0,0 v1=bbbbbbbbq:0,1,2,3,4,5,6,7,0 v2=bbbbbbbbq:0,0,0,0,0,0,0,0,0 => v0=bbbbbbbbq:-1,-1,-1,-1,-1,-1,-1,-1,0
+code="cmhs v0.8b, v1.8b, v2.8b" v0=qq:0,0 v1=bbbbbbbbq:0,-1,2,3,4,5,6,7,0 v2=bbbbbbbbq:0,0,2,4,0,-1,0,0,0 => v0=bbbbbbbbq:-1,-1,-1,0,-1,0,-1,-1,0
 code="cmle v0.2d, v1.2d, v2.2d" v0=qq:0,0 v1=qq:1,0 v2=qq:0,0 => v0=qq:0,-1
 code="cmlt v0.2d, v1.2d, #0"    v0=qq:0,0 v1=qq:-10,0         => v0=qq:-1,0
 
@@ -159,6 +159,9 @@ code="faddp s0, v1.2s" v1=ffq:1.5,99.25,0 => v0=flq:100.75,0,0
 +jit code="fminnmp d0, v1.2d" v0=qq:0,0 v1=dd:-1.0,1.0 => v0=dq:-1.0,0
 
 +jit code="addv s0, v1.4s" v0=qq:0,0 v1=llll:1,10,100,1000 => v0=qq:1111,0
++jit code="addv s0, v1.4s" v0=qq:0,0 v1=llll:0x11111111,0x11221122,0x23452345,0xf1234567 => v0=llll:0x369b8adf,0,0,0
++jit code="uminv h0, v1.8h" v1=wwwwwwww:0xffff,0xffff,0x1234,0x1234,0x1010,0x1010,0xabcd,0xabcd => v0=wwlq:0x1010,0,0,0
++jit code="uminv s0, v1.4s" v1=llll:0xffffffff,0x12341234,0x10101010,0xabcdabcd => v0=llll:0x10101010,0,0,0
 +jit code="uminv s0, v1.4s" v0=qq:0,0 v1=llll:1,10,100,1000 => v0=qq:1,0
 +jit code="umaxv h0, v1.4h" v0=qq:0,0 v1=wwwwq:1,10,100,1000,0 => v0=qq:1000,0
 +jit code="sminv s0, v1.4s" v0=qq:0,0 v1=llll:-1,10,-100,1000 => v0=llq:-100,0,0
@@ -314,6 +317,7 @@ code="not v0.16b, v1.16b" v0=qq:0,0 v1=0f0f0f0f0f0f0f0f0f0f0f0f0f0f0f0f => v0=f0
 +jit code="cnt v0.8b, v1.8b" v1=bbbbbbbbq:0,0,0,0,0,0,0,0,0 => v0=bbbbbbbbq:0,0,0,0,0,0,0,0,0
 +jit code="cnt v0.8b, v1.8b; addv b0, v0.8b" v1=bbbbbbbbq:0xff,0xff,0xff,0xff,0xff,0xff,0xff,0xff,0 => v0=qq:64,0
 +jit code="cnt v0.8b, v1.8b; addv b0, v0.8b" v1=bbbbbbbbq:0x1b,0x23,0x00,0x3f,0x12,0xff,0x7f,0x81,0 => v0=qq:32,0
++jit code="cnt v0.16b, v1.16b" v1=387ab72db443b9c6a4ccb7a2802026de => v0=bbbbbbbbbbbbbbbb:3,5,6,4,4,3,5,4,3,4,6,3,1,1,3,6
 
 +jit code="rbit v0.8b, v1.8b" v0=qq:0,0 v1=bbbbbbbbq:1,2,3,4,5,6,7,8,0 => v0=bbbbbbbbq:0x80,0x40,0xc0,0x20,0xa0,0x60,0xe0,0x10,0
 
@@ -439,9 +443,11 @@ code="shl d0, d1, #8" v0=qq:0,0 v1=qq:1,0 => v0=qq:0x100,0
 code="shl v0.4h, v1.4h, #4" v0=qq:0,0 v1=wwwwq:1,0x10,0x100,0x1000,0 => v0=wwwwq:0x10,0x100,0x1000,0x0,0
 
 code="ushr v0.2d, v1.2d, #12" v0=qq:0,0 v1=qq:0xfff000,0xf0f0f0 => v0=qq:0xfff,0xf0f
+code="ushr v0.4s, v1.4s, #1" v1=llll:0xffffffff,0x80808080,0x11111111,0x24242424 => v0=llll:0x7fffffff,0x40404040,0x08888888,0x12121212
 
 # Arithmetic Right Shift (with sign extension), hence 0xffffffff -> 0xffffffff
 code="sshr v0.4s, v1.4s, #12" v0=qq:0,0 v1=llll:0xfff000,0xf0f0f0,0x1,0xffffffff => v0=llll:0xfff,0xf0f,0,0xffffffff
+code="sshr v0.4s, v1.4s, #1" v1=llll:0xffffffff,0x80808080,0x11111111,0x24242424 => v0=llll:0xffffffff,0xc0404040,0x08888888,0x12121212
 
 code="usra d0, d1, #12"  v0=qq:1,2 v1=qq:0xfff000,0xf0f0f0 => v0=qq:0x1000,0
 code="usra d0, d1, #64"  v0=qq:0x4b1e4c35739581ce,0x2387050d33681aeb v1=qq:0x6aebede07e0908ef,0x07c6d8d825d8ac36 => v0=qq:0x4b1e4c35739581ce,0
@@ -562,6 +568,7 @@ code="fcvtn2 v0.4s, v1.2d" v0=qq:0,0 v1=dd:0.5,-1.0 => v0=qff:0,0.5,-1.0
 
 code="fadd v0.2d, v1.2d, v2.2d" v0=qq:0,0 v1=dd:-1.0,1.0 v2=dd:1.0,1.0 => v0=dd:0.0,2.0
 code="fsub v0.2d, v1.2d, v2.2d" v0=qq:0,0 v1=dd:-1.0,1.0 v2=dd:1.0,1.0 => v0=dd:-2.0,0.0
++jit code="fabd d2, d11, d29" v11=qq:0x0a52741849e54740,0x17a0dc273ba9f803  v29=qq:0x141625713239066f,0xf6f2b14fbb3184b2 => v2=qq:0x141625713239066f,0
 +jit code="fabd v0.2d, v1.2d, v2.2d" v0=qq:0,0 v1=dd:-1.0,1.0 v2=dd:1.0,1.0 => v0=dd:2.0,0.0
 
 # LLVM ERROR: Code generator does not support intrinsic function 'llvm.maximum.v4f32'!
