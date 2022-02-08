@@ -475,6 +475,23 @@ bool Lifter::LiftSIMD(farmdec::Inst a64) {
         InsertInHalf(a64.rd, va, narrowed);
         break;
     }
+    case farmdec::A64_FCVTL: {
+        // Farmdec decodes FCVTL as 1D (actually 2D,2S) and FCVTL2 as 2D
+        // (actually 2D,4S), although the full vector is written in all cases.
+        if (va != farmdec::VA_1D && va != farmdec::VA_2D)
+            goto unhandled;
+        farmdec::VectorArrangement srcva;
+        switch (va) {
+        case farmdec::VA_1D: srcva = farmdec::VA_2S; break;
+        case farmdec::VA_2D: srcva = farmdec::VA_4S; break;
+        default:
+            assert(false && "bad FCVTL source operand vector arrangement");
+        }
+        auto extty = TypeOf(DoubleWidth(srcva), /*fp=*/true);
+        auto vn_half = Halve(GetVec(a64.rn, srcva, /*fp=*/true), srcva);
+        SetVec(a64.rd, irb.CreateFPExt(vn_half, extty));
+        break;
+    }
     case farmdec::A64_FCMEQ_REG:
         if (scalar)
             LiftScalarCmXX(llvm::CmpInst::Predicate::FCMP_OEQ, a64.rd, a64.rn, a64.rm, /*zero=*/false, /*fp=*/true);

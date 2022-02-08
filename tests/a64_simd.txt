@@ -581,6 +581,10 @@ code="ucvtf v0.2s, v1.2s, #8" v0=qq:0,0 v1=llq:0xffffff10,0x10,0 => v0=ffq:16777
 code="fcvtn v0.2s, v1.2d"  v0=qq:0,0 v1=dd:0.5,-1.0 => v0=ffq:0.5,-1.0,0
 code="fcvtn2 v0.4s, v1.2d" v0=qq:0,0 v1=dd:0.5,-1.0 => v0=qff:0,0.5,-1.0
 
+# FP Convert to higher precision. We do not support half-precision.
+code="fcvtl v0.2d, v1.2s"  v1=ffff:0.5,-1.0,3.0,12.25 => v0=dd:0.5,-1.0
+code="fcvtl2 v0.2d, v1.4s" v1=ffff:0.5,-1.0,3.0,12.25 => v0=dd:3.0,12.25
+
 #
 ### FP Arithmetic
 #
