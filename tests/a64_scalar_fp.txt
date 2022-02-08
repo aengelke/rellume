@@ -67,3 +67,8 @@ code="fccmp d0, d1, #0xf, eq" v0=dq:1.25,0 v1=dq:1.25,0 n=00 z=01 c=00 v=00 => n
 code="fccmp d0, d1, #0xf, ne" v0=dq:1.25,0 v1=dq:1.25,0 n=00 z=01 c=00 v=00 => n=01 z=01 c=01 v=01
 code="fccmp s0, s1, #0xf, hs" v0=dq:1.25,0 v1=dq:1.25,0 n=00 z=00 c=01 v=00 => n=00 z=01 c=01 v=00
 code="fccmp s0, s1, #0xf, lo" v0=dq:1.25,0 v1=dq:1.25,0 n=00 z=00 c=01 v=00 => n=01 z=01 c=01 v=01
+
+code="fmadd d0, d1, d2, d3" v1=dq:4,0 v2=dq:3,0 v3=dq:1.5,0 => v0=dq:13.5,0
+code="fmsub d0, d1, d2, d3" v1=dq:4,0 v2=dq:3,0 v3=dq:1.5,0 => v0=dq:-10.5,0
+code="fnmadd d0, d1, d2, d3" v1=dq:4,0 v2=dq:3,0 v3=dq:1.5,0 => v0=dq:-13.5,0
+code="fnmsub d0, d1, d2, d3" v1=dq:4,0 v2=dq:3,0 v3=dq:1.5,0 => v0=dq:10.5,0
