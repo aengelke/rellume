@@ -1471,14 +1471,6 @@ void Lifter::LiftIntrinsicFP(llvm::Intrinsic::ID op, farmdec::FPSize prec, farmd
     SetScalar(rd, irb.CreateBinaryIntrinsic(op, lhs, rhs));
 }
 
-void Lifter::LiftIntrinsicFP(llvm::Intrinsic::ID op, farmdec::FPSize prec, farmdec::Reg rd, farmdec::Reg rn, farmdec::Reg rm, farmdec::Reg ra) {
-    auto lhs = GetScalar(rn, prec);
-    auto rhs = GetScalar(rm, prec);
-    auto add = GetScalar(ra, prec);
-    auto mod = irb.GetInsertBlock()->getModule();
-    auto fn = llvm::Intrinsic::getDeclaration(mod, op, {lhs->getType()});
-    SetScalar(rd, irb.CreateCall(fn, {lhs, rhs, add}));
-}
 } // namespace rellume::aarch64
 
 /**
