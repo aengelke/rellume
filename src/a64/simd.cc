@@ -476,19 +476,10 @@ bool Lifter::LiftSIMD(farmdec::Inst a64) {
         break;
     }
     case farmdec::A64_FCVTL: {
-        // Farmdec decodes FCVTL as 1D (actually 2D,2S) and FCVTL2 as 2D
-        // (actually 2D,4S), although the full vector is written in all cases.
-        if (va != farmdec::VA_1D && va != farmdec::VA_2D)
+        if (va != farmdec::VA_2S && va != farmdec::VA_4S)
             goto unhandled;
-        farmdec::VectorArrangement srcva;
-        switch (va) {
-        case farmdec::VA_1D: srcva = farmdec::VA_2S; break;
-        case farmdec::VA_2D: srcva = farmdec::VA_4S; break;
-        default:
-            assert(false && "bad FCVTL source operand vector arrangement");
-        }
-        auto extty = TypeOf(DoubleWidth(srcva), /*fp=*/true);
-        auto vn_half = Halve(GetVec(a64.rn, srcva, /*fp=*/true), srcva);
+        auto extty = TypeOf(DoubleWidth(va), /*fp=*/true);
+        auto vn_half = Halve(GetVec(a64.rn, va, /*fp=*/true), va);
         SetVec(a64.rd, irb.CreateFPExt(vn_half, extty));
         break;
     }
