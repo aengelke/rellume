@@ -77,15 +77,16 @@ void Lifter::LiftFxsave(const Instr& inst) {
 
 void Lifter::LiftFxrstor(const Instr& inst) {
     llvm::Type* i8 = irb.getInt8Ty();
-    llvm::Type* i128 = irb.getIntNTy(128);
+    Facet ivec = Facet::V2I64;
+    llvm::Type* ivec_ty = ivec.Type(irb.getContext());
     llvm::Value* buf = OpAddr(inst.op(0), i8);
     llvm::Module* mod = irb.GetInsertBlock()->getModule();
     irb.CreateAlignmentAssumption(mod->getDataLayout(), buf, 16);
 
     for (unsigned i = 0; i < 16; i++) {
         llvm::Value* ptr = irb.CreateConstGEP1_32(i8, buf, 0xa0 + 0x10 * i);
-        ptr = irb.CreatePointerCast(ptr, i128->getPointerTo());
-        SetReg(ArchReg::VEC(i), Facet::I128, irb.CreateLoad(i128, ptr));
+        ptr = irb.CreatePointerCast(ptr, ivec_ty->getPointerTo());
+        SetReg(ArchReg::VEC(i), ivec, irb.CreateLoad(ivec_ty, ptr));
     }
 }
 
