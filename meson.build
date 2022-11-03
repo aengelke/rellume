@@ -1,4 +1,4 @@
-project('rellume', ['cpp'], meson_version: '>=0.49',
+project('rellume', ['c', 'cpp'], meson_version: '>=0.49',
         default_options: [
             'buildtype=debugoptimized',
             'warning_level=3',
