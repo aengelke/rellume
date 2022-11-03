@@ -35,6 +35,7 @@
 #include "regfile.h"
 #include <llvm/ADT/DepthFirstIterator.h>
 #include <llvm/ADT/SmallVector.h>
+#include <llvm/IR/Constants.h>
 #include <llvm/IR/DerivedTypes.h>
 #include <llvm/IR/Function.h>
 #include <llvm/IR/GlobalValue.h>

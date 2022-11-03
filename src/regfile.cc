@@ -357,7 +357,7 @@ llvm::Value* RegFile::impl::GetReg(ArchReg reg, Facet facet) {
                 res = irb.CreateBitCast(native, facetType);
             } else {
                 Facet vec_facet = Facet::Vnt(nativeCnt, facet);
-                res = irb.CreateExtractElement(GetReg(reg, vec_facet), int{0});
+                res = irb.CreateExtractElement(GetReg(reg, vec_facet), uint64_t{0});
             }
         } else {
             llvm::Type* elem_ty = facetType->getScalarType();

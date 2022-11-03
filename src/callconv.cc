@@ -39,7 +39,7 @@ namespace rellume {
 
 CallConv CallConv::FromFunction(llvm::Function* fn, Arch arch) {
     auto fn_cconv = fn->getCallingConv();
-    auto fn_ty = llvm::cast<llvm::FunctionType>(fn->getType()->getPointerElementType());
+    auto fn_ty = fn->getFunctionType();
     CallConv hunch = INVALID;
     switch (arch) {
 #ifdef RELLUME_WITH_X86_64

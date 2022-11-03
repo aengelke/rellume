@@ -7,7 +7,7 @@ project('rellume', ['c', 'cpp'], meson_version: '>=0.49',
 
 add_project_arguments(['-Wno-unused-parameter', '-Wshadow=local'], language: 'cpp')
 
-llvm_version = ['>=11', '<14']
+llvm_version = ['>=12', '<16']
 # First, attempt to use the shared library.
 libllvm = dependency('llvm', version: llvm_version, static: false,
                      method: 'config-tool', include_type: 'system',

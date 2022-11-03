@@ -14,7 +14,12 @@
 #include <llvm/MC/MCValue.h>
 #include <llvm/Support/MemoryBuffer.h>
 #include <llvm/Support/SourceMgr.h>
+// LLVM <= 13 has TargetRegistry.h in Support/
+#if __has_include(<llvm/MC/TargetRegistry.h>)
+#include <llvm/MC/TargetRegistry.h>
+#else
 #include <llvm/Support/TargetRegistry.h>
+#endif
 #include <llvm/Support/TargetSelect.h>
 
 #include <iostream>
@@ -160,7 +165,11 @@ int main(int argc, char** argv) {
             return 1;
         }
 
+#if LL_LLVM_MAJOR >= 15
+        auto mce = std::unique_ptr<llvm::MCCodeEmitter>(target->createMCCodeEmitter(*mcii, ctx));
+#else
         auto mce = std::unique_ptr<llvm::MCCodeEmitter>(target->createMCCodeEmitter(*mcii, *mri, ctx));
+#endif
         if (mce == nullptr) {
             std::cerr << "error getting MCCodeEmitter" << std::endl;
             return 1;
