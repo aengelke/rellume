@@ -53,5 +53,5 @@ foreach arch : test_architectures
   test('emulation-@0@'.format(arch), driver,
        args: ['-A', arch, parsed_cases], protocol: 'tap')
   test('emulation-@0@-jit'.format(arch), driver,
-       args: ['-A', arch, '-j', parsed_cases], protocol: 'tap', timeout: 60)
+       args: ['-A', arch, '-j', parsed_cases], protocol: 'tap', timeout: 120)
 endforeach

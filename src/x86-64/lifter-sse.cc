@@ -220,6 +220,20 @@ void Lifter::LiftSseHorzOp(const Instr& inst, llvm::Instruction::BinaryOps op,
     OpStoreVec(inst.op(0), irb.CreateBinOp(op, shuf1, shuf2));
 }
 
+void Lifter::LiftSseAddSub(const Instr& inst, Facet op_type) {
+    llvm::Value* op1 = OpLoad(inst.op(0), op_type, ALIGN_MAX);
+    llvm::Value* op2 = OpLoad(inst.op(1), op_type, ALIGN_MAX);
+    llvm::Value* sub = irb.CreateFSub(op1, op2);
+    llvm::Value* add = irb.CreateFAdd(op1, op2);
+
+    unsigned elem_cnt = VectorElementCount(op1->getType());
+    llvm::SmallVector<int, 4> mask;
+    for (unsigned i = 0; i < elem_cnt; i++) {
+        mask.push_back(i + (i & 1 ? elem_cnt : 0));
+    }
+    OpStoreVec(inst.op(0), irb.CreateShuffleVector(sub, add, mask));
+}
+
 void Lifter::LiftSseAndn(const Instr& inst, Facet op_type) {
     llvm::Value* op1 = OpLoad(inst.op(0), op_type, ALIGN_MAX);
     llvm::Value* op2 = OpLoad(inst.op(1), op_type, ALIGN_MAX);

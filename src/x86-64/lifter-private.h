@@ -199,6 +199,7 @@ private:
     void LiftSseMovlp(const Instr&);
     void LiftSseMovhps(const Instr&);
     void LiftSseMovhpd(const Instr&);
+    void LiftSseAddSub(const Instr&, Facet op_type);
     void LiftSseAndn(const Instr&, Facet op_type);
     void LiftSseComis(const Instr&, Facet);
     void LiftSseCmp(const Instr&, Facet op_type);
