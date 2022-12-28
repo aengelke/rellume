@@ -217,9 +217,11 @@ class TestCase {
             } else {
                 auto kv = split_arg(arg);
                 if (kv.first[0] == 'm') {
-                    AllocMem(kv.first, kv.second);
+                    if (AllocMem(kv.first, kv.second))
+                        return true;
                 } else {
-                    SetReg(kv.first, kv.second, &initial);
+                    if (SetReg(kv.first, kv.second, &initial))
+                        return true;
                 }
             }
         }
