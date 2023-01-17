@@ -42,7 +42,7 @@ endforeach
 assembler = executable('test_assembler', 'test_assembler.cc',
                        cpp_args: test_assembler_flags,
                        dependencies: [libllvm])
-driver = executable('test_driver', 'test_driver.cc', cpustruct_priv, dependencies: [librellume])
+driver = executable('test_driver', 'test_driver.cc', cpustruct_priv, dependencies: [librellume], pie: true)
 
 python3 = find_program('python3')
 foreach arch : test_architectures
