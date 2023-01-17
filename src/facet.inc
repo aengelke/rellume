@@ -37,7 +37,8 @@ SPECIAL_FACET(I8H, 8, llvm::Type::getInt8Ty(ctx))
 // Special facets for flags register
 SPECIAL_FACET(ZF, 1, llvm::Type::getInt1Ty(ctx))
 SPECIAL_FACET(SF, 1, llvm::Type::getInt1Ty(ctx))
-SPECIAL_FACET(PF, 1, llvm::Type::getInt1Ty(ctx))
+// PF stores the entire byte of which parity is to be computed
+SPECIAL_FACET(PF, 1, llvm::Type::getInt8Ty(ctx))
 SPECIAL_FACET(CF, 1, llvm::Type::getInt1Ty(ctx))
 SPECIAL_FACET(OF, 1, llvm::Type::getInt1Ty(ctx))
 SPECIAL_FACET(AF, 1, llvm::Type::getInt1Ty(ctx))

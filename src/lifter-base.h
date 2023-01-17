@@ -85,6 +85,11 @@ protected:
         SetRegFacet(reg, Facet::PTR, value);
     }
     llvm::Value* GetFlag(Facet facet) {
+        if (facet == Facet::PF) {
+            llvm::Value* res = GetReg(ArchReg::EFLAGS, facet);
+            res = irb.CreateUnaryIntrinsic(llvm::Intrinsic::ctpop, res);
+            return irb.CreateNot(irb.CreateTrunc(res, irb.getInt1Ty()));
+        }
         return GetReg(ArchReg::EFLAGS, facet);
     }
     void SetFlag(Facet facet, llvm::Value* value) {
@@ -94,7 +99,10 @@ protected:
         llvm::Value* undef = llvm::UndefValue::get(irb.getInt1Ty());
         for (const auto facet : facets) {
             // TODO: actually use freeze.
-            SetFlag(facet, undef);
+            if (facet == Facet::PF)
+                SetFlag(facet, llvm::UndefValue::get(irb.getInt8Ty()));
+            else
+                SetFlag(facet, undef);
         }
     }
     void SetIP(uint64_t inst_addr, bool nofold = false);

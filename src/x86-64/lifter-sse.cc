@@ -245,7 +245,9 @@ void Lifter::LiftSseComis(const Instr& inst, Facet op_type) {
     llvm::Value* op2 = OpLoad(inst.op(1), op_type);
     SetFlag(Facet::ZF, irb.CreateFCmpUEQ(op1, op2));
     SetFlag(Facet::CF, irb.CreateFCmpULT(op1, op2));
-    SetFlag(Facet::PF, irb.CreateFCmpUNO(op1, op2));
+    // Parity is stored as whole byte, so PF=1 must store value 0, PF=0 value 1.
+    // We therefore use the inverse condition (ORD instead of UNO).
+    SetFlag(Facet::PF, irb.CreateZExt(irb.CreateFCmpORD(op1, op2), irb.getInt8Ty()));
     SetFlag(Facet::AF, irb.getFalse());
     SetFlag(Facet::OF, irb.getFalse());
     SetFlag(Facet::SF, irb.getFalse());

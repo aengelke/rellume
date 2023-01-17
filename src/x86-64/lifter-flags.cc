@@ -41,12 +41,6 @@
 
 namespace rellume::x86_64 {
 
-static llvm::Value* FlagParity(llvm::IRBuilder<>& irb, llvm::Value* value) {
-    llvm::Value* trunc = irb.CreateTruncOrBitCast(value, irb.getInt8Ty());
-    llvm::Value* count = irb.CreateUnaryIntrinsic(llvm::Intrinsic::ctpop, trunc);
-    return irb.CreateNot(irb.CreateTrunc(count, irb.getInt1Ty()));
-}
-
 static llvm::Value* FlagAux(llvm::IRBuilder<>& irb, llvm::Value* res,
                             llvm::Value* lhs, llvm::Value* rhs) {
     llvm::Value* tmp = irb.CreateXor(irb.CreateXor(lhs, rhs), res);
@@ -57,7 +51,7 @@ static llvm::Value* FlagAux(llvm::IRBuilder<>& irb, llvm::Value* res,
 void Lifter::FlagCalcSAPLogic(llvm::Value* res) {
     auto zero = llvm::Constant::getNullValue(res->getType());
     SetFlag(Facet::SF, irb.CreateICmpSLT(res, zero));
-    SetFlag(Facet::PF, FlagParity(irb, res));
+    SetFlag(Facet::PF, irb.CreateTrunc(res, irb.getInt8Ty()));
     SetFlagUndef({Facet::AF});
 }
 
@@ -66,7 +60,7 @@ void Lifter::FlagCalcAdd(llvm::Value* res, llvm::Value* lhs,
     auto zero = llvm::Constant::getNullValue(res->getType());
     SetFlag(Facet::ZF, irb.CreateICmpEQ(res, zero));
     SetFlag(Facet::SF, irb.CreateICmpSLT(res, zero));
-    SetFlag(Facet::PF, FlagParity(irb, res));
+    SetFlag(Facet::PF, irb.CreateTrunc(res, irb.getInt8Ty()));
     SetFlag(Facet::AF, FlagAux(irb, res, lhs, rhs));
     if (!skip_carry)
         SetFlag(Facet::CF, irb.CreateICmpULT(res, lhs));
@@ -92,7 +86,7 @@ void Lifter::FlagCalcSub(llvm::Value* res, llvm::Value* lhs,
     else
         SetFlag(Facet::ZF, irb.CreateICmpEQ(res, zero));
     SetFlag(Facet::SF, sf);
-    SetFlag(Facet::PF, FlagParity(irb, res));
+    SetFlag(Facet::PF, irb.CreateTrunc(res, irb.getInt8Ty()));
     SetFlag(Facet::AF, FlagAux(irb, res, lhs, rhs));
     if (!skip_carry)
         SetFlag(Facet::CF, irb.CreateICmpULT(lhs, rhs));
@@ -139,7 +133,12 @@ void Lifter::FlagFromReg(llvm::Value* val) {
         if (kv.second >= sz)
             break;
         llvm::Value* bit = irb.CreateLShr(val, kv.second);
-        SetFlag(kv.first, irb.CreateTrunc(bit, irb.getInt1Ty()));
+        if (kv.first == Facet::PF) {
+            bit = irb.CreateNot(irb.CreateTrunc(bit, irb.getInt1Ty()));
+            SetFlag(kv.first, irb.CreateZExt(bit, irb.getInt8Ty()));
+        } else {
+            SetFlag(kv.first, irb.CreateTrunc(bit, irb.getInt1Ty()));
+        }
     }
 }
 

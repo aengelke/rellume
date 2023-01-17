@@ -122,6 +122,10 @@ class TestCase {
             buf[i] = std::strtoul(hex_byte, nullptr, 16);
         }
 
+        if (!strcmp(opt_arch, "x86_64") && reg == "pf") {
+            buf[0] = !buf[0]; // value 1 => actual PF=0; value 0 => PF=1
+        }
+
         return false;
     }
 
@@ -129,6 +133,17 @@ class TestCase {
                   uint8_t* expected, uint8_t* state) {
         uint8_t* expected_bytes = expected + entry.offset;
         uint8_t* state_bytes = state + entry.offset;
+
+        if (!strcmp(opt_arch, "x86_64") && reg == "pf") {
+            bool expected_val = (__builtin_popcount(expected_bytes[0]) & 1) == 0;
+            bool state_val = (__builtin_popcount(state_bytes[0]) & 1) == 0;
+            if (expected_val == state_val)
+                return false;
+            diagnostic << "# unexpected value for " << reg << std::endl;
+            diagnostic << "# expected: " << expected_val << std::endl;
+            diagnostic << "#      got: " << state_val << std::endl;
+            return true;
+        }
 
         if (memcmp(state_bytes, expected_bytes, entry.size) == 0)
             return false; // everything identical
