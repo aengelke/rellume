@@ -125,6 +125,21 @@ class TestCase {
         return false;
     }
 
+    bool CheckReg(const std::string& reg, const RegEntry& entry,
+                  uint8_t* expected, uint8_t* state) {
+        uint8_t* expected_bytes = expected + entry.offset;
+        uint8_t* state_bytes = state + entry.offset;
+
+        if (memcmp(state_bytes, expected_bytes, entry.size) == 0)
+            return false; // everything identical
+
+        diagnostic << "# unexpected value for " << reg << std::endl;
+        diagnostic << "# expected: " << HexBuffer{expected_bytes, entry.size} << std::endl;
+        diagnostic << "#      got: " << HexBuffer{state_bytes, entry.size} << std::endl;
+        return true;
+    }
+
+
     bool AllocMem(std::string key, std::string value_str) {
         uintptr_t addr = std::stoul(key.substr(1), nullptr, 16);
         size_t value_len = value_str.length() / 2;
@@ -325,17 +340,8 @@ class TestCase {
         for (const auto& reg_entry : *regs) {
             if (skip_regs.count(reg_entry.first) > 0)
                 continue;
-
-            size_t size = reg_entry.second.size;
-            size_t offset = reg_entry.second.offset;
-            uint8_t* expected_bytes = expected_raw + offset;
-            uint8_t* state_bytes = state_raw + offset;
-            if (memcmp(state_bytes, expected_bytes, size) != 0) {
-                fail = true;
-                diagnostic << "# unexpected value for " << reg_entry.first << std::endl;
-                diagnostic << "# expected: " << HexBuffer{expected_bytes, size} << std::endl;
-                diagnostic << "#      got: " << HexBuffer{state_bytes, size} << std::endl;
-            }
+            fail |= CheckReg(reg_entry.first, reg_entry.second, state_raw,
+                             expected_raw);
         }
 
         return should_pass ? fail : !fail;
