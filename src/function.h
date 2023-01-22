@@ -36,7 +36,7 @@ namespace rellume {
 
 class ArchBasicBlock;
 class Instr;
-class LLConfig;
+struct LLConfig;
 
 class Function
 {
