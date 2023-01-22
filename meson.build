@@ -1,11 +1,19 @@
-project('rellume', ['c', 'cpp'], meson_version: '>=0.49',
+project('rellume', ['c', 'cpp'], meson_version: '>=0.52',
         default_options: [
             'buildtype=debugoptimized',
             'warning_level=3',
             'cpp_std=c++17',
         ])
 
-add_project_arguments(['-Wno-unused-parameter', '-Wshadow=local'], language: 'cpp')
+if get_option('warning_level').to_int() >= 3
+  cpp = meson.get_compiler('cpp')
+  if cpp.has_argument('-Wshadow=local')
+    add_project_arguments('-Wshadow=local', language: 'cpp')
+  endif
+  if cpp.has_argument('-Wno-unused-parameter')
+    add_project_arguments('-Wno-unused-parameter', language: 'cpp')
+  endif
+endif
 
 llvm_version = ['>=12', '<16']
 # First, attempt to use the shared library.
