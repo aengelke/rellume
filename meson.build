@@ -42,8 +42,12 @@ if get_option('with_rv64')
   architectures += 'rv64'
 endif
 if get_option('with_aarch64')
+  # Disable all warnings for farmdec. This is mostly about non-standard
+  # extensions (forward declarations of enums, binary literals, anon structs).
   archdeps += dependency('farmdec', static: true,
-                         fallback: ['farmdec', 'farmdec'])
+                         fallback: ['farmdec', 'farmdec'],
+                         default_options: ['warning_level=0'],
+                         include_type: 'system')
   architectures += 'aarch64'
 endif
 
