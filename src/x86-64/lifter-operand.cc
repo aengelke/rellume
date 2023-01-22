@@ -273,7 +273,7 @@ void Lifter::OpStoreVec(const Instr::Op op, llvm::Value* value, bool avx,
 
     if (!value_ty->isVectorTy()) {
         // Handle scalar values with an insertelement instruction
-        full = irb.CreateInsertElement(full, value, 0ul);
+        full = irb.CreateInsertElement(full, value, uint64_t{0});
     } else {
         // Vector-in-vector insertion require 2 x shufflevector.
         // First, we enlarge the input vector to the full register length.

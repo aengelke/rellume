@@ -109,7 +109,7 @@ void Lifter::LiftSseMovq(const Instr& inst, Facet type) {
         unsigned el_sz = el_ty->getPrimitiveSizeInBits();
         llvm::Type* vector_ty = llvm::VectorType::get(el_ty, 128 / el_sz, false);
         llvm::Value* zero = llvm::Constant::getNullValue(vector_ty);
-        llvm::Value* zext = irb.CreateInsertElement(zero, op1, 0ul);
+        llvm::Value* zext = irb.CreateInsertElement(zero, op1, uint64_t{0});
         OpStoreVec(inst.op(0), zext);
     } else {
         OpStoreGp(inst.op(0), op1);
@@ -123,7 +123,7 @@ void Lifter::LiftSseMovScalar(const Instr& inst, Facet facet) {
         unsigned el_sz = el_ty->getPrimitiveSizeInBits();
         llvm::Type* vector_ty = llvm::VectorType::get(el_ty, 128 / el_sz, false);
         llvm::Value* zero = llvm::Constant::getNullValue(vector_ty);
-        llvm::Value* zext = irb.CreateInsertElement(zero, src, 0ul);
+        llvm::Value* zext = irb.CreateInsertElement(zero, src, uint64_t{0});
         OpStoreVec(inst.op(0), zext);
     } else {
         OpStoreVec(inst.op(0), src);
@@ -191,7 +191,7 @@ void Lifter::LiftSseMovhpd(const Instr& inst) {
         // move low 64-bit from src to high 64-bit from dst
         llvm::Value* op1 = OpLoad(inst.op(0), Facet::V2F64);
         llvm::Value* op2 = OpLoad(inst.op(1), Facet::F64);
-        OpStoreVec(inst.op(0), irb.CreateInsertElement(op1, op2, 1u));
+        OpStoreVec(inst.op(0), irb.CreateInsertElement(op1, op2, uint64_t{1}));
     }
 }
 

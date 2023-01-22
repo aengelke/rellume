@@ -1029,7 +1029,7 @@ void Lifter::SetScalar(farmdec::Reg r, llvm::Value* val) {
     auto vecty = llvm::VectorType::get(elemty, nelem, false);
 
     llvm::Value* fullvec = llvm::Constant::getNullValue(vecty);
-    fullvec = irb.CreateInsertElement(fullvec, val, 0uL);
+    fullvec = irb.CreateInsertElement(fullvec, val, uint64_t{0});
 
     SetReg(ArchReg::VEC(r), ivec, irb.CreateBitCast(fullvec, ivecty));
     SetRegFacet(ArchReg::VEC(r), fc, val);

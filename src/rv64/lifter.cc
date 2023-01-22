@@ -68,7 +68,7 @@ public:
         llvm::VectorType* full_ty = llvm::VectorType::get(element_ty, full_num,
                                                           false);
         llvm::Value* full = llvm::Constant::getNullValue(full_ty);
-        full = irb.CreateInsertElement(full, v, 0ul);
+        full = irb.CreateInsertElement(full, v, uint64_t{0});
 
         SetReg(ArchReg::VEC(reg), Facet::I64, irb.CreateBitCast(full, ivec_ty));
         SetRegFacet(ArchReg::VEC(reg), Facet::FromType(element_ty), v);
