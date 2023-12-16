@@ -147,36 +147,60 @@ bool Function::AddInst(uint64_t block_addr, const Instr& inst)
 }
 
 ArchBasicBlock& Function::ResolveAddr(llvm::Value* addr) {
-    uint64_t addr_skew = 0;
+    uint64_t addr_skew = fi.pc_base_addr;
+    uint64_t pc_offset = 0;
 
-    // Strip off the base_rip from the expression.
-    // Trivial case: no offset has ever been added.
-    if (addr == fi.pc_base_value) {
-        addr_skew = fi.pc_base_addr;
-        addr = llvm::ConstantInt::get(addr->getType(), 0);
-    }
-    // We can either have an instruction...
-    if (auto binop = llvm::dyn_cast<llvm::BinaryOperator>(addr)) {
-        if (binop->getOpcode() == llvm::Instruction::Add &&
-            binop->getOperand(0) == fi.pc_base_value) {
-            addr_skew = fi.pc_base_addr;
-            addr = binop->getOperand(1);
+    llvm::Value* cur_op = addr;
+    
+    while(cur_op != fi.pc_base_value) {
+        if (auto binop = llvm::dyn_cast<llvm::BinaryOperator>(cur_op)) {
+            // We can either have an instruction...
+
+            if (binop->getOpcode() == llvm::Instruction::Add){
+                llvm::Value* offset = binop->getOperand(1);
+
+                if (auto const_addr = llvm::dyn_cast<llvm::ConstantInt>(offset)) {
+                    pc_offset += const_addr->getZExtValue();
+                }  else {
+                    // error: expecting an int offset.
+                    break;
+                }
+
+                // check next, or stop if reached the pc base instruction.
+                cur_op = binop->getOperand(0);
+            }
+        } else if (auto expr = llvm::dyn_cast<llvm::ConstantExpr>(addr)) {
+            // ... or a constant expression for this.
+
+            if (expr->getOpcode() == llvm::Instruction::Add){
+                llvm::Value* offset = expr->getOperand(1);
+
+                if (auto const_addr = llvm::dyn_cast<llvm::ConstantInt>(offset)) {
+                    pc_offset += const_addr->getZExtValue();
+                }  else {
+                    // error: expecting an int offset.
+                    break;
+                }
+
+                // check next, or stop if reached the pc base instruction.
+                cur_op = expr->getOperand(0);
+            }
+        } else {
+            // no supported type found
+            break;
         }
     }
-    // ... or a constant expression for this.
-    if (auto expr = llvm::dyn_cast<llvm::ConstantExpr>(addr)) {
-        if (expr->getOpcode() == llvm::Instruction::Add &&
-            expr->getOperand(0) == fi.pc_base_value) {
-            addr_skew = fi.pc_base_addr;
-            addr = expr->getOperand(1);
-        }
-    }
 
-    if (auto const_addr = llvm::dyn_cast<llvm::ConstantInt>(addr)) {
-        auto block_it = block_map.find(addr_skew + const_addr->getZExtValue());
-        if (block_it != block_map.end())
+    // found the PC base
+    if (cur_op == fi.pc_base_value) {
+        auto block_it = block_map.find(addr_skew + pc_offset);
+        
+        if (block_it != block_map.end()) {
             return *(block_it->second);
+        }
     }
+
+    // next block not found
     return *exit_block;
 }
 
