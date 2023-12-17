@@ -151,48 +151,58 @@ ArchBasicBlock& Function::ResolveAddr(llvm::Value* addr) {
     uint64_t pc_offset = 0;
 
     llvm::Value* cur_op = addr;
-    
-    while(cur_op != fi.pc_base_value) {
-        if (auto binop = llvm::dyn_cast<llvm::BinaryOperator>(cur_op)) {
-            // We can either have an instruction...
 
-            if (binop->getOpcode() == llvm::Instruction::Add){
-                llvm::Value* offset = binop->getOperand(1);
+    bool value_ready = false;
+    if (auto const_offset = llvm::dyn_cast<llvm::ConstantInt>(addr)) {
+        // just a direct fixed const
+        addr_skew = 0;
+        pc_offset = const_offset->getZExtValue();
+        value_ready = true;
+    } else {
+        while(cur_op != fi.pc_base_value) {
+            if (auto binop = llvm::dyn_cast<llvm::BinaryOperator>(cur_op)) {
+                // We can either have an instruction...
 
-                if (auto const_addr = llvm::dyn_cast<llvm::ConstantInt>(offset)) {
-                    pc_offset += const_addr->getZExtValue();
-                }  else {
-                    // error: expecting an int offset.
-                    break;
+                if (binop->getOpcode() == llvm::Instruction::Add){
+                    llvm::Value* offset = binop->getOperand(1);
+
+                    if (auto const_addr = llvm::dyn_cast<llvm::ConstantInt>(offset)) {
+                        pc_offset += const_addr->getZExtValue();
+                    }  else {
+                        // error: expecting an int offset.
+                        break;
+                    }
+
+                    // check next, or stop if reached the pc base instruction.
+                    cur_op = binop->getOperand(0);
                 }
+            } else if (auto expr = llvm::dyn_cast<llvm::ConstantExpr>(addr)) {
+                // ... or a constant expression for this.
 
-                // check next, or stop if reached the pc base instruction.
-                cur_op = binop->getOperand(0);
-            }
-        } else if (auto expr = llvm::dyn_cast<llvm::ConstantExpr>(addr)) {
-            // ... or a constant expression for this.
+                if (expr->getOpcode() == llvm::Instruction::Add){
+                    llvm::Value* offset = expr->getOperand(1);
 
-            if (expr->getOpcode() == llvm::Instruction::Add){
-                llvm::Value* offset = expr->getOperand(1);
+                    if (auto const_addr = llvm::dyn_cast<llvm::ConstantInt>(offset)) {
+                        pc_offset += const_addr->getZExtValue();
+                    }  else {
+                        // error: expecting an int offset.
+                        break;
+                    }
 
-                if (auto const_addr = llvm::dyn_cast<llvm::ConstantInt>(offset)) {
-                    pc_offset += const_addr->getZExtValue();
-                }  else {
-                    // error: expecting an int offset.
-                    break;
+                    // check next, or stop if reached the pc base instruction.
+                    cur_op = expr->getOperand(0);
                 }
-
-                // check next, or stop if reached the pc base instruction.
-                cur_op = expr->getOperand(0);
+            } else {
+                // no supported type found
+                break;
             }
-        } else {
-            // no supported type found
-            break;
         }
+
+        value_ready = (cur_op == fi.pc_base_value);
     }
 
     // found the PC base
-    if (cur_op == fi.pc_base_value) {
+    if (value_ready) {
         auto block_it = block_map.find(addr_skew + pc_offset);
         
         if (block_it != block_map.end()) {
