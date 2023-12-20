@@ -507,6 +507,9 @@ void Lifter::LiftBittest(const Instr& inst, llvm::Instruction::BinaryOps op,
         }
     }
 
+    // Immediate operands are just 8 bits.
+    if (index->getType()->getIntegerBitWidth() != op_size)
+        index = irb.CreateZExt(index, irb.getIntNTy(op_size));
     // Truncated here because memory operand may need full value.
     index = irb.CreateAnd(index, irb.getIntN(op_size, op_size-1));
     llvm::Value* mask = irb.CreateShl(irb.getIntN(op_size, 1), index);
