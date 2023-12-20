@@ -107,6 +107,9 @@ bool BasicBlock::FillPhis() {
                 value = irb.CreatePointerCast(value, phi->getType());
             }
             phi->addIncoming(value, pred->llvm_block);
+            if (predecessors.size() == 1) {
+                phi->replaceAllUsesWith(value);
+            }
         }
     }
     empty_phis.clear();
