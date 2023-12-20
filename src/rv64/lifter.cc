@@ -136,8 +136,8 @@ public:
         const FrvInst* rvi = inst;
         auto cond = irb.CreateICmp(pred, LoadGp(rvi->rs1), LoadGp(rvi->rs2));
         SetReg(ArchReg::IP, Facet::I64, irb.CreateSelect(cond,
-            irb.CreateAdd(GetReg(ArchReg::IP, Facet::I64), irb.getInt64(rvi->imm)),
-            irb.CreateAdd(GetReg(ArchReg::IP, Facet::I64), irb.getInt64(inst.len()))
+            AddrIPRel(rvi->imm, Facet::I64),
+            AddrIPRel(inst.len(), Facet::I64)
         ));
     }
     void LiftDivRem(const FrvInst* rvi, llvm::Instruction::BinaryOps op,
@@ -340,10 +340,13 @@ bool Lifter::Lift(const Instr& inst) {
 
     case FRV_JAL:
     case FRV_JALR: {
-        llvm::Value* pc = GetReg(ArchReg::IP, Facet::I64);
-        auto base = rvi->rs1 != FRV_REG_INV ? LoadGp(rvi->rs1, Facet::I64) : pc;
-        SetReg(ArchReg::IP, Facet::I64, irb.CreateAdd(base, irb.getInt64(rvi->imm)));
-        llvm::Value* ret_addr = irb.CreateAdd(pc, irb.getInt64(inst.len()));
+        llvm::Value* ret_addr = AddrIPRel(inst.len(), Facet::I64);
+        if (rvi->rs1 != FRV_REG_INV) {
+            auto tgt = irb.CreateAdd(LoadGp(rvi->rs1, Facet::I64), irb.getInt64(rvi->imm));
+            SetReg(ArchReg::IP, Facet::I64, tgt);
+        } else {
+            SetReg(ArchReg::IP, Facet::I64, AddrIPRel(rvi->imm, Facet::I64));
+        }
         StoreGp(rvi->rd, ret_addr);
 
         // For discussion, see x86-64 lifting of call/ret.
@@ -379,7 +382,7 @@ bool Lifter::Lift(const Instr& inst) {
         break;
 
     case FRV_LUI: StoreGp(rvi->rd, irb.getInt64(rvi->imm)); break;
-    case FRV_AUIPC: StoreGp(rvi->rd, irb.CreateAdd(GetReg(ArchReg::IP, Facet::I64), irb.getInt64(rvi->imm))); break;
+    case FRV_AUIPC: StoreGp(rvi->rd, AddrIPRel(rvi->imm, Facet::I64)); break;
 
     case FRV_LB: LiftLoad(rvi, llvm::Instruction::SExt, Facet::I8); break;
     case FRV_LBU: LiftLoad(rvi, llvm::Instruction::ZExt, Facet::I8); break;

@@ -41,6 +41,22 @@ void LifterBase::SetIP(uint64_t inst_addr, bool nofold) {
     SetReg(ArchReg::IP, Facet::I64, rip);
 }
 
+llvm::Value* LifterBase::AddrIPRel(uint64_t off, Facet facet) {
+    llvm::Value* rip = GetReg(ArchReg::IP, facet);
+    llvm::Value* rip_off = irb.getIntN(facet.Size(), off);
+
+    // For position independent code, RIP has the structure "base_rip + off"
+    // where "off" is defined from the instruction address. Simplify
+    // expressions by attaching the constant offset to the second operand.
+    if (auto binop = llvm::dyn_cast<llvm::BinaryOperator>(rip)) {
+        if (binop->getOpcode() == llvm::Instruction::Add) {
+            auto base_off = irb.CreateAdd(binop->getOperand(1), rip_off);
+            return irb.CreateAdd(binop->getOperand(0), base_off);
+        }
+    }
+    return irb.CreateAdd(rip, rip_off);
+}
+
 llvm::Value* LifterBase::AddrConst(uint64_t addr, llvm::PointerType* ptr_ty) {
     if (addr == 0)
         return llvm::ConstantPointerNull::get(ptr_ty);

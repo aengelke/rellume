@@ -113,6 +113,7 @@ protected:
         irb.SetInsertPoint(regfile->GetInsertBlock());
     }
 
+    llvm::Value* AddrIPRel(uint64_t off, Facet facet);
     llvm::Value* AddrConst(uint64_t addr, llvm::PointerType* ptr_ty);
 
     // Helper function for older LLVM versions

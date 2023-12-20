@@ -1158,7 +1158,7 @@ llvm::AtomicOrdering Lifter::Ordering(farmdec::MemOrdering mo) {
 
 // Returns PC-relative address as i64, suitable for storing into PC again.
 llvm::Value* Lifter::PCRel(uint64_t off) {
-    return irb.CreateAdd(GetReg(ArchReg::IP, Facet::I64), irb.getInt64(off));
+    return AddrIPRel(off, Facet::I64);
 }
 
 // Dispatches to the correct addressing mode handler.

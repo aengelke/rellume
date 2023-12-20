@@ -74,6 +74,8 @@ code="tbz x0, #5, foo;   mov x1, #1; foo:" x0=q:0xffff x1=q:0 => x1=q:1
 code="tbz x0, #23, foo;  mov x1, #1; foo:" x0=q:0xffff x1=q:0 => x1=q:0
 code="tbnz x0, #31, foo; mov x1, #1; foo:" x0=q:0xffff x1=q:0 => x1=q:1
 code="tbnz x0, #5, foo;  mov x1, #1; foo:" x0=q:0xffff x1=q:0 => x1=q:0
+code="tbz x0, #5, foo;   mov x1, #1; foo: eor x1, x1, #1" x0=q:0xffff x1=q:0 => x1=q:0
+code="tbnz x0, #5, foo;  mov x1, #1; foo: eor x1, x1, #1" x0=q:0xffff x1=q:0 => x1=q:1
 
 code="csel x0, x1, x2, eq" x0=q:0 x1=q:1 x2=q:2 n=00 z=01 c=00 v=00 => x0=q:1
 code="csel x0, x1, x2, ne" x0=q:0 x1=q:1 x2=q:2 n=00 z=01 c=00 v=00 => x0=q:2
