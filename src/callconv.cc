@@ -43,9 +43,7 @@ CallConv CallConv::FromFunction(llvm::Function* fn, Arch arch) {
     CallConv hunch = INVALID;
     switch (arch) {
 #ifdef RELLUME_WITH_X86_64
-    case Arch::X86_64:
-        hunch = fn_cconv == llvm::CallingConv::HHVM ? X86_64_HHVM : X86_64_SPTR;
-        break;
+    case Arch::X86_64: hunch = X86_64_SPTR; break;
 #endif // RELLUME_WITH_X86_64
 #ifdef RELLUME_WITH_RV64
     case Arch::RV64: hunch = RV64_SPTR; break;
@@ -76,7 +74,6 @@ llvm::FunctionType* CallConv::FnType(llvm::LLVMContext& ctx,
                                      unsigned sptr_addrspace) const {
     llvm::Type* void_ty = llvm::Type::getVoidTy(ctx);
     llvm::Type* i8p = llvm::Type::getInt8PtrTy(ctx, sptr_addrspace);
-    llvm::Type* i64 = llvm::Type::getInt64Ty(ctx);
 
     switch (*this) {
     default:
@@ -85,13 +82,6 @@ llvm::FunctionType* CallConv::FnType(llvm::LLVMContext& ctx,
     case CallConv::RV64_SPTR:
     case CallConv::AArch64_SPTR:
         return llvm::FunctionType::get(void_ty, {i8p}, false);
-    case CallConv::X86_64_HHVM: {
-        auto ret_ty = llvm::StructType::get(i64, i64, i64, i64, i64, i64, i64,
-                                            i64, i64, i64, i64, i64, i64, i64);
-        return llvm::FunctionType::get(ret_ty, {i64, i8p, i64, i64, i64, i64,
-                                                i64, i64, i64, i64, i64, i64,
-                                                i64, i64}, false);
-    }
     }
 }
 
@@ -99,7 +89,6 @@ llvm::CallingConv::ID CallConv::FnCallConv() const {
     switch (*this) {
     default: return llvm::CallingConv::C;
     case CallConv::X86_64_SPTR: return llvm::CallingConv::C;
-    case CallConv::X86_64_HHVM: return llvm::CallingConv::HHVM;
     case CallConv::RV64_SPTR: return llvm::CallingConv::C;
     case CallConv::AArch64_SPTR: return llvm::CallingConv::C;
     }
@@ -109,7 +98,6 @@ unsigned CallConv::CpuStructParamIdx() const {
     switch (*this) {
     default: return 0;
     case CallConv::X86_64_SPTR:  return 0;
-    case CallConv::X86_64_HHVM:  return 1;
     case CallConv::RV64_SPTR:    return 0;
     case CallConv::AArch64_SPTR: return 0;
     }
@@ -164,7 +152,6 @@ static span<const CPUStructEntry> CPUStructEntries(CallConv cconv) {
         return span<const CPUStructEntry>();
 #ifdef RELLUME_WITH_X86_64
     case CallConv::X86_64_SPTR:
-    case CallConv::X86_64_HHVM:
         return cpu_struct_entries_x86_64;
 #endif // RELLUME_WITH_X86_64
 #ifdef RELLUME_WITH_RV64
@@ -193,26 +180,8 @@ void CallConv::InitSptrs(BasicBlock* bb, FunctionInfo& fi) {
     }
 }
 
-// Mapping of GP registers to HHVM parameters and return struct indices.
-//     RAX->RAX; RCX->RCX; RDX->RDX; RBX->RBP; RSP->R15; RBP->R13;
-//     RSI->RSI; RDI->RDI; R8->R8;   R9->R9;   R10->R10; R11->R11;
-//     RIP->RBX; (not encoded here)
-static bool hhvm_is_host_reg(ArchReg reg) {
-    return reg == ArchReg::IP || (reg.IsGP() && reg.Index() < 12);
-}
-static uint8_t hhvm_arg_index(ArchReg reg) {
-    static const uint8_t indices[] = {10, 7, 6, 2, 3, 13, 5, 4, 8, 9, 11, 12};
-    assert(hhvm_is_host_reg(reg));
-    return (reg.IsGP() && reg.Index() < 12) ? indices[reg.Index()] : 0;
-}
-static uint8_t hhvm_ret_index(ArchReg reg) {
-    static const uint8_t indices[] = {8, 5, 4, 1, 13, 11, 3, 2, 6, 7, 9, 10};
-    assert(hhvm_is_host_reg(reg));
-    return (reg.IsGP() && reg.Index() < 12) ? indices[reg.Index()] : 0;
-}
-
 template<typename F>
-static void Pack(CallConv cconv, BasicBlock* bb, FunctionInfo& fi, F hhvm_fn) {
+static void Pack(CallConv cconv, BasicBlock* bb, FunctionInfo& fi, F pass_as_reg) {
     RegFile& regfile = *bb->GetRegFile();
     llvm::IRBuilder<> irb(regfile.GetInsertBlock());
 
@@ -229,8 +198,7 @@ static void Pack(CallConv cconv, BasicBlock* bb, FunctionInfo& fi, F hhvm_fn) {
 
         llvm::Value* reg_val = regfile.GetReg(reg, facet);
 
-        if (cconv == CallConv::X86_64_HHVM && hhvm_is_host_reg(reg)) {
-            hhvm_fn(reg, reg_val);
+        if (pass_as_reg(reg, reg_val)) {
             continue;
         }
 
@@ -242,7 +210,7 @@ static void Pack(CallConv cconv, BasicBlock* bb, FunctionInfo& fi, F hhvm_fn) {
 }
 
 template<typename F>
-static void Unpack(CallConv cconv, BasicBlock* bb, FunctionInfo& fi, F hhvm_fn) {
+static void Unpack(CallConv cconv, BasicBlock* bb, FunctionInfo& fi, F get_from_reg) {
     RegFile& regfile = *bb->GetRegFile();
     llvm::IRBuilder<> irb(regfile.GetInsertBlock());
 
@@ -251,8 +219,8 @@ static void Unpack(CallConv cconv, BasicBlock* bb, FunctionInfo& fi, F hhvm_fn) 
     for (const auto& [sptr_idx, off, reg, facet] : CPUStructEntries(cconv)) {
         if (reg.Kind() == ArchReg::RegKind::INVALID)
             continue;
-        if (cconv == CallConv::X86_64_HHVM && hhvm_is_host_reg(reg)) {
-            regfile.SetReg(reg, facet, hhvm_fn(reg), false);
+        if (llvm::Value* reg_val = get_from_reg(reg)) {
+            regfile.SetReg(reg, facet, reg_val, false);
             continue;
         }
 
@@ -267,24 +235,16 @@ static void Unpack(CallConv cconv, BasicBlock* bb, FunctionInfo& fi, F hhvm_fn) 
 llvm::ReturnInst* CallConv::Return(BasicBlock* bb, FunctionInfo& fi) const {
     llvm::IRBuilder<> irb(bb->GetRegFile()->GetInsertBlock());
 
-    llvm::SmallVector<llvm::Value*, 16> hhvm_ret;
-    if (*this == CallConv::X86_64_HHVM) {
-        hhvm_ret.resize(14);
-        hhvm_ret[12] = llvm::UndefValue::get(irb.getInt64Ty());
-    }
-
-    Pack(*this, bb, fi, [&hhvm_ret] (ArchReg reg, llvm::Value* reg_val) {
-        hhvm_ret[hhvm_ret_index(reg)] = reg_val;
+    Pack(*this, bb, fi, [] (ArchReg reg, llvm::Value* reg_val) {
+        return false;
     });
 
-    if (*this == CallConv::X86_64_HHVM)
-        return irb.CreateAggregateRet(hhvm_ret.data(), hhvm_ret.size());
     return irb.CreateRetVoid();
 }
 
 void CallConv::UnpackParams(BasicBlock* bb, FunctionInfo& fi) const {
     Unpack(*this, bb, fi, [&fi] (ArchReg reg) {
-        return &fi.fn->arg_begin()[hhvm_arg_index(reg)];
+        return nullptr;
     });
 }
 
@@ -295,7 +255,7 @@ llvm::CallInst* CallConv::Call(llvm::Function* fn, BasicBlock* bb,
     call_args[CpuStructParamIdx()] = fi.sptr_raw;
 
     Pack(*this, bb, fi, [&call_args] (ArchReg reg, llvm::Value* reg_val) {
-        call_args[hhvm_arg_index(reg)] = reg_val;
+        return false;
     });
 
     llvm::IRBuilder<> irb(bb->GetRegFile()->GetInsertBlock());
@@ -313,14 +273,8 @@ llvm::CallInst* CallConv::Call(llvm::Function* fn, BasicBlock* bb,
         return call;
     }
 
-    llvm::SmallVector<llvm::Value*, 14> hhvm_ret;
-    if (*this == CallConv::X86_64_HHVM) {
-        for (unsigned i = 0; i < 14; i++)
-            hhvm_ret.push_back(irb.CreateExtractValue(call, {i}));
-    }
-
-    Unpack(*this, bb, fi, [&hhvm_ret] (ArchReg reg) {
-        return hhvm_ret[hhvm_ret_index(reg)];
+    Unpack(*this, bb, fi, [] (ArchReg reg) {
+        return nullptr;
     });
 
     return call;

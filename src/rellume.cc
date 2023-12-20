@@ -49,10 +49,6 @@ LLConfig* ll_config_new(void) {
     return reinterpret_cast<LLConfig*>(new rellume::LLConfig());
 }
 void ll_config_free(LLConfig* cfg) { delete unwrap(cfg); }
-void ll_config_set_hhvm(LLConfig* cfg, bool hhvm) {
-    rellume::LLConfig* rlcfg = unwrap(cfg);
-    rlcfg->callconv = hhvm ? rellume::CallConv::X86_64_HHVM : rellume::CallConv::X86_64_SPTR;
-}
 void ll_config_set_sptr_addrspace(LLConfig* cfg, unsigned addrspace) {
     unwrap(cfg)->sptr_addrspace = addrspace;
 }

@@ -48,7 +48,7 @@ public:
     /// SPTR: Cdecl callconv with one argument, the CPU struct pointer (sptr). See
     /// FunctionInfo.
     enum Value {
-        INVALID, X86_64_SPTR, X86_64_HHVM, RV64_SPTR, AArch64_SPTR,
+        INVALID, X86_64_SPTR, RV64_SPTR, AArch64_SPTR,
     };
 
     static CallConv FromFunction(llvm::Function* fn, Arch arch);

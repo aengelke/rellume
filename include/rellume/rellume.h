@@ -43,9 +43,6 @@ typedef struct LLConfig LLConfig;
 RELLUME_API LLConfig* ll_config_new(void);
 RELLUME_API void ll_config_free(LLConfig*);
 
-/// Set the architecture to x86-64 and use HHVM (true) or SPTR (false) calling
-/// convention. Deprecated: avoid using the HHVM calling convention.
-RELLUME_API void ll_config_set_hhvm(LLConfig*, bool) RELLUME_DEPRECATED;
 RELLUME_API void ll_config_set_sptr_addrspace(LLConfig*, unsigned);
 RELLUME_API void ll_config_enable_overflow_intrinsics(LLConfig*, bool);
 RELLUME_API void ll_config_enable_fast_math(LLConfig*, bool);
