@@ -5,6 +5,7 @@
 #include <llvm/ExecutionEngine/GenericValue.h>
 #include <llvm/IR/LLVMContext.h>
 #include <llvm/IR/Module.h>
+#include <llvm/IR/Verifier.h>
 #include <llvm/Support/TargetSelect.h>
 
 #include <cstddef>
@@ -29,6 +30,7 @@
 
 static bool opt_verbose = false;
 static bool opt_jit = false;
+static bool opt_pic = false;
 static bool opt_overflow_intrinsics = false;
 static const char* opt_arch = "x86_64";
 
@@ -228,6 +230,7 @@ class TestCase {
         bool fail = false;
         bool should_pass = true;
         bool use_jit = opt_jit;
+        bool use_pic = opt_pic;
 
         // 1. Setup initial state
         CPU initial{};
@@ -240,6 +243,10 @@ class TestCase {
                 use_jit = true;
             } else if (arg == "-jit") {
                 use_jit = false;
+            } else if (arg == "+pic") {
+                use_pic = true;
+            } else if (arg == "-pic") {
+                use_pic = false;
             } else if (arg.substr(0, 1) == "~") {
                 continue;
             } else if (arg == "=>") {
@@ -270,6 +277,7 @@ class TestCase {
 
         LLConfig* rlcfg = ll_config_new();
         ll_config_enable_verify_ir(rlcfg, true);
+        ll_config_set_position_independent_code(rlcfg, use_pic);
         ll_config_enable_overflow_intrinsics(rlcfg, opt_overflow_intrinsics);
         bool success = ll_config_set_architecture(rlcfg, opt_arch);
         if (!success) {
@@ -297,6 +305,11 @@ class TestCase {
         fn->setName("test_function");
         if (opt_verbose)
             fn->print(llvm::errs());
+
+        if (llvm::verifyFunction(*fn, &llvm::errs())) {
+            diagnostic << "# error: IR verification failed\n";
+            return true;
+        }
 
         std::string error;
 
@@ -378,15 +391,16 @@ public:
 
 int main(int argc, char** argv) {
     int opt;
-    while ((opt = getopt(argc, argv, "vjiA:")) != -1) {
+    while ((opt = getopt(argc, argv, "vjpiA:")) != -1) {
         switch (opt) {
         case 'v': opt_verbose = true; break;
         case 'j': opt_jit = true; break;
+        case 'p': opt_pic = true; break;
         case 'i': opt_overflow_intrinsics = true; break;
         case 'A': opt_arch = optarg; break;
         default:
 usage:
-            std::cerr << "usage: " << argv[0] << " [-v] [-j] [-i] [-A arch] casefile" << std::endl;
+            std::cerr << "usage: " << argv[0] << " [-v] [-j] [-p] [-i] [-A arch] casefile" << std::endl;
             return 1;
         }
     }
