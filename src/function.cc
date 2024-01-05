@@ -103,11 +103,15 @@ Function::~Function() {
 
 int Function::AddInst(uint64_t block_addr, uint64_t addr, size_t bufsz,
                       const uint8_t* buf) {
-    Instr inst;
-    int ret = inst.DecodeFrom(cfg->arch, buf, bufsz, addr);
-    if (ret <= 0)
+    auto& instr = instrs.emplace_back(DecodedInstr{});
+    int ret = instr.inst.DecodeFrom(cfg->arch, buf, bufsz, addr);
+    if (ret < 0) { // invalid or unknown instruction
+        instrs.erase(instrs.end() - 1);
         return ret;
-    return AddInst(block_addr, inst) ? ret : -1;
+    }
+    instr_map[addr] = instrs.size() - 1;
+    instr.new_block = addr == block_addr || instrs.size() == 1 || instrs[instrs.size() - 2].inst.end() != addr;
+    return instr.inst.len();
 }
 
 bool Function::AddInst(uint64_t block_addr, const Instr& inst)
@@ -181,8 +185,25 @@ ArchBasicBlock& Function::ResolveAddr(llvm::Value* addr) {
 }
 
 llvm::Function* Function::Lift() {
-    if (block_map.size() == 0)
+    if (instrs.size() == 0)
         return nullptr;
+
+    uint64_t block_addr = 0;
+    for (size_t i = 0; i < instrs.size(); i++) {
+        const DecodedInstr& decinst = instrs[i];
+        if (decinst.new_block)
+            block_addr = decinst.inst.start();
+        bool success = AddInst(block_addr, decinst.inst);
+        if (!success) {
+            if (i == 0) // failure at first instruction, propagate error
+                return nullptr;
+            // Skip forward to next block.
+            while (i < instrs.size() - 1 && !instrs[i + 1].new_block)
+                i += 1;
+        }
+    }
+
+    assert(block_map.size() != 0);
 
     auto phi_mode =
         cfg->full_facets ? BasicBlock::Phis::ALL : BasicBlock::Phis::NATIVE;

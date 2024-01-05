@@ -25,6 +25,8 @@
 #define LL_FUNCTION_H
 
 #include "function-info.h"
+#include "instr.h"
+#include <llvm/ADT/DenseMap.h>
 #include <llvm/IR/Function.h>
 #include <llvm/IR/Value.h>
 #include <cstdint>
@@ -72,6 +74,15 @@ private:
 
     llvm::Function* llvm;
     uint64_t entry_addr;
+
+    struct DecodedInstr {
+        Instr inst;
+        bool new_block;
+    };
+
+    std::vector<DecodedInstr> instrs;
+    llvm::DenseMap<uint64_t, size_t> instr_map; // map addr -> instr idx
+
     std::unique_ptr<ArchBasicBlock> entry_block;
     std::unique_ptr<ArchBasicBlock> exit_block;
     std::unordered_map<uint64_t,std::unique_ptr<ArchBasicBlock>> block_map;

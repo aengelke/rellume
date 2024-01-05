@@ -23,7 +23,7 @@
 #include "basicblock.h"
 #include "config.h"
 #include "instr.h"
-
+#include <llvm/ADT/SmallVector.h>
 #include <cstdint>
 #include <deque>
 #include <unordered_map>
@@ -32,104 +32,66 @@
 namespace rellume {
 
 int Function::Decode(uintptr_t addr, DecodeStop stop, MemReader memacc) {
-    Instr inst;
     uint8_t inst_buf[15];
 
-    std::deque<uintptr_t> addr_queue;
-    addr_queue.push_back(addr);
+    llvm::SmallVector<uint64_t> addr_stack;
+    addr_stack.push_back(addr);
+    while (!addr_stack.empty()) {
+        uint64_t cur_addr = addr_stack.back();
+        addr_stack.pop_back();
 
-    std::vector<Instr> insts;
-    // List of (start_idx,end_idx) (non-inclusive end)
-    std::vector<std::pair<size_t, size_t>> blocks;
+        bool new_block = true;
+        while (true) {
+            auto cur_idx_iter = instr_map.find(cur_addr);
+            if (cur_idx_iter != instr_map.end()) {
+                instrs[cur_idx_iter->second].new_block = true;
+                goto end_block;
+            }
 
-    // Mapping from address to (block_idx, instr_idx)
-    std::unordered_map<uintptr_t, std::pair<size_t, size_t>> addr_map;
+            size_t count = memacc(cur_addr, inst_buf, sizeof(inst_buf));
+            auto& instr = instrs.emplace_back(DecodedInstr{});
 
-    while (!addr_queue.empty()) {
-        uintptr_t cur_addr = addr_queue.front();
-        addr_queue.pop_front();
+            int ret = instr.inst.DecodeFrom(cfg->arch, inst_buf, count, cur_addr);
+            if (ret < 0) {// invalid or unknown instruction
+                instrs.erase(instrs.end() - 1);
+                goto end_block;
+            }
 
-        size_t cur_block_start = insts.size();
-
-        auto cur_addr_entry = addr_map.find(cur_addr);
-        while (cur_addr_entry == addr_map.end()) {
-            size_t inst_buf_sz = memacc(cur_addr, inst_buf, sizeof(inst_buf));
-            // Sanity check.
-            if (inst_buf_sz == 0 || inst_buf_sz > sizeof(inst_buf))
-                break;
-
-            int ret = inst.DecodeFrom(cfg->arch, inst_buf, inst_buf_sz, cur_addr);
-            if (ret < 0) // invalid or unknown instruction
-                break;
-
-            addr_map[cur_addr] = std::make_pair(blocks.size(), insts.size());
-            insts.push_back(inst);
+            instr_map[cur_addr] = instrs.size() - 1;
+            instr.new_block = new_block;
+            cur_addr += instr.inst.len();
+            new_block = false;
 
             if (stop == DecodeStop::INSTR)
-                break;
+                goto end_block;
 
-            switch (inst.Kind()) {
-            case Instr::Kind::COND_BRANCH:
-                addr_queue.push_back(cur_addr + inst.len());
-                /* FALLTHROUGH */
+            switch (instr.inst.Kind()) {
             case Instr::Kind::BRANCH:
-                if (auto jmp_target = inst.JumpTarget())
-                    addr_queue.push_back(jmp_target.value());
-                /* FALLTHROUGH */
-            case Instr::Kind::UNKNOWN:
+                if (auto jmp_target = instr.inst.JumpTarget())
+                    addr_stack.push_back(jmp_target.value());
+                goto end_block;
+            case Instr::Kind::COND_BRANCH:
+                if (auto jmp_target = instr.inst.JumpTarget())
+                    addr_stack.push_back(jmp_target.value());
+                addr_stack.push_back(cur_addr);
                 goto end_block;
             case Instr::Kind::CALL:
                 if (cfg->call_function)
-                    addr_queue.push_back(cur_addr + inst.len());
+                    addr_stack.push_back(cur_addr);
                 // A call still ends a block, because we don't *know* that the
                 // execution continues after the call.
+                goto end_block;
+            case Instr::Kind::UNKNOWN:
                 goto end_block;
             default:
                 break;
             }
-            cur_addr += inst.len();
-            cur_addr_entry = addr_map.find(cur_addr);
-        }
+        };
+
     end_block:
-
-        if (insts.size() != cur_block_start)
-            blocks.push_back(std::make_pair(cur_block_start, insts.size()));
-
-        if (cur_addr_entry != addr_map.end()) {
-            auto& other_blk = blocks[cur_addr_entry->second.first];
-            size_t split_idx = cur_addr_entry->second.second;
-            if (other_blk.first == split_idx)
-                continue;
-            size_t end = other_blk.second;
-            blocks.push_back(std::make_pair(split_idx, end));
-            blocks[cur_addr_entry->second.first].second = split_idx;
-            size_t new_block_idx = blocks.size() - 1;
-            for (size_t j = split_idx; j < end; j++)
-                addr_map[insts[j].start()] = std::make_pair(new_block_idx, j);
-        }
-
         if (stop == DecodeStop::BASICBLOCK)
-            addr_queue.clear();
+            break;
     }
-
-    bool first_inst = true;
-    for (auto it = blocks.begin(); it != blocks.end(); it++) {
-        uint64_t block_addr = insts[it->first].start();
-        for (size_t j = it->first; j < it->second; j++) {
-            if (!AddInst(block_addr, insts[j])) {
-                // If we fail on the first instruction, propagate error.
-                if (first_inst)
-                    return 1;
-                // Otherwise continue with other basic blocks.
-                break;
-            }
-            first_inst = false;
-        }
-    }
-
-    // If we didn't lift a single instruction, return error code.
-    if (first_inst)
-        return 1;
 
     return 0;
 }
