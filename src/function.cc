@@ -50,56 +50,7 @@
 #include <unordered_map>
 
 
-/**
- * \defgroup LLFunc Func2
- * \brief Representation of a function
- *
- * @{
- **/
-
 namespace rellume {
-
-Function::Function(llvm::Module* mod, LLConfig* cfg) : cfg(cfg), fi{}
-{
-    llvm::LLVMContext& ctx = mod->getContext();
-    llvm = llvm::Function::Create(cfg->callconv.FnType(ctx, cfg->sptr_addrspace),
-                                  llvm::GlobalValue::ExternalLinkage, "", mod);
-    llvm->setCallingConv(cfg->callconv.FnCallConv());
-
-    // CPU struct pointer parameters has some extra properties.
-    unsigned cpu_param_idx = cfg->callconv.CpuStructParamIdx();
-    llvm->addFnAttr(llvm::Attribute::NullPointerIsValid);
-    llvm->addParamAttr(cpu_param_idx, llvm::Attribute::NoAlias);
-    llvm->addParamAttr(cpu_param_idx, llvm::Attribute::NoCapture);
-    auto align_attr = llvm::Attribute::get(ctx, llvm::Attribute::Alignment, 16);
-    llvm->addParamAttr(cpu_param_idx, align_attr);
-    llvm->addDereferenceableParamAttr(cpu_param_idx, 0x190);
-
-    fi.fn = llvm;
-    fi.sptr_raw = &llvm->arg_begin()[cpu_param_idx];
-    if (cfg->pc_base_value) {
-        fi.pc_base_addr = cfg->pc_base_addr;
-        fi.pc_base_value = cfg->pc_base_value;
-    } else {
-        fi.pc_base_value = nullptr;
-    }
-
-    // Create entry basic block as first block in the function.
-    entry_block = std::make_unique<ArchBasicBlock>(llvm,
-                                                   BasicBlock::Phis::NONE, cfg->arch);
-
-    // Initialize the sptr pointers in the function info.
-    cfg->callconv.InitSptrs(entry_block->GetInsertBlock(), fi);
-    // And initially fill register file.
-    cfg->callconv.UnpackParams(entry_block->GetInsertBlock(), fi);
-}
-
-Function::~Function() {
-    // If the function was never passed to the caller in with Lift(), erase it
-    // from the module -- it is probably invalid LLVM-IR.
-    if (llvm)
-        llvm->eraseFromParent();
-}
 
 int Function::AddInst(uint64_t block_addr, uint64_t addr, size_t bufsz,
                       const uint8_t* buf) {
@@ -114,43 +65,22 @@ int Function::AddInst(uint64_t block_addr, uint64_t addr, size_t bufsz,
     return instr.inst.len();
 }
 
-bool Function::AddInst(uint64_t block_addr, const Instr& inst)
-{
-    if (block_map.size() == 0)
-        fi.entry_ip = block_addr;
-    if (!fi.pc_base_value) {
-        fi.pc_base_addr = fi.entry_ip;
-        if (!cfg->position_independent_code) {
-            llvm::Type* i64 = llvm::Type::getInt64Ty(llvm->getContext());
-            fi.pc_base_value = llvm::ConstantInt::get(i64, fi.pc_base_addr);
-        } else {
-            RegFile* entry_rf = entry_block->GetInsertBlock()->GetRegFile();
-            fi.pc_base_value = entry_rf->GetReg(ArchReg::IP, Facet::I64);
-        }
-    }
-    if (block_map.find(block_addr) == block_map.end()) {
-        auto phi_mode =
-            cfg->full_facets ? BasicBlock::Phis::ALL : BasicBlock::Phis::NATIVE;
-        block_map[block_addr] = std::make_unique<ArchBasicBlock>(llvm, phi_mode,
-                                                                 cfg->arch);
-    }
+class LiftHelper {
+    Function* func;
+    FunctionInfo fi;
+    llvm::DenseMap<uint64_t, std::unique_ptr<ArchBasicBlock>> block_map;
 
-    ArchBasicBlock& ab = *block_map[block_addr];
-    switch (cfg->arch) {
-#ifdef RELLUME_WITH_X86_64
-    case Arch::X86_64: return x86_64::LiftInstruction(inst, fi, *cfg, ab);
-#endif // RELLUME_WITH_X86_64
-#ifdef RELLUME_WITH_RV64
-    case Arch::RV64: return rv64::LiftInstruction(inst, fi, *cfg, ab);
-#endif // RELLUME_WITH_RV64
-#ifdef RELLUME_WITH_AARCH64
-    case Arch::AArch64: return aarch64::LiftInstruction(inst, fi, *cfg, ab);
-#endif // RELLUME_WITH_AARCH64
-    default: return false;
-    }
-}
+    std::unique_ptr<ArchBasicBlock> exit_block;
 
-ArchBasicBlock& Function::ResolveAddr(llvm::Value* addr) {
+    ArchBasicBlock& ResolveAddr(llvm::Value* addr);
+
+public:
+    LiftHelper(Function* func) : func(func) {}
+
+    llvm::Function* Lift();
+};
+
+ArchBasicBlock& LiftHelper::ResolveAddr(llvm::Value* addr) {
     uint64_t addr_skew = 0;
 
     // Strip off the base_rip from the expression.
@@ -184,30 +114,99 @@ ArchBasicBlock& Function::ResolveAddr(llvm::Value* addr) {
     return *exit_block;
 }
 
-llvm::Function* Function::Lift() {
-    if (instrs.size() == 0)
+llvm::Function* LiftHelper::Lift() {
+    LLConfig* cfg = func->cfg;
+    llvm::LLVMContext& ctx = func->mod->getContext();
+
+    if (func->instrs.size() == 0)
         return nullptr;
 
-    uint64_t block_addr = 0;
-    for (size_t i = 0; i < instrs.size(); i++) {
-        const DecodedInstr& decinst = instrs[i];
-        if (decinst.new_block)
-            block_addr = decinst.inst.start();
-        bool success = AddInst(block_addr, decinst.inst);
-        if (!success) {
-            if (i == 0) // failure at first instruction, propagate error
-                return nullptr;
-            // Skip forward to next block.
-            while (i < instrs.size() - 1 && !instrs[i + 1].new_block)
-                i += 1;
-        }
+    using LiftFn = bool(const Instr&, FunctionInfo&, const LLConfig&, ArchBasicBlock&) noexcept;
+
+    LiftFn* lift_fn;
+    switch (cfg->arch) {
+#ifdef RELLUME_WITH_X86_64
+    case Arch::X86_64: lift_fn = x86_64::LiftInstruction; break;
+#endif // RELLUME_WITH_X86_64
+#ifdef RELLUME_WITH_RV64
+    case Arch::RV64: lift_fn = rv64::LiftInstruction; break;
+#endif // RELLUME_WITH_RV64
+#ifdef RELLUME_WITH_AARCH64
+    case Arch::AArch64: lift_fn = aarch64::LiftInstruction; break;
+#endif // RELLUME_WITH_AARCH64
+    default:
+        return nullptr;
     }
 
-    assert(block_map.size() != 0);
+    auto fn = llvm::Function::Create(cfg->callconv.FnType(ctx, cfg->sptr_addrspace),
+                                     llvm::GlobalValue::ExternalLinkage, "", func->mod);
+    fn->setCallingConv(cfg->callconv.FnCallConv());
+
+    // CPU struct pointer parameters has some extra properties.
+    unsigned cpu_param_idx = cfg->callconv.CpuStructParamIdx();
+    fn->addFnAttr(llvm::Attribute::NullPointerIsValid);
+    fn->addParamAttr(cpu_param_idx, llvm::Attribute::NoAlias);
+    fn->addParamAttr(cpu_param_idx, llvm::Attribute::NoCapture);
+    auto align_attr = llvm::Attribute::get(ctx, llvm::Attribute::Alignment, 16);
+    fn->addParamAttr(cpu_param_idx, align_attr);
+    fn->addDereferenceableParamAttr(cpu_param_idx, 0x190);
 
     auto phi_mode =
         cfg->full_facets ? BasicBlock::Phis::ALL : BasicBlock::Phis::NATIVE;
-    exit_block = std::make_unique<ArchBasicBlock>(llvm, phi_mode, cfg->arch);
+    // Create entry basic block as first block in the function.
+    auto entry_block = std::make_unique<ArchBasicBlock>(fn,
+                                                        BasicBlock::Phis::NONE,
+                                                        cfg->arch);
+
+    fi.fn = fn;
+    fi.entry_ip = func->instrs[0].inst.start();
+    fi.sptr_raw = &fn->arg_begin()[cpu_param_idx];
+
+    // Initialize the sptr pointers in the function info.
+    cfg->callconv.InitSptrs(entry_block->GetInsertBlock(), fi);
+    // And initially fill register file.
+    cfg->callconv.UnpackParams(entry_block->GetInsertBlock(), fi);
+
+    if (cfg->pc_base_value) {
+        fi.pc_base_addr = cfg->pc_base_addr;
+        fi.pc_base_value = cfg->pc_base_value;
+    } else {
+        fi.pc_base_addr = fi.entry_ip;
+        if (!cfg->position_independent_code) {
+            llvm::Type* i64 = llvm::Type::getInt64Ty(fi.fn->getContext());
+            fi.pc_base_value = llvm::ConstantInt::get(i64, fi.pc_base_addr);
+        } else {
+            RegFile* entry_rf = entry_block->GetInsertBlock()->GetRegFile();
+            fi.pc_base_value = entry_rf->GetReg(ArchReg::IP, Facet::I64);
+        }
+    }
+
+    {
+        ArchBasicBlock* cur_ab = nullptr;
+        for (size_t i = 0; i < func->instrs.size(); i++) {
+            const auto& decinst = func->instrs[i];
+            if (decinst.new_block) {
+                uint64_t block_addr = decinst.inst.start();
+                auto& ab = block_map.getOrInsertDefault(block_addr);
+                assert(!ab && "duplicate block address");
+                ab = std::make_unique<ArchBasicBlock>(fi.fn, phi_mode, cfg->arch);
+                cur_ab = ab.get();
+            }
+
+            bool success = lift_fn(decinst.inst, fi, *cfg, *cur_ab);
+            if (!success) {
+                if (i == 0) { // failure at first instruction, propagate error
+                    fn->eraseFromParent();
+                    return nullptr;
+                }
+                // Skip forward to next block.
+                while (i < func->instrs.size() - 1 && !func->instrs[i + 1].new_block)
+                    i += 1;
+            }
+        }
+    }
+
+    exit_block = std::make_unique<ArchBasicBlock>(fn, phi_mode, cfg->arch);
 
     // Exit block packs values together and optionally returns something.
     if (cfg->tail_function) {
@@ -250,7 +249,7 @@ llvm::Function* Function::Lift() {
 
     // Remove calls to llvm.ssa_copy, which got inserted to avoid PHI nodes in
     // the register file.
-    for (auto it = llvm::inst_begin(llvm), e = llvm::inst_end(llvm); it != e;) {
+    for (auto it = llvm::inst_begin(fn), e = llvm::inst_end(fn); it != e;) {
         llvm::Instruction* inst = &*it++;
         auto* intr = llvm::dyn_cast<llvm::CallInst>(inst);
         if (!intr || intr->getIntrinsicID() != llvm::Intrinsic::ssa_copy)
@@ -262,20 +261,18 @@ llvm::Function* Function::Lift() {
 
     // Remove blocks without predecessors. This can happen if constants get
     // folded already during construction, e.g. xor eax,eax;test eax,eax;jz
-    llvm::EliminateUnreachableBlocks(*llvm);
+    llvm::EliminateUnreachableBlocks(*fn);
 
-    if (cfg->verify_ir && llvm::verifyFunction(*(llvm), &llvm::errs()))
+    if (cfg->verify_ir && llvm::verifyFunction(*(fn), &llvm::errs())) {
+        fn->eraseFromParent();
         return nullptr;
+    }
 
-    // Set llvm to null if we passed the function to the caller.
-    llvm::Function* res = llvm;
-    llvm = nullptr;
+    return fn;
+}
 
-    return res;
+llvm::Function* Function::Lift() {
+    return LiftHelper(this).Lift();
 }
 
 }
-
-/**
- * @}
- **/

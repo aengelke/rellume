@@ -34,6 +34,7 @@
 #include <farmdec.h>
 #endif // RELLUME_WITH_AARCH64
 
+#include <cassert>
 #include <cstdbool>
 #include <cstdint>
 #include <optional>

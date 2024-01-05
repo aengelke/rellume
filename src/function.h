@@ -24,27 +24,25 @@
 #ifndef LL_FUNCTION_H
 #define LL_FUNCTION_H
 
-#include "function-info.h"
 #include "instr.h"
 #include <llvm/ADT/DenseMap.h>
 #include <llvm/IR/Function.h>
-#include <llvm/IR/Value.h>
+#include <llvm/IR/Module.h>
 #include <cstdint>
 #include <functional>
-#include <unordered_map>
+#include <vector>
 
 
 namespace rellume {
 
-class ArchBasicBlock;
 class Instr;
 struct LLConfig;
+class LiftHelper;
 
 class Function
 {
 public:
-    Function(llvm::Module* mod, LLConfig* cfg);
-    ~Function();
+    Function(llvm::Module* mod, LLConfig* cfg) : mod(mod), cfg(cfg) {}
 
     Function(Function&& rhs);
     Function& operator=(Function&& rhs);
@@ -54,7 +52,7 @@ public:
 
     int AddInst(uint64_t block_addr, uint64_t addr, size_t bufsz,
                 const uint8_t* buf);
-    bool AddInst(uint64_t block_addr, const Instr& inst);
+
     llvm::Function* Lift();
 
     // Implemented in lldecoder.cc
@@ -74,13 +72,8 @@ public:
     }
 
 private:
-    ArchBasicBlock& ResolveAddr(llvm::Value* addr);
-
+    llvm::Module* mod;
     LLConfig* cfg;
-    FunctionInfo fi;
-
-    llvm::Function* llvm;
-    uint64_t entry_addr;
 
     struct DecodedInstr {
         Instr inst;
@@ -90,9 +83,9 @@ private:
     std::vector<DecodedInstr> instrs;
     llvm::DenseMap<uint64_t, size_t> instr_map; // map addr -> instr idx
 
-    std::unique_ptr<ArchBasicBlock> entry_block;
-    std::unique_ptr<ArchBasicBlock> exit_block;
-    std::unordered_map<uint64_t,std::unique_ptr<ArchBasicBlock>> block_map;
+    std::vector<CodeRange> code_ranges = {{0, 0}};
+
+    friend class LiftHelper;
 };
 
 }
