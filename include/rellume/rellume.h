@@ -87,6 +87,14 @@ RELLUME_API int ll_func_decode_block(LLFunc* func, uintptr_t addr,
 RELLUME_API int ll_func_decode_cfg(LLFunc* func, uintptr_t addr,
                                    RellumeMemAccessCb cb, void* user_arg);
 
+struct RellumeCodeRange {
+    uint64_t start, end;
+};
+/// Get the code ranges that were used for constructing the function. Only valid
+/// until the modification of the instructions, to be used only when decoding is
+/// completed. Ends with the sentinel value {0, 0}.
+RELLUME_API const struct RellumeCodeRange* ll_func_ranges(LLFunc* func);
+
 #ifdef __cplusplus
 }
 #endif

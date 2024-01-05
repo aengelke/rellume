@@ -66,6 +66,13 @@ public:
     using MemReader = std::function<size_t(uintptr_t, uint8_t*, size_t)>;
     int Decode(uintptr_t addr, DecodeStop stop, MemReader memacc = nullptr);
 
+    struct CodeRange {
+        uint64_t start, end;
+    };
+    const CodeRange* CodeRanges() const {
+        return code_ranges.data();
+    }
+
 private:
     ArchBasicBlock& ResolveAddr(llvm::Value* addr);
 

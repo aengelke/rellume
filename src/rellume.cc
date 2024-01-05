@@ -176,3 +176,7 @@ int ll_func_decode_cfg(LLFunc* func, uintptr_t addr, RellumeMemAccessCb mem_acc,
     return ll_func_decode(func, addr, rellume::Function::DecodeStop::ALL,
                           mem_acc, user_arg);
 }
+
+const struct RellumeCodeRange* ll_func_ranges(LLFunc* func) {
+    return reinterpret_cast<const RellumeCodeRange*>(unwrap(func)->CodeRanges());
+}
