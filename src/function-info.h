@@ -95,9 +95,6 @@ struct FunctionInfo {
     llvm::Value* sptr_raw;
     std::vector<llvm::Value*> sptr;
 
-    /// Address of the first lifted instruction. The LLVM entry block
-    /// immediately branches to it.
-    uint64_t entry_ip;
     uint64_t pc_base_addr;
     llvm::Value* pc_base_value;
 

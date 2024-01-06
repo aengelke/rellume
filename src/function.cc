@@ -108,6 +108,8 @@ llvm::Function* LiftHelper::Lift() {
     if (func->instrs.size() == 0)
         return nullptr;
 
+    uint64_t entry_ip = func->instrs[0].inst.start();
+
     using LiftFn = bool(const Instr&, FunctionInfo&, const LLConfig&, ArchBasicBlock&) noexcept;
 
     LiftFn* lift_fn;
@@ -146,7 +148,6 @@ llvm::Function* LiftHelper::Lift() {
                                                         cfg->arch);
 
     fi.fn = fn;
-    fi.entry_ip = func->instrs[0].inst.start();
     fi.sptr_raw = &fn->arg_begin()[cpu_param_idx];
 
     // Initialize the sptr pointers in the function info.
@@ -158,7 +159,7 @@ llvm::Function* LiftHelper::Lift() {
         fi.pc_base_addr = cfg->pc_base_addr;
         fi.pc_base_value = cfg->pc_base_value;
     } else {
-        fi.pc_base_addr = fi.entry_ip;
+        fi.pc_base_addr = entry_ip;
         if (!cfg->position_independent_code) {
             llvm::Type* i64 = llvm::Type::getInt64Ty(fi.fn->getContext());
             fi.pc_base_value = llvm::ConstantInt::get(i64, fi.pc_base_addr);
@@ -204,7 +205,7 @@ llvm::Function* LiftHelper::Lift() {
         cfg->callconv.Return(exit_block->GetInsertBlock(), fi);
     }
 
-    entry_block->BranchTo(*block_map[fi.entry_ip]);
+    entry_block->BranchTo(*block_map[entry_ip]);
 
     for (auto it = block_map.begin(); it != block_map.end(); ++it) {
         RegFile* regfile = it->second->GetInsertBlock()->GetRegFile();
