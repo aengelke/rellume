@@ -78,7 +78,15 @@ private:
     };
 
     std::vector<DecodedInstr> instrs;
-    llvm::DenseMap<uint64_t, size_t> instr_map; // map addr -> instr idx
+
+    struct InstrMapEntry {
+        unsigned preds = 0;
+        /// Indicate whether the instruction was successfully decoded
+        bool decoded = false;
+        /// Index in instrs; only valid if decoded is true
+        size_t instr_idx = 0;
+    };
+    llvm::DenseMap<uint64_t, InstrMapEntry> instr_map; // map addr -> instr
 
     std::vector<CodeRange> code_ranges = {{0, 0}};
 

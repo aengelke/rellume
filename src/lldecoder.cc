@@ -42,10 +42,10 @@ int Function::Decode(uintptr_t addr, DecodeStop stop, MemReader memacc) {
 
         bool new_block = true;
         uint64_t cur_addr = start_addr;
+        InstrMapEntry* instr_map_entry = &instr_map[cur_addr];
         while (true) {
-            auto cur_idx_iter = instr_map.find(cur_addr);
-            if (cur_idx_iter != instr_map.end()) {
-                instrs[cur_idx_iter->second].new_block = true;
+            if (instr_map_entry->decoded) {
+                instrs[instr_map_entry->instr_idx].new_block = true;
                 break;
             }
 
@@ -58,7 +58,8 @@ int Function::Decode(uintptr_t addr, DecodeStop stop, MemReader memacc) {
                 break;
             }
 
-            instr_map[cur_addr] = instrs.size() - 1;
+            instr_map_entry->instr_idx = instrs.size() - 1;
+            instr_map_entry->decoded = true;
             instr.new_block = new_block;
             cur_addr += instr.inst.len();
             new_block = false;
@@ -66,34 +67,38 @@ int Function::Decode(uintptr_t addr, DecodeStop stop, MemReader memacc) {
             if (stop == DecodeStop::INSTR)
                 break;
 
-            switch (instr.inst.Kind()) {
-            case Instr::Kind::UNKNOWN:
-                goto end_superblock;
-            case Instr::Kind::BRANCH:
-                if (auto jmp_target = instr.inst.JumpTarget())
-                    addr_stack.push_back(jmp_target.value());
-                goto end_superblock;
-            case Instr::Kind::COND_BRANCH:
-                if (auto jmp_target = instr.inst.JumpTarget())
-                    addr_stack.push_back(jmp_target.value());
-                new_block = true;
-                break; // continue at cur_addr in new block
-            case Instr::Kind::CALL:
-                if (!cfg->call_function)
-                    goto end_superblock;
-                // A call still ends a block, because we don't *know* that the
-                // execution continues after the call.
-                new_block = true;
-                break; // continue at cur_addr in new block
-            default:
-                break;
+            auto kind = instr.inst.Kind();
+
+            // For branches, enqueue jump target.
+            if (kind == Instr::Kind::BRANCH || kind == Instr::Kind::COND_BRANCH) {
+                if (auto jmp_target = instr.inst.JumpTarget()) {
+                    auto& target_entry = instr_map.getOrInsertDefault(jmp_target.value());
+                    target_entry.preds++;
+                    if (!target_entry.decoded)
+                        addr_stack.push_back(jmp_target.value());
+                    else
+                        instrs[target_entry.instr_idx].new_block = true;
+                }
             }
 
-            if (new_block && stop == DecodeStop::BASICBLOCK)
+            // End decoding stream if can't reach next instruction from here.
+            if (kind == Instr::Kind::BRANCH || kind == Instr::Kind::UNKNOWN ||
+                (kind == Instr::Kind::CALL && !cfg->call_function))
                 break;
-        };
 
-    end_superblock:
+            // For conditional branches and calls, start a new block.
+            // A call still ends a block, because we don't *know* that the
+            // execution continues after the call.
+            if (kind == Instr::Kind::COND_BRANCH || kind == Instr::Kind::CALL) {
+                if (stop == DecodeStop::BASICBLOCK)
+                    break;
+                new_block = true;
+            }
+
+            instr_map_entry = &instr_map.getOrInsertDefault(cur_addr);
+            instr_map_entry->preds++;
+        }
+
         if (cur_addr != start_addr)
             code_ranges.insert(code_ranges.end() - 1, {start_addr, cur_addr});
         if (stop == DecodeStop::BASICBLOCK)
