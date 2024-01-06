@@ -52,19 +52,6 @@
 
 namespace rellume {
 
-int Function::AddInst(uint64_t block_addr, uint64_t addr, size_t bufsz,
-                      const uint8_t* buf) {
-    auto& instr = instrs.emplace_back(DecodedInstr{});
-    int ret = instr.inst.DecodeFrom(cfg->arch, buf, bufsz, addr);
-    if (ret < 0) { // invalid or unknown instruction
-        instrs.erase(instrs.end() - 1);
-        return ret;
-    }
-    instr_map[addr] = instrs.size() - 1;
-    instr.new_block = addr == block_addr || instrs.size() == 1 || instrs[instrs.size() - 2].inst.end() != addr;
-    return instr.inst.len();
-}
-
 class LiftHelper {
     Function* func;
     FunctionInfo fi;

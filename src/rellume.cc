@@ -140,11 +140,6 @@ LLFunc* ll_func_new(LLVMModuleRef mod, LLConfig* cfg) {
 LLVMValueRef ll_func_lift(LLFunc* fn) { return llvm::wrap(unwrap(fn)->Lift()); }
 void ll_func_dispose(LLFunc* fn) { delete unwrap(fn); }
 
-int ll_func_add_instr(LLFunc* func, uintptr_t block_addr, uintptr_t addr,
-                      size_t bufsz, const uint8_t* buf) {
-    return unwrap(func)->AddInst(block_addr, addr, bufsz, buf);
-}
-
 static int ll_func_decode(LLFunc* func, uintptr_t addr,
                           rellume::Function::DecodeStop stop,
                           RellumeMemAccessCb mem_acc, void* user_arg) {

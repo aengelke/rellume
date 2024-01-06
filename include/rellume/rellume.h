@@ -76,9 +76,6 @@ RELLUME_API LLFunc* ll_func_new(LLVMModuleRef mod, LLConfig*);
 RELLUME_API LLVMValueRef ll_func_lift(LLFunc* fn);
 RELLUME_API void ll_func_dispose(LLFunc*);
 
-RELLUME_API int ll_func_add_instr(LLFunc* func, uintptr_t block_addr,
-                                  uintptr_t addr, size_t bufsz,
-                                  const uint8_t* buf);
 typedef size_t(* RellumeMemAccessCb)(size_t, uint8_t*, size_t, void*);
 RELLUME_API int ll_func_decode_instr(LLFunc* func, uintptr_t addr,
                                      RellumeMemAccessCb cb, void* user_arg);
