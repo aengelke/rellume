@@ -75,6 +75,8 @@ private:
     struct DecodedInstr {
         Instr inst;
         bool new_block;
+        /// Prevent branching from this instruction; used for calls
+        bool inhibit_branch;
     };
 
     std::vector<DecodedInstr> instrs;

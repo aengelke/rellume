@@ -55,10 +55,12 @@ namespace rellume {
 class LiftHelper {
     Function* func;
     FunctionInfo fi;
+    BasicBlock::Phis phi_mode;
     llvm::DenseMap<uint64_t, std::unique_ptr<ArchBasicBlock>> block_map;
 
     std::unique_ptr<ArchBasicBlock> exit_block;
 
+    ArchBasicBlock& ResolveAddr(uint64_t addr);
     ArchBasicBlock& ResolveAddr(llvm::Value* addr);
 
 public:
@@ -66,6 +68,26 @@ public:
 
     llvm::Function* Lift();
 };
+
+ArchBasicBlock& LiftHelper::ResolveAddr(uint64_t addr) {
+    auto block_it = block_map.find(addr);
+    if (block_it != block_map.end())
+        return *(block_it->second);
+    // We haven't created the block yet -- are we going to lift sth into it?
+    auto instr_it = func->instr_map.find(addr);
+    if (instr_it == func->instr_map.end() || !instr_it->second.decoded)
+        return *exit_block;
+
+    // Branches to instructions that we didn't identify as block start indicate
+    // a mismatch between decoding and lifting. This can happen for indirect
+    // jumps which become constants during lifting. For now, ignore this.
+    // TODO: split block if not yet lifted, otw. duplicate?
+    if (!func->instrs[instr_it->second.instr_idx].new_block)
+        return *exit_block;
+    // We will lift something for that address, so create the block.
+    auto ab = std::make_unique<ArchBasicBlock>(fi.fn, phi_mode, func->cfg->arch);
+    return *(block_map[addr] = std::move(ab));
+}
 
 ArchBasicBlock& LiftHelper::ResolveAddr(llvm::Value* addr) {
     uint64_t addr_skew = 0;
@@ -93,11 +115,8 @@ ArchBasicBlock& LiftHelper::ResolveAddr(llvm::Value* addr) {
         }
     }
 
-    if (auto const_addr = llvm::dyn_cast<llvm::ConstantInt>(addr)) {
-        auto block_it = block_map.find(addr_skew + const_addr->getZExtValue());
-        if (block_it != block_map.end())
-            return *(block_it->second);
-    }
+    if (auto const_addr = llvm::dyn_cast<llvm::ConstantInt>(addr))
+        return ResolveAddr(addr_skew + const_addr->getZExtValue());
     return *exit_block;
 }
 
@@ -140,20 +159,22 @@ llvm::Function* LiftHelper::Lift() {
     fn->addParamAttr(cpu_param_idx, align_attr);
     fn->addDereferenceableParamAttr(cpu_param_idx, 0x190);
 
-    auto phi_mode =
-        cfg->full_facets ? BasicBlock::Phis::ALL : BasicBlock::Phis::NATIVE;
+    fi.fn = fn;
+    fi.sptr_raw = &fn->arg_begin()[cpu_param_idx];
+
+    phi_mode = cfg->full_facets ? BasicBlock::Phis::ALL : BasicBlock::Phis::NATIVE;
     // Create entry basic block as first block in the function.
     auto entry_block = std::make_unique<ArchBasicBlock>(fn,
                                                         BasicBlock::Phis::NONE,
                                                         cfg->arch);
-
-    fi.fn = fn;
-    fi.sptr_raw = &fn->arg_begin()[cpu_param_idx];
-
     // Initialize the sptr pointers in the function info.
     cfg->callconv.InitSptrs(entry_block->GetInsertBlock(), fi);
     // And initially fill register file.
     cfg->callconv.UnpackParams(entry_block->GetInsertBlock(), fi);
+    entry_block->BranchTo(ResolveAddr(entry_ip));
+    func->instr_map[entry_ip].preds++;
+
+    exit_block = std::make_unique<ArchBasicBlock>(fn, phi_mode, cfg->arch);
 
     if (cfg->pc_base_value) {
         fi.pc_base_addr = cfg->pc_base_addr;
@@ -173,13 +194,8 @@ llvm::Function* LiftHelper::Lift() {
         ArchBasicBlock* cur_ab = nullptr;
         for (size_t i = 0; i < func->instrs.size(); i++) {
             const auto& decinst = func->instrs[i];
-            if (decinst.new_block) {
-                uint64_t block_addr = decinst.inst.start();
-                auto& ab = block_map.getOrInsertDefault(block_addr);
-                assert(!ab && "duplicate block address");
-                ab = std::make_unique<ArchBasicBlock>(fi.fn, phi_mode, cfg->arch);
-                cur_ab = ab.get();
-            }
+            if (decinst.new_block)
+                cur_ab = &ResolveAddr(decinst.inst.start());
 
             bool success = lift_fn(decinst.inst, fi, *cfg, *cur_ab);
             if (!success) {
@@ -191,10 +207,27 @@ llvm::Function* LiftHelper::Lift() {
                 while (i < func->instrs.size() - 1 && !func->instrs[i + 1].new_block)
                     i += 1;
             }
+
+            // Finish block by adding branches
+            if (i >= func->instrs.size() - 1 || func->instrs[i + 1].new_block) {
+                RegFile* regfile = cur_ab->GetInsertBlock()->GetRegFile();
+                if (regfile->GetInsertBlock()->getTerminator())
+                    continue;
+                if (decinst.inhibit_branch) {
+                    cur_ab->BranchTo(*exit_block);
+                    continue;
+                }
+                llvm::Value* next_rip = regfile->GetReg(ArchReg::IP, Facet::I64);
+                if (auto select = llvm::dyn_cast<llvm::SelectInst>(next_rip)) {
+                    cur_ab->BranchTo(select->getCondition(),
+                                     ResolveAddr(select->getTrueValue()),
+                                     ResolveAddr(select->getFalseValue()));
+                } else {
+                    cur_ab->BranchTo(ResolveAddr(next_rip));
+                }
+            }
         }
     }
-
-    exit_block = std::make_unique<ArchBasicBlock>(fn, phi_mode, cfg->arch);
 
     // Exit block packs values together and optionally returns something.
     if (cfg->tail_function) {
@@ -203,22 +236,6 @@ llvm::Function* LiftHelper::Lift() {
         cconv.Call(cfg->tail_function, exit_block->GetInsertBlock(), fi, true);
     } else {
         cfg->callconv.Return(exit_block->GetInsertBlock(), fi);
-    }
-
-    entry_block->BranchTo(*block_map[entry_ip]);
-
-    for (auto it = block_map.begin(); it != block_map.end(); ++it) {
-        RegFile* regfile = it->second->GetInsertBlock()->GetRegFile();
-        if (regfile->GetInsertBlock()->getTerminator())
-            continue;
-        llvm::Value* next_rip = regfile->GetReg(ArchReg::IP, Facet::I64);
-        if (auto select = llvm::dyn_cast<llvm::SelectInst>(next_rip)) {
-            it->second->BranchTo(select->getCondition(),
-                                 ResolveAddr(select->getTrueValue()),
-                                 ResolveAddr(select->getFalseValue()));
-        } else {
-            it->second->BranchTo(ResolveAddr(next_rip));
-        }
     }
 
     cfg->callconv.OptimizePacks(fi, entry_block->GetInsertBlock());

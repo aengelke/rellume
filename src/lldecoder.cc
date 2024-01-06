@@ -81,6 +81,9 @@ int Function::Decode(uintptr_t addr, DecodeStop stop, MemReader memacc) {
                 }
             }
 
+            if (kind == Instr::Kind::CALL)
+                instr.inhibit_branch = true;
+
             // End decoding stream if can't reach next instruction from here.
             if (kind == Instr::Kind::BRANCH || kind == Instr::Kind::UNKNOWN ||
                 (kind == Instr::Kind::CALL && !cfg->call_function))
