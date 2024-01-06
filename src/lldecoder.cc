@@ -76,9 +76,7 @@ std::pair<InstrKind, uint64_t> classifyInstr(Arch arch, const Instr& inst) {
                 branch_target = inst.end() + inst.op(0).pcrel();
             return {InstrKind::BRANCH, branch_target};
         case FDI_CALL:
-            if (inst.op(0).is_pcrel())
-                branch_target = inst.end() + inst.op(0).pcrel();
-            return {InstrKind::CALL, branch_target};
+            return {InstrKind::CALL, 0};
         case FDI_RET:
         case FDI_SYSCALL:
         case FDI_INT:
@@ -105,8 +103,9 @@ std::pair<InstrKind, uint64_t> classifyInstr(Arch arch, const Instr& inst) {
         case FRV_BGEU:
             return {InstrKind::COND_BRANCH, inst.start() + rv64->imm};
         case FRV_JAL:
-            branch_target = inst.start() + rv64->imm;
-            return {rv64->rd ? InstrKind::CALL : InstrKind::BRANCH, branch_target};
+            if (rv64->rd)
+                return {InstrKind::CALL, 0};
+            return {InstrKind::BRANCH, inst.start() + rv64->imm};
         case FRV_JALR:
             return {rv64->rd ? InstrKind::CALL : InstrKind::BRANCH, 0};
         case FRV_ECALL:
@@ -129,10 +128,9 @@ std::pair<InstrKind, uint64_t> classifyInstr(Arch arch, const Instr& inst) {
             return {InstrKind::COND_BRANCH, inst.start() + a64->tbz.offset};
         case farmdec::A64_B:
             return {InstrKind::BRANCH, inst.start() + a64->offset};
-        case farmdec::A64_BL:
-            return {InstrKind::CALL, inst.start() + a64->offset};
         case farmdec::A64_BR:
             return {InstrKind::BRANCH, 0};
+        case farmdec::A64_BL:
         case farmdec::A64_BLR:
             return {InstrKind::CALL, 0};
         case farmdec::A64_RET:
@@ -193,16 +191,14 @@ int Function::Decode(uintptr_t addr, DecodeStop stop, MemReader memacc) {
 
             auto [kind, jmp_target] = classifyInstr(cfg->arch, instr.inst);
 
-            // For branches, enqueue jump target.
-            if (kind == InstrKind::BRANCH || kind == InstrKind::COND_BRANCH) {
-                if (jmp_target) {
-                    auto& target_entry = instr_map.getOrInsertDefault(jmp_target);
-                    target_entry.preds++;
-                    if (!target_entry.decoded)
-                        addr_stack.push_back(jmp_target);
-                    else
-                        instrs[target_entry.instr_idx].new_block = true;
-                }
+            // For branches, enqueue jump target. NB: this doesn't include calls
+            if (jmp_target) {
+                auto& target_entry = instr_map.getOrInsertDefault(jmp_target);
+                target_entry.preds++;
+                if (!target_entry.decoded)
+                    addr_stack.push_back(jmp_target);
+                else
+                    instrs[target_entry.instr_idx].new_block = true;
             }
 
             if (kind == InstrKind::CALL)
