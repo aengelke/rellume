@@ -39,7 +39,7 @@ class BasicBlock {
 public:
     enum class Phis { NONE, NATIVE, ALL };
 
-    BasicBlock(llvm::Function* fn, Phis phi_mode, Arch arch);
+    BasicBlock(llvm::Function* fn, Phis phi_mode, Arch arch, size_t max_preds);
 
     BasicBlock(BasicBlock&& rhs);
     BasicBlock& operator=(BasicBlock&& rhs);
@@ -69,6 +69,7 @@ private:
     /// The register file for the basic block
     RegFile regfile;
 
+    size_t max_preds;
     std::vector<BasicBlock*> predecessors;
     std::vector<BasicBlock*> successors;
     std::vector<std::tuple<ArchReg, Facet, llvm::PHINode*>> empty_phis;
@@ -85,9 +86,10 @@ private:
     BasicBlock* insert_block;
 
 public:
-    ArchBasicBlock(llvm::Function* fn, BasicBlock::Phis phi_mode, Arch arch)
+    ArchBasicBlock(llvm::Function* fn, BasicBlock::Phis phi_mode, Arch arch,
+                   size_t max_preds)
             : fn(fn), phi_mode(phi_mode), arch(arch) {
-        low_blocks.push_back(std::make_unique<BasicBlock>(fn, phi_mode, arch));
+        low_blocks.push_back(std::make_unique<BasicBlock>(fn, phi_mode, arch, max_preds));
         insert_block = low_blocks[0].get();
     }
 
@@ -104,7 +106,7 @@ private:
 
 public:
     BasicBlock* AddBlock() {
-        low_blocks.push_back(std::make_unique<BasicBlock>(fn, phi_mode, arch));
+        low_blocks.push_back(std::make_unique<BasicBlock>(fn, phi_mode, arch, SIZE_MAX));
         return low_blocks[low_blocks.size()-1].get();
     }
     BasicBlock* GetInsertBlock() {

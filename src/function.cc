@@ -85,7 +85,8 @@ ArchBasicBlock& LiftHelper::ResolveAddr(uint64_t addr) {
     if (!func->instrs[instr_it->second.instr_idx].new_block)
         return *exit_block;
     // We will lift something for that address, so create the block.
-    auto ab = std::make_unique<ArchBasicBlock>(fi.fn, phi_mode, func->cfg->arch);
+    auto ab = std::make_unique<ArchBasicBlock>(fi.fn, phi_mode, func->cfg->arch,
+                                               instr_it->second.preds);
     return *(block_map[addr] = std::move(ab));
 }
 
@@ -128,6 +129,7 @@ llvm::Function* LiftHelper::Lift() {
         return nullptr;
 
     uint64_t entry_ip = func->instrs[0].inst.start();
+    func->instr_map[entry_ip].preds++;
 
     using LiftFn = bool(const Instr&, FunctionInfo&, const LLConfig&, ArchBasicBlock&) noexcept;
 
@@ -166,15 +168,14 @@ llvm::Function* LiftHelper::Lift() {
     // Create entry basic block as first block in the function.
     auto entry_block = std::make_unique<ArchBasicBlock>(fn,
                                                         BasicBlock::Phis::NONE,
-                                                        cfg->arch);
+                                                        cfg->arch, 0);
     // Initialize the sptr pointers in the function info.
     cfg->callconv.InitSptrs(entry_block->GetInsertBlock(), fi);
     // And initially fill register file.
     cfg->callconv.UnpackParams(entry_block->GetInsertBlock(), fi);
     entry_block->BranchTo(ResolveAddr(entry_ip));
-    func->instr_map[entry_ip].preds++;
 
-    exit_block = std::make_unique<ArchBasicBlock>(fn, phi_mode, cfg->arch);
+    exit_block = std::make_unique<ArchBasicBlock>(fn, phi_mode, cfg->arch, SIZE_MAX);
 
     if (cfg->pc_base_value) {
         fi.pc_base_addr = cfg->pc_base_addr;
