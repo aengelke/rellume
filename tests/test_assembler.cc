@@ -4,11 +4,14 @@
 #include <llvm/MC/MCAsmInfo.h>
 #include <llvm/MC/MCCodeEmitter.h>
 #include <llvm/MC/MCContext.h>
+#include <llvm/MC/MCInstrInfo.h>
 #include <llvm/MC/MCObjectFileInfo.h>
 #include <llvm/MC/MCObjectWriter.h>
 #include <llvm/MC/MCParser/MCAsmParser.h>
 #include <llvm/MC/MCParser/MCTargetAsmParser.h>
+#include <llvm/MC/MCRegisterInfo.h>
 #include <llvm/MC/MCSection.h>
+#include <llvm/MC/MCSubtargetInfo.h>
 #include <llvm/MC/MCStreamer.h>
 #include <llvm/MC/MCTargetOptions.h>
 #include <llvm/MC/MCValue.h>
@@ -112,27 +115,27 @@ int main(int argc, char** argv) {
         return 1;
     }
 
-    llvm::MCRegisterInfo* mri = target->createMCRegInfo(triple.str());
-    if (mri == nullptr) {
+    auto mri = std::unique_ptr<llvm::MCRegisterInfo>(target->createMCRegInfo(triple.str()));
+    if (!mri) {
         std::cerr << "error getting MCRegisterInfo" << std::endl;
         return 1;
     }
 
     llvm::MCTargetOptions options;
-    llvm::MCAsmInfo* mai = target->createMCAsmInfo(*mri, triple.str(), options);
-    if (mai == nullptr) {
+    auto mai = std::unique_ptr<llvm::MCAsmInfo>(target->createMCAsmInfo(*mri, triple.str(), options));
+    if (!mai) {
         std::cerr << "error getting MCAsmInfo" << std::endl;
         return 1;
     }
 
-    llvm::MCInstrInfo* mcii = target->createMCInstrInfo();
-    if (mcii == nullptr) {
+    auto mcii = std::unique_ptr<llvm::MCInstrInfo>(target->createMCInstrInfo());
+    if (!mcii) {
         std::cerr << "error getting MCInstrInfo" << std::endl;
         return 1;
     }
 
-    llvm::MCSubtargetInfo* sti = target->createMCSubtargetInfo(triple.str(), "", cpufeatures);
-    if (sti == nullptr) {
+    auto sti = std::unique_ptr<llvm::MCSubtargetInfo>(target->createMCSubtargetInfo(triple.str(), "", cpufeatures));
+    if (!sti) {
         std::cerr << "error getting MCSubtargetInfo" << std::endl;
         return 1;
     }
@@ -151,11 +154,11 @@ int main(int argc, char** argv) {
         srcmgr.AddNewSourceBuffer(std::move(asmbuf), llvm::SMLoc());
 
 #if LL_LLVM_MAJOR >= 13
-        llvm::MCContext ctx(triple, mai, mri, sti, &srcmgr);
+        llvm::MCContext ctx(triple, mai.get(), mri.get(), sti.get(), &srcmgr);
         mofi.initMCObjectFileInfo(ctx, true);
         ctx.setObjectFileInfo(&mofi);
 #else
-        llvm::MCContext ctx(mai, mri, &mofi, &srcmgr);
+        llvm::MCContext ctx(mai.get(), mri.get(), &mofi, &srcmgr);
         mofi.InitMCObjectFileInfo(triple, true, ctx);
 #endif
 
