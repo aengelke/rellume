@@ -48,19 +48,27 @@
 namespace rellume {
 
 BasicBlock::BasicBlock(llvm::Function* fn, Phis phi_mode, Arch arch, size_t max_preds)
-        : regfile(arch), max_preds(max_preds) {
+        : phi_mode(phi_mode), regfile(arch), max_preds(max_preds) {
     llvm_block = llvm::BasicBlock::Create(fn->getContext(), "", fn, nullptr);
     regfile.SetInsertBlock(llvm_block);
 
     if (max_preds != SIZE_MAX)
         predecessors.reserve(max_preds);
+}
 
+RegFile* BasicBlock::GetRegFile() {
     if (phi_mode != Phis::NONE) {
-        // Initialize all registers with a generator which adds a PHI node when
-        // the value-facet combination is requested.
-        empty_phis.reserve(32);
-        regfile.InitWithPHIs(&empty_phis, /*all=*/phi_mode == Phis::ALL);
+        if (max_preds == 1 && predecessors.size() == 1) {
+            regfile.InitWithRegFile(predecessors[0]->GetRegFile());
+        } else {
+            // Initialize all registers with a generator which adds a PHI node
+            // when the value-facet combination is requested.
+            empty_phis.reserve(32);
+            regfile.InitWithPHIs(&empty_phis);
+        }
+        phi_mode = Phis::NONE;
     }
+    return &regfile;
 }
 
 void BasicBlock::BranchTo(BasicBlock& next) {

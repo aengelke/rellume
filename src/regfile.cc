@@ -120,7 +120,14 @@ public:
     void SetInsertBlock(llvm::BasicBlock* n) { insert_block = n; }
 
     void Clear();
-    void InitWithPHIs(std::vector<PhiDesc>*, bool all_facets);
+    void InitWithRegFile(RegFile* parent) {
+        Clear();
+        this->parent = parent;
+    }
+    void InitWithPHIs(std::vector<PhiDesc>* desc_vec) {
+        Clear();
+        phiDescs = desc_vec;
+    }
 
     llvm::Value* GetReg(ArchReg reg, Facet facet);
     void SetReg(ArchReg reg, Facet facet, llvm::Value*, bool clear_facets);
@@ -135,6 +142,7 @@ private:
     Register reg_ip;
     llvm::SmallVector<Register, 7> flags;
 
+    RegFile* parent = nullptr;
     std::vector<PhiDesc>* phiDescs = nullptr;
 
     Facet ivec_facet;
@@ -154,13 +162,6 @@ void RegFile::impl::Clear() {
     reg_ip.clear();
     for (auto& reg : flags)
         reg.clear();
-}
-
-void RegFile::impl::InitWithPHIs(std::vector<PhiDesc>* desc_vec,
-                                 bool all_facets) {
-    Clear();
-    phiDescs = desc_vec;
-    (void) all_facets;
 }
 
 Register* RegFile::impl::AccessReg(ArchReg reg, Facet facet) {
@@ -216,11 +217,18 @@ llvm::Value* RegFile::impl::GetReg(ArchReg reg, Facet facet) {
         // In future, we may want to support this. For now, it shouldn't happen.
         assert(rv->values.empty() && "missing native facet");
         // We need to get the value, so add a PHI node.
-        llvm::IRBuilder<> irb(insert_block, insert_block->begin());
         auto nativeFacet = NativeFacet(reg, facet);
-        auto phi = irb.CreatePHI(nativeFacet.Type(irb.getContext()), 4);
-        phiDescs->push_back(std::make_tuple(reg, nativeFacet, phi));
-        SetReg(reg, nativeFacet, phi, true);
+        if (parent) {
+            SetReg(reg, nativeFacet, parent->GetReg(reg, nativeFacet), true);
+        } else if (phiDescs) {
+            llvm::IRBuilder<> irb(insert_block, insert_block->begin());
+            auto phi = irb.CreatePHI(nativeFacet.Type(irb.getContext()), 4);
+            phiDescs->push_back(std::make_tuple(reg, nativeFacet, phi));
+            SetReg(reg, nativeFacet, phi, true);
+        } else {
+            assert(false && "accessing unset register in entry block");
+            return nullptr;
+        }
     }
 
     // Index of first value that is SMALLER than the size we need.
@@ -367,9 +375,8 @@ RegFile::~RegFile() {}
 llvm::BasicBlock* RegFile::GetInsertBlock() { return pimpl->GetInsertBlock(); }
 void RegFile::SetInsertBlock(llvm::BasicBlock* n) { pimpl->SetInsertBlock(n); }
 void RegFile::Clear() { pimpl->Clear(); }
-void RegFile::InitWithPHIs(std::vector<PhiDesc>* desc_vec, bool all_facets) {
-    pimpl->InitWithPHIs(desc_vec, all_facets);
-}
+void RegFile::InitWithRegFile(RegFile* r) { pimpl->InitWithRegFile(r); }
+void RegFile::InitWithPHIs(std::vector<PhiDesc>* d) { pimpl->InitWithPHIs(d); }
 llvm::Value* RegFile::GetReg(ArchReg r, Facet f) { return pimpl->GetReg(r, f); }
 void RegFile::SetReg(ArchReg reg, Facet facet, llvm::Value* value, bool clear) {
     pimpl->SetReg(reg, facet, value, clear);

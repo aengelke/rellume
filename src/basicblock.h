@@ -51,9 +51,7 @@ public:
     void BranchTo(llvm::Value* cond, BasicBlock& then, BasicBlock& other);
     bool FillPhis();
 
-    RegFile* GetRegFile() {
-        return &regfile;
-    }
+    RegFile* GetRegFile();
 
     const std::vector<BasicBlock*>& Predecessors() const {
         return predecessors;
@@ -66,6 +64,7 @@ private:
     /// First LLVM basic block for the x86 basic block.
     llvm::BasicBlock* llvm_block;
 
+    Phis phi_mode;
     /// The register file for the basic block
     RegFile regfile;
 

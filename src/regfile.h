@@ -124,8 +124,9 @@ public:
     void SetInsertBlock(llvm::BasicBlock* new_block);
 
     void Clear();
+    void InitWithRegFile(RegFile* parent);
     using PhiDesc = std::tuple<ArchReg, Facet, llvm::PHINode*>;
-    void InitWithPHIs(std::vector<PhiDesc>*, bool all_facets);
+    void InitWithPHIs(std::vector<PhiDesc>*);
 
     llvm::Value* GetReg(ArchReg reg, Facet facet);
     void SetReg(ArchReg reg, Facet facet, llvm::Value*, bool clear_facets);
