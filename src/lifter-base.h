@@ -45,7 +45,9 @@ namespace rellume {
 class LifterBase {
 protected:
     ArchBasicBlock& ablock;
+private:
     RegFile* regfile;
+protected:
     llvm::IRBuilder<> irb;
     FunctionInfo& fi;
     const LLConfig& cfg;

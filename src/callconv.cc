@@ -103,6 +103,15 @@ unsigned CallConv::CpuStructParamIdx() const {
     }
 }
 
+Arch CallConv::ToArch() const {
+    switch (*this) {
+    default: return Arch::INVALID;
+    case CallConv::X86_64_SPTR:  return Arch::X86_64;
+    case CallConv::RV64_SPTR:    return Arch::RV64;
+    case CallConv::AArch64_SPTR: return Arch::AArch64;
+    }
+}
+
 using CPUStructEntry = std::tuple<unsigned, unsigned, ArchReg, Facet>;
 
 // Note: replace with C++20 std::span.
@@ -167,7 +176,7 @@ static span<const CPUStructEntry> CPUStructEntries(CallConv cconv) {
 
 
 void CallConv::InitSptrs(BasicBlock* bb, FunctionInfo& fi) {
-    llvm::IRBuilder<> irb(bb->GetRegFile()->GetInsertBlock());
+    llvm::IRBuilder<> irb(*bb);
     unsigned as = fi.sptr_raw->getType()->getPointerAddressSpace();
     llvm::Type* i8 = irb.getInt8Ty();
 
@@ -211,6 +220,7 @@ static void Pack(CallConv cconv, BasicBlock* bb, FunctionInfo& fi, F pass_as_reg
 
 template<typename F>
 static void Unpack(CallConv cconv, BasicBlock* bb, FunctionInfo& fi, F get_from_reg) {
+    bb->InitRegFile(cconv.ToArch(), BasicBlock::Phis::NONE);
     RegFile& regfile = *bb->GetRegFile();
     llvm::IRBuilder<> irb(regfile.GetInsertBlock());
 
@@ -258,7 +268,7 @@ llvm::CallInst* CallConv::Call(llvm::Function* fn, BasicBlock* bb,
         return false;
     });
 
-    llvm::IRBuilder<> irb(bb->GetRegFile()->GetInsertBlock());
+    llvm::IRBuilder<> irb(*bb);
 
     llvm::CallInst* call = irb.CreateCall(fn->getFunctionType(), fn, call_args);
     call->setCallingConv(fn->getCallingConv());

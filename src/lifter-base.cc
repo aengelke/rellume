@@ -74,6 +74,7 @@ void LifterBase::CallExternalFunction(llvm::Function* fn) {
     CallConv cconv = CallConv::FromFunction(fn, cfg.arch);
     llvm::CallInst* call = cconv.Call(fn, ablock.GetInsertBlock(), fi);
     assert(call && "failed to create call for external function");
+    regfile = ablock.GetInsertBlock()->GetRegFile();
 
     // Directly inline alwaysinline functions
     if (fn->hasFnAttribute(llvm::Attribute::AlwaysInline)) {

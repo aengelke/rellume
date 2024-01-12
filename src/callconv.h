@@ -57,6 +57,7 @@ public:
                                unsigned sptr_addrspace) const;
     llvm::CallingConv::ID FnCallConv() const;
     unsigned CpuStructParamIdx() const;
+    Arch ToArch() const;
 
     void InitSptrs(BasicBlock* bb, FunctionInfo& fi);
 

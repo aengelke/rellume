@@ -47,28 +47,27 @@
 
 namespace rellume {
 
-BasicBlock::BasicBlock(llvm::Function* fn, Phis phi_mode, Arch arch, size_t max_preds)
-        : phi_mode(phi_mode), regfile(arch), max_preds(max_preds) {
+BasicBlock::BasicBlock(llvm::Function* fn, size_t max_preds)
+        : max_preds(max_preds) {
     llvm_block = llvm::BasicBlock::Create(fn->getContext(), "", fn, nullptr);
-    regfile.SetInsertBlock(llvm_block);
 
     if (max_preds != SIZE_MAX)
         predecessors.reserve(max_preds);
 }
 
-RegFile* BasicBlock::GetRegFile() {
+void BasicBlock::InitRegFile(Arch arch, Phis phi_mode) {
+    regfile = std::make_unique<RegFile>(arch);
+    regfile->SetInsertBlock(llvm_block);
     if (phi_mode != Phis::NONE) {
         if (max_preds == 1 && predecessors.size() == 1) {
-            regfile.InitWithRegFile(predecessors[0]->GetRegFile());
+            regfile->InitWithRegFile(predecessors[0]->GetRegFile());
         } else {
             // Initialize all registers with a generator which adds a PHI node
             // when the value-facet combination is requested.
             empty_phis.reserve(32);
-            regfile.InitWithPHIs(&empty_phis);
+            regfile->InitWithPHIs(&empty_phis);
         }
-        phi_mode = Phis::NONE;
     }
-    return &regfile;
 }
 
 void BasicBlock::BranchTo(BasicBlock& next) {
@@ -105,7 +104,7 @@ bool BasicBlock::FillPhis() {
 
     for (const auto& [reg, facet, phi] : empty_phis) {
         for (BasicBlock* pred : predecessors) {
-            llvm::Value* value = pred->regfile.GetReg(reg, facet);
+            llvm::Value* value = pred->regfile->GetReg(reg, facet);
             if (facet == Facet::PTR && value->getType() != phi->getType()) {
                 llvm::IRBuilder<> irb(pred->llvm_block->getTerminator());
                 value = irb.CreatePointerCast(value, phi->getType());

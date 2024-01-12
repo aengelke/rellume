@@ -176,6 +176,7 @@ llvm::Function* LiftHelper::Lift() {
     entry_block->BranchTo(ResolveAddr(entry_ip));
 
     exit_block = std::make_unique<ArchBasicBlock>(fn, phi_mode, cfg->arch, SIZE_MAX);
+    exit_block->GetInsertBlock()->InitRegFile(cfg->arch, phi_mode);
 
     if (cfg->pc_base_value) {
         fi.pc_base_addr = cfg->pc_base_addr;
@@ -195,8 +196,11 @@ llvm::Function* LiftHelper::Lift() {
         ArchBasicBlock* cur_ab = nullptr;
         for (size_t i = 0; i < func->instrs.size(); i++) {
             const auto& decinst = func->instrs[i];
-            if (decinst.new_block)
+            if (decinst.new_block) {
                 cur_ab = &ResolveAddr(decinst.inst.start());
+                assert(!cur_ab->GetInsertBlock()->GetRegFile());
+                cur_ab->GetInsertBlock()->InitRegFile(cfg->arch, phi_mode);
+            }
 
             bool success = lift_fn(decinst.inst, fi, *cfg, *cur_ab);
             if (!success) {
@@ -212,7 +216,7 @@ llvm::Function* LiftHelper::Lift() {
             // Finish block by adding branches
             if (i >= func->instrs.size() - 1 || func->instrs[i + 1].new_block) {
                 RegFile* regfile = cur_ab->GetInsertBlock()->GetRegFile();
-                if (regfile->GetInsertBlock()->getTerminator())
+                if (!regfile || regfile->GetInsertBlock()->getTerminator())
                     continue;
                 if (decinst.inhibit_branch) {
                     cur_ab->BranchTo(*exit_block);

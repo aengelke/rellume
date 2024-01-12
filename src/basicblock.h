@@ -39,7 +39,7 @@ class BasicBlock {
 public:
     enum class Phis { NONE, NATIVE, ALL };
 
-    BasicBlock(llvm::Function* fn, Phis phi_mode, Arch arch, size_t max_preds);
+    BasicBlock(llvm::Function* fn, size_t max_preds);
 
     BasicBlock(BasicBlock&& rhs);
     BasicBlock& operator=(BasicBlock&& rhs);
@@ -51,7 +51,10 @@ public:
     void BranchTo(llvm::Value* cond, BasicBlock& then, BasicBlock& other);
     bool FillPhis();
 
-    RegFile* GetRegFile();
+    void InitRegFile(Arch arch, Phis phi_mode);
+    RegFile* GetRegFile() {
+        return regfile.get();
+    }
 
     const std::vector<BasicBlock*>& Predecessors() const {
         return predecessors;
@@ -60,13 +63,16 @@ public:
         return successors;
     }
 
+    operator llvm::BasicBlock*() const {
+        return llvm_block;
+    }
+
 private:
     /// First LLVM basic block for the x86 basic block.
     llvm::BasicBlock* llvm_block;
 
-    Phis phi_mode;
     /// The register file for the basic block
-    RegFile regfile;
+    std::unique_ptr<RegFile> regfile;
 
     size_t max_preds;
     std::vector<BasicBlock*> predecessors;
@@ -88,7 +94,7 @@ public:
     ArchBasicBlock(llvm::Function* fn, BasicBlock::Phis phi_mode, Arch arch,
                    size_t max_preds)
             : fn(fn), phi_mode(phi_mode), arch(arch) {
-        low_blocks.push_back(std::make_unique<BasicBlock>(fn, phi_mode, arch, max_preds));
+        low_blocks.push_back(std::make_unique<BasicBlock>(fn, max_preds));
         insert_block = low_blocks[0].get();
     }
 
@@ -105,8 +111,10 @@ private:
 
 public:
     BasicBlock* AddBlock() {
-        low_blocks.push_back(std::make_unique<BasicBlock>(fn, phi_mode, arch, SIZE_MAX));
-        return low_blocks[low_blocks.size()-1].get();
+        low_blocks.push_back(std::make_unique<BasicBlock>(fn, SIZE_MAX));
+        BasicBlock* res = low_blocks[low_blocks.size()-1].get();
+        res->InitRegFile(arch, phi_mode);
+        return res;
     }
     BasicBlock* GetInsertBlock() {
         return insert_block;
