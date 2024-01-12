@@ -240,6 +240,7 @@ Register::Value* RegFile::impl::GetRegFold(ArchReg reg, Facet facet, unsigned fu
     }
 
     assert(!rv->values.empty() && "undefined upper part of register");
+    assert(!rv->upperZero || rv->values[0].dirty);
 
     unsigned foldStartIdx = 0;
     for (unsigned i = 0; i < rv->values.size(); i++) {
@@ -254,9 +255,35 @@ Register::Value* RegFile::impl::GetRegFold(ArchReg reg, Facet facet, unsigned fu
 
 fold:;
     unsigned foldSize = fullSize < rv->values[0].size ? rv->values[0].size : fullSize;
-    // Fold values from foldStartIdx
-    assert(false && "value merging not implemented");
-    return nullptr;
+    llvm::Value* result = rv->values[0].valueA;
+
+    // Always convert pointers to integers, first.
+    if (result->getType()->isPointerTy())
+        result = irb.CreateBitCast(result, irb.getIntNTy(rv->values[0].size));
+
+    if (result->getType()->isIntegerTy()) {
+        llvm::Type* targetTy = irb.getIntNTy(foldSize);
+        result = irb.CreateZExtOrTrunc(result, targetTy);
+        for (unsigned i = 1; i < rv->values.size(); i++) {
+            if (!rv->values[i].dirty)
+                continue;
+            unsigned size = rv->values[i].size;
+            auto value = irb.CreateBitCast(rv->values[i].valueA, irb.getIntNTy(size));
+            value = irb.CreateZExt(value, targetTy);
+            auto mask = llvm::APInt::getHighBitsSet(foldSize, foldSize - size);
+            result = irb.CreateOr(irb.CreateAnd(result, mask), value);
+        }
+    } else {
+        llvm::errs() << *result << "\n";
+        assert(false && "non-integer value merging not implemented");
+        return nullptr;
+    }
+
+    // TODO: could keep smallest dirty value and all following clean as clean.
+    rv->values.clear();
+    rv->values.push_back(Register::Value{result, nullptr, foldSize, true});
+
+    return &rv->values[0];
 }
 
 llvm::Value* RegFile::impl::GetReg(ArchReg reg, Facet facet) {

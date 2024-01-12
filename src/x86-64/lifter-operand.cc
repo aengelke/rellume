@@ -184,24 +184,17 @@ void Lifter::StoreGpFacet(ArchReg reg, Facet facet, llvm::Value* value) {
     assert(value->getType()->isIntegerTy());
     assert(value->getType() == facet.Type(irb.getContext()));
 
-    llvm::Value* value64 = irb.CreateZExt(value, irb.getInt64Ty());
-    if (facet == Facet::I8H)
-        value64 = irb.CreateShl(value64, 8);
+    if (facet == Facet::I8H) {
+        uint64_t mask = 0xffffffffffff00ff;
+        llvm::Value* maskedOld = irb.CreateAnd(GetReg(reg, Facet::I64), mask);
 
-    uint64_t mask = 0;
-    if (facet == Facet::I16)
-        mask = 0xffffffffffff0000;
-    else if (facet == Facet::I8)
-        mask = 0xffffffffffffff00;
-    else if (facet == Facet::I8H)
-        mask = 0xffffffffffff00ff;
-    if (mask != 0) {
-        llvm::Value* prev64 = GetReg(reg, Facet::I64);
-        value64 = irb.CreateOr(value64, irb.CreateAnd(prev64, mask));
+        value = irb.CreateShl(irb.CreateZExt(value, irb.getInt64Ty()), 8);
+        SetReg(reg, Facet::I64, irb.CreateOr(value, maskedOld));
+    } else if (facet == Facet::I8 || facet == Facet::I16) {
+        SetRegMerge(reg, facet, value);
+    } else {
+        SetReg(reg, facet, value);
     }
-
-    SetReg(reg, Facet::I64, value64);
-    SetRegFacet(reg, facet, value); // Store facet value as well
 }
 
 void Lifter::OpStoreGp(const Instr::Op op, llvm::Value* value,

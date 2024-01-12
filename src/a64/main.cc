@@ -942,12 +942,10 @@ void Lifter::SetGp(farmdec::Reg r, bool w32, llvm::Value* val) {
         return; // discard
     }
     if (r == farmdec::STACK_POINTER) {
-        SetReg(ArchReg::A64_SP, Facet::I64, irb.CreateZExt(val, irb.getInt64Ty()));
-        SetRegFacet(ArchReg::A64_SP, fc, val);
+        SetReg(ArchReg::A64_SP, fc, val);
         return;
     }
-    SetReg(ArchReg::GP(r), Facet::I64, irb.CreateZExt(val, irb.getInt64Ty()));
-    SetRegFacet(ArchReg::GP(r), fc, val);
+    SetReg(ArchReg::GP(r), fc, val);
 }
 
 void Lifter::FlagCalcAdd(llvm::Value* res, llvm::Value* lhs, llvm::Value* rhs) {
