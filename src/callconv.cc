@@ -189,33 +189,11 @@ void CallConv::InitSptrs(BasicBlock* bb, FunctionInfo& fi) {
     }
 }
 
-template<typename F>
-static void Pack(CallConv cconv, BasicBlock* bb, FunctionInfo& fi, F pass_as_reg) {
-    auto regfile = bb->TakeRegFile();
-    llvm::IRBuilder<> irb(*bb);
-
-    const auto& cpu_struct_entries = CPUStructEntries(cconv);
-
+static void Pack(BasicBlock* bb, FunctionInfo& fi, llvm::Instruction* before) {
     CallConvPack& pack_info = fi.call_conv_packs.emplace_back();
-    pack_info.block_dirty_regs = regfile->DirtyRegs();
+    pack_info.regfile = bb->TakeRegFile();
+    pack_info.packBefore = before;
     pack_info.bb = bb;
-    pack_info.stores.resize(cpu_struct_entries.size());
-
-    for (const auto& [sptr_idx, off, reg, facet] : cpu_struct_entries) {
-        if (reg.Kind() == ArchReg::RegKind::INVALID)
-            continue;
-
-        llvm::Value* reg_val = regfile->GetReg(reg, facet);
-
-        if (pass_as_reg(reg, reg_val)) {
-            continue;
-        }
-
-        unsigned regset_idx = RegisterSetBitIdx(reg, facet);
-        regfile->DirtyRegs()[regset_idx] = false;
-        regfile->CleanedRegs()[regset_idx] = true;
-        pack_info.stores[sptr_idx] = irb.CreateStore(reg_val, fi.sptr[sptr_idx]);
-    }
 }
 
 template<typename F>
@@ -244,12 +222,9 @@ static void Unpack(CallConv cconv, BasicBlock* bb, FunctionInfo& fi, F get_from_
 
 llvm::ReturnInst* CallConv::Return(BasicBlock* bb, FunctionInfo& fi) const {
     llvm::IRBuilder<> irb(bb->GetRegFile()->GetInsertBlock());
-
-    Pack(*this, bb, fi, [] (ArchReg reg, llvm::Value* reg_val) {
-        return false;
-    });
-
-    return irb.CreateRetVoid();
+    llvm::ReturnInst* ret = irb.CreateRetVoid();
+    Pack(bb, fi, ret);
+    return ret;
 }
 
 void CallConv::UnpackParams(BasicBlock* bb, FunctionInfo& fi) const {
@@ -264,15 +239,13 @@ llvm::CallInst* CallConv::Call(llvm::Function* fn, BasicBlock* bb,
     call_args.resize(fn->arg_size());
     call_args[CpuStructParamIdx()] = fi.sptr_raw;
 
-    Pack(*this, bb, fi, [&call_args] (ArchReg reg, llvm::Value* reg_val) {
-        return false;
-    });
-
     llvm::IRBuilder<> irb(*bb);
 
     llvm::CallInst* call = irb.CreateCall(fn->getFunctionType(), fn, call_args);
     call->setCallingConv(fn->getCallingConv());
     call->setAttributes(fn->getAttributes());
+
+    Pack(bb, fi, call);
 
     if (tail_call) {
         call->setTailCallKind(llvm::CallInst::TCK_MustTail);
@@ -331,13 +304,18 @@ void CallConv::OptimizePacks(FunctionInfo& fi, BasicBlock* entry) {
     }
 
     for (const auto& pack : fi.call_conv_packs) {
-        RegisterSet regset = bb_map.lookup(pack.bb).first | pack.block_dirty_regs;
+        RegFile& regfile = *pack.regfile;
+        regfile.SetInsertPoint(pack.packBefore->getIterator());
+
+        RegisterSet regset = bb_map.lookup(pack.bb).first | regfile.DirtyRegs();
+        llvm::IRBuilder<> irb(pack.packBefore);
         for (const auto& [sptr_idx, off, reg, facet] : CPUStructEntries(*this)) {
             if (reg.Kind() == ArchReg::RegKind::INVALID)
                 continue;
-            if (pack.stores[sptr_idx] && !regset[RegisterSetBitIdx(reg, facet)]) {
-                pack.stores[sptr_idx]->eraseFromParent();
-            }
+            if (!regset[RegisterSetBitIdx(reg, facet)])
+                continue;
+            llvm::Value* reg_val = regfile.GetReg(reg, facet);
+            irb.CreateStore(reg_val, fi.sptr[sptr_idx]);
         }
     }
 }

@@ -24,15 +24,15 @@
 #ifndef RELLUME_FUNCTION_INFO_H
 #define RELLUME_FUNCTION_INFO_H
 
-#include "regfile.h"
 #include <cstdbool>
 #include <cstdint>
+#include <memory>
 #include <vector>
 
 
 namespace llvm {
 class Function;
-class StoreInst;
+class Instruction;
 class Value;
 }
 
@@ -67,6 +67,7 @@ namespace SptrIdx::aarch64 {
 #endif // RELLUME_WITH_AARCH64
 
 class BasicBlock;
+class RegFile;
 
 /// CallConvPack records which registers were changed in a basic block,
 /// and pre-computed LLVM store instructions for them.
@@ -75,9 +76,9 @@ class BasicBlock;
 /// passing unnecessary store instructions to the LLVM optimiser, which
 /// would struggle with the many superfluous stores.
 struct CallConvPack {
-    RegisterSet block_dirty_regs;
+    std::unique_ptr<RegFile> regfile;
+    llvm::Instruction* packBefore;
     BasicBlock* bb;
-    std::vector<llvm::StoreInst*> stores;
 };
 
 /// FunctionInfo holds the LLVM objects of the lifted function and its
