@@ -152,6 +152,8 @@ private:
 
     Register* AccessReg(ArchReg reg, Facet facet);
     Facet NativeFacet(ArchReg reg, Facet facet);
+
+    Register::Value* GetRegFold(ArchReg reg, Facet facet, unsigned fullSize);
 };
 
 void RegFile::impl::Clear() {
@@ -206,14 +208,11 @@ Facet RegFile::impl::NativeFacet(ArchReg reg, Facet facet) {
     }
 }
 
-llvm::Value* RegFile::impl::GetReg(ArchReg reg, Facet facet) {
+Register::Value* RegFile::impl::GetRegFold(ArchReg reg, Facet facet, unsigned fullSize) {
+    // Goal: make sure that rv->values[<retvalue>] is at least fullSize and
+    // that no dirty values follow after that.
     Register* rv = AccessReg(reg, facet);
-
-    unsigned facetSize = facet.Size();
-    if (facet == Facet::I8H)
-        facetSize = 16;
-    llvm::Type* facetType = facet.Type(insert_block->getContext());
-    if (!rv->upperZero && (rv->values.empty() || rv->values[0].size < facetSize)) {
+    if (!rv->upperZero && (rv->values.empty() || rv->values[0].size < fullSize)) {
         // In future, we may want to support this. For now, it shouldn't happen.
         assert(rv->values.empty() && "missing native facet");
         // We need to get the value, so add a PHI node.
@@ -231,41 +230,55 @@ llvm::Value* RegFile::impl::GetReg(ArchReg reg, Facet facet) {
         }
     }
 
-    // Index of first value that is SMALLER than the size we need.
-    unsigned mergeValuePoint = 0;
-    while (mergeValuePoint < rv->values.size()) {
-        if (rv->values[mergeValuePoint].size < facetSize)
-            break;
-        mergeValuePoint++;
+    if (rv->values.empty() && rv->upperZero) {
+        llvm::Type* intTy = llvm::Type::getIntNTy(insert_block->getContext(), fullSize);
+        llvm::Value* zero = llvm::Constant::getNullValue(intTy);
+        rv->values.push_back(Register::Value{zero, nullptr, fullSize, true});
+        return &rv->values[0];
     }
 
-    assert((mergeValuePoint > 0 || rv->upperZero) && "undefined upper part");
+    assert(!rv->values.empty() && "undefined upper part of register");
 
-    if (mergeValuePoint < rv->values.size()) {
-        // Need to merge all dirty smaller values
-        assert(false && "value merging not implemented");
+    unsigned foldStartIdx = 0;
+    for (unsigned i = 0; i < rv->values.size(); i++) {
+        if (rv->values[i].size >= fullSize) {
+            foldStartIdx = i;
+        } else if (rv->values[i].dirty) {
+            goto fold;
+        }
     }
 
-    if (mergeValuePoint == 0 && rv->upperZero)
-        return llvm::Constant::getNullValue(facetType);
-    assert(mergeValuePoint > 0);
+    return &rv->values[foldStartIdx];
 
-    auto& rvv = rv->values[mergeValuePoint - 1];
-    if (facet != Facet::I8H && rvv.size == facetSize) {
-        if (rvv.valueA->getType() == facetType)
-            return rvv.valueA;
-        if (rvv.valueB && rvv.valueB->getType() == facetType)
-            return rvv.valueB;
+fold:;
+    unsigned foldSize = fullSize < rv->values[0].size ? rv->values[0].size : fullSize;
+    // Fold values from foldStartIdx
+    assert(false && "value merging not implemented");
+    return nullptr;
+}
+
+llvm::Value* RegFile::impl::GetReg(ArchReg reg, Facet facet) {
+    unsigned facetSize = facet.Size();
+    if (facet == Facet::I8H)
+        facetSize = 16;
+    llvm::Type* facetType = facet.Type(insert_block->getContext());
+
+    Register::Value* rvv = GetRegFold(reg, facet, facetSize);
+    if (facet != Facet::I8H && rvv->size == facetSize) {
+        if (rvv->valueA->getType() == facetType)
+            return rvv->valueA;
+        if (rvv->valueB && rvv->valueB->getType() == facetType)
+            return rvv->valueB;
 
         llvm::IRBuilder<> irb(insert_block);
         if (llvm::Instruction* terminator = insert_block->getTerminator())
             irb.SetInsertPoint(terminator);
 
-        rvv.valueB = rvv.valueA;
-        rvv.valueA = irb.CreateBitOrPointerCast(rvv.valueB, facetType);
-        return rvv.valueA;
+        rvv->valueB = rvv->valueA;
+        rvv->valueA = irb.CreateBitOrPointerCast(rvv->valueB, facetType);
+        return rvv->valueA;
     }
-    llvm::Value* superValue = rvv.valueA;
+    llvm::Value* superValue = rvv->valueA;
     llvm::Type* superValueTy = superValue->getType();
 
     llvm::IRBuilder<> irb(insert_block);
