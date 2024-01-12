@@ -177,16 +177,12 @@ static span<const CPUStructEntry> CPUStructEntries(CallConv cconv) {
 
 void CallConv::InitSptrs(BasicBlock* bb, FunctionInfo& fi) {
     llvm::IRBuilder<> irb(*bb);
-    unsigned as = fi.sptr_raw->getType()->getPointerAddressSpace();
     llvm::Type* i8 = irb.getInt8Ty();
 
     const auto& cpu_struct_entries = CPUStructEntries(*this);
     fi.sptr.resize(cpu_struct_entries.size());
-    for (const auto& [sptr_idx, off, reg, facet] : cpu_struct_entries) {
-        llvm::Value* ptr = irb.CreateConstGEP1_64(i8, fi.sptr_raw, off);
-        llvm::Type* ty = facet.Type(irb.getContext())->getPointerTo(as);
-        fi.sptr[sptr_idx] = irb.CreatePointerCast(ptr, ty);
-    }
+    for (const auto& [sptr_idx, off, reg, facet] : cpu_struct_entries)
+        fi.sptr[sptr_idx] = irb.CreateConstGEP1_64(i8, fi.sptr_raw, off);
 }
 
 static void Pack(BasicBlock* bb, FunctionInfo& fi, llvm::Instruction* before) {

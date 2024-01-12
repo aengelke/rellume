@@ -184,8 +184,7 @@ llvm::Function* LiftHelper::Lift() {
     } else {
         fi.pc_base_addr = entry_ip;
         if (!cfg->position_independent_code) {
-            llvm::Type* i64 = llvm::Type::getInt64Ty(fi.fn->getContext());
-            fi.pc_base_value = llvm::ConstantInt::get(i64, fi.pc_base_addr);
+            fi.pc_base_value = nullptr;
         } else {
             RegFile* entry_rf = entry_block->GetInsertBlock()->GetRegFile();
             fi.pc_base_value = entry_rf->GetReg(ArchReg::IP, Facet::I64);
