@@ -77,13 +77,13 @@ protected:
         return regfile->GetReg(reg, facet);
     }
     void SetReg(ArchReg reg, Facet facet, llvm::Value* value) {
-        regfile->SetReg(reg, facet, value, RegFile::INTO_ZERO);
+        regfile->SetReg(reg, value, RegFile::INTO_ZERO);
     }
     void SetRegMerge(ArchReg reg, Facet facet, llvm::Value* value) {
-        regfile->SetReg(reg, facet, value, RegFile::MERGE);
+        regfile->SetReg(reg, value, RegFile::MERGE);
     }
     void SetRegFacet(ArchReg reg, Facet facet, llvm::Value* value) {
-        regfile->SetReg(reg, facet, value, RegFile::EXTRA_PART);
+        regfile->SetReg(reg, value, RegFile::EXTRA_PART);
     }
     void SetRegPtr(ArchReg reg, llvm::Value* value) {
         SetReg(reg, Facet::PTR, value);

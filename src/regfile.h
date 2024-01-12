@@ -116,7 +116,7 @@ constexpr const ArchReg ArchReg::A64_SP = ArchReg::GP(31);
 // initialisation, but is fixed in size. Many bits are unused (x64 uses
 // mere 40 registers, aarch64 uses 68).
 using RegisterSet = std::bitset<128>;
-unsigned RegisterSetBitIdx(ArchReg reg, Facet facet);
+unsigned RegisterSetBitIdx(ArchReg reg);
 
 class RegFile {
 public:
@@ -146,7 +146,7 @@ public:
         /// Set smaller part *after a full set* to ease access to sub parts
         EXTRA_PART
     };
-    void SetReg(ArchReg reg, Facet facet, llvm::Value*, WriteMode mode);
+    void SetReg(ArchReg reg, llvm::Value*, WriteMode mode);
 
     /// Modified registers not yet recorded in a CallConvPack in the FunctionInfo.
     RegisterSet& DirtyRegs();

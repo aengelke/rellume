@@ -42,7 +42,7 @@
 
 namespace rellume {
 
-unsigned RegisterSetBitIdx(ArchReg reg, Facet facet) {
+unsigned RegisterSetBitIdx(ArchReg reg) {
     switch (reg.Kind()) {
     case ArchReg::RegKind::IP:
         return 0;
@@ -121,7 +121,7 @@ public:
     }
 
     llvm::Value* GetReg(ArchReg reg, Facet facet);
-    void SetReg(ArchReg reg, Facet facet, llvm::Value*, WriteMode mode);
+    void SetReg(ArchReg reg, llvm::Value*, WriteMode mode);
 
     RegisterSet& DirtyRegs() { return dirty_regs; }
     bool StartsClean() { return !parent && !phiDescs; }
@@ -140,10 +140,10 @@ private:
 
     RegisterSet dirty_regs;
 
-    Register* AccessReg(ArchReg reg, Facet facet);
-    Facet NativeFacet(ArchReg reg, Facet facet);
+    Register* AccessReg(ArchReg reg);
+    Facet NativeFacet(ArchReg reg);
 
-    Register::Value* GetRegFold(ArchReg reg, Facet facet, unsigned fullSize);
+    Register::Value* GetRegFold(ArchReg reg, unsigned fullSize);
 };
 
 void RegFile::impl::Clear() {
@@ -156,7 +156,7 @@ void RegFile::impl::Clear() {
         reg.clear();
 }
 
-Register* RegFile::impl::AccessReg(ArchReg reg, Facet facet) {
+Register* RegFile::impl::AccessReg(ArchReg reg) {
     unsigned idx = reg.Index();
     switch (reg.Kind()) {
     case ArchReg::RegKind::GP:
@@ -172,14 +172,16 @@ Register* RegFile::impl::AccessReg(ArchReg reg, Facet facet) {
     }
 }
 
-Facet RegFile::impl::NativeFacet(ArchReg reg, Facet facet) {
+Facet RegFile::impl::NativeFacet(ArchReg reg) {
     switch (reg.Kind()) {
     case ArchReg::RegKind::GP:
         return Facet::I64;
     case ArchReg::RegKind::IP:
         return Facet::I64;
     case ArchReg::RegKind::FLAG:
-        return facet;
+        if (reg == ArchReg::PF)
+            return Facet::I8;
+        return Facet::I1;
     case ArchReg::RegKind::VEC:
         return ivec_facet;
     default:
@@ -188,13 +190,13 @@ Facet RegFile::impl::NativeFacet(ArchReg reg, Facet facet) {
     }
 }
 
-Register::Value* RegFile::impl::GetRegFold(ArchReg reg, Facet facet, unsigned fullSize) {
+Register::Value* RegFile::impl::GetRegFold(ArchReg reg, unsigned fullSize) {
     // Goal: make sure that rv->values[<retvalue>] is at least fullSize and
     // that no dirty values follow after that.
-    Register* rv = AccessReg(reg, facet);
+    Register* rv = AccessReg(reg);
     if (!rv->upperZero && (rv->values.empty() || rv->values[0].size < fullSize)) {
         // We need to get the value, so add a PHI node.
-        auto nativeFacet = NativeFacet(reg, facet);
+        auto nativeFacet = NativeFacet(reg);
         llvm::Value* nativeVal = nullptr;
         if (parent) {
             nativeVal = parent->GetReg(reg, nativeFacet);
@@ -271,7 +273,7 @@ llvm::Value* RegFile::impl::GetReg(ArchReg reg, Facet facet) {
         facetSize = 16;
     llvm::Type* facetType = facet.Type(irb.getContext());
 
-    Register::Value* rvv = GetRegFold(reg, facet, facetSize);
+    Register::Value* rvv = GetRegFold(reg, facetSize);
     if (facet != Facet::I8H && rvv->size == facetSize) {
         if (rvv->valueA->getType() == facetType)
             return rvv->valueA;
@@ -346,42 +348,41 @@ llvm::Value* RegFile::impl::GetReg(ArchReg reg, Facet facet) {
     }
 }
 
-void RegFile::impl::SetReg(ArchReg reg, Facet facet, llvm::Value* value,
-                           WriteMode mode) {
-    if (facet == Facet::PTR)
-        assert(value->getType()->isPointerTy());
-    else
-        assert(value->getType() == facet.Type(irb.getContext()));
-
+void RegFile::impl::SetReg(ArchReg reg, llvm::Value* value, WriteMode mode) {
     if (mode == RegFile::EXTRA_PART)
         return; // this is just an optimization.
 
-    unsigned facetSize = facet.Size();
-    Register* rv = AccessReg(reg, facet);
+    unsigned size;
+    if (value->getType()->isPointerTy())
+        size = 64;
+    else
+        size = value->getType()->getPrimitiveSizeInBits();
+    assert(size != 0);
+    Register* rv = AccessReg(reg);
 
     switch (mode) {
     case RegFile::INTO_ZERO:
         rv->upperZero = true;
         rv->values.clear();
-        rv->values.push_back(Register::Value{value, nullptr, facetSize, true});
+        rv->values.push_back(Register::Value{value, nullptr, size, true});
         break;
     case RegFile::MERGE: {
         // Index of first value that is NOT LARGER than the size we overwrite.
         unsigned mergeValuePoint = 0;
         while (mergeValuePoint < rv->values.size()) {
-            if (rv->values[mergeValuePoint].size <= facetSize)
+            if (rv->values[mergeValuePoint].size <= size)
                 break;
             mergeValuePoint++;
         }
         rv->values.truncate(mergeValuePoint);
-        rv->values.push_back(Register::Value{value, nullptr, facetSize, true});
+        rv->values.push_back(Register::Value{value, nullptr, size, true});
         break;
     }
     default:
         assert(false);
     }
 
-    dirty_regs[RegisterSetBitIdx(reg, facet)] = true;
+    dirty_regs[RegisterSetBitIdx(reg)] = true;
 }
 
 RegFile::RegFile(Arch arch, llvm::BasicBlock* bb) : pimpl{std::make_unique<impl>(arch, bb)} {}
@@ -393,8 +394,8 @@ void RegFile::Clear() { pimpl->Clear(); }
 void RegFile::InitWithRegFile(RegFile* r) { pimpl->InitWithRegFile(r); }
 void RegFile::InitWithPHIs(std::vector<PhiDesc>* d) { pimpl->InitWithPHIs(d); }
 llvm::Value* RegFile::GetReg(ArchReg r, Facet f) { return pimpl->GetReg(r, f); }
-void RegFile::SetReg(ArchReg reg, Facet facet, llvm::Value* value, WriteMode mode) {
-    pimpl->SetReg(reg, facet, value, mode);
+void RegFile::SetReg(ArchReg reg, llvm::Value* value, WriteMode mode) {
+    pimpl->SetReg(reg, value, mode);
 }
 RegisterSet& RegFile::DirtyRegs() { return pimpl->DirtyRegs(); }
 bool RegFile::StartsClean() { return pimpl->StartsClean(); }
