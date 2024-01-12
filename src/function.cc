@@ -253,18 +253,6 @@ llvm::Function* LiftHelper::Lift() {
         changed |= exit_block->FillPhis();
     }
 
-    // Remove calls to llvm.ssa_copy, which got inserted to avoid PHI nodes in
-    // the register file.
-    for (auto it = llvm::inst_begin(fn), e = llvm::inst_end(fn); it != e;) {
-        llvm::Instruction* inst = &*it++;
-        auto* intr = llvm::dyn_cast<llvm::CallInst>(inst);
-        if (!intr || intr->getIntrinsicID() != llvm::Intrinsic::ssa_copy)
-          continue;
-
-        inst->replaceAllUsesWith(intr->getOperand(0));
-        inst->eraseFromParent();
-    }
-
     // Remove blocks without predecessors. This can happen if constants get
     // folded already during construction, e.g. xor eax,eax;test eax,eax;jz
     llvm::EliminateUnreachableBlocks(*fn);

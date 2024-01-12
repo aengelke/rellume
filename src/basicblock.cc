@@ -96,14 +96,6 @@ bool BasicBlock::FillPhis() {
         return false;
 
     for (const auto& [reg, facet, phi] : empty_phis) {
-        // This makes use of the property that a RegFile will never store a PHI
-        // node using SetReg. Otherwise things will blow up, because the
-        // register file may still have a reference to the (currently) unused
-        // PHI node.
-        if (phi->user_empty()) {
-            phi->eraseFromParent();
-            continue;
-        }
         for (BasicBlock* pred : predecessors) {
             llvm::Value* value = pred->regfile.GetReg(reg, facet);
             if (facet == Facet::PTR && value->getType() != phi->getType()) {

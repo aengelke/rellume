@@ -345,13 +345,6 @@ void RegFile::impl::SetReg(ArchReg reg, Facet facet, llvm::Value* value,
     if (!clearOthers && reg.Kind() != ArchReg::RegKind::EFLAGS)
         return; // this is just an optimization.
 
-    if (llvm::isa<llvm::PHINode>(value)) {
-        llvm::IRBuilder<> irb(insert_block);
-        if (llvm::Instruction* terminator = insert_block->getTerminator())
-            irb.SetInsertPoint(terminator);
-        value = irb.CreateUnaryIntrinsic(llvm::Intrinsic::ssa_copy, value);
-    }
-
     unsigned facetSize = facet.Size();
     Register* rv = AccessReg(reg, facet);
 
