@@ -50,29 +50,29 @@ static llvm::Value* FlagAux(llvm::IRBuilder<>& irb, llvm::Value* res,
 
 void Lifter::FlagCalcSAPLogic(llvm::Value* res) {
     auto zero = llvm::Constant::getNullValue(res->getType());
-    SetFlag(Facet::SF, irb.CreateICmpSLT(res, zero));
-    SetFlag(Facet::PF, irb.CreateTrunc(res, irb.getInt8Ty()));
-    SetFlagUndef({Facet::AF});
+    SetFlag(ArchReg::SF, irb.CreateICmpSLT(res, zero));
+    SetFlag(ArchReg::PF, irb.CreateTrunc(res, irb.getInt8Ty()));
+    SetFlagUndef({ArchReg::AF});
 }
 
 void Lifter::FlagCalcAdd(llvm::Value* res, llvm::Value* lhs,
                          llvm::Value* rhs, bool skip_carry) {
     auto zero = llvm::Constant::getNullValue(res->getType());
-    SetFlag(Facet::ZF, irb.CreateICmpEQ(res, zero));
-    SetFlag(Facet::SF, irb.CreateICmpSLT(res, zero));
-    SetFlag(Facet::PF, irb.CreateTrunc(res, irb.getInt8Ty()));
-    SetFlag(Facet::AF, FlagAux(irb, res, lhs, rhs));
+    SetFlag(ArchReg::ZF, irb.CreateICmpEQ(res, zero));
+    SetFlag(ArchReg::SF, irb.CreateICmpSLT(res, zero));
+    SetFlag(ArchReg::PF, irb.CreateTrunc(res, irb.getInt8Ty()));
+    SetFlag(ArchReg::AF, FlagAux(irb, res, lhs, rhs));
     if (!skip_carry)
-        SetFlag(Facet::CF, irb.CreateICmpULT(res, lhs));
+        SetFlag(ArchReg::CF, irb.CreateICmpULT(res, lhs));
 
     if (cfg.enableOverflowIntrinsics) {
         llvm::Intrinsic::ID id = llvm::Intrinsic::sadd_with_overflow;
         llvm::Value* packed = irb.CreateBinaryIntrinsic(id, lhs, rhs);
-        SetFlag(Facet::OF, irb.CreateExtractValue(packed, 1));
+        SetFlag(ArchReg::OF, irb.CreateExtractValue(packed, 1));
     } else {
         llvm::Value* tmp1 = irb.CreateNot(irb.CreateXor(lhs, rhs));
         llvm::Value* tmp2 = irb.CreateAnd(tmp1, irb.CreateXor(res, lhs));
-        SetFlag(Facet::OF, irb.CreateICmpSLT(tmp2, zero));
+        SetFlag(ArchReg::OF, irb.CreateICmpSLT(tmp2, zero));
     }
 }
 
@@ -82,39 +82,39 @@ void Lifter::FlagCalcSub(llvm::Value* res, llvm::Value* lhs,
     llvm::Value* sf = irb.CreateICmpSLT(res, zero);  // also used for OF
 
     if (alt_zf)
-        SetFlag(Facet::ZF, irb.CreateICmpEQ(lhs, rhs));
+        SetFlag(ArchReg::ZF, irb.CreateICmpEQ(lhs, rhs));
     else
-        SetFlag(Facet::ZF, irb.CreateICmpEQ(res, zero));
-    SetFlag(Facet::SF, sf);
-    SetFlag(Facet::PF, irb.CreateTrunc(res, irb.getInt8Ty()));
-    SetFlag(Facet::AF, FlagAux(irb, res, lhs, rhs));
+        SetFlag(ArchReg::ZF, irb.CreateICmpEQ(res, zero));
+    SetFlag(ArchReg::SF, sf);
+    SetFlag(ArchReg::PF, irb.CreateTrunc(res, irb.getInt8Ty()));
+    SetFlag(ArchReg::AF, FlagAux(irb, res, lhs, rhs));
     if (!skip_carry)
-        SetFlag(Facet::CF, irb.CreateICmpULT(lhs, rhs));
+        SetFlag(ArchReg::CF, irb.CreateICmpULT(lhs, rhs));
 
     // Set overflow flag using arithmetic comparisons
-    SetFlag(Facet::OF, irb.CreateICmpNE(sf, irb.CreateICmpSLT(lhs, rhs)));
+    SetFlag(ArchReg::OF, irb.CreateICmpNE(sf, irb.CreateICmpSLT(lhs, rhs)));
 }
 
 llvm::Value* Lifter::FlagCond(Condition cond) {
     llvm::Value* result = nullptr;
     switch (static_cast<Condition>(static_cast<int>(cond) & ~1)) {
-    case Condition::O:  result = GetFlag(Facet::OF); break;
-    case Condition::C:  result = GetFlag(Facet::CF); break;
-    case Condition::Z:  result = GetFlag(Facet::ZF); break;
-    case Condition::BE: result = irb.CreateOr(GetFlag(Facet::CF), GetFlag(Facet::ZF)); break;
-    case Condition::S:  result = GetFlag(Facet::SF); break;
-    case Condition::P:  result = GetFlag(Facet::PF); break;
-    case Condition::L:  result = irb.CreateICmpNE(GetFlag(Facet::SF), GetFlag(Facet::OF)); break;
-    case Condition::LE: result = irb.CreateOr(GetFlag(Facet::ZF), irb.CreateICmpNE(GetFlag(Facet::SF), GetFlag(Facet::OF))); break;
+    case Condition::O:  result = GetFlag(ArchReg::OF); break;
+    case Condition::C:  result = GetFlag(ArchReg::CF); break;
+    case Condition::Z:  result = GetFlag(ArchReg::ZF); break;
+    case Condition::BE: result = irb.CreateOr(GetFlag(ArchReg::CF), GetFlag(ArchReg::ZF)); break;
+    case Condition::S:  result = GetFlag(ArchReg::SF); break;
+    case Condition::P:  result = GetFlag(ArchReg::PF); break;
+    case Condition::L:  result = irb.CreateICmpNE(GetFlag(ArchReg::SF), GetFlag(ArchReg::OF)); break;
+    case Condition::LE: result = irb.CreateOr(GetFlag(ArchReg::ZF), irb.CreateICmpNE(GetFlag(ArchReg::SF), GetFlag(ArchReg::OF))); break;
     default: assert(0);
     }
 
     return static_cast<int>(cond) & 1 ? irb.CreateNot(result) : result;
 }
 
-static const std::pair<Facet, unsigned> RFLAGS_INDICES[] = {
-    {Facet::CF, 0}, {Facet::PF, 2}, {Facet::AF, 4}, {Facet::ZF, 6},
-    {Facet::SF, 7}, {Facet::DF, 10}, {Facet::OF, 11},
+static const std::pair<ArchReg, unsigned> RFLAGS_INDICES[] = {
+    {ArchReg::CF, 0}, {ArchReg::PF, 2}, {ArchReg::AF, 4}, {ArchReg::ZF, 6},
+    {ArchReg::SF, 7}, {ArchReg::DF, 10}, {ArchReg::OF, 11},
 };
 
 llvm::Value* Lifter::FlagAsReg(unsigned size) {
@@ -133,7 +133,7 @@ void Lifter::FlagFromReg(llvm::Value* val) {
         if (kv.second >= sz)
             break;
         llvm::Value* bit = irb.CreateLShr(val, kv.second);
-        if (kv.first == Facet::PF) {
+        if (kv.first == ArchReg::PF) {
             bit = irb.CreateNot(irb.CreateTrunc(bit, irb.getInt1Ty()));
             SetFlag(kv.first, irb.CreateZExt(bit, irb.getInt8Ty()));
         } else {

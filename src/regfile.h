@@ -43,7 +43,7 @@ public:
         INVALID = 0,
         GP,     // 64-bit
         IP,     // 64-bit
-        EFLAGS, // 7 x 1-bit
+        FLAG,   // status flag
         VEC,    // >= 128-bit
     };
 
@@ -74,10 +74,13 @@ public:
     static constexpr ArchReg VEC(unsigned idx) {
         return ArchReg(RegKind::VEC, idx);
     }
+    static constexpr ArchReg FLAG(unsigned idx) {
+        return ArchReg(RegKind::FLAG, idx);
+    }
 
     static const ArchReg INVALID;
     static const ArchReg IP;
-    static const ArchReg EFLAGS;
+    static const ArchReg ZF, SF, PF, CF, OF, AF, DF;
     // x86-64-specific names ignored by other archs
     static const ArchReg RAX, RCX, RDX, RBX, RSP, RBP, RSI, RDI;
 
@@ -87,7 +90,6 @@ public:
 
 constexpr const ArchReg ArchReg::INVALID{ArchReg::RegKind::INVALID, 0};
 constexpr const ArchReg ArchReg::IP{ArchReg::RegKind::IP, 0};
-constexpr const ArchReg ArchReg::EFLAGS{ArchReg::RegKind::EFLAGS, 0};
 constexpr const ArchReg ArchReg::RAX = ArchReg::GP(0);
 constexpr const ArchReg ArchReg::RCX = ArchReg::GP(1);
 constexpr const ArchReg ArchReg::RDX = ArchReg::GP(2);
@@ -96,6 +98,13 @@ constexpr const ArchReg ArchReg::RSP = ArchReg::GP(4);
 constexpr const ArchReg ArchReg::RBP = ArchReg::GP(5);
 constexpr const ArchReg ArchReg::RSI = ArchReg::GP(6);
 constexpr const ArchReg ArchReg::RDI = ArchReg::GP(7);
+constexpr const ArchReg ArchReg::ZF = ArchReg::FLAG(0);
+constexpr const ArchReg ArchReg::SF = ArchReg::FLAG(1);
+constexpr const ArchReg ArchReg::PF = ArchReg::FLAG(2);
+constexpr const ArchReg ArchReg::CF = ArchReg::FLAG(3);
+constexpr const ArchReg ArchReg::OF = ArchReg::FLAG(4);
+constexpr const ArchReg ArchReg::AF = ArchReg::FLAG(5);
+constexpr const ArchReg ArchReg::DF = ArchReg::FLAG(6);
 constexpr const ArchReg ArchReg::A64_SP = ArchReg::GP(31);
 
 // The calling convention code uses RegisterSet to record which registers

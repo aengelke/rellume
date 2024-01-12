@@ -1,9 +1,9 @@
 [
     {"name": "pc",  "size": 8,  "reg": ["IP", "I64"], "export": true},
-    {"name": "n",   "size": 1,  "reg": ["EFLAGS", "SF"]},
-    {"name": "z",   "size": 1,  "reg": ["EFLAGS", "ZF"]},
-    {"name": "c",   "size": 1,  "reg": ["EFLAGS", "CF"]},
-    {"name": "v",   "size": 1,  "reg": ["EFLAGS", "OF"]},
+    {"name": "n",   "size": 1,  "reg": ["FLAG(1)", "I1"]},
+    {"name": "z",   "size": 1,  "reg": ["FLAG(0)", "I1"]},
+    {"name": "c",   "size": 1,  "reg": ["FLAG(3)", "I1"]},
+    {"name": "v",   "size": 1,  "reg": ["FLAG(4)", "I1"]},
     {               "size": 4},
     {"name": "x0",  "size": 8, "reg": ["GP(0)", "I64"], "export": true},
     {"name": "x1",  "size": 8, "reg": ["GP(1)", "I64"], "export": true},

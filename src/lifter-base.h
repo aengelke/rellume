@@ -88,25 +88,25 @@ protected:
     void SetRegPtr(ArchReg reg, llvm::Value* value) {
         SetReg(reg, Facet::PTR, value);
     }
-    llvm::Value* GetFlag(Facet facet) {
-        if (facet == Facet::PF) {
-            llvm::Value* res = GetReg(ArchReg::EFLAGS, facet);
+    llvm::Value* GetFlag(ArchReg reg) {
+        if (reg == ArchReg::PF) {
+            llvm::Value* res = GetReg(reg, Facet::I8);
             res = irb.CreateUnaryIntrinsic(llvm::Intrinsic::ctpop, res);
             return irb.CreateNot(irb.CreateTrunc(res, irb.getInt1Ty()));
         }
-        return GetReg(ArchReg::EFLAGS, facet);
+        return GetReg(reg, Facet::I1);
     }
-    void SetFlag(Facet facet, llvm::Value* value) {
-        SetReg(ArchReg::EFLAGS, facet, value);
+    void SetFlag(ArchReg reg, llvm::Value* value) {
+        SetReg(reg, reg == ArchReg::PF ? Facet::I8 : Facet::I1, value);
     }
-    void SetFlagUndef(std::initializer_list<Facet> facets) {
+    void SetFlagUndef(std::initializer_list<ArchReg> regs) {
         llvm::Value* undef = llvm::UndefValue::get(irb.getInt1Ty());
-        for (const auto facet : facets) {
+        for (const auto reg : regs) {
             // TODO: actually use freeze.
-            if (facet == Facet::PF)
-                SetFlag(facet, llvm::UndefValue::get(irb.getInt8Ty()));
+            if (reg == ArchReg::PF)
+                SetFlag(reg, llvm::UndefValue::get(irb.getInt8Ty()));
             else
-                SetFlag(facet, undef);
+                SetFlag(reg, undef);
         }
     }
     void SetIP(uint64_t inst_addr, bool nofold = false);

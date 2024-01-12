@@ -55,7 +55,7 @@ void Lifter::LiftArith(const Instr& inst, bool sub) {
     llvm::Value* op1;
     llvm::Value* op2 = OpLoad(inst.op(1), Facet::I);
     if (inst.type() == FDI_ADC || inst.type() == FDI_SBB)
-        op2 = irb.CreateAdd(op2, irb.CreateZExt(GetFlag(Facet::CF), op2->getType()));
+        op2 = irb.CreateAdd(op2, irb.CreateZExt(GetFlag(ArchReg::CF), op2->getType()));
 
     auto arith_op = sub ? llvm::Instruction::Sub : llvm::Instruction::Add;
     auto atomic_op = sub ? llvm::AtomicRMWInst::Sub : llvm::AtomicRMWInst::Add;
@@ -101,7 +101,7 @@ void Lifter::LiftCmpxchg(const Instr& inst) {
 #endif
         dst = irb.CreateExtractValue(cmpxchg, {0});
         FlagCalcSub(irb.CreateSub(acc, dst), acc, dst);
-        SetFlag(Facet::ZF, irb.CreateExtractValue(cmpxchg, {1}));
+        SetFlag(ArchReg::ZF, irb.CreateExtractValue(cmpxchg, {1}));
     } else {
         dst = OpLoad(inst.op(0), Facet::I);
         // Full compare with acc and dst
@@ -109,7 +109,7 @@ void Lifter::LiftCmpxchg(const Instr& inst) {
         FlagCalcSub(cmp_res, acc, dst);
 
         // Store SRC if DST=ACC, else store DST again (i.e. don't change memory).
-        OpStoreGp(inst.op(0), irb.CreateSelect(GetFlag(Facet::ZF), src, dst));
+        OpStoreGp(inst.op(0), irb.CreateSelect(GetFlag(ArchReg::ZF), src, dst));
     }
 
     // ACC gets the value from memory.
@@ -156,8 +156,8 @@ void Lifter::LiftAndOrXor(const Instr& inst, llvm::Instruction::BinaryOps op,
 
     FlagCalcZ(res);
     FlagCalcSAPLogic(res);
-    SetFlag(Facet::CF, irb.getFalse());
-    SetFlag(Facet::OF, irb.getFalse());
+    SetFlag(ArchReg::CF, irb.getFalse());
+    SetFlag(ArchReg::OF, irb.getFalse());
 }
 
 void Lifter::LiftNot(const Instr& inst) {
@@ -246,9 +246,9 @@ void Lifter::LiftShift(const Instr& inst, llvm::Instruction::BinaryOps op) {
     // TODO: flags are only affected if shift != 0
     FlagCalcZ(res);
     FlagCalcSAPLogic(res);
-    SetFlag(Facet::CF, irb.CreateTrunc(cf_big, irb.getInt1Ty()));
+    SetFlag(ArchReg::CF, irb.CreateTrunc(cf_big, irb.getInt1Ty()));
     llvm::Value* zero = llvm::ConstantInt::get(src->getType(), 0);
-    SetFlag(Facet::OF, irb.CreateICmpSLT(irb.CreateXor(src, res), zero));
+    SetFlag(ArchReg::OF, irb.CreateICmpSLT(irb.CreateXor(src, res), zero));
 }
 
 void Lifter::LiftShiftdouble(const Instr& inst) {
@@ -279,7 +279,7 @@ void Lifter::LiftShiftdouble(const Instr& inst) {
     // TODO: calculate flags correctly
     FlagCalcZ(res);
     FlagCalcSAPLogic(res);
-    SetFlagUndef({Facet::OF, Facet::CF});
+    SetFlagUndef({ArchReg::OF, ArchReg::CF});
 }
 
 void Lifter::LiftRotate(const Instr& inst) {
@@ -305,7 +305,7 @@ void Lifter::LiftRotate(const Instr& inst) {
     // TODO: calculate flags correctly
     // CF is affected only if count > 0
     // OF is affected only if count > 0, but undefined if count > 1
-    SetFlagUndef({Facet::OF, Facet::CF});
+    SetFlagUndef({ArchReg::OF, ArchReg::CF});
 }
 
 void Lifter::LiftMul(const Instr& inst) {
@@ -362,9 +362,9 @@ void Lifter::LiftMul(const Instr& inst) {
         overflow = irb.CreateICmpNE(ext_res, ext_short_res);
     }
 
-    SetFlag(Facet::OF, overflow);
-    SetFlag(Facet::CF, overflow);
-    SetFlagUndef({Facet::SF, Facet::ZF, Facet::AF, Facet::PF});
+    SetFlag(ArchReg::OF, overflow);
+    SetFlag(ArchReg::CF, overflow);
+    SetFlagUndef({ArchReg::SF, ArchReg::ZF, ArchReg::AF, ArchReg::PF});
 }
 
 void Lifter::LiftDiv(const Instr& inst) {
@@ -410,8 +410,8 @@ void Lifter::LiftDiv(const Instr& inst) {
         StoreGp(ArchReg::RDX, rem);
     }
 
-    SetFlagUndef({Facet::OF, Facet::SF, Facet::ZF, Facet::AF, Facet::PF,
-                  Facet::CF});
+    SetFlagUndef({ArchReg::OF, ArchReg::SF, ArchReg::ZF, ArchReg::AF, ArchReg::PF,
+                  ArchReg::CF});
 }
 
 void Lifter::LiftLea(const Instr& inst) {
@@ -486,7 +486,7 @@ void Lifter::LiftBitscan(const Instr& inst, bool trailing) {
     OpStoreGp(inst.op(0), res);
 
     FlagCalcZ(src);
-    SetFlagUndef({Facet::OF, Facet::SF, Facet::AF, Facet::PF, Facet::CF});
+    SetFlagUndef({ArchReg::OF, ArchReg::SF, ArchReg::AF, ArchReg::PF, ArchReg::CF});
 }
 
 void Lifter::LiftBittest(const Instr& inst, llvm::Instruction::BinaryOps op,
@@ -542,8 +542,8 @@ void Lifter::LiftBittest(const Instr& inst, llvm::Instruction::BinaryOps op,
 skip_writeback:;
     llvm::Value* bit = irb.CreateAnd(val, mask);
     // Zero flag is not modified
-    SetFlag(Facet::CF, irb.CreateICmpNE(bit, irb.getIntN(op_size, 0)));
-    SetFlagUndef({Facet::OF, Facet::SF, Facet::AF, Facet::PF});
+    SetFlag(ArchReg::CF, irb.CreateICmpNE(bit, irb.getIntN(op_size, 0)));
+    SetFlagUndef({ArchReg::OF, ArchReg::SF, ArchReg::AF, ArchReg::PF});
 }
 
 void Lifter::LiftMovbe(const Instr& inst) {
@@ -591,9 +591,9 @@ void Lifter::LiftLoop(const Instr& inst) {
     // Construct condition
     llvm::Value* cond = irb.CreateICmpNE(cx, irb.getIntN(sz*8, 0));
     if (inst.type() == FDI_LOOPZ)
-        cond = irb.CreateAnd(cond, GetFlag(Facet::ZF));
+        cond = irb.CreateAnd(cond, GetFlag(ArchReg::ZF));
     else if (inst.type() == FDI_LOOPNZ)
-        cond = irb.CreateAnd(cond, irb.CreateNot(GetFlag(Facet::ZF)));
+        cond = irb.CreateAnd(cond, irb.CreateNot(GetFlag(ArchReg::ZF)));
 
     SetReg(ArchReg::IP, Facet::I64, irb.CreateSelect(cond,
         OpLoad(inst.op(0), Facet::I64),
@@ -603,8 +603,8 @@ void Lifter::LiftLoop(const Instr& inst) {
 
 void Lifter::LiftCall(const Instr& inst) {
     if (cfg.call_ret_clobber_flags)
-        SetFlagUndef({Facet::OF, Facet::SF, Facet::ZF, Facet::AF, Facet::PF,
-                      Facet::CF});
+        SetFlagUndef({ArchReg::OF, ArchReg::SF, ArchReg::ZF, ArchReg::AF, ArchReg::PF,
+                      ArchReg::CF});
 
     // Force default data segment, 3e is notrack.
     llvm::Value* new_rip = OpLoad(inst.op(0), Facet::I, ALIGN_NONE, FD_REG_DS);
@@ -630,8 +630,8 @@ void Lifter::LiftCall(const Instr& inst) {
 void Lifter::LiftRet(const Instr& inst) {
     // TODO: support 16-bit address size override
     if (cfg.call_ret_clobber_flags)
-        SetFlagUndef({Facet::OF, Facet::SF, Facet::ZF, Facet::AF, Facet::PF,
-                      Facet::CF});
+        SetFlagUndef({ArchReg::OF, ArchReg::SF, ArchReg::ZF, ArchReg::AF, ArchReg::PF,
+                      ArchReg::CF});
 
     SetReg(ArchReg::IP, Facet::I64, StackPop());
 
@@ -729,7 +729,7 @@ Lifter::RepInfo Lifter::RepBegin(const Instr& inst) {
 
 void Lifter::RepEnd(RepInfo info) {
     // First update pointer registers with direction flag
-    llvm::Value* df = GetFlag(Facet::DF);
+    llvm::Value* df = GetFlag(ArchReg::DF);
     llvm::Value* adj = irb.CreateSelect(df, irb.getInt64(-1), irb.getInt64(1));
 
     if (info.di)
@@ -749,9 +749,9 @@ void Lifter::RepEnd(RepInfo info) {
     llvm::Value* zero = llvm::Constant::getNullValue(count->getType());
     llvm::Value* cond = irb.CreateICmpNE(count, zero);
     if (info.mode == RepInfo::REPZ)
-        cond = irb.CreateAnd(cond, GetFlag(Facet::ZF));
+        cond = irb.CreateAnd(cond, GetFlag(ArchReg::ZF));
     else if (info.mode == RepInfo::REPNZ)
-        cond = irb.CreateAnd(cond, irb.CreateNot(GetFlag(Facet::ZF)));
+        cond = irb.CreateAnd(cond, irb.CreateNot(GetFlag(ArchReg::ZF)));
 
     ablock.GetInsertBlock()->BranchTo(cond, *info.loop_block, *info.cont_block);
     SetInsertBlock(info.cont_block);
@@ -785,7 +785,7 @@ void Lifter::LiftStos(const Instr& inst) {
         auto* df1_block = ablock.AddBlock();
         auto* cont_block = ablock.AddBlock();
 
-        llvm::Value* df = GetFlag(Facet::DF);
+        llvm::Value* df = GetFlag(ArchReg::DF);
         ablock.GetInsertBlock()->BranchTo(df, *df1_block, *df0_block);
 
         SetInsertBlock(df0_block);

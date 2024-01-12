@@ -46,19 +46,8 @@ unsigned RegisterSetBitIdx(ArchReg reg, Facet facet) {
     switch (reg.Kind()) {
     case ArchReg::RegKind::IP:
         return 0;
-    case ArchReg::RegKind::EFLAGS:
-        switch (facet) {
-        // clang-format off
-        case Facet::OF: return 1; break;
-        case Facet::SF: return 2; break;
-        case Facet::ZF: return 3; break;
-        case Facet::AF: return 4; break;
-        case Facet::PF: return 5; break;
-        case Facet::CF: return 6; break;
-        case Facet::DF: return 7; break;
-        default: assert(false && "invalid facet for EFLAGS register");
-        }
-        // clang-format on
+    case ArchReg::RegKind::FLAG:
+        return 1 + reg.Index();
     case ArchReg::RegKind::GP:
         return 8 + reg.Index();
     case ArchReg::RegKind::VEC:
@@ -174,18 +163,8 @@ Register* RegFile::impl::AccessReg(ArchReg reg, Facet facet) {
         return &regs_gp[idx];
     case ArchReg::RegKind::IP:
         return &reg_ip;
-    case ArchReg::RegKind::EFLAGS:
-        switch (facet) {
-        case Facet::OF: return &flags[0]; break;
-        case Facet::SF: return &flags[1]; break;
-        case Facet::ZF: return &flags[2]; break;
-        case Facet::AF: return &flags[3]; break;
-        case Facet::PF: return &flags[4]; break;
-        case Facet::CF: return &flags[5]; break;
-        case Facet::DF: return &flags[6]; break;
-        default: assert(false && "invalid facet for EFLAGS register");
-        }
-        return nullptr;
+    case ArchReg::RegKind::FLAG:
+        return &flags[idx];
     case ArchReg::RegKind::VEC:
         return &regs_sse[idx];
     default:
@@ -199,7 +178,7 @@ Facet RegFile::impl::NativeFacet(ArchReg reg, Facet facet) {
         return Facet::I64;
     case ArchReg::RegKind::IP:
         return Facet::I64;
-    case ArchReg::RegKind::EFLAGS:
+    case ArchReg::RegKind::FLAG:
         return facet;
     case ArchReg::RegKind::VEC:
         return ivec_facet;
@@ -338,15 +317,6 @@ llvm::Value* RegFile::impl::GetReg(ArchReg reg, Facet facet) {
     case Facet::I8H:
         assert(superValueTy->isIntegerTy() && "I8H from non-integer type");
         return irb.CreateTrunc(irb.CreateLShr(superValue, irb.getInt64(8)), irb.getInt8Ty());
-    case Facet::ZF:
-    case Facet::SF:
-    case Facet::PF:
-    case Facet::CF:
-    case Facet::OF:
-    case Facet::AF:
-    case Facet::DF:
-        assert(false && "type mismatch for flag facet");
-        return nullptr;
     default: {
         assert(facetType->isVectorTy() && "invalid facet for GetReg");
 

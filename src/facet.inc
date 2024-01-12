@@ -1,4 +1,5 @@
 #ifdef SCALAR_INT_FACET
+SCALAR_INT_FACET(I1, 1, llvm::Type::getInt1Ty(ctx))
 SCALAR_INT_FACET(I8, 8, llvm::Type::getInt8Ty(ctx))
 SCALAR_INT_FACET(I16, 16, llvm::Type::getInt16Ty(ctx))
 SCALAR_INT_FACET(I32, 32, llvm::Type::getInt32Ty(ctx))
@@ -34,15 +35,6 @@ VECTOR_FACET(V2F64, 2, F64)
 // Special facets for general-purpose registers
 SPECIAL_FACET(PTR, 64, llvm::Type::getInt8PtrTy(ctx))
 SPECIAL_FACET(I8H, 8, llvm::Type::getInt8Ty(ctx))
-// Special facets for flags register
-SPECIAL_FACET(ZF, 1, llvm::Type::getInt1Ty(ctx))
-SPECIAL_FACET(SF, 1, llvm::Type::getInt1Ty(ctx))
-// PF stores the entire byte of which parity is to be computed
-SPECIAL_FACET(PF, 1, llvm::Type::getInt8Ty(ctx))
-SPECIAL_FACET(CF, 1, llvm::Type::getInt1Ty(ctx))
-SPECIAL_FACET(OF, 1, llvm::Type::getInt1Ty(ctx))
-SPECIAL_FACET(AF, 1, llvm::Type::getInt1Ty(ctx))
-SPECIAL_FACET(DF, 1, llvm::Type::getInt1Ty(ctx))
 #endif
 #ifdef PSEUDO_INT_FACET
 PSEUDO_INT_FACET(I)

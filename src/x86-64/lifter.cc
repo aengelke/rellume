@@ -150,12 +150,12 @@ bool Lifter::Lift(const Instr& inst) {
     case FDI_C_EX: LiftCext(inst); break;
     case FDI_C_SEP: LiftCsep(inst); break;
 
-    case FDI_CLC: SetFlag(Facet::CF, irb.getFalse()); break;
-    case FDI_STC: SetFlag(Facet::CF, irb.getTrue()); break;
-    case FDI_CMC: SetFlag(Facet::CF, irb.CreateNot(GetFlag(Facet::CF))); break;
+    case FDI_CLC: SetFlag(ArchReg::CF, irb.getFalse()); break;
+    case FDI_STC: SetFlag(ArchReg::CF, irb.getTrue()); break;
+    case FDI_CMC: SetFlag(ArchReg::CF, irb.CreateNot(GetFlag(ArchReg::CF))); break;
 
-    case FDI_CLD: SetFlag(Facet::DF, irb.getFalse()); break;
-    case FDI_STD: SetFlag(Facet::DF, irb.getTrue()); break;
+    case FDI_CLD: SetFlag(ArchReg::DF, irb.getFalse()); break;
+    case FDI_STD: SetFlag(ArchReg::DF, irb.getTrue()); break;
     case FDI_LODS: LiftLods(inst); break;
     case FDI_STOS: LiftStos(inst); break;
     case FDI_MOVS: LiftMovs(inst); break;

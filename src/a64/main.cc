@@ -274,10 +274,10 @@ bool Lifter::Lift(const Instr& inst) {
         }
         case 0xda10: {// NZCV (bits 31-28)
             auto nzcv = GetGp(a64.rt, /*w32=*/false);
-            SetFlag(Facet::SF, irb.CreateTrunc(irb.CreateLShr(nzcv, 31), irb.getInt1Ty()));
-            SetFlag(Facet::ZF, irb.CreateTrunc(irb.CreateLShr(nzcv, 30), irb.getInt1Ty()));
-            SetFlag(Facet::CF, irb.CreateTrunc(irb.CreateLShr(nzcv, 29), irb.getInt1Ty()));
-            SetFlag(Facet::OF, irb.CreateTrunc(irb.CreateLShr(nzcv, 28), irb.getInt1Ty()));
+            SetFlag(ArchReg::SF, irb.CreateTrunc(irb.CreateLShr(nzcv, 31), irb.getInt1Ty()));
+            SetFlag(ArchReg::ZF, irb.CreateTrunc(irb.CreateLShr(nzcv, 30), irb.getInt1Ty()));
+            SetFlag(ArchReg::CF, irb.CreateTrunc(irb.CreateLShr(nzcv, 29), irb.getInt1Ty()));
+            SetFlag(ArchReg::OF, irb.CreateTrunc(irb.CreateLShr(nzcv, 28), irb.getInt1Ty()));
             break; // XXX
         }
         case 0xda20: // FPCR
@@ -290,7 +290,7 @@ bool Lifter::Lift(const Instr& inst) {
         break;
     }
     case farmdec::A64_CFINV:
-        SetFlag(Facet::CF, irb.CreateNot(GetFlag(Facet::CF)));
+        SetFlag(ArchReg::CF, irb.CreateNot(GetFlag(ArchReg::CF)));
         break;
     case farmdec::A64_SYS: {
         // DC ZVA -- zeroes a block of bytes, with the size stored in DCZID_EL0. Both
@@ -316,10 +316,10 @@ bool Lifter::Lift(const Instr& inst) {
         }
         case 0xda10: {// NZCV (bits 31-28)
             llvm::Value* nzcv = irb.getIntN(64, 0);
-            nzcv = irb.CreateOr(nzcv, irb.CreateShl(irb.CreateZExt(GetFlag(Facet::SF), irb.getInt64Ty()), 31)); // nzcv |= n << 31
-            nzcv = irb.CreateOr(nzcv, irb.CreateShl(irb.CreateZExt(GetFlag(Facet::ZF), irb.getInt64Ty()), 30)); // nzcv |= z << 30
-            nzcv = irb.CreateOr(nzcv, irb.CreateShl(irb.CreateZExt(GetFlag(Facet::CF), irb.getInt64Ty()), 29)); // nzcv |= c << 29
-            nzcv = irb.CreateOr(nzcv, irb.CreateShl(irb.CreateZExt(GetFlag(Facet::OF), irb.getInt64Ty()), 28)); // nzcv |= v << 28
+            nzcv = irb.CreateOr(nzcv, irb.CreateShl(irb.CreateZExt(GetFlag(ArchReg::SF), irb.getInt64Ty()), 31)); // nzcv |= n << 31
+            nzcv = irb.CreateOr(nzcv, irb.CreateShl(irb.CreateZExt(GetFlag(ArchReg::ZF), irb.getInt64Ty()), 30)); // nzcv |= z << 30
+            nzcv = irb.CreateOr(nzcv, irb.CreateShl(irb.CreateZExt(GetFlag(ArchReg::CF), irb.getInt64Ty()), 29)); // nzcv |= c << 29
+            nzcv = irb.CreateOr(nzcv, irb.CreateShl(irb.CreateZExt(GetFlag(ArchReg::OF), irb.getInt64Ty()), 28)); // nzcv |= v << 28
             SetGp(a64.rt, /*w32=*/false, nzcv);
             break;
         }
@@ -357,7 +357,7 @@ bool Lifter::Lift(const Instr& inst) {
     case farmdec::A64_BL:
     case farmdec::A64_BLR: {
         if (cfg.call_ret_clobber_flags)
-            SetFlagUndef({Facet::OF, Facet::SF, Facet::ZF, Facet::CF});
+            SetFlagUndef({ArchReg::OF, ArchReg::SF, ArchReg::ZF, ArchReg::CF});
 
         auto ret_addr = PCRel(inst.len()); // _next_ instruction → inst.end()
         SetGp(30, false, ret_addr);        // X30: Link Register (LR)
@@ -380,7 +380,7 @@ bool Lifter::Lift(const Instr& inst) {
     }
     case farmdec::A64_RET:
         if (cfg.call_ret_clobber_flags)
-            SetFlagUndef({Facet::OF, Facet::SF, Facet::ZF, Facet::CF});
+            SetFlagUndef({ArchReg::OF, ArchReg::SF, ArchReg::ZF, ArchReg::CF});
 
         SetReg(ArchReg::IP, Facet::I64, GetGp(a64.rn, false));
 
@@ -548,7 +548,7 @@ bool Lifter::Lift(const Instr& inst) {
         bool add = (a64.op == farmdec::A64_ADC);
         auto lhs = GetGp(a64.rn, w32);
         auto rhs = GetGp(a64.rm, w32);
-        auto cf = GetFlag(Facet::CF);
+        auto cf = GetFlag(ArchReg::CF);
         cf = (add) ? cf : irb.CreateNot(cf);
         rhs = irb.CreateAdd(rhs, irb.CreateZExt(cf, irb.getIntNTy(bits)));
         auto val = (add) ? irb.CreateAdd(lhs, rhs) : irb.CreateSub(lhs, rhs);
@@ -950,36 +950,36 @@ void Lifter::SetGp(farmdec::Reg r, bool w32, llvm::Value* val) {
 
 void Lifter::FlagCalcAdd(llvm::Value* res, llvm::Value* lhs, llvm::Value* rhs) {
     auto zero = llvm::Constant::getNullValue(res->getType());
-    SetFlag(Facet::ZF, irb.CreateICmpEQ(res, zero));
-    SetFlag(Facet::SF, irb.CreateICmpSLT(res, zero));
-    SetFlag(Facet::CF, irb.CreateICmpULT(res, lhs));
+    SetFlag(ArchReg::ZF, irb.CreateICmpEQ(res, zero));
+    SetFlag(ArchReg::SF, irb.CreateICmpSLT(res, zero));
+    SetFlag(ArchReg::CF, irb.CreateICmpULT(res, lhs));
 
     if (cfg.enableOverflowIntrinsics) {
         llvm::Intrinsic::ID id = llvm::Intrinsic::sadd_with_overflow;
         llvm::Value* packed = irb.CreateBinaryIntrinsic(id, lhs, rhs);
-        SetFlag(Facet::OF, irb.CreateExtractValue(packed, 1));
+        SetFlag(ArchReg::OF, irb.CreateExtractValue(packed, 1));
     } else {
         llvm::Value* tmp1 = irb.CreateNot(irb.CreateXor(lhs, rhs));
         llvm::Value* tmp2 = irb.CreateAnd(tmp1, irb.CreateXor(res, lhs));
-        SetFlag(Facet::OF, irb.CreateICmpSLT(tmp2, zero));
+        SetFlag(ArchReg::OF, irb.CreateICmpSLT(tmp2, zero));
     }
 }
 
 void Lifter::FlagCalcSub(llvm::Value* res, llvm::Value* lhs, llvm::Value* rhs) {
     auto zero = llvm::Constant::getNullValue(res->getType());
     llvm::Value* sf = irb.CreateICmpSLT(res, zero);  // also used for OF
-    SetFlag(Facet::ZF, irb.CreateICmpEQ(lhs, rhs));
-    SetFlag(Facet::SF, sf);
-    SetFlag(Facet::CF, irb.CreateICmpUGE(lhs, rhs));
-    SetFlag(Facet::OF, irb.CreateICmpNE(sf, irb.CreateICmpSLT(lhs, rhs)));
+    SetFlag(ArchReg::ZF, irb.CreateICmpEQ(lhs, rhs));
+    SetFlag(ArchReg::SF, sf);
+    SetFlag(ArchReg::CF, irb.CreateICmpUGE(lhs, rhs));
+    SetFlag(ArchReg::OF, irb.CreateICmpNE(sf, irb.CreateICmpSLT(lhs, rhs)));
 }
 
 void Lifter::FlagCalcLogic(llvm::Value* res) {
     auto zero = llvm::Constant::getNullValue(res->getType());
-    SetFlag(Facet::ZF, irb.CreateICmpEQ(res, zero));
-    SetFlag(Facet::SF, irb.CreateICmpSLT(res, zero));
-    SetFlag(Facet::CF, irb.getFalse());
-    SetFlag(Facet::OF, irb.getFalse());
+    SetFlag(ArchReg::ZF, irb.CreateICmpEQ(res, zero));
+    SetFlag(ArchReg::SF, irb.CreateICmpSLT(res, zero));
+    SetFlag(ArchReg::CF, irb.getFalse());
+    SetFlag(ArchReg::OF, irb.getFalse());
 }
 
 // Get a scalar value stored in the A64 register Vr. The sizes FSZ_B (byte, Br)
@@ -1121,18 +1121,18 @@ llvm::Type* Lifter::TypeOf(farmdec::FPSize fsz) {
 llvm::Value* Lifter::IsTrue(farmdec::Cond cond) {
     llvm::Value* res = nullptr; // positive result, inverted iff LSB(cond) == 1
     switch (cond) {
-    case farmdec::COND_EQ: case farmdec::COND_NE: res = GetFlag(Facet::ZF); break;
-    case farmdec::COND_HS: case farmdec::COND_LO: res = GetFlag(Facet::CF); break;
-    case farmdec::COND_MI: case farmdec::COND_PL: res = GetFlag(Facet::SF); break;
-    case farmdec::COND_VS: case farmdec::COND_VC: res = GetFlag(Facet::OF); break;
+    case farmdec::COND_EQ: case farmdec::COND_NE: res = GetFlag(ArchReg::ZF); break;
+    case farmdec::COND_HS: case farmdec::COND_LO: res = GetFlag(ArchReg::CF); break;
+    case farmdec::COND_MI: case farmdec::COND_PL: res = GetFlag(ArchReg::SF); break;
+    case farmdec::COND_VS: case farmdec::COND_VC: res = GetFlag(ArchReg::OF); break;
     case farmdec::COND_HI: case farmdec::COND_LS:
-        res = irb.CreateAnd(GetFlag(Facet::CF), irb.CreateNot(GetFlag(Facet::ZF)));
+        res = irb.CreateAnd(GetFlag(ArchReg::CF), irb.CreateNot(GetFlag(ArchReg::ZF)));
         break;
     case farmdec::COND_GE: case farmdec::COND_LT:
-        res = irb.CreateICmpEQ(GetFlag(Facet::SF), GetFlag(Facet::OF));
+        res = irb.CreateICmpEQ(GetFlag(ArchReg::SF), GetFlag(ArchReg::OF));
         break;
     case farmdec::COND_GT: case farmdec::COND_LE:
-        res = irb.CreateAnd(irb.CreateNot(GetFlag(Facet::ZF)), irb.CreateICmpEQ(GetFlag(Facet::SF), GetFlag(Facet::OF)));
+        res = irb.CreateAnd(irb.CreateNot(GetFlag(ArchReg::ZF)), irb.CreateICmpEQ(GetFlag(ArchReg::SF), GetFlag(ArchReg::OF)));
         break;
     case farmdec::COND_AL: case farmdec::COND_NV:
         return irb.getTrue(); // Both AL and NV yield true, so return directly without inverting.
@@ -1331,10 +1331,10 @@ void Lifter::LiftCCmp(llvm::Value* lhs, llvm::Value* rhs, farmdec::Cond cond, ui
     } else {
         FlagCalcSub(irb.CreateSub(lhs, rhs), lhs, rhs);
     }
-    SetFlag(Facet::SF, irb.CreateSelect(cond_holds, GetFlag(Facet::SF), irb.getInt1((nzcv & 8) != 0))); // N
-    SetFlag(Facet::ZF, irb.CreateSelect(cond_holds, GetFlag(Facet::ZF), irb.getInt1((nzcv & 4) != 0))); // Z
-    SetFlag(Facet::CF, irb.CreateSelect(cond_holds, GetFlag(Facet::CF), irb.getInt1((nzcv & 2) != 0))); // C
-    SetFlag(Facet::OF, irb.CreateSelect(cond_holds, GetFlag(Facet::OF), irb.getInt1((nzcv & 1) != 0))); // V
+    SetFlag(ArchReg::SF, irb.CreateSelect(cond_holds, GetFlag(ArchReg::SF), irb.getInt1((nzcv & 8) != 0))); // N
+    SetFlag(ArchReg::ZF, irb.CreateSelect(cond_holds, GetFlag(ArchReg::ZF), irb.getInt1((nzcv & 4) != 0))); // Z
+    SetFlag(ArchReg::CF, irb.CreateSelect(cond_holds, GetFlag(ArchReg::CF), irb.getInt1((nzcv & 2) != 0))); // C
+    SetFlag(ArchReg::OF, irb.CreateSelect(cond_holds, GetFlag(ArchReg::OF), irb.getInt1((nzcv & 1) != 0))); // V
 }
 
 // Given a pointer ptr = *T, load a T value, extend it according to ext and put it in rt.
@@ -1437,10 +1437,10 @@ void Lifter::FlagCalcFP(llvm::Value* lhs, llvm::Value* rhs) {
     auto is_unordered = irb.CreateFCmpUNO(lhs, rhs);
     auto is_equal = irb.CreateFCmpOEQ(lhs, rhs);
     auto is_less = irb.CreateFCmpOLT(lhs, rhs);
-    SetFlag(Facet::SF, is_less);
-    SetFlag(Facet::ZF, is_equal);
-    SetFlag(Facet::CF, irb.CreateNot(is_less));
-    SetFlag(Facet::OF, is_unordered);
+    SetFlag(ArchReg::SF, is_less);
+    SetFlag(ArchReg::ZF, is_equal);
+    SetFlag(ArchReg::CF, irb.CreateNot(is_less));
+    SetFlag(ArchReg::OF, is_unordered);
 }
 
 void Lifter::LiftBinOpFP(llvm::Instruction::BinaryOps op, farmdec::FPSize prec, farmdec::Reg rd, farmdec::Reg rn, farmdec::Reg rm) {
