@@ -133,9 +133,7 @@ public:
 
     /// Modified registers not yet recorded in a CallConvPack in the FunctionInfo.
     RegisterSet& DirtyRegs();
-
-    /// Registers that have been packed into a CallConvPack.
-    RegisterSet& CleanedRegs();
+    bool StartsClean();
 
 private:
     class impl;

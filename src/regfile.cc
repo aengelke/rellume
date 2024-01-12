@@ -97,7 +97,7 @@ struct Register {
 class RegFile::impl {
 public:
     impl(Arch arch, llvm::BasicBlock* bb)
-            : irb(bb), reg_ip(), flags(), dirty_regs(), cleaned_regs() {
+            : irb(bb), reg_ip(), flags(), dirty_regs() {
         unsigned ngp, nvec, nflags = 7;
         switch (arch) {
 #ifdef RELLUME_WITH_X86_64
@@ -135,7 +135,7 @@ public:
     void SetReg(ArchReg reg, Facet facet, llvm::Value*, bool clear_facets);
 
     RegisterSet& DirtyRegs() { return dirty_regs; }
-    RegisterSet& CleanedRegs() { return cleaned_regs; }
+    bool StartsClean() { return !parent && !phiDescs; }
 
 private:
     llvm::IRBuilder<> irb;
@@ -150,7 +150,6 @@ private:
     Facet ivec_facet;
 
     RegisterSet dirty_regs;
-    RegisterSet cleaned_regs;
 
     Register* AccessReg(ArchReg reg, Facet facet);
     Facet NativeFacet(ArchReg reg, Facet facet);
@@ -388,6 +387,6 @@ void RegFile::SetReg(ArchReg reg, Facet facet, llvm::Value* value, bool clear) {
     pimpl->SetReg(reg, facet, value, clear);
 }
 RegisterSet& RegFile::DirtyRegs() { return pimpl->DirtyRegs(); }
-RegisterSet& RegFile::CleanedRegs() { return pimpl->CleanedRegs(); }
+bool RegFile::StartsClean() { return pimpl->StartsClean(); }
 
 } // namespace rellume

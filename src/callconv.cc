@@ -281,8 +281,12 @@ void CallConv::OptimizePacks(FunctionInfo& fi, BasicBlock* entry) {
                 pre |= bb_map.lookup(pred).second;
 
             RegisterSet post;
-            if (RegFile* rf = bb->GetRegFile())
-                post = (pre & ~rf->CleanedRegs()) | rf->DirtyRegs();
+            if (RegFile* rf = bb->GetRegFile()){
+                if (rf->StartsClean())
+                    post = rf->DirtyRegs();
+                else
+                    post = pre | rf->DirtyRegs();
+            }
             auto new_regsets = std::make_pair(pre, post);
 
             auto [it, inserted] = bb_map.try_emplace(bb, new_regsets);
@@ -307,7 +311,9 @@ void CallConv::OptimizePacks(FunctionInfo& fi, BasicBlock* entry) {
         RegFile& regfile = *pack.regfile;
         regfile.SetInsertPoint(pack.packBefore->getIterator());
 
-        RegisterSet regset = bb_map.lookup(pack.bb).first | regfile.DirtyRegs();
+        RegisterSet regset = regfile.DirtyRegs();
+        if (!regfile.StartsClean())
+            regset |= bb_map.lookup(pack.bb).first;
         llvm::IRBuilder<> irb(pack.packBefore);
         for (const auto& [sptr_idx, off, reg, facet] : CPUStructEntries(*this)) {
             if (reg.Kind() == ArchReg::RegKind::INVALID)
