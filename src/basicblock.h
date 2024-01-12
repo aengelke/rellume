@@ -52,6 +52,9 @@ public:
     bool FillPhis();
 
     void InitRegFile(Arch arch, Phis phi_mode);
+    std::unique_ptr<RegFile> TakeRegFile() {
+        return std::move(regfile);
+    }
     RegFile* GetRegFile() {
         return regfile.get();
     }

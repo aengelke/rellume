@@ -191,13 +191,13 @@ void CallConv::InitSptrs(BasicBlock* bb, FunctionInfo& fi) {
 
 template<typename F>
 static void Pack(CallConv cconv, BasicBlock* bb, FunctionInfo& fi, F pass_as_reg) {
-    RegFile& regfile = *bb->GetRegFile();
-    llvm::IRBuilder<> irb(regfile.GetInsertBlock());
+    auto regfile = bb->TakeRegFile();
+    llvm::IRBuilder<> irb(*bb);
 
     const auto& cpu_struct_entries = CPUStructEntries(cconv);
 
     CallConvPack& pack_info = fi.call_conv_packs.emplace_back();
-    pack_info.block_dirty_regs = regfile.DirtyRegs();
+    pack_info.block_dirty_regs = regfile->DirtyRegs();
     pack_info.bb = bb;
     pack_info.stores.resize(cpu_struct_entries.size());
 
@@ -205,15 +205,15 @@ static void Pack(CallConv cconv, BasicBlock* bb, FunctionInfo& fi, F pass_as_reg
         if (reg.Kind() == ArchReg::RegKind::INVALID)
             continue;
 
-        llvm::Value* reg_val = regfile.GetReg(reg, facet);
+        llvm::Value* reg_val = regfile->GetReg(reg, facet);
 
         if (pass_as_reg(reg, reg_val)) {
             continue;
         }
 
         unsigned regset_idx = RegisterSetBitIdx(reg, facet);
-        regfile.DirtyRegs()[regset_idx] = false;
-        regfile.CleanedRegs()[regset_idx] = true;
+        regfile->DirtyRegs()[regset_idx] = false;
+        regfile->CleanedRegs()[regset_idx] = true;
         pack_info.stores[sptr_idx] = irb.CreateStore(reg_val, fi.sptr[sptr_idx]);
     }
 }
@@ -307,8 +307,9 @@ void CallConv::OptimizePacks(FunctionInfo& fi, BasicBlock* entry) {
             for (BasicBlock* pred : bb->Predecessors())
                 pre |= bb_map.lookup(pred).second;
 
-            RegFile* rf = bb->GetRegFile();
-            RegisterSet post = (pre & ~rf->CleanedRegs()) | rf->DirtyRegs();
+            RegisterSet post;
+            if (RegFile* rf = bb->GetRegFile())
+                post = (pre & ~rf->CleanedRegs()) | rf->DirtyRegs();
             auto new_regsets = std::make_pair(pre, post);
 
             auto [it, inserted] = bb_map.try_emplace(bb, new_regsets);
