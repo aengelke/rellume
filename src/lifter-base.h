@@ -77,10 +77,13 @@ protected:
         return regfile->GetReg(reg, facet);
     }
     void SetReg(ArchReg reg, Facet facet, llvm::Value* value) {
-        regfile->SetReg(reg, facet, value, true); // clear all other facets
+        regfile->SetReg(reg, facet, value, RegFile::INTO_ZERO);
+    }
+    void SetRegMerge(ArchReg reg, Facet facet, llvm::Value* value) {
+        regfile->SetReg(reg, facet, value, RegFile::MERGE);
     }
     void SetRegFacet(ArchReg reg, Facet facet, llvm::Value* value) {
-        regfile->SetReg(reg, facet, value, false);
+        regfile->SetReg(reg, facet, value, RegFile::EXTRA_PART);
     }
     void SetRegPtr(ArchReg reg, llvm::Value* value) {
         SetReg(reg, Facet::PTR, value);
@@ -94,7 +97,7 @@ protected:
         return GetReg(ArchReg::EFLAGS, facet);
     }
     void SetFlag(Facet facet, llvm::Value* value) {
-        SetRegFacet(ArchReg::EFLAGS, facet, value);
+        SetReg(ArchReg::EFLAGS, facet, value);
     }
     void SetFlagUndef(std::initializer_list<Facet> facets) {
         llvm::Value* undef = llvm::UndefValue::get(irb.getInt1Ty());

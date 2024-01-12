@@ -129,7 +129,15 @@ public:
     void InitWithPHIs(std::vector<PhiDesc>*);
 
     llvm::Value* GetReg(ArchReg reg, Facet facet);
-    void SetReg(ArchReg reg, Facet facet, llvm::Value*, bool clear_facets);
+    enum WriteMode {
+        /// Set full register, insert into zero,, mark dirty
+        INTO_ZERO,
+        /// Set full register, merge with any larger parts, mark dirty
+        MERGE,
+        /// Set smaller part *after a full set* to ease access to sub parts
+        EXTRA_PART
+    };
+    void SetReg(ArchReg reg, Facet facet, llvm::Value*, WriteMode mode);
 
     /// Modified registers not yet recorded in a CallConvPack in the FunctionInfo.
     RegisterSet& DirtyRegs();

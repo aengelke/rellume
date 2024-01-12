@@ -132,7 +132,7 @@ public:
     }
 
     llvm::Value* GetReg(ArchReg reg, Facet facet);
-    void SetReg(ArchReg reg, Facet facet, llvm::Value*, bool clear_facets);
+    void SetReg(ArchReg reg, Facet facet, llvm::Value*, WriteMode mode);
 
     RegisterSet& DirtyRegs() { return dirty_regs; }
     bool StartsClean() { return !parent && !phiDescs; }
@@ -214,21 +214,22 @@ Register::Value* RegFile::impl::GetRegFold(ArchReg reg, Facet facet, unsigned fu
     // that no dirty values follow after that.
     Register* rv = AccessReg(reg, facet);
     if (!rv->upperZero && (rv->values.empty() || rv->values[0].size < fullSize)) {
-        // In future, we may want to support this. For now, it shouldn't happen.
-        assert(rv->values.empty() && "missing native facet");
         // We need to get the value, so add a PHI node.
         auto nativeFacet = NativeFacet(reg, facet);
+        llvm::Value* nativeVal = nullptr;
         if (parent) {
-            SetReg(reg, nativeFacet, parent->GetReg(reg, nativeFacet), true);
+            nativeVal = parent->GetReg(reg, nativeFacet);
         } else if (phiDescs) {
             llvm::IRBuilder<> phiirb(GetInsertBlock(), GetInsertBlock()->begin());
             auto phi = phiirb.CreatePHI(nativeFacet.Type(irb.getContext()), 4);
             phiDescs->push_back(std::make_tuple(reg, nativeFacet, phi));
-            SetReg(reg, nativeFacet, phi, true);
+            nativeVal = phi;
         } else {
             assert(false && "accessing unset register in entry block");
             return nullptr;
         }
+        Register::Value nativeRvv{nativeVal, nullptr, nativeFacet.Size(), false};
+        rv->values.insert(rv->values.begin(), std::move(nativeRvv));
     }
 
     if (rv->values.empty() && rv->upperZero) {
@@ -349,27 +350,39 @@ llvm::Value* RegFile::impl::GetReg(ArchReg reg, Facet facet) {
 }
 
 void RegFile::impl::SetReg(ArchReg reg, Facet facet, llvm::Value* value,
-                           bool clearOthers) {
+                           WriteMode mode) {
     if (facet == Facet::PTR)
         assert(value->getType()->isPointerTy());
     else
         assert(value->getType() == facet.Type(irb.getContext()));
 
-    if (!clearOthers && reg.Kind() != ArchReg::RegKind::EFLAGS)
+    if (mode == RegFile::EXTRA_PART)
         return; // this is just an optimization.
 
     unsigned facetSize = facet.Size();
     Register* rv = AccessReg(reg, facet);
 
-    // Index of first value that is NOT LARGER than the size we overwrite.
-    unsigned mergeValuePoint = 0;
-    while (mergeValuePoint < rv->values.size()) {
-        if (rv->values[mergeValuePoint].size <= facetSize)
-            break;
-        mergeValuePoint++;
+    switch (mode) {
+    case RegFile::INTO_ZERO:
+        rv->upperZero = true;
+        rv->values.clear();
+        rv->values.push_back(Register::Value{value, nullptr, facetSize, true});
+        break;
+    case RegFile::MERGE: {
+        // Index of first value that is NOT LARGER than the size we overwrite.
+        unsigned mergeValuePoint = 0;
+        while (mergeValuePoint < rv->values.size()) {
+            if (rv->values[mergeValuePoint].size <= facetSize)
+                break;
+            mergeValuePoint++;
+        }
+        rv->values.truncate(mergeValuePoint);
+        rv->values.push_back(Register::Value{value, nullptr, facetSize, true});
+        break;
     }
-    rv->values.truncate(mergeValuePoint);
-    rv->values.push_back(Register::Value{value, nullptr, facetSize, true});
+    default:
+        assert(false);
+    }
 
     dirty_regs[RegisterSetBitIdx(reg, facet)] = true;
 }
@@ -383,8 +396,8 @@ void RegFile::Clear() { pimpl->Clear(); }
 void RegFile::InitWithRegFile(RegFile* r) { pimpl->InitWithRegFile(r); }
 void RegFile::InitWithPHIs(std::vector<PhiDesc>* d) { pimpl->InitWithPHIs(d); }
 llvm::Value* RegFile::GetReg(ArchReg r, Facet f) { return pimpl->GetReg(r, f); }
-void RegFile::SetReg(ArchReg reg, Facet facet, llvm::Value* value, bool clear) {
-    pimpl->SetReg(reg, facet, value, clear);
+void RegFile::SetReg(ArchReg reg, Facet facet, llvm::Value* value, WriteMode mode) {
+    pimpl->SetReg(reg, facet, value, mode);
 }
 RegisterSet& RegFile::DirtyRegs() { return pimpl->DirtyRegs(); }
 bool RegFile::StartsClean() { return pimpl->StartsClean(); }

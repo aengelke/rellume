@@ -204,14 +204,14 @@ static void Unpack(CallConv cconv, BasicBlock* bb, FunctionInfo& fi, F get_from_
         if (reg.Kind() == ArchReg::RegKind::INVALID)
             continue;
         if (llvm::Value* reg_val = get_from_reg(reg)) {
-            regfile.SetReg(reg, facet, reg_val, true);
+            regfile.SetReg(reg, facet, reg_val, RegFile::INTO_ZERO);
             continue;
         }
 
         llvm::Type* reg_ty = facet.Type(irb.getContext());
         llvm::Value* reg_val = irb.CreateLoad(reg_ty, fi.sptr[sptr_idx]);
         // Mark register as clean if it was loaded from the sptr.
-        regfile.SetReg(reg, facet, reg_val, true);
+        regfile.SetReg(reg, facet, reg_val, RegFile::INTO_ZERO);
         regfile.DirtyRegs()[RegisterSetBitIdx(reg, facet)] = false;
     }
 }
