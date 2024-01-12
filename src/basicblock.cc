@@ -56,8 +56,7 @@ BasicBlock::BasicBlock(llvm::Function* fn, size_t max_preds)
 }
 
 void BasicBlock::InitRegFile(Arch arch, Phis phi_mode) {
-    regfile = std::make_unique<RegFile>(arch);
-    regfile->SetInsertBlock(llvm_block);
+    regfile = std::make_unique<RegFile>(arch, llvm_block);
     if (phi_mode != Phis::NONE) {
         if (max_preds == 1 && predecessors.size() == 1) {
             regfile->InitWithRegFile(predecessors[0]->GetRegFile());
@@ -74,7 +73,8 @@ void BasicBlock::BranchTo(BasicBlock& next) {
     assert(!llvm_block->getTerminator() && "attempting to add second terminator");
 
     llvm::IRBuilder<> irb(llvm_block);
-    irb.CreateBr(next.llvm_block);
+    auto branch = irb.CreateBr(next.llvm_block);
+    regfile->SetInsertPoint(branch->getIterator());
     next.predecessors.push_back(this);
     successors.push_back(&next);
 }
@@ -90,7 +90,8 @@ void BasicBlock::BranchTo(llvm::Value* cond, BasicBlock& then,
     assert(!llvm_block->getTerminator() && "attempting to add second terminator");
 
     llvm::IRBuilder<> irb(llvm_block);
-    irb.CreateCondBr(cond, then.llvm_block, other.llvm_block);
+    auto branch = irb.CreateCondBr(cond, then.llvm_block, other.llvm_block);
+    regfile->SetInsertPoint(branch->getIterator());
     then.predecessors.push_back(this);
     other.predecessors.push_back(this);
     successors.push_back(&then);

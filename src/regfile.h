@@ -111,7 +111,7 @@ unsigned RegisterSetBitIdx(ArchReg reg, Facet facet);
 
 class RegFile {
 public:
-    RegFile(Arch arch);
+    RegFile(Arch arch, llvm::BasicBlock* bb);
     ~RegFile();
 
     RegFile(RegFile&& rhs);
@@ -121,7 +121,7 @@ public:
     RegFile& operator=(const RegFile&) = delete;
 
     llvm::BasicBlock* GetInsertBlock();
-    void SetInsertBlock(llvm::BasicBlock* new_block);
+    void SetInsertPoint(llvm::BasicBlock::iterator ip);
 
     void Clear();
     void InitWithRegFile(RegFile* parent);

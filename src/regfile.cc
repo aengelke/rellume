@@ -96,8 +96,8 @@ struct Register {
 
 class RegFile::impl {
 public:
-    impl(Arch arch) : insert_block(nullptr), reg_ip(), flags(), dirty_regs(),
-                      cleaned_regs() {
+    impl(Arch arch, llvm::BasicBlock* bb)
+            : irb(bb), reg_ip(), flags(), dirty_regs(), cleaned_regs() {
         unsigned ngp, nvec, nflags = 7;
         switch (arch) {
 #ifdef RELLUME_WITH_X86_64
@@ -116,8 +116,10 @@ public:
         flags.resize(nflags);
     }
 
-    llvm::BasicBlock* GetInsertBlock() { return insert_block; }
-    void SetInsertBlock(llvm::BasicBlock* n) { insert_block = n; }
+    llvm::BasicBlock* GetInsertBlock() { return irb.GetInsertBlock(); }
+    void SetInsertPoint(llvm::BasicBlock::iterator ip) {
+        irb.SetInsertPoint(ip->getParent(), ip);
+    }
 
     void Clear();
     void InitWithRegFile(RegFile* parent) {
@@ -136,7 +138,7 @@ public:
     RegisterSet& CleanedRegs() { return cleaned_regs; }
 
 private:
-    llvm::BasicBlock* insert_block;
+    llvm::IRBuilder<> irb;
     llvm::SmallVector<Register, 32> regs_gp;
     llvm::SmallVector<Register, 32> regs_sse;
     Register reg_ip;
@@ -220,8 +222,8 @@ Register::Value* RegFile::impl::GetRegFold(ArchReg reg, Facet facet, unsigned fu
         if (parent) {
             SetReg(reg, nativeFacet, parent->GetReg(reg, nativeFacet), true);
         } else if (phiDescs) {
-            llvm::IRBuilder<> irb(insert_block, insert_block->begin());
-            auto phi = irb.CreatePHI(nativeFacet.Type(irb.getContext()), 4);
+            llvm::IRBuilder<> phiirb(GetInsertBlock(), GetInsertBlock()->begin());
+            auto phi = phiirb.CreatePHI(nativeFacet.Type(irb.getContext()), 4);
             phiDescs->push_back(std::make_tuple(reg, nativeFacet, phi));
             SetReg(reg, nativeFacet, phi, true);
         } else {
@@ -231,7 +233,7 @@ Register::Value* RegFile::impl::GetRegFold(ArchReg reg, Facet facet, unsigned fu
     }
 
     if (rv->values.empty() && rv->upperZero) {
-        llvm::Type* intTy = llvm::Type::getIntNTy(insert_block->getContext(), fullSize);
+        llvm::Type* intTy = llvm::Type::getIntNTy(irb.getContext(), fullSize);
         llvm::Value* zero = llvm::Constant::getNullValue(intTy);
         rv->values.push_back(Register::Value{zero, nullptr, fullSize, true});
         return &rv->values[0];
@@ -261,7 +263,7 @@ llvm::Value* RegFile::impl::GetReg(ArchReg reg, Facet facet) {
     unsigned facetSize = facet.Size();
     if (facet == Facet::I8H)
         facetSize = 16;
-    llvm::Type* facetType = facet.Type(insert_block->getContext());
+    llvm::Type* facetType = facet.Type(irb.getContext());
 
     Register::Value* rvv = GetRegFold(reg, facet, facetSize);
     if (facet != Facet::I8H && rvv->size == facetSize) {
@@ -270,20 +272,12 @@ llvm::Value* RegFile::impl::GetReg(ArchReg reg, Facet facet) {
         if (rvv->valueB && rvv->valueB->getType() == facetType)
             return rvv->valueB;
 
-        llvm::IRBuilder<> irb(insert_block);
-        if (llvm::Instruction* terminator = insert_block->getTerminator())
-            irb.SetInsertPoint(terminator);
-
         rvv->valueB = rvv->valueA;
         rvv->valueA = irb.CreateBitOrPointerCast(rvv->valueB, facetType);
         return rvv->valueA;
     }
     llvm::Value* superValue = rvv->valueA;
     llvm::Type* superValueTy = superValue->getType();
-
-    llvm::IRBuilder<> irb(insert_block);
-    if (llvm::Instruction* terminator = insert_block->getTerminator())
-        irb.SetInsertPoint(terminator);
 
     // Need to do arbitrary conversion.
     switch (facet) {
@@ -305,11 +299,10 @@ llvm::Value* RegFile::impl::GetReg(ArchReg reg, Facet facet) {
             auto vec = irb.CreateBitCast(superValue, vecTy);
             return irb.CreateExtractElement(vec, uint64_t{0});
         } else {
-            unsigned valSize = superValueTy->getPrimitiveSizeInBits();
             auto val = superValue;
             if (!superValueTy->isIntegerTy())
-                val = irb.CreateBitOrPointerCast(superValue, irb.getIntNTy(valSize));
-            if (valSize > facetSize)
+                val = irb.CreateBitOrPointerCast(superValue, irb.getIntNTy(rvv->size));
+            if (rvv->size > facetSize)
                 val = irb.CreateTrunc(val, irb.getIntNTy(facetSize));
             return irb.CreateBitOrPointerCast(val, facetType);
         }
@@ -361,7 +354,7 @@ void RegFile::impl::SetReg(ArchReg reg, Facet facet, llvm::Value* value,
     if (facet == Facet::PTR)
         assert(value->getType()->isPointerTy());
     else
-        assert(value->getType() == facet.Type(insert_block->getContext()));
+        assert(value->getType() == facet.Type(irb.getContext()));
 
     if (!clearOthers && reg.Kind() != ArchReg::RegKind::EFLAGS)
         return; // this is just an optimization.
@@ -382,11 +375,11 @@ void RegFile::impl::SetReg(ArchReg reg, Facet facet, llvm::Value* value,
     dirty_regs[RegisterSetBitIdx(reg, facet)] = true;
 }
 
-RegFile::RegFile(Arch arch) : pimpl{std::make_unique<impl>(arch)} {}
+RegFile::RegFile(Arch arch, llvm::BasicBlock* bb) : pimpl{std::make_unique<impl>(arch, bb)} {}
 RegFile::~RegFile() {}
 
 llvm::BasicBlock* RegFile::GetInsertBlock() { return pimpl->GetInsertBlock(); }
-void RegFile::SetInsertBlock(llvm::BasicBlock* n) { pimpl->SetInsertBlock(n); }
+void RegFile::SetInsertPoint(llvm::BasicBlock::iterator ip) { pimpl->SetInsertPoint(ip); }
 void RegFile::Clear() { pimpl->Clear(); }
 void RegFile::InitWithRegFile(RegFile* r) { pimpl->InitWithRegFile(r); }
 void RegFile::InitWithPHIs(std::vector<PhiDesc>* d) { pimpl->InitWithPHIs(d); }
