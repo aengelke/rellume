@@ -81,8 +81,7 @@ protected:
         regfile->SetReg(reg, facet, value, false);
     }
     void SetRegPtr(ArchReg reg, llvm::Value* value) {
-        SetReg(reg, Facet::I64, irb.CreatePtrToInt(value, irb.getInt64Ty()));
-        SetRegFacet(reg, Facet::PTR, value);
+        SetReg(reg, Facet::PTR, value);
     }
     llvm::Value* GetFlag(Facet facet) {
         if (facet == Facet::PF) {
