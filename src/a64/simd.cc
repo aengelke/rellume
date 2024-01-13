@@ -1354,32 +1354,7 @@ llvm::Value* Lifter::GetElem(farmdec::Reg r, farmdec::VectorArrangement va, unsi
 }
 
 void Lifter::SetVec(farmdec::Reg r, llvm::Value* vec) {
-    auto vecty = llvm::cast<llvm::VectorType>(vec->getType());
-    Facet fc = Facet::FromType(vecty);
-    unsigned bits = fc.Size();
-    Facet ivec = Facet::V2I64;
-
-    // Full 128-bit vector
-    if (bits == ivec.Size()) {
-        SetReg(ArchReg::VEC(r), irb.CreateBitCast(vec, ivec.Type(irb.getContext())));
-        SetRegFacet(ArchReg::VEC(r), vec);
-        return;
-    }
-
-    // Half vector -- upper half is zeroed.
-    auto zero = llvm::Constant::getNullValue(vecty);
-
-    // Shufflevector (zero, vec, {0, 1, ..., n}) simply concatenates zero and vec.
-    auto full_nelem = 2 * bits / vecty->getScalarSizeInBits();
-    llvm::SmallVector<int, 16> mask;
-    for (unsigned i = 0; i < full_nelem; i++) {
-        mask.push_back(i);
-    }
-    auto fullvec = irb.CreateShuffleVector(vec, zero, mask);
-
-    SetReg(ArchReg::VEC(r), irb.CreateBitCast(fullvec, ivec.Type(irb.getContext())));
-    SetRegFacet(ArchReg::VEC(r), fullvec);
-    SetRegFacet(ArchReg::VEC(r), vec);
+    SetReg(ArchReg::VEC(r), vec);
 }
 
 // Vr[i] := elem, l without touching other lanes.

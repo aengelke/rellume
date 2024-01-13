@@ -345,7 +345,19 @@ fold:;
                 result = irb.CreateShuffleVector(ext_vec, result, mask);
             }
         }
-        assert(resultSize >= foldSize && "vector insert-in-zero not implemented");
+
+        if (resultSize < foldSize) {
+            auto resultTy = llvm::cast<llvm::VectorType>(result->getType());
+            unsigned resultCnt = resultTy->getElementCount().getFixedValue();
+            auto elemSize = resultTy->getScalarSizeInBits();
+            unsigned cnt = foldSize / elemSize;
+
+            llvm::SmallVector<int, 16> mask;
+            for (unsigned j = 0; j < cnt; j++)
+                mask.push_back(j < resultCnt ? j : resultCnt);
+            llvm::Value* zero = llvm::Constant::getNullValue(resultTy);
+            result = irb.CreateShuffleVector(result, zero, mask);
+        }
     } else {
         llvm::errs() << *result << "\n";
         assert(false && "non-integer/vector value merging not implemented");
