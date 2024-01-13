@@ -225,14 +225,14 @@ bool Lifter::Lift(const Instr& inst) {
     case FDI_SSE_MOVUPD: LiftSseMovdq(inst, Facet::V2F64, ALIGN_NONE); break;
     case FDI_SSE_MOVAPS: LiftSseMovdq(inst, Facet::V4F32, ALIGN_MAX); break;
     case FDI_SSE_MOVAPD: LiftSseMovdq(inst, Facet::V2F64, ALIGN_MAX); break;
-    case FDI_SSE_MOVDQU: LiftSseMovdq(inst, Facet::I128, ALIGN_NONE); break;
-    case FDI_SSE_MOVDQA: LiftSseMovdq(inst, Facet::I128, ALIGN_MAX); break;
-    case FDI_SSE_LDDQU: LiftSseMovdq(inst, Facet::I128, ALIGN_NONE); break;
+    case FDI_SSE_MOVDQU: LiftSseMovdq(inst, Facet::V2I64, ALIGN_NONE); break;
+    case FDI_SSE_MOVDQA: LiftSseMovdq(inst, Facet::V2I64, ALIGN_MAX); break;
+    case FDI_SSE_LDDQU: LiftSseMovdq(inst, Facet::V2I64, ALIGN_NONE); break;
     case FDI_SSE_MOVNTPS: LiftSseMovntStore(inst, Facet::VF32); break;
     case FDI_SSE_MOVNTPD: LiftSseMovntStore(inst, Facet::VF64); break;
     case FDI_SSE_MOVNTDQ: LiftSseMovntStore(inst, Facet::VI64); break;
     // TODO: set non-temporal hint
-    case FDI_SSE_MOVNTDQA: LiftSseMovdq(inst, Facet::I128, ALIGN_MAX); break;
+    case FDI_SSE_MOVNTDQA: LiftSseMovdq(inst, Facet::V2I64, ALIGN_MAX); break;
     case FDI_SSE_MOVLPS: LiftSseMovlp(inst); break;
     case FDI_SSE_MOVHLPS: LiftSseMovlp(inst); break;
     case FDI_SSE_MOVLPD: LiftSseMovlp(inst); break;
