@@ -215,12 +215,12 @@ void Lifter::OpStoreGp(const Instr::Op op, llvm::Value* value,
     }
 }
 
-void Lifter::OpStoreVec(const Instr::Op op, llvm::Value* value, bool avx,
-                            Alignment alignment) {
+void Lifter::OpStoreVec(const Instr::Op op, llvm::Value* value,
+                        Alignment alignment) {
     if (op.is_mem()) {
         llvm::Value* addr = OpAddr(op, value->getType());
         llvm::StoreInst* store = irb.CreateStore(value, addr);
-        ll_operand_set_alignment(store, value->getType(), alignment, !avx);
+        ll_operand_set_alignment(store, value->getType(), alignment, true);
         return;
     }
 
@@ -248,9 +248,7 @@ void Lifter::OpStoreVec(const Instr::Op op, llvm::Value* value, bool avx,
                                                        /*scalable=*/false);
     Facet full_facet = Facet::Vnt(full_num, Facet::FromType(element_ty));
 
-    llvm::Value* full = llvm::Constant::getNullValue(full_ty);
-    if (!avx)
-        full = GetReg(reg, full_facet);
+    llvm::Value* full = GetReg(reg, full_facet);
 
     if (!value_ty->isVectorTy()) {
         // Handle scalar values with an insertelement instruction
