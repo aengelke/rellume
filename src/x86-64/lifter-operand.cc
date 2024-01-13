@@ -221,55 +221,10 @@ void Lifter::OpStoreVec(const Instr::Op op, llvm::Value* value,
         llvm::Value* addr = OpAddr(op, value->getType());
         llvm::StoreInst* store = irb.CreateStore(value, addr);
         ll_operand_set_alignment(store, value->getType(), alignment, true);
-        return;
-    }
-
-    assert(op.is_reg() && "vec-store to non-mem/non-reg");
-
-    ArchReg reg = MapReg(op.reg());
-
-    Facet ivec_facet = Facet::V2I64;
-    llvm::Type* ivec_ty = ivec_facet.Type(irb.getContext());
-    unsigned ivec_sz = ivec_ty->getPrimitiveSizeInBits();
-    llvm::Type* value_ty = value->getType();
-
-    // Handle case where the value fills the entire register.
-    if (value_ty->getPrimitiveSizeInBits() == ivec_sz) {
-        SetReg(reg, irb.CreateBitCast(value, ivec_ty));
-        SetRegFacet(reg, value);
-        return;
-    }
-
-    // Construct the requires vector type of the vector register.
-    llvm::Type* element_ty =
-        value_ty->isVectorTy() ? value_ty->getScalarType() : value_ty;
-    unsigned full_num = ivec_sz / element_ty->getPrimitiveSizeInBits();
-    Facet full_facet = Facet::Vnt(full_num, Facet::FromType(element_ty));
-
-    llvm::Value* full = GetReg(reg, full_facet);
-
-    if (!value_ty->isVectorTy()) {
-        // Handle scalar values with an insertelement instruction
-        full = irb.CreateInsertElement(full, value, uint64_t{0});
     } else {
-        // Vector-in-vector insertion require 2 x shufflevector.
-        // First, we enlarge the input vector to the full register length.
-        unsigned value_num_elts = VectorElementCount(value_ty);
-        llvm::SmallVector<int, 16> mask;
-        for (unsigned i = 0; i < full_num; i++)
-            mask.push_back(i < value_num_elts ? i : value_num_elts);
-        llvm::Value* zero = llvm::Constant::getNullValue(value_ty);
-        llvm::Value* ext_vec = irb.CreateShuffleVector(value, zero, mask);
-
-        // Now shuffle the two vectors together
-        for (unsigned i = 0; i < full_num; i++)
-            mask[i] = i + (i < value_num_elts ? 0 : full_num);
-        full = irb.CreateShuffleVector(ext_vec, full, mask);
+        assert(op.is_reg() && "vec-store to non-mem/non-reg");
+        SetRegMerge(MapReg(op.reg()), value);
     }
-
-    SetReg(reg, irb.CreateBitCast(full, ivec_ty));
-    SetRegFacet(reg, full);
-    SetRegFacet(reg, value);
 }
 
 void Lifter::StackPush(llvm::Value* value) {

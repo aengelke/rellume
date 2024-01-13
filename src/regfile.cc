@@ -311,9 +311,44 @@ fold:;
             auto mask = llvm::APInt::getHighBitsSet(foldSize, foldSize - size);
             result = irb.CreateOr(irb.CreateAnd(result, mask), value);
         }
+    } else if (result->getType()->isVectorTy()) {
+        unsigned resultSize = result->getType()->getPrimitiveSizeInBits();
+        for (unsigned i = 1; i < rv->values.size(); i++) {
+            if (!rv->values[i].dirty)
+                continue;
+            CanonicalizeRegisterValue(rv->values[i]);
+            auto value = rv->values[i].value();
+            if (!value->getType()->isVectorTy()) {
+                unsigned cnt = resultSize / rv->values[i].size;
+                auto vecTy = llvm::VectorType::get(value->getType(), cnt, false);
+                result = irb.CreateBitCast(result, vecTy);
+                result = irb.CreateInsertElement(result, value, uint64_t{0});
+            } else {
+                auto valueTy = llvm::cast<llvm::VectorType>(value->getType());
+                auto elementTy = valueTy->getScalarType();
+                unsigned resultCnt = resultSize / elementTy->getPrimitiveSizeInBits();
+
+                // Vector-in-vector insertion require 2 x shufflevector.
+                // First, we enlarge the input vector to the full length.
+                unsigned valueCnt = valueTy->getElementCount().getFixedValue();
+                llvm::SmallVector<int, 16> mask;
+                for (unsigned j = 0; j < resultCnt; j++)
+                    mask.push_back(j < valueCnt ? j : valueCnt);
+                llvm::Value* zero = llvm::Constant::getNullValue(valueTy);
+                llvm::Value* ext_vec = irb.CreateShuffleVector(value, zero, mask);
+
+                // Now shuffle the two vectors together
+                for (unsigned j = 0; j < resultCnt; j++)
+                    mask[j] = j + (j < valueCnt ? 0 : resultCnt);
+                auto vecTy = llvm::VectorType::get(elementTy, resultCnt, false);
+                result = irb.CreateBitCast(result, vecTy);
+                result = irb.CreateShuffleVector(ext_vec, result, mask);
+            }
+        }
+        assert(resultSize >= foldSize && "vector insert-in-zero not implemented");
     } else {
         llvm::errs() << *result << "\n";
-        assert(false && "non-integer value merging not implemented");
+        assert(false && "non-integer/vector value merging not implemented");
         return nullptr;
     }
 
