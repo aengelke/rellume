@@ -201,7 +201,7 @@ int Function::Decode(uintptr_t addr, DecodeStop stop, MemReader memacc) {
                     instrs[target_entry.instr_idx].new_block = true;
             }
 
-            if (kind == InstrKind::CALL)
+            if (kind == InstrKind::CALL && !cfg->call_function)
                 instr.inhibit_branch = true;
 
             // End decoding stream if can't reach next instruction from here.
