@@ -93,8 +93,7 @@ private:
     llvm::Value* StackPop(const ArchReg sp_src_reg = ArchReg::RSP);
 
     void FlagCalcZ(llvm::Value* value) {
-        auto zero = llvm::Constant::getNullValue(value->getType());
-        SetFlag(ArchReg::ZF, irb.CreateICmpEQ(value, zero));
+        regfile->Set(ArchReg::ZF, RegFile::Transform::IsZero, value);
     }
     // Set SF and PF according to result, AF is undefined.
     void FlagCalcSAPLogic(llvm::Value* res);

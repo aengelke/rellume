@@ -148,6 +148,19 @@ public:
     };
     void SetReg(ArchReg reg, llvm::Value*, WriteMode mode);
 
+    enum class Transform : uint8_t {
+        None,
+        IsZero,
+        IsNeg,
+        TruncI8,
+        /// Create (aligned) load, operand: pointer, some value with load type
+        Load,
+        /// Auxiliary carry flag, operands: res, lhs, rhs
+        X86AuxFlag,
+    };
+
+    void Set(ArchReg reg, Transform t, llvm::Value* v1, llvm::Value* v2 = nullptr, llvm::Value* v3 = nullptr);
+
     /// Modified registers not yet recorded in a CallConvPack in the FunctionInfo.
     RegisterSet& DirtyRegs();
     bool StartsClean();

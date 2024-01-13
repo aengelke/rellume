@@ -41,27 +41,20 @@
 
 namespace rellume::x86_64 {
 
-static llvm::Value* FlagAux(llvm::IRBuilder<>& irb, llvm::Value* res,
-                            llvm::Value* lhs, llvm::Value* rhs) {
-    llvm::Value* tmp = irb.CreateXor(irb.CreateXor(lhs, rhs), res);
-    llvm::Value* masked = irb.CreateAnd(tmp, llvm::ConstantInt::get(res->getType(), 16));
-    return irb.CreateICmpNE(masked, llvm::Constant::getNullValue(res->getType()));
-}
-
 void Lifter::FlagCalcSAPLogic(llvm::Value* res) {
     auto zero = llvm::Constant::getNullValue(res->getType());
-    SetFlag(ArchReg::SF, irb.CreateICmpSLT(res, zero));
-    SetFlag(ArchReg::PF, irb.CreateTrunc(res, irb.getInt8Ty()));
+    regfile->Set(ArchReg::SF, RegFile::Transform::IsNeg, res);
+    regfile->Set(ArchReg::PF, RegFile::Transform::TruncI8, res);
     SetFlagUndef({ArchReg::AF});
 }
 
 void Lifter::FlagCalcAdd(llvm::Value* res, llvm::Value* lhs,
                          llvm::Value* rhs, bool skip_carry) {
     auto zero = llvm::Constant::getNullValue(res->getType());
-    SetFlag(ArchReg::ZF, irb.CreateICmpEQ(res, zero));
-    SetFlag(ArchReg::SF, irb.CreateICmpSLT(res, zero));
-    SetFlag(ArchReg::PF, irb.CreateTrunc(res, irb.getInt8Ty()));
-    SetFlag(ArchReg::AF, FlagAux(irb, res, lhs, rhs));
+    regfile->Set(ArchReg::ZF, RegFile::Transform::IsZero, res);
+    regfile->Set(ArchReg::SF, RegFile::Transform::IsNeg, res);
+    regfile->Set(ArchReg::PF, RegFile::Transform::TruncI8, res);
+    regfile->Set(ArchReg::AF, RegFile::Transform::X86AuxFlag, res, lhs, rhs);
     if (!skip_carry)
         SetFlag(ArchReg::CF, irb.CreateICmpULT(res, lhs));
 
@@ -84,10 +77,10 @@ void Lifter::FlagCalcSub(llvm::Value* res, llvm::Value* lhs,
     if (alt_zf)
         SetFlag(ArchReg::ZF, irb.CreateICmpEQ(lhs, rhs));
     else
-        SetFlag(ArchReg::ZF, irb.CreateICmpEQ(res, zero));
+        regfile->Set(ArchReg::ZF, RegFile::Transform::IsZero, res);
     SetFlag(ArchReg::SF, sf);
-    SetFlag(ArchReg::PF, irb.CreateTrunc(res, irb.getInt8Ty()));
-    SetFlag(ArchReg::AF, FlagAux(irb, res, lhs, rhs));
+    regfile->Set(ArchReg::PF, RegFile::Transform::TruncI8, res);
+    regfile->Set(ArchReg::AF, RegFile::Transform::X86AuxFlag, res, lhs, rhs);
     if (!skip_carry)
         SetFlag(ArchReg::CF, irb.CreateICmpULT(lhs, rhs));
 

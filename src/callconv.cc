@@ -209,9 +209,9 @@ static void Unpack(CallConv cconv, BasicBlock* bb, FunctionInfo& fi, F get_from_
         }
 
         llvm::Type* reg_ty = facet.Type(irb.getContext());
-        llvm::Value* reg_val = irb.CreateLoad(reg_ty, fi.sptr[sptr_idx]);
+        auto typeVal = llvm::Constant::getNullValue(reg_ty);
         // Mark register as clean if it was loaded from the sptr.
-        regfile.SetReg(reg, reg_val, RegFile::INTO_ZERO);
+        regfile.Set(reg, RegFile::Transform::Load, fi.sptr[sptr_idx], typeVal);
         regfile.DirtyRegs()[RegisterSetBitIdx(reg)] = false;
     }
 }

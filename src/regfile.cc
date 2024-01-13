@@ -67,11 +67,24 @@ struct Register {
         llvm::Value* valueA;
         /// Same value, but with alternative type
         llvm::Value* valueB;
+        llvm::Value* valueC;
         /// Size in bits
         unsigned size;
         /// Value is more recent than larger values in the register. If set,
         /// accessing the larger values must merge this value.
         bool dirty;
+        /// Transformation to perform
+        RegFile::Transform transform;
+
+        Value(llvm::Value* value, unsigned size)
+            : valueA(value), valueB(nullptr), size(size), dirty(true), transform(RegFile::Transform::None) {}
+        Value(RegFile::Transform t, llvm::Value* v1, llvm::Value* v2, llvm::Value* v3, unsigned size)
+            : valueA(v1), valueB(v2), valueC(v3), size(size), dirty(true), transform(t) {}
+
+        llvm::Value* value() const {
+            assert(transform == RegFile::Transform::None);
+            return valueA;
+        }
     };
     llvm::SmallVector<Value, 2> values;
 
@@ -122,6 +135,7 @@ public:
 
     llvm::Value* GetReg(ArchReg reg, Facet facet);
     void SetReg(ArchReg reg, llvm::Value*, WriteMode mode);
+    void Set(ArchReg reg, Transform transform, llvm::Value* v1, llvm::Value* v2, llvm::Value* v3);
 
     RegisterSet& DirtyRegs() { return dirty_regs; }
     bool StartsClean() { return !parent && !phiDescs; }
@@ -144,6 +158,8 @@ private:
     Facet NativeFacet(ArchReg reg);
 
     Register::Value* GetRegFold(ArchReg reg, unsigned fullSize);
+
+    void CanonicalizeRegisterValue(Register::Value& rvv);
 };
 
 void RegFile::impl::Clear() {
@@ -190,6 +206,44 @@ Facet RegFile::impl::NativeFacet(ArchReg reg) {
     }
 }
 
+void RegFile::impl::CanonicalizeRegisterValue(Register::Value& rvv) {
+    switch (rvv.transform) {
+    case Transform::None:
+        break;
+    case Transform::IsZero:
+        rvv.valueA = irb.CreateIsNull(rvv.valueA);
+        rvv.valueB = nullptr;
+        rvv.valueC = nullptr;
+        break;
+    case Transform::IsNeg:
+        rvv.valueA = irb.CreateIsNeg(rvv.valueA);
+        rvv.valueB = nullptr;
+        rvv.valueC = nullptr;
+        break;
+    case Transform::TruncI8:
+        rvv.valueA = irb.CreateTrunc(rvv.valueA, irb.getInt8Ty());
+        rvv.valueB = nullptr;
+        rvv.valueC = nullptr;
+        break;
+    case Transform::Load:
+        rvv.valueA = irb.CreateLoad(rvv.valueB->getType(), rvv.valueA);
+        rvv.valueB = nullptr;
+        rvv.valueC = nullptr;
+        break;
+    case Transform::X86AuxFlag: {
+        llvm::Value* tmp = irb.CreateXor(irb.CreateXor(rvv.valueB, rvv.valueC), rvv.valueA);
+        llvm::Value* masked = irb.CreateAnd(tmp, llvm::ConstantInt::get(tmp->getType(), 16));
+        rvv.valueA = irb.CreateICmpNE(masked, llvm::Constant::getNullValue(tmp->getType()));;
+        rvv.valueB = nullptr;
+        rvv.valueC = nullptr;
+        break;
+    }
+    default:
+        assert(false);
+    }
+    rvv.transform = Transform::None;
+}
+
 Register::Value* RegFile::impl::GetRegFold(ArchReg reg, unsigned fullSize) {
     // Goal: make sure that rv->values[<retvalue>] is at least fullSize and
     // that no dirty values follow after that.
@@ -209,14 +263,15 @@ Register::Value* RegFile::impl::GetRegFold(ArchReg reg, unsigned fullSize) {
             assert(false && "accessing unset register in entry block");
             return nullptr;
         }
-        Register::Value nativeRvv{nativeVal, nullptr, nativeFacet.Size(), false};
+        Register::Value nativeRvv(nativeVal, nativeFacet.Size());
+        nativeRvv.dirty = false;
         rv->values.insert(rv->values.begin(), std::move(nativeRvv));
     }
 
     if (rv->values.empty() && rv->upperZero) {
         llvm::Type* intTy = llvm::Type::getIntNTy(irb.getContext(), fullSize);
         llvm::Value* zero = llvm::Constant::getNullValue(intTy);
-        rv->values.push_back(Register::Value{zero, nullptr, fullSize, true});
+        rv->values.push_back(Register::Value(zero, fullSize));
         return &rv->values[0];
     }
 
@@ -236,7 +291,8 @@ Register::Value* RegFile::impl::GetRegFold(ArchReg reg, unsigned fullSize) {
 
 fold:;
     unsigned foldSize = fullSize < rv->values[0].size ? rv->values[0].size : fullSize;
-    llvm::Value* result = rv->values[0].valueA;
+    CanonicalizeRegisterValue(rv->values[0]);
+    llvm::Value* result = rv->values[0].value();
 
     // Always convert pointers to integers, first.
     if (result->getType()->isPointerTy())
@@ -249,7 +305,8 @@ fold:;
             if (!rv->values[i].dirty)
                 continue;
             unsigned size = rv->values[i].size;
-            auto value = irb.CreateBitCast(rv->values[i].valueA, irb.getIntNTy(size));
+            CanonicalizeRegisterValue(rv->values[i]);
+            auto value = irb.CreateBitCast(rv->values[i].value(), irb.getIntNTy(size));
             value = irb.CreateZExt(value, targetTy);
             auto mask = llvm::APInt::getHighBitsSet(foldSize, foldSize - size);
             result = irb.CreateOr(irb.CreateAnd(result, mask), value);
@@ -262,7 +319,7 @@ fold:;
 
     // TODO: could keep smallest dirty value and all following clean as clean.
     rv->values.clear();
-    rv->values.push_back(Register::Value{result, nullptr, foldSize, true});
+    rv->values.push_back(Register::Value(result, foldSize));
 
     return &rv->values[0];
 }
@@ -274,6 +331,7 @@ llvm::Value* RegFile::impl::GetReg(ArchReg reg, Facet facet) {
     llvm::Type* facetType = facet.Type(irb.getContext());
 
     Register::Value* rvv = GetRegFold(reg, facetSize);
+    CanonicalizeRegisterValue(*rvv);
     if (facet != Facet::I8H && rvv->size == facetSize) {
         if (rvv->valueA->getType() == facetType)
             return rvv->valueA;
@@ -364,7 +422,7 @@ void RegFile::impl::SetReg(ArchReg reg, llvm::Value* value, WriteMode mode) {
     case RegFile::INTO_ZERO:
         rv->upperZero = true;
         rv->values.clear();
-        rv->values.push_back(Register::Value{value, nullptr, size, true});
+        rv->values.push_back(Register::Value(value, size));
         break;
     case RegFile::MERGE: {
         // Index of first value that is NOT LARGER than the size we overwrite.
@@ -375,13 +433,42 @@ void RegFile::impl::SetReg(ArchReg reg, llvm::Value* value, WriteMode mode) {
             mergeValuePoint++;
         }
         rv->values.truncate(mergeValuePoint);
-        rv->values.push_back(Register::Value{value, nullptr, size, true});
+        rv->values.push_back(Register::Value(value, size));
         break;
     }
     default:
         assert(false);
     }
 
+    dirty_regs[RegisterSetBitIdx(reg)] = true;
+}
+
+void RegFile::impl::Set(ArchReg reg, Transform transform, llvm::Value* v1,
+                        llvm::Value* v2, llvm::Value* v3) {
+    unsigned size = 0;
+    switch (transform) {
+    case Transform::None:
+        size = v1->getType()->getPrimitiveSizeInBits();
+        break;
+    case Transform::IsZero:
+    case Transform::IsNeg:
+    case Transform::X86AuxFlag:
+        size = 1;
+        break;
+    case Transform::TruncI8:
+        size = 8;
+        break;
+    case Transform::Load:
+        size = v2->getType()->getPrimitiveSizeInBits();
+        assert(size != 0 && "maybe pointer type for Transform::Load?");
+        break;
+    default:
+        assert(false);
+    }
+
+    Register* rv = AccessReg(reg);
+    rv->values.clear();
+    rv->values.push_back(Register::Value(transform, v1, v2, v3, size));
     dirty_regs[RegisterSetBitIdx(reg)] = true;
 }
 
@@ -396,6 +483,9 @@ void RegFile::InitWithPHIs(std::vector<PhiDesc>* d) { pimpl->InitWithPHIs(d); }
 llvm::Value* RegFile::GetReg(ArchReg r, Facet f) { return pimpl->GetReg(r, f); }
 void RegFile::SetReg(ArchReg reg, llvm::Value* value, WriteMode mode) {
     pimpl->SetReg(reg, value, mode);
+}
+void RegFile::Set(ArchReg reg, Transform t, llvm::Value* v1, llvm::Value* v2, llvm::Value* v3) {
+    pimpl->Set(reg, t, v1, v2, v3);
 }
 RegisterSet& RegFile::DirtyRegs() { return pimpl->DirtyRegs(); }
 bool RegFile::StartsClean() { return pimpl->StartsClean(); }
