@@ -74,17 +74,17 @@ protected:
     llvm::Value* GetReg(ArchReg reg, Facet facet) {
         return regfile->GetReg(reg, facet);
     }
-    void SetReg(ArchReg reg, Facet facet, llvm::Value* value) {
+    void SetReg(ArchReg reg, llvm::Value* value) {
         regfile->SetReg(reg, value, RegFile::INTO_ZERO);
     }
-    void SetRegMerge(ArchReg reg, Facet facet, llvm::Value* value) {
+    void SetRegMerge(ArchReg reg, llvm::Value* value) {
         regfile->SetReg(reg, value, RegFile::MERGE);
     }
-    void SetRegFacet(ArchReg reg, Facet facet, llvm::Value* value) {
+    void SetRegFacet(ArchReg reg, llvm::Value* value) {
         regfile->SetReg(reg, value, RegFile::EXTRA_PART);
     }
     void SetRegPtr(ArchReg reg, llvm::Value* value) {
-        SetReg(reg, Facet::PTR, value);
+        SetReg(reg, value);
     }
     llvm::Value* GetFlag(ArchReg reg) {
         if (reg == ArchReg::PF) {
@@ -95,7 +95,7 @@ protected:
         return GetReg(reg, Facet::I1);
     }
     void SetFlag(ArchReg reg, llvm::Value* value) {
-        SetReg(reg, reg == ArchReg::PF ? Facet::I8 : Facet::I1, value);
+        SetReg(reg, value);
     }
     void SetFlagUndef(std::initializer_list<ArchReg> regs) {
         llvm::Value* undef = llvm::UndefValue::get(irb.getInt1Ty());

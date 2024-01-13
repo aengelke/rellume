@@ -559,12 +559,11 @@ void Lifter::LiftBswap(const Instr& inst) {
 
 void Lifter::LiftJmp(const Instr& inst) {
     // Force default data segment, 3e is notrack.
-    SetReg(ArchReg::IP, Facet::I64, OpLoad(inst.op(0), Facet::I64, ALIGN_NONE,
-                                          FD_REG_DS));
+    SetReg(ArchReg::IP, OpLoad(inst.op(0), Facet::I64, ALIGN_NONE, FD_REG_DS));
 }
 
 void Lifter::LiftJcc(const Instr& inst, Condition cond) {
-    SetReg(ArchReg::IP, Facet::I64, irb.CreateSelect(FlagCond(cond),
+    SetReg(ArchReg::IP, irb.CreateSelect(FlagCond(cond),
         OpLoad(inst.op(0), Facet::I64),
         GetReg(ArchReg::IP, Facet::I64)
     ));
@@ -574,7 +573,7 @@ void Lifter::LiftJcxz(const Instr& inst) {
     unsigned sz = inst.addrsz();
     llvm::Value* cx = GetReg(ArchReg::RCX, Facet::In(sz * 8));
     llvm::Value* cond = irb.CreateICmpEQ(cx, irb.getIntN(sz*8, 0));
-    SetReg(ArchReg::IP, Facet::I64, irb.CreateSelect(cond,
+    SetReg(ArchReg::IP, irb.CreateSelect(cond,
         OpLoad(inst.op(0), Facet::I64),
         GetReg(ArchReg::IP, Facet::I64)
     ));
@@ -595,7 +594,7 @@ void Lifter::LiftLoop(const Instr& inst) {
     else if (inst.type() == FDI_LOOPNZ)
         cond = irb.CreateAnd(cond, irb.CreateNot(GetFlag(ArchReg::ZF)));
 
-    SetReg(ArchReg::IP, Facet::I64, irb.CreateSelect(cond,
+    SetReg(ArchReg::IP, irb.CreateSelect(cond,
         OpLoad(inst.op(0), Facet::I64),
         GetReg(ArchReg::IP, Facet::I64)
     ));
@@ -610,7 +609,7 @@ void Lifter::LiftCall(const Instr& inst) {
     llvm::Value* new_rip = OpLoad(inst.op(0), Facet::I, ALIGN_NONE, FD_REG_DS);
     llvm::Value* ret_addr = GetReg(ArchReg::IP, Facet::I64);
     StackPush(ret_addr);
-    SetReg(ArchReg::IP, Facet::I64, new_rip);
+    SetReg(ArchReg::IP, new_rip);
 
     if (cfg.call_function) {
         CallExternalFunction(cfg.call_function);
@@ -623,7 +622,7 @@ void Lifter::LiftCall(const Instr& inst) {
         llvm::Value* cont_addr = GetReg(ArchReg::IP, Facet::I64);
         llvm::Value* eq = irb.CreateICmpEQ(cont_addr, ret_addr);
         // This allows for optimization of the common case (equality).
-        SetReg(ArchReg::IP, Facet::I64, irb.CreateSelect(eq, ret_addr, cont_addr));
+        SetReg(ArchReg::IP, irb.CreateSelect(eq, ret_addr, cont_addr));
     }
 }
 
@@ -633,7 +632,7 @@ void Lifter::LiftRet(const Instr& inst) {
         SetFlagUndef({ArchReg::OF, ArchReg::SF, ArchReg::ZF, ArchReg::AF, ArchReg::PF,
                       ArchReg::CF});
 
-    SetReg(ArchReg::IP, Facet::I64, StackPop());
+    SetReg(ArchReg::IP, StackPop());
 
     if (inst.op(0)) {
         llvm::Value* rsp = GetReg(ArchReg::RSP, Facet::PTR);
@@ -650,8 +649,8 @@ void Lifter::LiftRet(const Instr& inst) {
 }
 
 void Lifter::LiftSyscall(const Instr& inst) {
-    SetReg(ArchReg::RCX, Facet::I64, GetReg(ArchReg::IP, Facet::I64));
-    SetReg(ArchReg::GP(11), Facet::I64, FlagAsReg(64));
+    SetReg(ArchReg::RCX, GetReg(ArchReg::IP, Facet::I64));
+    SetReg(ArchReg::GP(11), FlagAsReg(64));
 
     if (cfg.syscall_implementation)
         CallExternalFunction(cfg.syscall_implementation);
@@ -674,10 +673,10 @@ void Lifter::LiftCpuid(const Instr& inst) {
         edx = irb.CreateAnd(ebxedx, irb.getInt64(0xffffffff));
         ebx = irb.CreateLShr(ebxedx, 32);
     }
-    SetReg(ArchReg::RAX, Facet::I64, eax);
-    SetReg(ArchReg::RCX, Facet::I64, ecx);
-    SetReg(ArchReg::RDX, Facet::I64, edx);
-    SetReg(ArchReg::RBX, Facet::I64, ebx);
+    SetReg(ArchReg::RAX, eax);
+    SetReg(ArchReg::RCX, ecx);
+    SetReg(ArchReg::RDX, edx);
+    SetReg(ArchReg::RBX, ebx);
 }
 
 void Lifter::LiftRdtsc(const Instr& inst) {
@@ -687,8 +686,8 @@ void Lifter::LiftRdtsc(const Instr& inst) {
     llvm::Value* res = irb.CreateCall(intrinsic);
     llvm::Value* lo = irb.CreateTrunc(res, irb.getInt32Ty());
     llvm::Value* hi = irb.CreateLShr(res, irb.getInt64(32));
-    StoreGpFacet(ArchReg::RAX, Facet::I32, lo);
-    SetReg(ArchReg::RDX, Facet::I64, hi);
+    SetReg(ArchReg::RAX, lo);
+    SetReg(ArchReg::RDX, hi);
 }
 
 Lifter::RepInfo Lifter::RepBegin(const Instr& inst) {
@@ -744,7 +743,7 @@ void Lifter::RepEnd(RepInfo info) {
     // Decrement count and check.
     llvm::Value* count = GetReg(ArchReg::RCX, Facet::I64);
     count = irb.CreateSub(count, irb.getInt64(1));
-    SetReg(ArchReg::RCX, Facet::I64, count);
+    SetReg(ArchReg::RCX, count);
 
     llvm::Value* zero = llvm::Constant::getNullValue(count->getType());
     llvm::Value* cond = irb.CreateICmpNE(count, zero);
@@ -758,7 +757,7 @@ void Lifter::RepEnd(RepInfo info) {
 
     // Ensure that we don't generate an unused PHI node which may end up in the
     // register file if the REP is at the end of a basic block.
-    SetReg(ArchReg::IP, Facet::I64, info.ip);
+    SetReg(ArchReg::IP, info.ip);
 }
 
 void Lifter::LiftLods(const Instr& inst) {
@@ -801,8 +800,8 @@ void Lifter::LiftStos(const Instr& inst) {
         ablock.GetInsertBlock()->BranchTo(*cont_block);
 
         SetInsertBlock(cont_block);
-        SetReg(ArchReg::RCX, Facet::I64, irb.getInt64(0));
-        SetReg(ArchReg::IP, Facet::I64, ip);
+        SetReg(ArchReg::RCX, irb.getInt64(0));
+        SetReg(ArchReg::IP, ip);
         return;
     }
 

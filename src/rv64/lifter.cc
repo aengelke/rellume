@@ -54,9 +54,9 @@ public:
         assert(v->getType()->isIntegerTy());
         if (reg == 0)
             return;
-        SetReg(ArchReg::GP(reg), Facet::I64, irb.CreateSExt(v, irb.getInt64Ty()));
+        SetReg(ArchReg::GP(reg), irb.CreateSExt(v, irb.getInt64Ty()));
         if (v->getType()->getIntegerBitWidth() == 32)
-            SetRegFacet(ArchReg::GP(reg), Facet::I32, v);
+            SetRegFacet(ArchReg::GP(reg), v);
     }
     void StoreFp(unsigned reg, llvm::Value* v) {
         llvm::Type* ivec_ty = Facet{Facet::I64}.Type(irb.getContext());
@@ -70,8 +70,8 @@ public:
         llvm::Value* full = llvm::Constant::getNullValue(full_ty);
         full = irb.CreateInsertElement(full, v, uint64_t{0});
 
-        SetReg(ArchReg::VEC(reg), Facet::I64, irb.CreateBitCast(full, ivec_ty));
-        SetRegFacet(ArchReg::VEC(reg), Facet::FromType(element_ty), v);
+        SetReg(ArchReg::VEC(reg), irb.CreateBitCast(full, ivec_ty));
+        SetRegFacet(ArchReg::VEC(reg), v);
     }
     llvm::Value* Addr(const FrvInst* rvi, llvm::PointerType* ptr_ty) {
         llvm::Value* base = LoadGp(rvi->rs1, Facet::PTR);
@@ -135,7 +135,7 @@ public:
     void LiftBranch(const Instr& inst, llvm::CmpInst::Predicate pred) {
         const FrvInst* rvi = inst;
         auto cond = irb.CreateICmp(pred, LoadGp(rvi->rs1), LoadGp(rvi->rs2));
-        SetReg(ArchReg::IP, Facet::I64, irb.CreateSelect(cond,
+        SetReg(ArchReg::IP, irb.CreateSelect(cond,
             AddrIPRel(rvi->imm, Facet::I64),
             AddrIPRel(inst.len(), Facet::I64)
         ));
@@ -343,9 +343,9 @@ bool Lifter::Lift(const Instr& inst) {
         llvm::Value* ret_addr = AddrIPRel(inst.len(), Facet::I64);
         if (rvi->rs1 != FRV_REG_INV) {
             auto tgt = irb.CreateAdd(LoadGp(rvi->rs1, Facet::I64), irb.getInt64(rvi->imm));
-            SetReg(ArchReg::IP, Facet::I64, tgt);
+            SetReg(ArchReg::IP, tgt);
         } else {
-            SetReg(ArchReg::IP, Facet::I64, AddrIPRel(rvi->imm, Facet::I64));
+            SetReg(ArchReg::IP, AddrIPRel(rvi->imm, Facet::I64));
         }
         StoreGp(rvi->rd, ret_addr);
 
@@ -360,7 +360,7 @@ bool Lifter::Lift(const Instr& inst) {
                 llvm::Value* cont_addr = GetReg(ArchReg::IP, Facet::I64);
                 llvm::Value* eq = irb.CreateICmpEQ(cont_addr, ret_addr);
                 // This allows for optimization of the common case (equality).
-                SetReg(ArchReg::IP, Facet::I64, irb.CreateSelect(eq, ret_addr, cont_addr));
+                SetReg(ArchReg::IP, irb.CreateSelect(eq, ret_addr, cont_addr));
             }
         }
         return true;

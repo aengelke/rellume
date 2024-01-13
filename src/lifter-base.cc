@@ -43,7 +43,7 @@ void LifterBase::SetIP(uint64_t inst_addr, bool nofold) {
         auto bitcast = llvm::Instruction::BitCast;
         rip = irb.Insert(llvm::CastInst::Create(bitcast, rip, rip->getType()));
     }
-    SetReg(ArchReg::IP, Facet::I64, rip);
+    SetReg(ArchReg::IP, rip);
 }
 
 llvm::Value* LifterBase::AddrIPRel(uint64_t off, Facet facet) {

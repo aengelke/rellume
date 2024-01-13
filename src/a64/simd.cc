@@ -1361,8 +1361,8 @@ void Lifter::SetVec(farmdec::Reg r, llvm::Value* vec) {
 
     // Full 128-bit vector
     if (bits == ivec.Size()) {
-        SetReg(ArchReg::VEC(r), ivec, irb.CreateBitCast(vec, ivec.Type(irb.getContext())));
-        SetRegFacet(ArchReg::VEC(r), fc, vec);
+        SetReg(ArchReg::VEC(r), irb.CreateBitCast(vec, ivec.Type(irb.getContext())));
+        SetRegFacet(ArchReg::VEC(r), vec);
         return;
     }
 
@@ -1378,9 +1378,9 @@ void Lifter::SetVec(farmdec::Reg r, llvm::Value* vec) {
     }
     auto fullvec = irb.CreateShuffleVector(vec, zero, mask);
 
-    SetReg(ArchReg::VEC(r), ivec, irb.CreateBitCast(fullvec, ivec.Type(irb.getContext())));
-    SetRegFacet(ArchReg::VEC(r), Facet::FromType(fullty), fullvec);
-    SetRegFacet(ArchReg::VEC(r), fc, vec);
+    SetReg(ArchReg::VEC(r), irb.CreateBitCast(fullvec, ivec.Type(irb.getContext())));
+    SetRegFacet(ArchReg::VEC(r), fullvec);
+    SetRegFacet(ArchReg::VEC(r), vec);
 }
 
 // Vr[i] := elem, l without touching other lanes.

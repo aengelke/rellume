@@ -86,7 +86,7 @@ void Lifter::LiftFxrstor(const Instr& inst) {
     for (unsigned i = 0; i < 16; i++) {
         llvm::Value* ptr = irb.CreateConstGEP1_32(i8, buf, 0xa0 + 0x10 * i);
         ptr = irb.CreatePointerCast(ptr, ivec_ty->getPointerTo());
-        SetReg(ArchReg::VEC(i), ivec, irb.CreateLoad(ivec_ty, ptr));
+        SetReg(ArchReg::VEC(i), irb.CreateLoad(ivec_ty, ptr));
     }
 }
 

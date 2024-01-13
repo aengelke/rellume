@@ -222,7 +222,7 @@ bool Lifter::Lift(const Instr& inst) {
         SetGp(a64.rd, w32, Shift(GetGp(a64.rn, w32), farmdec::SH_ROR, a64.imm));
         break;
     case farmdec::A64_BCOND:
-        SetReg(ArchReg::IP, Facet::I64, irb.CreateSelect(IsTrue(fad_get_cond(a64.flags)), PCRel(a64.offset), PCRel(inst.len())));
+        SetReg(ArchReg::IP, irb.CreateSelect(IsTrue(fad_get_cond(a64.flags)), PCRel(a64.offset), PCRel(inst.len())));
         return true;
     case farmdec::A64_SVC:
         // SVC has an immediate, but cfg.syscall_implementation takes only a CPU state pointer.
@@ -352,7 +352,7 @@ bool Lifter::Lift(const Instr& inst) {
         SetIP(inst.start() + a64.offset);
         return true;
     case farmdec::A64_BR:
-        SetReg(ArchReg::IP, Facet::I64, GetGp(a64.rn, false));
+        SetReg(ArchReg::IP, GetGp(a64.rn, false));
         return true;
     case farmdec::A64_BL:
     case farmdec::A64_BLR: {
@@ -363,7 +363,7 @@ bool Lifter::Lift(const Instr& inst) {
         SetGp(30, false, ret_addr);        // X30: Link Register (LR)
 
         if (a64.op == farmdec::A64_BLR)
-            SetReg(ArchReg::IP, Facet::I64, GetGp(a64.rn, false));
+            SetReg(ArchReg::IP, GetGp(a64.rn, false));
         else
             SetIP(inst.start() + a64.offset);
 
@@ -374,7 +374,7 @@ bool Lifter::Lift(const Instr& inst) {
             // See also the comment in the x86_64 LiftCall method.
             llvm::Value* cont_addr = GetReg(ArchReg::IP, Facet::I64);
             llvm::Value* eq = irb.CreateICmpEQ(cont_addr, ret_addr);
-            SetReg(ArchReg::IP, Facet::I64, irb.CreateSelect(eq, ret_addr, cont_addr)); // common case
+            SetReg(ArchReg::IP, irb.CreateSelect(eq, ret_addr, cont_addr)); // common case
         }
         return true;
     }
@@ -382,7 +382,7 @@ bool Lifter::Lift(const Instr& inst) {
         if (cfg.call_ret_clobber_flags)
             SetFlagUndef({ArchReg::OF, ArchReg::SF, ArchReg::ZF, ArchReg::CF});
 
-        SetReg(ArchReg::IP, Facet::I64, GetGp(a64.rn, false));
+        SetReg(ArchReg::IP, GetGp(a64.rn, false));
 
         if (cfg.call_function) {
             // If we are in call-ret-lifting mode, forcefully return. Otherwise, we
@@ -397,7 +397,7 @@ bool Lifter::Lift(const Instr& inst) {
         auto do_branch = irb.CreateICmp(pred, GetGp(a64.rt, w32), irb.getIntN(bits, 0));
         auto on_true = PCRel(a64.offset);
         auto on_false = PCRel(inst.len()); // next instr
-        SetReg(ArchReg::IP, Facet::I64, irb.CreateSelect(do_branch, on_true, on_false));
+        SetReg(ArchReg::IP, irb.CreateSelect(do_branch, on_true, on_false));
         return true;
     }
     case farmdec::A64_TBZ:
@@ -411,7 +411,7 @@ bool Lifter::Lift(const Instr& inst) {
         auto do_branch = irb.CreateICmp(pred, bit, irb.getIntN(bits, 0));
         auto on_true = PCRel(a64.tbz.offset);
         auto on_false = PCRel(inst.len()); // next instr
-        SetReg(ArchReg::IP, Facet::I64, irb.CreateSelect(do_branch, on_true, on_false));
+        SetReg(ArchReg::IP, irb.CreateSelect(do_branch, on_true, on_false));
         return true;
     }
     case farmdec::A64_UDIV: {
@@ -936,16 +936,14 @@ llvm::Value* Lifter::GetGp(farmdec::Reg r, bool w32, bool ptr) {
 /// Set the value of an A64 general-purpose register. If w32 is true, the 32-bit facet
 /// is used instead of the 64-bit one. Handles ZR (discards writes) and SP (stack ptr).
 void Lifter::SetGp(farmdec::Reg r, bool w32, llvm::Value* val) {
-    Facet fc = (w32) ? Facet::I32 : Facet::I64;
-
     if (r == farmdec::ZERO_REG) {
         return; // discard
     }
     if (r == farmdec::STACK_POINTER) {
-        SetReg(ArchReg::A64_SP, fc, val);
+        SetReg(ArchReg::A64_SP, val);
         return;
     }
-    SetReg(ArchReg::GP(r), fc, val);
+    SetReg(ArchReg::GP(r), val);
 }
 
 void Lifter::FlagCalcAdd(llvm::Value* res, llvm::Value* lhs, llvm::Value* rhs) {
@@ -1018,8 +1016,8 @@ void Lifter::SetScalar(farmdec::Reg r, llvm::Value* val) {
 
     // Does val fill the entire (128-bit) V register?
     if (bits == ivec.Size()) {
-        SetReg(ArchReg::VEC(r), ivec, irb.CreateBitCast(val, ivecty));
-        SetRegFacet(ArchReg::VEC(r), fc, val);
+        SetReg(ArchReg::VEC(r), irb.CreateBitCast(val, ivecty));
+        SetRegFacet(ArchReg::VEC(r), val);
         return;
     }
 
@@ -1029,8 +1027,8 @@ void Lifter::SetScalar(farmdec::Reg r, llvm::Value* val) {
     llvm::Value* fullvec = llvm::Constant::getNullValue(vecty);
     fullvec = irb.CreateInsertElement(fullvec, val, uint64_t{0});
 
-    SetReg(ArchReg::VEC(r), ivec, irb.CreateBitCast(fullvec, ivecty));
-    SetRegFacet(ArchReg::VEC(r), fc, val);
+    SetReg(ArchReg::VEC(r), irb.CreateBitCast(fullvec, ivecty));
+    SetRegFacet(ArchReg::VEC(r), val);
 }
 
 // Shift or rotate the value v. No spurious instruction is generated if the shift

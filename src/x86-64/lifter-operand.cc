@@ -189,11 +189,11 @@ void Lifter::StoreGpFacet(ArchReg reg, Facet facet, llvm::Value* value) {
         llvm::Value* maskedOld = irb.CreateAnd(GetReg(reg, Facet::I64), mask);
 
         value = irb.CreateShl(irb.CreateZExt(value, irb.getInt64Ty()), 8);
-        SetReg(reg, Facet::I64, irb.CreateOr(value, maskedOld));
+        SetReg(reg, irb.CreateOr(value, maskedOld));
     } else if (facet == Facet::I8 || facet == Facet::I16) {
-        SetRegMerge(reg, facet, value);
+        SetRegMerge(reg, value);
     } else {
-        SetReg(reg, facet, value);
+        SetReg(reg, value);
     }
 }
 
@@ -235,8 +235,8 @@ void Lifter::OpStoreVec(const Instr::Op op, llvm::Value* value,
 
     // Handle case where the value fills the entire register.
     if (value_ty->getPrimitiveSizeInBits() == ivec_sz) {
-        SetReg(reg, ivec_facet, irb.CreateBitCast(value, ivec_ty));
-        SetRegFacet(reg, Facet::FromType(value_ty), value);
+        SetReg(reg, irb.CreateBitCast(value, ivec_ty));
+        SetRegFacet(reg, value);
         return;
     }
 
@@ -244,8 +244,6 @@ void Lifter::OpStoreVec(const Instr::Op op, llvm::Value* value,
     llvm::Type* element_ty =
         value_ty->isVectorTy() ? value_ty->getScalarType() : value_ty;
     unsigned full_num = ivec_sz / element_ty->getPrimitiveSizeInBits();
-    llvm::VectorType* full_ty = llvm::VectorType::get(element_ty, full_num,
-                                                       /*scalable=*/false);
     Facet full_facet = Facet::Vnt(full_num, Facet::FromType(element_ty));
 
     llvm::Value* full = GetReg(reg, full_facet);
@@ -269,9 +267,9 @@ void Lifter::OpStoreVec(const Instr::Op op, llvm::Value* value,
         full = irb.CreateShuffleVector(ext_vec, full, mask);
     }
 
-    SetReg(reg, ivec_facet, irb.CreateBitCast(full, ivec_ty));
-    SetRegFacet(reg, full_facet, full);
-    SetRegFacet(reg, Facet::FromType(value_ty), value);
+    SetReg(reg, irb.CreateBitCast(full, ivec_ty));
+    SetRegFacet(reg, full);
+    SetRegFacet(reg, value);
 }
 
 void Lifter::StackPush(llvm::Value* value) {
