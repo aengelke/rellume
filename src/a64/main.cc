@@ -274,10 +274,10 @@ bool Lifter::Lift(const Instr& inst) {
         }
         case 0xda10: {// NZCV (bits 31-28)
             auto nzcv = GetGp(a64.rt, /*w32=*/false);
-            SetFlag(ArchReg::SF, irb.CreateTrunc(irb.CreateLShr(nzcv, 31), irb.getInt1Ty()));
-            SetFlag(ArchReg::ZF, irb.CreateTrunc(irb.CreateLShr(nzcv, 30), irb.getInt1Ty()));
-            SetFlag(ArchReg::CF, irb.CreateTrunc(irb.CreateLShr(nzcv, 29), irb.getInt1Ty()));
-            SetFlag(ArchReg::OF, irb.CreateTrunc(irb.CreateLShr(nzcv, 28), irb.getInt1Ty()));
+            SetReg(ArchReg::SF, irb.CreateTrunc(irb.CreateLShr(nzcv, 31), irb.getInt1Ty()));
+            SetReg(ArchReg::ZF, irb.CreateTrunc(irb.CreateLShr(nzcv, 30), irb.getInt1Ty()));
+            SetReg(ArchReg::CF, irb.CreateTrunc(irb.CreateLShr(nzcv, 29), irb.getInt1Ty()));
+            SetReg(ArchReg::OF, irb.CreateTrunc(irb.CreateLShr(nzcv, 28), irb.getInt1Ty()));
             break; // XXX
         }
         case 0xda20: // FPCR
@@ -290,7 +290,7 @@ bool Lifter::Lift(const Instr& inst) {
         break;
     }
     case farmdec::A64_CFINV:
-        SetFlag(ArchReg::CF, irb.CreateNot(GetFlag(ArchReg::CF)));
+        SetReg(ArchReg::CF, irb.CreateNot(GetFlag(ArchReg::CF)));
         break;
     case farmdec::A64_SYS: {
         // DC ZVA -- zeroes a block of bytes, with the size stored in DCZID_EL0. Both
@@ -948,36 +948,36 @@ void Lifter::SetGp(farmdec::Reg r, bool w32, llvm::Value* val) {
 
 void Lifter::FlagCalcAdd(llvm::Value* res, llvm::Value* lhs, llvm::Value* rhs) {
     auto zero = llvm::Constant::getNullValue(res->getType());
-    SetFlag(ArchReg::ZF, irb.CreateICmpEQ(res, zero));
-    SetFlag(ArchReg::SF, irb.CreateICmpSLT(res, zero));
-    SetFlag(ArchReg::CF, irb.CreateICmpULT(res, lhs));
+    SetReg(ArchReg::ZF, irb.CreateICmpEQ(res, zero));
+    SetReg(ArchReg::SF, irb.CreateICmpSLT(res, zero));
+    SetReg(ArchReg::CF, irb.CreateICmpULT(res, lhs));
 
     if (cfg.enableOverflowIntrinsics) {
         llvm::Intrinsic::ID id = llvm::Intrinsic::sadd_with_overflow;
         llvm::Value* packed = irb.CreateBinaryIntrinsic(id, lhs, rhs);
-        SetFlag(ArchReg::OF, irb.CreateExtractValue(packed, 1));
+        SetReg(ArchReg::OF, irb.CreateExtractValue(packed, 1));
     } else {
         llvm::Value* tmp1 = irb.CreateNot(irb.CreateXor(lhs, rhs));
         llvm::Value* tmp2 = irb.CreateAnd(tmp1, irb.CreateXor(res, lhs));
-        SetFlag(ArchReg::OF, irb.CreateICmpSLT(tmp2, zero));
+        SetReg(ArchReg::OF, irb.CreateICmpSLT(tmp2, zero));
     }
 }
 
 void Lifter::FlagCalcSub(llvm::Value* res, llvm::Value* lhs, llvm::Value* rhs) {
     auto zero = llvm::Constant::getNullValue(res->getType());
     llvm::Value* sf = irb.CreateICmpSLT(res, zero);  // also used for OF
-    SetFlag(ArchReg::ZF, irb.CreateICmpEQ(lhs, rhs));
-    SetFlag(ArchReg::SF, sf);
-    SetFlag(ArchReg::CF, irb.CreateICmpUGE(lhs, rhs));
-    SetFlag(ArchReg::OF, irb.CreateICmpNE(sf, irb.CreateICmpSLT(lhs, rhs)));
+    SetReg(ArchReg::ZF, irb.CreateICmpEQ(lhs, rhs));
+    SetReg(ArchReg::SF, sf);
+    SetReg(ArchReg::CF, irb.CreateICmpUGE(lhs, rhs));
+    SetReg(ArchReg::OF, irb.CreateICmpNE(sf, irb.CreateICmpSLT(lhs, rhs)));
 }
 
 void Lifter::FlagCalcLogic(llvm::Value* res) {
     auto zero = llvm::Constant::getNullValue(res->getType());
-    SetFlag(ArchReg::ZF, irb.CreateICmpEQ(res, zero));
-    SetFlag(ArchReg::SF, irb.CreateICmpSLT(res, zero));
-    SetFlag(ArchReg::CF, irb.getFalse());
-    SetFlag(ArchReg::OF, irb.getFalse());
+    SetReg(ArchReg::ZF, irb.CreateICmpEQ(res, zero));
+    SetReg(ArchReg::SF, irb.CreateICmpSLT(res, zero));
+    SetReg(ArchReg::CF, irb.getFalse());
+    SetReg(ArchReg::OF, irb.getFalse());
 }
 
 // Get a scalar value stored in the A64 register Vr. The sizes FSZ_B (byte, Br)
@@ -1005,7 +1005,6 @@ llvm::Value* Lifter::GetScalar(farmdec::Reg r, farmdec::FPSize fsz, bool fp) {
 // Set an A64 vector register Vr to a scalar value.
 void Lifter::SetScalar(farmdec::Reg r, llvm::Value* val) {
     auto elemty = val->getType();
-    Facet fc = Facet::FromType(elemty);
     unsigned bits = elemty->getPrimitiveSizeInBits();
 
     // Loosely based on the x86 lifter's OpStoreVec: we need to insert
@@ -1329,10 +1328,10 @@ void Lifter::LiftCCmp(llvm::Value* lhs, llvm::Value* rhs, farmdec::Cond cond, ui
     } else {
         FlagCalcSub(irb.CreateSub(lhs, rhs), lhs, rhs);
     }
-    SetFlag(ArchReg::SF, irb.CreateSelect(cond_holds, GetFlag(ArchReg::SF), irb.getInt1((nzcv & 8) != 0))); // N
-    SetFlag(ArchReg::ZF, irb.CreateSelect(cond_holds, GetFlag(ArchReg::ZF), irb.getInt1((nzcv & 4) != 0))); // Z
-    SetFlag(ArchReg::CF, irb.CreateSelect(cond_holds, GetFlag(ArchReg::CF), irb.getInt1((nzcv & 2) != 0))); // C
-    SetFlag(ArchReg::OF, irb.CreateSelect(cond_holds, GetFlag(ArchReg::OF), irb.getInt1((nzcv & 1) != 0))); // V
+    SetReg(ArchReg::SF, irb.CreateSelect(cond_holds, GetFlag(ArchReg::SF), irb.getInt1((nzcv & 8) != 0))); // N
+    SetReg(ArchReg::ZF, irb.CreateSelect(cond_holds, GetFlag(ArchReg::ZF), irb.getInt1((nzcv & 4) != 0))); // Z
+    SetReg(ArchReg::CF, irb.CreateSelect(cond_holds, GetFlag(ArchReg::CF), irb.getInt1((nzcv & 2) != 0))); // C
+    SetReg(ArchReg::OF, irb.CreateSelect(cond_holds, GetFlag(ArchReg::OF), irb.getInt1((nzcv & 1) != 0))); // V
 }
 
 // Given a pointer ptr = *T, load a T value, extend it according to ext and put it in rt.
@@ -1435,10 +1434,10 @@ void Lifter::FlagCalcFP(llvm::Value* lhs, llvm::Value* rhs) {
     auto is_unordered = irb.CreateFCmpUNO(lhs, rhs);
     auto is_equal = irb.CreateFCmpOEQ(lhs, rhs);
     auto is_less = irb.CreateFCmpOLT(lhs, rhs);
-    SetFlag(ArchReg::SF, is_less);
-    SetFlag(ArchReg::ZF, is_equal);
-    SetFlag(ArchReg::CF, irb.CreateNot(is_less));
-    SetFlag(ArchReg::OF, is_unordered);
+    SetReg(ArchReg::SF, is_less);
+    SetReg(ArchReg::ZF, is_equal);
+    SetReg(ArchReg::CF, irb.CreateNot(is_less));
+    SetReg(ArchReg::OF, is_unordered);
 }
 
 void Lifter::LiftBinOpFP(llvm::Instruction::BinaryOps op, farmdec::FPSize prec, farmdec::Reg rd, farmdec::Reg rn, farmdec::Reg rm) {

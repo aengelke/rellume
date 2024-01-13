@@ -83,9 +83,6 @@ protected:
     void SetRegFacet(ArchReg reg, llvm::Value* value) {
         regfile->SetReg(reg, value, RegFile::EXTRA_PART);
     }
-    void SetRegPtr(ArchReg reg, llvm::Value* value) {
-        SetReg(reg, value);
-    }
     llvm::Value* GetFlag(ArchReg reg) {
         if (reg == ArchReg::PF) {
             llvm::Value* res = GetReg(reg, Facet::I8);
@@ -94,17 +91,14 @@ protected:
         }
         return GetReg(reg, Facet::I1);
     }
-    void SetFlag(ArchReg reg, llvm::Value* value) {
-        SetReg(reg, value);
-    }
     void SetFlagUndef(std::initializer_list<ArchReg> regs) {
         llvm::Value* undef = llvm::UndefValue::get(irb.getInt1Ty());
         for (const auto reg : regs) {
             // TODO: actually use freeze.
             if (reg == ArchReg::PF)
-                SetFlag(reg, llvm::UndefValue::get(irb.getInt8Ty()));
+                SetReg(reg, llvm::UndefValue::get(irb.getInt8Ty()));
             else
-                SetFlag(reg, undef);
+                SetReg(reg, undef);
         }
     }
     void SetIP(uint64_t inst_addr, bool nofold = false);

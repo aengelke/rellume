@@ -101,7 +101,7 @@ void Lifter::LiftCmpxchg(const Instr& inst) {
 #endif
         dst = irb.CreateExtractValue(cmpxchg, {0});
         FlagCalcSub(irb.CreateSub(acc, dst), acc, dst);
-        SetFlag(ArchReg::ZF, irb.CreateExtractValue(cmpxchg, {1}));
+        SetReg(ArchReg::ZF, irb.CreateExtractValue(cmpxchg, {1}));
     } else {
         dst = OpLoad(inst.op(0), Facet::I);
         // Full compare with acc and dst
@@ -156,8 +156,8 @@ void Lifter::LiftAndOrXor(const Instr& inst, llvm::Instruction::BinaryOps op,
 
     FlagCalcZ(res);
     FlagCalcSAPLogic(res);
-    SetFlag(ArchReg::CF, irb.getFalse());
-    SetFlag(ArchReg::OF, irb.getFalse());
+    SetReg(ArchReg::CF, irb.getFalse());
+    SetReg(ArchReg::OF, irb.getFalse());
 }
 
 void Lifter::LiftNot(const Instr& inst) {
@@ -246,9 +246,9 @@ void Lifter::LiftShift(const Instr& inst, llvm::Instruction::BinaryOps op) {
     // TODO: flags are only affected if shift != 0
     FlagCalcZ(res);
     FlagCalcSAPLogic(res);
-    SetFlag(ArchReg::CF, irb.CreateTrunc(cf_big, irb.getInt1Ty()));
+    SetReg(ArchReg::CF, irb.CreateTrunc(cf_big, irb.getInt1Ty()));
     llvm::Value* zero = llvm::ConstantInt::get(src->getType(), 0);
-    SetFlag(ArchReg::OF, irb.CreateICmpSLT(irb.CreateXor(src, res), zero));
+    SetReg(ArchReg::OF, irb.CreateICmpSLT(irb.CreateXor(src, res), zero));
 }
 
 void Lifter::LiftShiftdouble(const Instr& inst) {
@@ -362,8 +362,8 @@ void Lifter::LiftMul(const Instr& inst) {
         overflow = irb.CreateICmpNE(ext_res, ext_short_res);
     }
 
-    SetFlag(ArchReg::OF, overflow);
-    SetFlag(ArchReg::CF, overflow);
+    SetReg(ArchReg::OF, overflow);
+    SetReg(ArchReg::CF, overflow);
     SetFlagUndef({ArchReg::SF, ArchReg::ZF, ArchReg::AF, ArchReg::PF});
 }
 
@@ -542,7 +542,7 @@ void Lifter::LiftBittest(const Instr& inst, llvm::Instruction::BinaryOps op,
 skip_writeback:;
     llvm::Value* bit = irb.CreateAnd(val, mask);
     // Zero flag is not modified
-    SetFlag(ArchReg::CF, irb.CreateICmpNE(bit, irb.getIntN(op_size, 0)));
+    SetReg(ArchReg::CF, irb.CreateICmpNE(bit, irb.getIntN(op_size, 0)));
     SetFlagUndef({ArchReg::OF, ArchReg::SF, ArchReg::AF, ArchReg::PF});
 }
 
@@ -638,7 +638,7 @@ void Lifter::LiftRet(const Instr& inst) {
         llvm::Value* rsp = GetReg(ArchReg::RSP, Facet::PTR);
         rsp = irb.CreatePointerCast(rsp, irb.getInt8PtrTy());
         rsp = irb.CreateConstGEP1_64(irb.getInt8Ty(), rsp, inst.op(0).imm());
-        SetRegPtr(ArchReg::RSP, rsp);
+        SetReg(ArchReg::RSP, rsp);
     }
 
     if (cfg.call_function) {
@@ -732,9 +732,9 @@ void Lifter::RepEnd(RepInfo info) {
     llvm::Value* adj = irb.CreateSelect(df, irb.getInt64(-1), irb.getInt64(1));
 
     if (info.di)
-        SetRegPtr(ArchReg::RDI, irb.CreateGEP(info.ty, info.di, adj));
+        SetReg(ArchReg::RDI, irb.CreateGEP(info.ty, info.di, adj));
     if (info.si)
-        SetRegPtr(ArchReg::RSI, irb.CreateGEP(info.ty, info.si, adj));
+        SetReg(ArchReg::RSI, irb.CreateGEP(info.ty, info.si, adj));
 
     // If instruction has REP/REPZ/REPNZ, add branching logic
     if (info.mode == RepInfo::NO_REP)
@@ -789,14 +789,14 @@ void Lifter::LiftStos(const Instr& inst) {
 
         SetInsertBlock(df0_block);
         irb.CreateMemSet(di, ax, cx, llvm::Align());
-        SetRegPtr(ArchReg::RDI, irb.CreateGEP(ty, di, cx));
+        SetReg(ArchReg::RDI, irb.CreateGEP(ty, di, cx));
         ablock.GetInsertBlock()->BranchTo(*cont_block);
 
         SetInsertBlock(df1_block);
         auto adj = irb.CreateSub(irb.getInt64(1), cx);
         auto base = irb.CreateGEP(ty, di, adj);
         irb.CreateMemSet(base, ax, cx, llvm::Align());
-        SetRegPtr(ArchReg::RDI, irb.CreateGEP(ty, base, irb.getInt64(-1)));
+        SetReg(ArchReg::RDI, irb.CreateGEP(ty, base, irb.getInt64(-1)));
         ablock.GetInsertBlock()->BranchTo(*cont_block);
 
         SetInsertBlock(cont_block);

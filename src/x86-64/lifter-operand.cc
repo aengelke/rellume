@@ -278,14 +278,14 @@ void Lifter::StackPush(llvm::Value* value) {
     rsp = irb.CreateConstGEP1_64(value->getType(), rsp, -1);
     irb.CreateStore(value, rsp);
 
-    SetRegPtr(ArchReg::RSP, rsp);
+    SetReg(ArchReg::RSP, rsp);
 }
 
 llvm::Value* Lifter::StackPop(const ArchReg sp_src_reg) {
     llvm::Value* rsp = GetReg(sp_src_reg, Facet::PTR);
     rsp = irb.CreatePointerCast(rsp, irb.getInt64Ty()->getPointerTo());
 
-    SetRegPtr(ArchReg::RSP, irb.CreateConstGEP1_64(irb.getInt64Ty(), rsp, 1));
+    SetReg(ArchReg::RSP, irb.CreateConstGEP1_64(irb.getInt64Ty(), rsp, 1));
 
     return irb.CreateLoad(irb.getInt64Ty(), rsp);
 }

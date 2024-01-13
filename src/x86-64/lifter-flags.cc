@@ -56,16 +56,16 @@ void Lifter::FlagCalcAdd(llvm::Value* res, llvm::Value* lhs,
     regfile->Set(ArchReg::PF, RegFile::Transform::TruncI8, res);
     regfile->Set(ArchReg::AF, RegFile::Transform::X86AuxFlag, res, lhs, rhs);
     if (!skip_carry)
-        SetFlag(ArchReg::CF, irb.CreateICmpULT(res, lhs));
+        SetReg(ArchReg::CF, irb.CreateICmpULT(res, lhs));
 
     if (cfg.enableOverflowIntrinsics) {
         llvm::Intrinsic::ID id = llvm::Intrinsic::sadd_with_overflow;
         llvm::Value* packed = irb.CreateBinaryIntrinsic(id, lhs, rhs);
-        SetFlag(ArchReg::OF, irb.CreateExtractValue(packed, 1));
+        SetReg(ArchReg::OF, irb.CreateExtractValue(packed, 1));
     } else {
         llvm::Value* tmp1 = irb.CreateNot(irb.CreateXor(lhs, rhs));
         llvm::Value* tmp2 = irb.CreateAnd(tmp1, irb.CreateXor(res, lhs));
-        SetFlag(ArchReg::OF, irb.CreateICmpSLT(tmp2, zero));
+        SetReg(ArchReg::OF, irb.CreateICmpSLT(tmp2, zero));
     }
 }
 
@@ -75,17 +75,17 @@ void Lifter::FlagCalcSub(llvm::Value* res, llvm::Value* lhs,
     llvm::Value* sf = irb.CreateICmpSLT(res, zero);  // also used for OF
 
     if (alt_zf)
-        SetFlag(ArchReg::ZF, irb.CreateICmpEQ(lhs, rhs));
+        SetReg(ArchReg::ZF, irb.CreateICmpEQ(lhs, rhs));
     else
         regfile->Set(ArchReg::ZF, RegFile::Transform::IsZero, res);
-    SetFlag(ArchReg::SF, sf);
+    SetReg(ArchReg::SF, sf);
     regfile->Set(ArchReg::PF, RegFile::Transform::TruncI8, res);
     regfile->Set(ArchReg::AF, RegFile::Transform::X86AuxFlag, res, lhs, rhs);
     if (!skip_carry)
-        SetFlag(ArchReg::CF, irb.CreateICmpULT(lhs, rhs));
+        SetReg(ArchReg::CF, irb.CreateICmpULT(lhs, rhs));
 
     // Set overflow flag using arithmetic comparisons
-    SetFlag(ArchReg::OF, irb.CreateICmpNE(sf, irb.CreateICmpSLT(lhs, rhs)));
+    SetReg(ArchReg::OF, irb.CreateICmpNE(sf, irb.CreateICmpSLT(lhs, rhs)));
 }
 
 llvm::Value* Lifter::FlagCond(Condition cond) {
@@ -128,9 +128,9 @@ void Lifter::FlagFromReg(llvm::Value* val) {
         llvm::Value* bit = irb.CreateLShr(val, kv.second);
         if (kv.first == ArchReg::PF) {
             bit = irb.CreateNot(irb.CreateTrunc(bit, irb.getInt1Ty()));
-            SetFlag(kv.first, irb.CreateZExt(bit, irb.getInt8Ty()));
+            SetReg(kv.first, irb.CreateZExt(bit, irb.getInt8Ty()));
         } else {
-            SetFlag(kv.first, irb.CreateTrunc(bit, irb.getInt1Ty()));
+            SetReg(kv.first, irb.CreateTrunc(bit, irb.getInt1Ty()));
         }
     }
 }

@@ -242,14 +242,14 @@ void Lifter::LiftSseAndn(const Instr& inst, Facet op_type) {
 void Lifter::LiftSseComis(const Instr& inst, Facet op_type) {
     llvm::Value* op1 = OpLoad(inst.op(0), op_type);
     llvm::Value* op2 = OpLoad(inst.op(1), op_type);
-    SetFlag(ArchReg::ZF, irb.CreateFCmpUEQ(op1, op2));
-    SetFlag(ArchReg::CF, irb.CreateFCmpULT(op1, op2));
+    SetReg(ArchReg::ZF, irb.CreateFCmpUEQ(op1, op2));
+    SetReg(ArchReg::CF, irb.CreateFCmpULT(op1, op2));
     // Parity is stored as whole byte, so PF=1 must store value 0, PF=0 value 1.
     // We therefore use the inverse condition (ORD instead of UNO).
-    SetFlag(ArchReg::PF, irb.CreateZExt(irb.CreateFCmpORD(op1, op2), irb.getInt8Ty()));
-    SetFlag(ArchReg::AF, irb.getFalse());
-    SetFlag(ArchReg::OF, irb.getFalse());
-    SetFlag(ArchReg::SF, irb.getFalse());
+    SetReg(ArchReg::PF, irb.CreateZExt(irb.CreateFCmpORD(op1, op2), irb.getInt8Ty()));
+    SetReg(ArchReg::AF, irb.getFalse());
+    SetReg(ArchReg::OF, irb.getFalse());
+    SetReg(ArchReg::SF, irb.getFalse());
 }
 
 void Lifter::LiftSseCmp(const Instr& inst, Facet op_type) {

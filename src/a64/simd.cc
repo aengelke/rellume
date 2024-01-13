@@ -1367,7 +1367,6 @@ void Lifter::SetVec(farmdec::Reg r, llvm::Value* vec) {
     }
 
     // Half vector -- upper half is zeroed.
-    auto fullty = llvm::VectorType::getDoubleElementsVectorType(vecty);
     auto zero = llvm::Constant::getNullValue(vecty);
 
     // Shufflevector (zero, vec, {0, 1, ..., n}) simply concatenates zero and vec.
