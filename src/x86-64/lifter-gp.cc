@@ -613,8 +613,8 @@ void Lifter::LiftCall(const Instr& inst) {
 
     if (cfg.call_function) {
         CallExternalFunction(cfg.call_function);
-        // Note that is not possible to have a "no-evil-rets" optimization which
-        // would just continue execution: things like setjmp/longjmp and
+        // Note that it is not possible to have a "no-evil-rets" optimization
+        // which would just continue execution: things like setjmp/longjmp and
         // exceptions skip some return addresses by modifying the stack pointer.
         // We will continue with the tail_function (if specified) and enlarge
         // our shadow stack; and things will be slow. If someone uses such
