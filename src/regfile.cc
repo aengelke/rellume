@@ -295,7 +295,8 @@ fold:;
     llvm::Value* result = rv->values[0].value();
 
     // Always convert pointers to integers, first.
-    if (result->getType()->isPointerTy())
+    // TODO: use vectors for floating-point?
+    if (result->getType()->isPointerTy() || result->getType()->isFloatingPointTy())
         result = irb.CreateBitCast(result, irb.getIntNTy(rv->values[0].size));
 
     if (result->getType()->isIntegerTy()) {
