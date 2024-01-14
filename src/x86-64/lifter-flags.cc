@@ -42,7 +42,6 @@
 namespace rellume::x86_64 {
 
 void Lifter::FlagCalcSAPLogic(llvm::Value* res) {
-    auto zero = llvm::Constant::getNullValue(res->getType());
     regfile->Set(ArchReg::SF, RegFile::Transform::IsNeg, res);
     regfile->Set(ArchReg::PF, RegFile::Transform::TruncI8, res);
     SetFlagUndef({ArchReg::AF});
@@ -50,7 +49,6 @@ void Lifter::FlagCalcSAPLogic(llvm::Value* res) {
 
 void Lifter::FlagCalcAdd(llvm::Value* res, llvm::Value* lhs,
                          llvm::Value* rhs, bool skip_carry) {
-    auto zero = llvm::Constant::getNullValue(res->getType());
     regfile->Set(ArchReg::ZF, RegFile::Transform::IsZero, res);
     regfile->Set(ArchReg::SF, RegFile::Transform::IsNeg, res);
     regfile->Set(ArchReg::PF, RegFile::Transform::TruncI8, res);
@@ -63,6 +61,7 @@ void Lifter::FlagCalcAdd(llvm::Value* res, llvm::Value* lhs,
         llvm::Value* packed = irb.CreateBinaryIntrinsic(id, lhs, rhs);
         SetReg(ArchReg::OF, irb.CreateExtractValue(packed, 1));
     } else {
+        auto zero = llvm::Constant::getNullValue(res->getType());
         llvm::Value* tmp1 = irb.CreateNot(irb.CreateXor(lhs, rhs));
         llvm::Value* tmp2 = irb.CreateAnd(tmp1, irb.CreateXor(res, lhs));
         SetReg(ArchReg::OF, irb.CreateICmpSLT(tmp2, zero));
