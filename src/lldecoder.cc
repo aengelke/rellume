@@ -193,7 +193,7 @@ int Function::Decode(uintptr_t addr, DecodeStop stop, MemReader memacc) {
 
             // For branches, enqueue jump target. NB: this doesn't include calls
             if (jmp_target) {
-                auto& target_entry = instr_map.getOrInsertDefault(jmp_target);
+                auto& target_entry = instr_map.try_emplace(jmp_target).first->second;
                 target_entry.preds++;
                 if (!target_entry.decoded)
                     addr_stack.push_back(jmp_target);
@@ -218,7 +218,7 @@ int Function::Decode(uintptr_t addr, DecodeStop stop, MemReader memacc) {
                 new_block = true;
             }
 
-            instr_map_entry = &instr_map.getOrInsertDefault(cur_addr);
+            instr_map_entry = &instr_map.try_emplace(cur_addr).first->second;
             instr_map_entry->preds++;
         }
 
