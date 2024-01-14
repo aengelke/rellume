@@ -285,7 +285,7 @@ bool Lifter::Lift(const Instr& inst) {
         case 0xda21: // FPSR
             break; // XXX reset QC if overwritten (once it exists as a flag)
         default:
-            return false;
+            goto unhandled;
         }
         break;
     }
@@ -301,7 +301,7 @@ bool Lifter::Lift(const Instr& inst) {
             auto ptr = irb.CreateIntToPtr(start, irb.getInt8PtrTy());
             irb.CreateMemSet(ptr, irb.getInt8(0), irb.getInt32(64), llvm::Align(64));
         } else {
-            return false;
+            goto unhandled;
         }
         break;
     }
@@ -344,7 +344,7 @@ bool Lifter::Lift(const Instr& inst) {
             SetGp(a64.rt, /*w32=*/false, irb.getIntN(64, 0xfuL << 16));
             break;
         default:
-            return false;
+            goto unhandled;
         }
         break;
     }
