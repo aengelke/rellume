@@ -194,8 +194,10 @@ code="sminp v0.4s, v1.4s, v2.4s" v0=qq:0,0 v1=llll:1,99,2,98 v2=llll:1,99,2,98 =
 # LLVM ERROR: Code generator does not support intrinsic function 'llvm.maximum.v4f32'!
 # But cannot JIT either: on x86-64 hosts, there are no appropriate instructions, so FMIN and FMAX
 # cannot be tested.
-#code="fmaxp v0.4s, v1.4s, v2.4s" v0=qq:0,0 v1=ffff:1.5,99.0,2.5,98.0 v2=ffff:1.5,99.0,2.5,98.0 => v0=ffff:99.0,98.0,99.0,98.0
-#code="fminp v0.4s, v1.4s, v2.4s" v0=qq:0,0 v1=ffff:1.5,99.0,2.5,98.0 v2=ffff:1.5,99.0,2.5,98.0 => v0=ffff:1.5,2.5,1.5,2.5
++jit code="fmaxp v0.4s, v1.4s, v2.4s" v0=qq:0,0 v1=ffff:1.5,99.0,2.5,98.0 v2=ffff:1.5,99.0,2.5,98.0 => v0=ffff:99.0,98.0,99.0,98.0
++jit code="fminp v0.4s, v1.4s, v2.4s" v0=qq:0,0 v1=ffff:1.5,99.0,2.5,98.0 v2=ffff:1.5,99.0,2.5,98.0 => v0=ffff:1.5,2.5,1.5,2.5
++jit code="fminp v0.2d, v1.2d, v2.2d" v1=dd:-100.4,-44004.3 v2=dd:1345.4,56677.0 => v0=dd:-44004.3,1345.4
++jit code="fmaxp v0.2d, v1.2d, v2.2d" v1=dd:-100.4,-44004.3 v2=dd:1345.4,56677.0 => v0=dd:-100.4,56677.0
 +jit code="fmaxnmp v0.4s, v1.4s, v2.4s" v0=qq:0,0 v1=ffff:1.5,99.0,2.5,98.0 v2=ffff:1.5,99.0,2.5,98.0 => v0=ffff:99.0,98.0,99.0,98.0
 +jit code="fminnmp v0.4s, v1.4s, v2.4s" v0=qq:0,0 v1=ffff:1.5,99.0,2.5,98.0 v2=ffff:1.5,99.0,2.5,98.0 => v0=ffff:1.5,2.5,1.5,2.5
 
@@ -520,6 +522,8 @@ code="sshl v0.2d, v1.2d, v2.2d" v0=qq:0,0 v1=qq:0xff,0xff v2=qq:-4,4 => v0=qq:0x
 code="sshl v0.2d, v1.2d, v2.2d" v0=qq:0,0 v1=qq:0xffffffffffffffff,0 v2=qq:4,0 => v0=qq:0xfffffffffffffff0,0
 code="sshl v0.2d, v1.2d, v2.2d" v0=qq:0,0 v1=qq:0xffffffffffffffff,0 v2=qq:-4,0 => v0=qq:0xffffffffffffffff,0
 code="ushl v0.2d, v1.2d, v2.2d" v0=qq:0,0 v1=qq:0xffffffffffffffff,0 v2=qq:-4,0 => v0=qq:0x0fffffffffffffff,0
+# XXX see above
+# code="ushl v0.8h, v1.8h, v2.8h" v1=wwwwwwww:0xe76a,0x0d42,0xb970,0xb933,0xbe22,0x4cec,0x18b0,0xb944 v2=wwwwwwww:0x6ab3,0x64d2,0x986d,0xce9a,0xa064,0xe2a0,0xf03e,0x9b5e => v0=wwwwwwww:0,0,0,0,0,0,0,0
 
 #
 ### FP Conversion
