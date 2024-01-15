@@ -146,6 +146,16 @@ void Lifter::LiftXchg(const Instr& inst) {
 
 void Lifter::LiftAndOrXor(const Instr& inst, llvm::Instruction::BinaryOps op,
                           llvm::AtomicRMWInst::BinOp armw_op, bool writeback) {
+    if (inst.type() == FDI_XOR && inst.op(0).is_reg() && inst.op(1).is_reg() &&
+        inst.op(0).reg().ri == inst.op(1).reg().ri && inst.op(0).size() >= 4) {
+        OpStoreGp(inst.op(0), irb.getIntN(8 * inst.op(0).size(), 0));
+        FlagCalcSAPLogic(irb.getInt64(0));
+        SetReg(ArchReg::ZF, irb.getTrue());
+        SetReg(ArchReg::CF, irb.getFalse());
+        SetReg(ArchReg::OF, irb.getFalse());
+        return;
+    }
+
     llvm::Value* op1;
     llvm::Value* op2 = OpLoad(inst.op(1), Facet::I);
     if (!inst.has_lock()) {
