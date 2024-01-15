@@ -416,9 +416,19 @@ llvm::Value* RegFile::impl::GetReg(ArchReg reg, Facet facet) {
     }
     llvm::Value* superValue = rvv->valueA;
     llvm::Type* superValueTy = superValue->getType();
+    llvm::Value* res = nullptr;
 
     // Need to do arbitrary conversion.
     switch (facet) {
+    case Facet::PTR: {
+        // Weird case, pointer from integer register. Should never happen.
+        assert(false && "pointer from non-general-purpose register?");
+        auto val = superValue;
+        if (!superValueTy->isIntegerTy())
+            val = irb.CreateBitOrPointerCast(superValue, irb.getIntNTy(rvv->size));
+        val = irb.CreateZExtOrTrunc(val, irb.getIntNTy(facetSize));
+        return irb.CreatePointerCast(val, facetType);
+    }
     case Facet::I128:
     case Facet::I64:
     case Facet::I32:
@@ -426,28 +436,30 @@ llvm::Value* RegFile::impl::GetReg(ArchReg reg, Facet facet) {
     case Facet::I8:
     case Facet::F64:
     case Facet::F32:
-    case Facet::PTR:
         if (superValueTy->isVectorTy()) {
             int nativeBits = superValueTy->getPrimitiveSizeInBits();
             int nativeCnt = nativeBits / facetType->getPrimitiveSizeInBits();
-            if (nativeCnt == 1)
-                return irb.CreateBitCast(superValue, facetType);
-            auto vecTy = llvm::VectorType::get(facetType, nativeCnt,
-                                               /*scalable=*/false);
-            auto vec = irb.CreateBitCast(superValue, vecTy);
-            return irb.CreateExtractElement(vec, uint64_t{0});
+            if (nativeCnt == 1) {
+                res = irb.CreateBitCast(superValue, facetType);
+            } else {
+                auto vecTy = llvm::VectorType::get(facetType, nativeCnt,
+                                                   /*scalable=*/false);
+                auto vec = irb.CreateBitCast(superValue, vecTy);
+                res = irb.CreateExtractElement(vec, uint64_t{0});
+            }
         } else {
             auto val = superValue;
             if (!superValueTy->isIntegerTy())
                 val = irb.CreateBitOrPointerCast(superValue, irb.getIntNTy(rvv->size));
             if (rvv->size > facetSize)
                 val = irb.CreateTrunc(val, irb.getIntNTy(facetSize));
-            return irb.CreateBitOrPointerCast(val, facetType);
+            res = irb.CreateBitOrPointerCast(val, facetType);
         }
-        assert(false);
-        return nullptr;
+        break;
     case Facet::I8H:
         assert(superValueTy->isIntegerTy() && "I8H from non-integer type");
+        // Return directly, don't attempt to cache I8H facet.
+        // TODO: caching I8H facets might give performance improvements.
         return irb.CreateTrunc(irb.CreateLShr(superValue, irb.getInt64(8)), irb.getInt8Ty());
     default: {
         assert(facetType->isVectorTy() && "invalid facet for GetReg");
@@ -463,7 +475,7 @@ llvm::Value* RegFile::impl::GetReg(ArchReg reg, Facet facet) {
         // Cast native facet to appropriate type
         auto native_vec_ty = llvm::VectorType::get(elem_ty, nativeCnt,
                                                    /*scalable=*/false);
-        auto res = irb.CreateBitCast(superValue, native_vec_ty);
+        res = irb.CreateBitCast(superValue, native_vec_ty);
 
         // If a shorter vector is required, use shufflevector.
         if (nativeCnt > targetCnt) {
@@ -473,9 +485,19 @@ llvm::Value* RegFile::impl::GetReg(ArchReg reg, Facet facet) {
             llvm::Value* undef = llvm::UndefValue::get(native_vec_ty);
             res = irb.CreateShuffleVector(res, undef, mask);
         }
-        return res;
+        break;
     }
     }
+
+    // Cache value if we can do so without a new heap allocation.
+    if (rv->values.size() < rv->values.capacity()) {
+        unsigned pos = rvIdx + 1;
+        assert(pos == rv->values.size() || rv->values[pos].size < facetSize);
+        rv->values.insert(rv->values.begin() + pos, Register::Value(res, facetSize));
+        rv->values[pos].dirty = false; // this is the same value
+    }
+
+    return res;
 }
 
 void RegFile::impl::SetReg(ArchReg reg, llvm::Value* value, WriteMode mode) {
