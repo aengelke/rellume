@@ -386,9 +386,7 @@ void Lifter::LiftDiv(const Instr& inst) {
 
     // TODO: raise #DE on division by zero or overflow.
 
-    auto ex_ty = irb.getIntNTy(sz * 2);
-
-    llvm::Value* dividend;
+    llvm::Value* dividend = nullptr;
     if (sz == 8) {
         // Dividend is AX
         dividend = GetReg(ArchReg::RAX, Facet::I16);
@@ -396,12 +394,29 @@ void Lifter::LiftDiv(const Instr& inst) {
         // Dividend is DX:AX/EDX:EAX/RDX:RAX
         auto low = GetReg(ArchReg::RAX, Facet::In(sz));
         auto high = GetReg(ArchReg::RDX, Facet::In(sz));
-        high = irb.CreateShl(irb.CreateZExt(high, ex_ty), sz);
-        dividend = irb.CreateOr(irb.CreateZExt(low, ex_ty), high);
+        if (!sign) {
+            // div is often preceded by xor edx, edx
+            auto cnst = llvm::dyn_cast<llvm::Constant>(high);
+            if (cnst && cnst->isNullValue())
+                dividend = low;
+        } else {
+            auto binop = llvm::dyn_cast<llvm::BinaryOperator>(high);
+            if (binop && binop->isArithmeticShift() && binop->getOperand(0) == low) {
+                auto cnst = llvm::dyn_cast<llvm::ConstantInt>(binop->getOperand(1));
+                if (cnst->equalsInt(sz - 1))
+                    dividend = low;
+            }
+        }
+        if (!dividend) {
+            auto ex_ty = irb.getIntNTy(sz * 2);
+            high = irb.CreateShl(irb.CreateZExt(high, ex_ty), sz);
+            dividend = irb.CreateOr(irb.CreateZExt(low, ex_ty), high);
+        }
     }
 
     // Divisor is the operand
-    auto divisor = irb.CreateCast(ext_op, OpLoad(inst.op(0), Facet::I), ex_ty);
+    auto divisor = OpLoad(inst.op(0), Facet::I);
+    divisor = irb.CreateCast(ext_op, divisor, dividend->getType());
 
     auto quot = irb.CreateBinOp(div_op, dividend, divisor);
     auto rem = irb.CreateBinOp(rem_op, dividend, divisor);

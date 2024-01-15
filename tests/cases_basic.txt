@@ -111,6 +111,9 @@ code="mul rcx" rax=q:0x10000 rcx=q:0x3 => rax=q:0x30000 rdx=q:0x0 of=00 sf=undef
 code="mul rcx" rax=q:0x40000000 rcx=q:0x200000000 => rax=q:0x8000000000000000 rdx=q:0x0 of=00 sf=undef zf=undef af=undef pf=undef cf=00
 code="mul rcx" rax=q:0x100000000 rcx=q:0x100000000 => rax=q:0 rdx=q:0x1 of=01 sf=undef zf=undef af=undef pf=undef cf=01
 code="div rcx" rax=q:0x10000 rdx=q:0x0 rcx=q:0x3 => rax=q:0x5555 rdx=q:0x1 of=undef sf=undef zf=undef af=undef pf=undef cf=undef
+code="xor edx, edx; div rcx" rax=q:0x10000 rcx=q:0x3 => rax=q:0x5555 rdx=q:0x1 of=undef sf=undef zf=undef af=undef pf=undef cf=undef
+code="idiv rcx" rax=q:0x10000 rdx=q:0x0 rcx=q:0x3 => rax=q:0x5555 rdx=q:0x1 of=undef sf=undef zf=undef af=undef pf=undef cf=undef
+code="cqo; idiv rcx" rax=q:0x10000 rdx=q:0x0 rcx=q:0x3 => rax=q:0x5555 rdx=q:0x1 of=undef sf=undef zf=undef af=undef pf=undef cf=undef
 code="div cl" rax=q:0x5555555555550211 rcx=q:0x9999999999999903 => rax=q:0x55555555555501b0 of=undef sf=undef zf=undef af=undef pf=undef cf=undef
 code="div cl" rax=q:0x555555555555feff rcx=q:0x99999999999999ff => rax=q:0x555555555555feff of=undef sf=undef zf=undef af=undef pf=undef cf=undef
 
