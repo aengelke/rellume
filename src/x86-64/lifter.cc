@@ -102,12 +102,12 @@ bool Lifter::Lift(const Instr& inst) {
     case FDI_LAHF: StoreGpFacet(ArchReg::RAX, Facet::I8H, FlagAsReg(8)); break;
     case FDI_SAHF: FlagFromReg(GetReg(ArchReg::RAX, Facet::I8H)); break;
 
-    case FDI_MOV: LiftMovgp(inst, llvm::Instruction::SExt); break;
-    case FDI_MOVABS: LiftMovgp(inst, llvm::Instruction::SExt); break;
-    case FDI_MOVZX: LiftMovgp(inst, llvm::Instruction::ZExt); break;
-    case FDI_MOVSX: LiftMovgp(inst, llvm::Instruction::SExt); break;
+    case FDI_MOV: LiftMovgp(inst); break;
+    case FDI_MOVABS: LiftMovgp(inst); break;
+    case FDI_MOVZX: LiftMovzx(inst); break;
+    case FDI_MOVSX: LiftMovgp(inst); break;
     // TODO: set non-temporal hint
-    case FDI_MOVNTI: LiftMovgp(inst, llvm::Instruction::SExt); break;
+    case FDI_MOVNTI: LiftMovgp(inst); break;
     case FDI_MOVBE: LiftMovbe(inst); break;
     case FDI_ADD: LiftArith(inst, /*sub=*/false); break;
     case FDI_ADC: LiftArith(inst, /*sub=*/false); break;

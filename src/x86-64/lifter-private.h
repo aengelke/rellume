@@ -120,7 +120,8 @@ private:
     RepInfo RepBegin(const Instr& inst);
     void RepEnd(RepInfo info);
 
-    void LiftMovgp(const Instr&, llvm::Instruction::CastOps cast);
+    void LiftMovgp(const Instr&);
+    void LiftMovzx(const Instr&);
     void LiftArith(const Instr&, bool sub);
     void LiftCmpxchg(const Instr&);
     void LiftXchg(const Instr&);

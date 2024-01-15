@@ -79,6 +79,15 @@ code="mov eax, 0; setg al" of=01 sf=00 zf=01 => rax=q:0
 code="mov eax, 0; setg al" of=00 sf=01 zf=01 => rax=q:0
 code="mov eax, 0; setg al" of=01 sf=01 zf=01 => rax=q:0
 
+code="movzx ax, cl" rax=q:0xaaaabbbbccccdddd rcx=q:0x1122334455667788 => rax=q:0xaaaabbbbcccc0088
+code="movzx ax, ch" rax=q:0xaaaabbbbccccdddd rcx=q:0x1122334455667788 => rax=q:0xaaaabbbbcccc0077
+# movzx ax, cx
+code=".byte 0x66,0x0f,0xb7,0xc1" rax=q:0xaaaabbbbccccdddd rcx=q:0x1122334455667788 => rax=q:0xaaaabbbbcccc7788
+code="movzx eax, cl" rcx=q:0x1122334455667788 => rax=q:0x88
+code="movzx eax, ch" rcx=q:0x1122334455667788 => rax=q:0x77
+code="movzx eax, cx" rcx=q:0x1122334455667788 => rax=q:0x7788
+code="movzx rax, cx" rcx=q:0x1122334455667788 => rax=q:0x7788
+
 code="test rax, rax" rax=q:0 => of=00 sf=00 zf=01 af=undef pf=01 cf=00
 code="test rax, rax" rax=q:0x78 => of=00 sf=00 zf=00 af=undef pf=01 cf=00
 code="test rax, rax" rax=q:0x79 => of=00 sf=00 zf=00 af=undef pf=00 cf=00

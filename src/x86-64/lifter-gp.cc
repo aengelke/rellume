@@ -41,13 +41,23 @@
 
 namespace rellume::x86_64 {
 
-void Lifter::LiftMovgp(const Instr& inst, llvm::Instruction::CastOps cast) {
+void Lifter::LiftMovgp(const Instr& inst) {
     // TODO: if the instruction moves the whole register, keep all facets.
     // TODO: implement this for all register-register moves.
 
     llvm::Value* val = OpLoad(inst.op(1), Facet::I);
     llvm::Type* tgt_ty = irb.getIntNTy(inst.op(0).bits());
-    OpStoreGp(inst.op(0), irb.CreateCast(cast, val, tgt_ty));
+    OpStoreGp(inst.op(0), irb.CreateSExt(val, tgt_ty));
+}
+
+void Lifter::LiftMovzx(const Instr& inst) {
+    // TODO: keep smaller facets intact on reg-reg extensions?
+    llvm::Value* val = OpLoad(inst.op(1), Facet::I);
+    auto dstSize = inst.op(0).bits();
+    if (dstSize >= 32)
+        SetReg(MapReg(inst.op(0).reg()), val); // Insert into zero
+    else
+        OpStoreGp(inst.op(0), irb.CreateZExt(val, irb.getIntNTy(dstSize)));
 }
 
 // Implementation of ADD, ADC, SUB, SBB, CMP, and XADD
