@@ -317,6 +317,8 @@ void CallConv::OptimizePacks(FunctionInfo& fi, BasicBlock* entry) {
             if (!regset[RegisterSetBitIdx(reg)])
                 continue;
             llvm::Value* reg_val = regfile.GetReg(reg, facet);
+            if (llvm::isa<llvm::UndefValue>(reg_val))
+                continue; // Just remove stores of undef.
             irb.CreateStore(reg_val, fi.sptr[sptr_idx]);
         }
     }
