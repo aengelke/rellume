@@ -8,6 +8,7 @@ code="svc #0" =>
 ! code="dcps2 #0" =>
 ! code="dcps3 #0" =>
 code="cbz x0, 1f; mrs x1, ctr_el0; 1:" x0=q:0 =>
+code="cbz x0, 1f; svc #0; 1:" x0=q:0 =>
 code="nop" =>
 code="yield" =>
 code="wfe" =>

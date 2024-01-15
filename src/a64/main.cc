@@ -227,9 +227,11 @@ bool Lifter::Lift(const Instr& inst) {
     case farmdec::A64_SVC:
         // SVC has an immediate, but cfg.syscall_implementation takes only a CPU state pointer.
         // This seems dire, but Linux and the BSDs and probably most Unixes only ever use svc #0.
+        SetIP(inst.end(), /*nofold=*/true);
         if (cfg.syscall_implementation)
             CallExternalFunction(cfg.syscall_implementation);
-        break;
+        // Return here, syscall could have updated the PC.
+        return true;
 /*
     Intentionally unimplemented because they are either for debugging or use in the kernel
     while we focus on userspace lifting.
