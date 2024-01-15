@@ -220,7 +220,10 @@ private:
     Register* AccessReg(ArchReg reg);
     Facet NativeFacet(ArchReg reg);
 
-    Register::Value* GetRegFold(ArchReg reg, unsigned fullSize);
+    /// Prepare register for read access of the lowest fullSize bits, merging
+    /// dirty and missing parts if necessary. Returns the index into register
+    /// values with the same or next larger size.
+    std::pair<Register*, unsigned> GetRegFold(ArchReg reg, unsigned fullSize);
 };
 
 void RegFile::impl::Clear() {
@@ -267,7 +270,7 @@ Facet RegFile::impl::NativeFacet(ArchReg reg) {
     }
 }
 
-Register::Value* RegFile::impl::GetRegFold(ArchReg reg, unsigned fullSize) {
+std::pair<Register*, unsigned> RegFile::impl::GetRegFold(ArchReg reg, unsigned fullSize) {
     // Goal: make sure that rv->values[<retvalue>] is at least fullSize and
     // that no dirty values follow after that.
     Register* rv = AccessReg(reg);
@@ -285,7 +288,7 @@ Register::Value* RegFile::impl::GetRegFold(ArchReg reg, unsigned fullSize) {
             nativeVal = phi;
         } else {
             assert(false && "accessing unset register in entry block");
-            return nullptr;
+            return std::make_pair(nullptr, 0);
         }
         Register::Value nativeRvv(nativeVal, nativeFacet.Size());
         nativeRvv.dirty = false;
@@ -296,7 +299,7 @@ Register::Value* RegFile::impl::GetRegFold(ArchReg reg, unsigned fullSize) {
         llvm::Type* intTy = llvm::Type::getIntNTy(irb.getContext(), fullSize);
         llvm::Value* zero = llvm::Constant::getNullValue(intTy);
         rv->values.push_back(Register::Value(zero, fullSize));
-        return &rv->values[0];
+        return std::make_pair(rv, 0);
     }
 
     assert(!rv->values.empty() && "undefined upper part of register");
@@ -311,7 +314,7 @@ Register::Value* RegFile::impl::GetRegFold(ArchReg reg, unsigned fullSize) {
         }
     }
 
-    return &rv->values[foldStartIdx];
+    return std::make_pair(rv, foldStartIdx);
 
 fold:;
     unsigned foldSize = fullSize < rv->values[0].size ? rv->values[0].size : fullSize;
@@ -383,14 +386,14 @@ fold:;
     } else {
         llvm::errs() << *result << "\n";
         assert(false && "non-integer/vector value merging not implemented");
-        return nullptr;
+        return std::make_pair(nullptr, 0);
     }
 
     // TODO: could keep smallest dirty value and all following clean as clean.
     rv->values.clear();
     rv->values.push_back(Register::Value(result, foldSize));
 
-    return &rv->values[0];
+    return std::make_pair(rv, 0);
 }
 
 llvm::Value* RegFile::impl::GetReg(ArchReg reg, Facet facet) {
@@ -399,7 +402,8 @@ llvm::Value* RegFile::impl::GetReg(ArchReg reg, Facet facet) {
         facetSize = 16;
     llvm::Type* facetType = facet.Type(irb.getContext());
 
-    Register::Value* rvv = GetRegFold(reg, facetSize);
+    auto [rv, rvIdx] = GetRegFold(reg, facetSize);
+    Register::Value* rvv = &rv->values[rvIdx];
     if (facet != Facet::I8H && rvv->size == facetSize) {
         if (rvv->valueA->getType() == facetType)
             return rvv->valueA;
