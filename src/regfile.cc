@@ -33,6 +33,7 @@
 #include <llvm/IR/Instructions.h>
 #include <llvm/IR/Intrinsics.h>
 
+#include <array>
 #include <cassert>
 #include <cstdint>
 #include <cstring>
@@ -162,23 +163,19 @@ void Register::canonicalize(llvm::IRBuilder<>& irb) {
 class RegFile::impl {
 public:
     impl(Arch arch, llvm::BasicBlock* bb)
-            : irb(bb), reg_ip(), flags(), dirty_regs() {
-        unsigned ngp, nvec, nflags = 7;
+            : irb(bb), dirty_regs() {
         switch (arch) {
 #ifdef RELLUME_WITH_X86_64
-        case Arch::X86_64: ngp = 16; nvec = 16; ivec_facet = Facet::V2I64; break;
+        case Arch::X86_64: ivec_facet = Facet::V2I64; break;
 #endif // RELLUME_WITH_X86_64
 #ifdef RELLUME_WITH_RV64
-        case Arch::RV64: ngp = 32; nvec = 32; nflags = 0; ivec_facet = Facet::I64; break;
+        case Arch::RV64: ivec_facet = Facet::I64; break;
 #endif // RELLUME_WITH_RV64
 #ifdef RELLUME_WITH_AARCH64
-        case Arch::AArch64: ngp = 32; nvec = 32; ivec_facet = Facet::V2I64; break;
+        case Arch::AArch64: ivec_facet = Facet::V2I64; break;
 #endif // RELLUME_WITH_AARCH64
         default: assert(false);
         }
-        regs_gp.resize(ngp);
-        regs_sse.resize(nvec);
-        flags.resize(nflags);
     }
 
     llvm::BasicBlock* GetInsertBlock() { return irb.GetInsertBlock(); }
@@ -205,10 +202,7 @@ public:
 
 private:
     llvm::IRBuilder<> irb;
-    llvm::SmallVector<Register, 32> regs_gp;
-    llvm::SmallVector<Register, 32> regs_sse;
-    Register reg_ip;
-    llvm::SmallVector<Register, 7> flags;
+    std::array<Register, 72> regs;
 
     RegFile* parent = nullptr;
     std::vector<PhiDesc>* phiDescs = nullptr;
@@ -227,26 +221,25 @@ private:
 };
 
 void RegFile::impl::Clear() {
-    for (auto& reg : regs_gp)
-        reg.clear();
-    for (auto& reg : regs_sse)
-        reg.clear();
-    reg_ip.clear();
-    for (auto& reg : flags)
+    for (auto& reg : regs)
         reg.clear();
 }
 
 Register* RegFile::impl::AccessReg(ArchReg reg) {
     unsigned idx = reg.Index();
     switch (reg.Kind()) {
-    case ArchReg::RegKind::GP:
-        return &regs_gp[idx];
     case ArchReg::RegKind::IP:
-        return &reg_ip;
+        assert(idx < 1);
+        return &regs[0 + idx];
     case ArchReg::RegKind::FLAG:
-        return &flags[idx];
+        assert(idx < 7);
+        return &regs[1 + idx];
+    case ArchReg::RegKind::GP:
+        assert(idx < 32);
+        return &regs[8 + idx];
     case ArchReg::RegKind::VEC:
-        return &regs_sse[idx];
+        assert(idx < 32);
+        return &regs[40 + idx];
     default:
         return nullptr;
     }
