@@ -62,17 +62,16 @@ llvm::Value* LifterBase::AddrIPRel(uint64_t off, Facet facet) {
     return irb.CreateAdd(rip, rip_off);
 }
 
-llvm::Value* LifterBase::AddrConst(uint64_t addr, llvm::PointerType* ptr_ty) {
+llvm::Value* LifterBase::AddrConst(uint64_t addr) {
     if (addr == 0)
-        return llvm::ConstantPointerNull::get(ptr_ty);
+        return llvm::ConstantPointerNull::get(irb.getPtrTy());
 
     if (cfg.global_base_value) {
         auto offset = irb.getInt64(addr - cfg.global_base_addr);
-        auto ptr = irb.CreateGEP(irb.getInt8Ty(), cfg.global_base_value, offset);
-        return irb.CreatePointerCast(ptr, ptr_ty);
+        return irb.CreateGEP(irb.getInt8Ty(), cfg.global_base_value, offset);
     }
 
-    return irb.CreateIntToPtr(irb.getInt64(addr), ptr_ty);
+    return irb.CreateIntToPtr(irb.getInt64(addr), irb.getPtrTy());
 }
 
 void LifterBase::CallExternalFunction(llvm::Function* fn) {

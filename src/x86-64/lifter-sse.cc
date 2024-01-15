@@ -48,7 +48,7 @@ void Lifter::LiftFence(const Instr& inst) {
 void Lifter::LiftPrefetch(const Instr& inst, unsigned rw, unsigned locality) {
     llvm::Module* module = irb.GetInsertBlock()->getModule();
     llvm::SmallVector<llvm::Type*, 1> tys;
-    tys.push_back(irb.getInt8PtrTy());
+    tys.push_back(irb.getPtrTy());
     auto id = llvm::Intrinsic::prefetch;
     llvm::Function* intrinsic = llvm::Intrinsic::getDeclaration(module, id, tys);
 
@@ -70,7 +70,6 @@ void Lifter::LiftFxsave(const Instr& inst) {
     irb.CreateMemSet(buf, irb.getInt8(0), 0xa0, align);
     for (unsigned i = 0; i < 16; i++) {
         llvm::Value* ptr = irb.CreateConstGEP1_32(i8, buf, 0xa0 + 0x10 * i);
-        ptr = irb.CreatePointerCast(ptr, irb.getIntNTy(128)->getPointerTo());
         irb.CreateStore(GetReg(ArchReg::VEC(i), Facet::I128), ptr);
     }
 }
@@ -85,7 +84,6 @@ void Lifter::LiftFxrstor(const Instr& inst) {
 
     for (unsigned i = 0; i < 16; i++) {
         llvm::Value* ptr = irb.CreateConstGEP1_32(i8, buf, 0xa0 + 0x10 * i);
-        ptr = irb.CreatePointerCast(ptr, ivec_ty->getPointerTo());
         SetReg(ArchReg::VEC(i), irb.CreateLoad(ivec_ty, ptr));
     }
 }

@@ -73,7 +73,7 @@ CallConv CallConv::FromFunction(llvm::Function* fn, Arch arch) {
 llvm::FunctionType* CallConv::FnType(llvm::LLVMContext& ctx,
                                      unsigned sptr_addrspace) const {
     llvm::Type* void_ty = llvm::Type::getVoidTy(ctx);
-    llvm::Type* i8p = llvm::Type::getInt8PtrTy(ctx, sptr_addrspace);
+    llvm::Type* ptrTy = llvm::PointerType::get(ctx, sptr_addrspace);
 
     switch (*this) {
     default:
@@ -81,7 +81,7 @@ llvm::FunctionType* CallConv::FnType(llvm::LLVMContext& ctx,
     case CallConv::X86_64_SPTR:
     case CallConv::RV64_SPTR:
     case CallConv::AArch64_SPTR:
-        return llvm::FunctionType::get(void_ty, {i8p}, false);
+        return llvm::FunctionType::get(void_ty, {ptrTy}, false);
     }
 }
 

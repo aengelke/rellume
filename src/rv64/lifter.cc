@@ -73,21 +73,20 @@ public:
         SetReg(ArchReg::VEC(reg), irb.CreateBitCast(full, ivec_ty));
         SetRegFacet(ArchReg::VEC(reg), v);
     }
-    llvm::Value* Addr(const FrvInst* rvi, llvm::PointerType* ptr_ty) {
+    llvm::Value* Addr(const FrvInst* rvi) {
         llvm::Value* base = LoadGp(rvi->rs1, Facet::PTR);
         if (llvm::isa<llvm::Constant>(base)) {
             llvm::Value* base_int = LoadGp(rvi->rs1, Facet::I64);
             base_int = irb.CreateAdd(base_int, irb.getInt64(rvi->imm));
             if (auto* addr = llvm::dyn_cast<llvm::ConstantInt>(base_int)) {
-                base = AddrConst(addr->getZExtValue(), ptr_ty);
+                base = AddrConst(addr->getZExtValue());
             } else {
-                base = irb.CreateIntToPtr(base_int, ptr_ty);
+                base = irb.CreateIntToPtr(base_int, irb.getPtrTy());
             }
         } else if (rvi->imm) {
-            base = irb.CreatePointerCast(base, irb.getInt8PtrTy());
             base = irb.CreateGEP(irb.getInt8Ty(), base, irb.getInt64(rvi->imm));
         }
-        return irb.CreatePointerCast(base, ptr_ty);
+        return base;
     }
 
     void LiftBinOpR(const FrvInst* rvi, llvm::Instruction::BinaryOps op,
@@ -117,20 +116,18 @@ public:
     }
     void LiftLoad(const FrvInst* rvi, llvm::Instruction::CastOps ext, Facet f) {
         llvm::Type* ty = f.Type(irb.getContext());
-        llvm::Value* ld = irb.CreateLoad(ty, Addr(rvi, ty->getPointerTo()));
+        llvm::Value* ld = irb.CreateLoad(ty, Addr(rvi));
         StoreGp(rvi->rd, irb.CreateCast(ext, ld, irb.getInt64Ty()));
     }
     void LiftLoadFp(const FrvInst* rvi, Facet f) {
         llvm::Type* ty = f.Type(irb.getContext());
-        StoreFp(rvi->rd, irb.CreateLoad(ty, Addr(rvi, ty->getPointerTo())));
+        StoreFp(rvi->rd, irb.CreateLoad(ty, Addr(rvi)));
     }
     void LiftStore(const FrvInst* rvi, Facet f) {
-        llvm::Type* ty = f.Type(irb.getContext());
-        irb.CreateStore(LoadGp(rvi->rs2, f), Addr(rvi, ty->getPointerTo()));
+        irb.CreateStore(LoadGp(rvi->rs2, f), Addr(rvi));
     }
     void LiftStoreFp(const FrvInst* rvi, Facet f) {
-        llvm::Type* ty = f.Type(irb.getContext());
-        irb.CreateStore(LoadFp(rvi->rs2, f), Addr(rvi, ty->getPointerTo()));
+        irb.CreateStore(LoadFp(rvi->rs2, f), Addr(rvi));
     }
     void LiftBranch(const Instr& inst, llvm::CmpInst::Predicate pred) {
         const FrvInst* rvi = inst;
@@ -460,8 +457,8 @@ bool Lifter::Lift(const Instr& inst) {
     }
 
     // TODO: implement atomic semantics for LR/SC.
-    case FRV_LRW: StoreGp(rvi->rd, irb.CreateLoad(irb.getInt32Ty(), irb.CreatePointerCast(LoadGp(rvi->rs1, Facet::PTR), irb.getInt32Ty()->getPointerTo()))); break;
-    case FRV_SCW: StoreGp(rvi->rd, irb.getInt32(0)); irb.CreateStore(LoadGp(rvi->rs2, Facet::I32), irb.CreatePointerCast(LoadGp(rvi->rs1, Facet::PTR), irb.getInt32Ty()->getPointerTo())); break;
+    case FRV_LRW: StoreGp(rvi->rd, irb.CreateLoad(irb.getInt32Ty(), LoadGp(rvi->rs1, Facet::PTR))); break;
+    case FRV_SCW: StoreGp(rvi->rd, irb.getInt32(0)); irb.CreateStore(LoadGp(rvi->rs2, Facet::I32), LoadGp(rvi->rs1, Facet::PTR)); break;
     case FRV_FENCE: break; // TODO: fences
 
     case FRV_AMOSWAPW: LiftAmo(rvi, llvm::AtomicRMWInst::Xchg, Facet::I32); break;

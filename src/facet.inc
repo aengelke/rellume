@@ -33,7 +33,7 @@ VECTOR_FACET(V2F64, 2, F64)
 #endif
 #ifdef SPECIAL_FACET
 // Special facets for general-purpose registers
-SPECIAL_FACET(PTR, 64, llvm::Type::getInt8PtrTy(ctx))
+SPECIAL_FACET(PTR, 64, llvm::PointerType::get(ctx, 0))
 SPECIAL_FACET(I8H, 8, llvm::Type::getInt8Ty(ctx))
 #endif
 #ifdef PSEUDO_INT_FACET

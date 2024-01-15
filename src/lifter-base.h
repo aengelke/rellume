@@ -110,7 +110,7 @@ protected:
     }
 
     llvm::Value* AddrIPRel(uint64_t off, Facet facet);
-    llvm::Value* AddrConst(uint64_t addr, llvm::PointerType* ptr_ty);
+    llvm::Value* AddrConst(uint64_t addr);
 
     // Helper function for older LLVM versions
     llvm::Value* CreateUnaryIntrinsic(llvm::Intrinsic::ID id, llvm::Value* v) {

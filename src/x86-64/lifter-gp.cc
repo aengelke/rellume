@@ -449,11 +449,9 @@ void Lifter::LiftXlat(const Instr& inst) {
     llvm::Value* bx;
     if (inst.addrsz() == 8) {
         bx = GetReg(ArchReg::RBX, Facet::PTR);
-        bx = irb.CreatePointerCast(bx, irb.getInt8PtrTy());
     } else {
         bx = GetReg(ArchReg::RBX, Facet::I32);
-        bx = irb.CreateZExt(bx, irb.getInt64Ty());
-        bx = irb.CreateIntToPtr(bx, irb.getInt8PtrTy());
+        bx = irb.CreateIntToPtr(bx, irb.getPtrTy());
     }
 
     llvm::Value* off = irb.CreateZExt(al, irb.getInt32Ty());
@@ -646,7 +644,6 @@ void Lifter::LiftRet(const Instr& inst) {
 
     if (inst.op(0)) {
         llvm::Value* rsp = GetReg(ArchReg::RSP, Facet::PTR);
-        rsp = irb.CreatePointerCast(rsp, irb.getInt8PtrTy());
         rsp = irb.CreateConstGEP1_64(irb.getInt8Ty(), rsp, inst.op(0).imm());
         SetReg(ArchReg::RSP, rsp);
     }
@@ -727,11 +724,10 @@ Lifter::RepInfo Lifter::RepBegin(const Instr& inst) {
     }
 
     info.ty = irb.getIntNTy(inst.opsz() * 8);
-    llvm::Type* op_ty = info.ty->getPointerTo();
     if (inst.type() != FDI_LODS)
-        info.di = irb.CreatePointerCast(GetReg(ArchReg::RDI, Facet::PTR), op_ty);
+        info.di = GetReg(ArchReg::RDI, Facet::PTR);
     if (inst.type() != FDI_STOS && inst.type() != FDI_SCAS)
-        info.si = irb.CreatePointerCast(GetReg(ArchReg::RSI, Facet::PTR), op_ty);
+        info.si = GetReg(ArchReg::RSI, Facet::PTR);
 
     return info;
 }
@@ -784,8 +780,7 @@ void Lifter::LiftStos(const Instr& inst) {
         // TODO: respect address size
         // TODO: support stosw/stosd/stosq if rax == 0
         llvm::Type* ty = irb.getIntNTy(inst.opsz() * 8);
-        llvm::Type* ptr_ty = ty->getPointerTo();
-        auto di = irb.CreatePointerCast(GetReg(ArchReg::RDI, Facet::PTR), ptr_ty);
+        auto di = GetReg(ArchReg::RDI, Facet::PTR);
         auto cx = GetReg(ArchReg::RCX, Facet::I64);
         auto ax = GetReg(ArchReg::RAX, Facet::I8);
         auto ip = GetReg(ArchReg::IP, Facet::I64);

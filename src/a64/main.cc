@@ -300,7 +300,7 @@ bool Lifter::Lift(const Instr& inst) {
         if (a64.sys.op1 == 3 && a64.sys.op2 == 1 && a64.sys.crn == 7 && a64.sys.crm == 4) {
             auto addr = GetGp(a64.rt, /*w32=*/false);                  // may point anywhere into the block
             auto start = irb.CreateAnd(addr, irb.getInt64(~0x3fuL)); // actual start address of block
-            auto ptr = irb.CreateIntToPtr(start, irb.getInt8PtrTy());
+            auto ptr = irb.CreateIntToPtr(start, irb.getPtrTy());
             irb.CreateMemSet(ptr, irb.getInt8(0), irb.getInt32(64), llvm::Align(64));
         } else {
             goto unhandled;
@@ -725,7 +725,7 @@ bool Lifter::Lift(const Instr& inst) {
         int locality = 3 - ((prfop>>1) & 3); // 3 - target
 
         llvm::SmallVector<llvm::Type*, 1> tys;
-        tys.push_back(irb.getInt8PtrTy());
+        tys.push_back(irb.getPtrTy());
         auto mod = irb.GetInsertBlock()->getModule();
         auto fn = llvm::Intrinsic::getDeclaration(mod, llvm::Intrinsic::prefetch, tys);
         irb.CreateCall(fn, {addr, irb.getInt32(is_write), irb.getInt32(locality), irb.getInt32(is_data)});

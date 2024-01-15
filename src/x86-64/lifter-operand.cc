@@ -88,10 +88,8 @@ llvm::Value* Lifter::OpAddr(const Instr::Op op, llvm::Type* element_type,
         }
 
         res = irb.CreateZExt(res, irb.getInt64Ty());
-        return irb.CreateIntToPtr(res, element_type->getPointerTo(addrspace));
+        return irb.CreateIntToPtr(res, irb.getPtrTy(addrspace));
     }
-
-    llvm::PointerType* elem_ptr_ty = element_type->getPointerTo();
 
     llvm::Type* scale_type = nullptr;
     if (op.scale() * 8u == element_type->getPrimitiveSizeInBits())
@@ -107,21 +105,19 @@ llvm::Value* Lifter::OpAddr(const Instr::Op op, llvm::Type* element_type,
             llvm::Value* base_int = GetReg(MapReg(op.base()), Facet::I64);
             base_int = irb.CreateAdd(base_int, irb.getInt64(op.off()));
             if (auto* addr = llvm::dyn_cast<llvm::ConstantInt>(base_int)) {
-                base = AddrConst(addr->getZExtValue(), elem_ptr_ty);
+                base = AddrConst(addr->getZExtValue());
             } else {
-                base = irb.CreateIntToPtr(base_int, elem_ptr_ty);
+                base = irb.CreateIntToPtr(base_int, irb.getPtrTy());
             }
         } else if (op.off() != 0) {
             if (op.scale() != 0 && (op.off() % op.scale()) == 0) {
-                base = irb.CreatePointerCast(base, scale_type->getPointerTo());
                 base = irb.CreateGEP(scale_type, base, irb.getInt64(op.off() / op.scale()));
             } else {
-                base = irb.CreatePointerCast(base, irb.getInt8PtrTy());
                 base = irb.CreateGEP(irb.getInt8Ty(), base, irb.getInt64(op.off()));
             }
         }
     } else {
-        base = AddrConst(op.off(), elem_ptr_ty);
+        base = AddrConst(op.off());
     }
 
     if (op.scale() != 0) {
@@ -132,14 +128,13 @@ llvm::Value* Lifter::OpAddr(const Instr::Op op, llvm::Type* element_type,
         llvm::Value* offset = GetReg(MapReg(op.index()), Facet::I64);
         if (use_mul) {
             base = irb.CreateMul(offset, irb.getInt64(op.scale()));
-            base = irb.CreateIntToPtr(base, elem_ptr_ty);
+            base = irb.CreateIntToPtr(base, irb.getPtrTy());
         } else {
-            base = irb.CreatePointerCast(base, scale_type->getPointerTo());
             base = irb.CreateGEP(scale_type, base, offset);
         }
     }
 
-    return irb.CreatePointerCast(base, elem_ptr_ty);
+    return base;
 }
 
 static void ll_operand_set_alignment(llvm::Instruction* value, llvm::Type* type,
@@ -229,7 +224,6 @@ void Lifter::OpStoreVec(const Instr::Op op, llvm::Value* value,
 
 void Lifter::StackPush(llvm::Value* value) {
     llvm::Value* rsp = GetReg(ArchReg::RSP, Facet::PTR);
-    rsp = irb.CreatePointerCast(rsp, value->getType()->getPointerTo());
     rsp = irb.CreateConstGEP1_64(value->getType(), rsp, -1);
     irb.CreateStore(value, rsp);
 
@@ -238,10 +232,7 @@ void Lifter::StackPush(llvm::Value* value) {
 
 llvm::Value* Lifter::StackPop(const ArchReg sp_src_reg) {
     llvm::Value* rsp = GetReg(sp_src_reg, Facet::PTR);
-    rsp = irb.CreatePointerCast(rsp, irb.getInt64Ty()->getPointerTo());
-
     SetReg(ArchReg::RSP, irb.CreateConstGEP1_64(irb.getInt64Ty(), rsp, 1));
-
     return irb.CreateLoad(irb.getInt64Ty(), rsp);
 }
 
