@@ -55,7 +55,11 @@ BasicBlock::BasicBlock(llvm::Function* fn, size_t max_preds)
         predecessors.reserve(max_preds);
 }
 
-void BasicBlock::InitRegFile(Arch arch, Phis phi_mode) {
+void BasicBlock::InitRegFile(Arch arch, Phis phi_mode, bool seal) {
+    // When sealing the block, we know that no more predecessors will follow.
+    if (seal)
+        max_preds = predecessors.size();
+
     regfile = std::make_unique<RegFile>(arch, llvm_block);
     if (phi_mode != Phis::NONE) {
         if (max_preds == 1 && predecessors.size() == 1) {

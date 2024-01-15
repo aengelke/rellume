@@ -51,7 +51,7 @@ public:
     void BranchTo(llvm::Value* cond, BasicBlock& then, BasicBlock& other);
     bool FillPhis();
 
-    void InitRegFile(Arch arch, Phis phi_mode);
+    void InitRegFile(Arch arch, Phis phi_mode, bool seal = false);
     std::unique_ptr<RegFile> TakeRegFile() {
         return std::move(regfile);
     }

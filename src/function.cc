@@ -176,7 +176,6 @@ llvm::Function* LiftHelper::Lift() {
     entry_block->BranchTo(ResolveAddr(entry_ip));
 
     exit_block = std::make_unique<ArchBasicBlock>(fn, phi_mode, cfg->arch, SIZE_MAX);
-    exit_block->GetInsertBlock()->InitRegFile(cfg->arch, phi_mode);
 
     if (cfg->pc_base_value) {
         fi.pc_base_addr = cfg->pc_base_addr;
@@ -232,6 +231,8 @@ llvm::Function* LiftHelper::Lift() {
             }
         }
     }
+
+    exit_block->GetInsertBlock()->InitRegFile(cfg->arch, phi_mode, /*seal=*/true);
 
     // Exit block packs values together and optionally returns something.
     if (cfg->tail_function) {
