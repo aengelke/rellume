@@ -329,7 +329,7 @@ fold:;
     // Always convert pointers to integers, first.
     // TODO: use vectors for floating-point?
     if (result->getType()->isPointerTy() || result->getType()->isFloatingPointTy())
-        result = irb.CreateBitCast(result, irb.getIntNTy(rv->values[0].size));
+        result = irb.CreateBitOrPointerCast(result, irb.getIntNTy(rv->values[0].size));
 
     if (result->getType()->isIntegerTy()) {
         llvm::Type* targetTy = irb.getIntNTy(foldSize);

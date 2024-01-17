@@ -118,6 +118,9 @@ code="cqo; idiv rcx" rax=q:0x10000 rdx=q:0x0 rcx=q:0x3 => rax=q:0x5555 rdx=q:0x1
 code="div cl" rax=q:0x5555555555550211 rcx=q:0x9999999999999903 => rax=q:0x55555555555501b0 of=undef sf=undef zf=undef af=undef pf=undef cf=undef
 code="div cl" rax=q:0x555555555555feff rcx=q:0x99999999999999ff => rax=q:0x555555555555feff of=undef sf=undef zf=undef af=undef pf=undef cf=undef
 
+code="push rax" rsp=q:0x20000008 m20000000=q:0x0 rax=q:0x1011121314151617 => rsp=q:0x20000000 m20000000=q:0x1011121314151617
+code="push rax; mov sp, 0x1234" rsp=q:0x20000008 m20000000=q:0x0 rax=q:0x1011121314151617 => rsp=q:0x20001234 m20000000=q:0x1011121314151617
+
 code="pushfq" rsp=q:0x20000008 m20000000=q:0x0 of=01 sf=00 zf=00 af=00 pf=00 cf=00 df=00 => rsp=q:0x20000000 m20000000=q:0xa02
 code="pushfq" rsp=q:0x20000008 m20000000=q:0x0 of=00 sf=01 zf=00 af=00 pf=00 cf=00 df=00 => rsp=q:0x20000000 m20000000=q:0x282
 code="pushfq" rsp=q:0x20000008 m20000000=q:0x0 of=00 sf=00 zf=01 af=00 pf=00 cf=00 df=00 => rsp=q:0x20000000 m20000000=q:0x242
