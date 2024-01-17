@@ -59,19 +59,7 @@ public:
             SetRegFacet(ArchReg::GP(reg), v);
     }
     void StoreFp(unsigned reg, llvm::Value* v) {
-        llvm::Type* ivec_ty = Facet{Facet::I64}.Type(irb.getContext());
-        unsigned ivec_sz = ivec_ty->getIntegerBitWidth();
-
-        // Construct the requires vector type of the vector register.
-        llvm::Type* element_ty = v->getType();
-        unsigned full_num = ivec_sz / element_ty->getPrimitiveSizeInBits();
-        llvm::VectorType* full_ty = llvm::VectorType::get(element_ty, full_num,
-                                                          false);
-        llvm::Value* full = llvm::Constant::getNullValue(full_ty);
-        full = irb.CreateInsertElement(full, v, uint64_t{0});
-
-        SetReg(ArchReg::VEC(reg), irb.CreateBitCast(full, ivec_ty));
-        SetRegFacet(ArchReg::VEC(reg), v);
+        SetReg(ArchReg::VEC(reg), v);
     }
     llvm::Value* Addr(const FrvInst* rvi) {
         llvm::Value* base = LoadGp(rvi->rs1, Facet::PTR);
