@@ -466,7 +466,7 @@ llvm::Value* RegFile::impl::GetReg(ArchReg reg, Facet facet) {
         assert(superValueTy->isIntegerTy() && "I8H from non-integer type");
         // Return directly, don't attempt to cache I8H facet.
         // TODO: caching I8H facets might give performance improvements.
-        return irb.CreateTrunc(irb.CreateLShr(superValue, irb.getInt64(8)), irb.getInt8Ty());
+        return irb.CreateTrunc(irb.CreateLShr(superValue, uint64_t(8)), irb.getInt8Ty());
     default: {
         assert(facetType->isVectorTy() && "invalid facet for GetReg");
 

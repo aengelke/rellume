@@ -106,6 +106,7 @@ code="mov ax, dx" rax=q:0x8899aabbccddeeff rdx=q:0x0011223344556677 => rax=q:0x8
 code="mov eax, edx" rax=q:0x8899aabbccddeeff rdx=q:0x0011223344556677 => rax=q:0x0000000044556677
 code="mov rax, rdx" rax=q:0x8899aabbccddeeff rdx=q:0x0011223344556677 => rax=q:0x0011223344556677
 code="mov eax, edx" rax=q:0x8899aabbccddeeff rdx=q:0x0011223344556677 => rax=q:0x0000000044556677
+code="mov ecx, eax; mov al, ch" rax=q:0x8899aabbccddeeff => rax=q:0x8899aabbccddeeee rcx=q:0xccddeeff
 
 code="mul rcx" rax=q:0x10000 rcx=q:0x3 => rax=q:0x30000 rdx=q:0x0 of=00 sf=undef zf=undef af=undef pf=undef cf=00
 code="mul rcx" rax=q:0x40000000 rcx=q:0x200000000 => rax=q:0x8000000000000000 rdx=q:0x0 of=00 sf=undef zf=undef af=undef pf=undef cf=00
