@@ -284,7 +284,7 @@ void Lifter::LiftSseMinmax(const Instr& inst, llvm::CmpInst::Predicate pred,
 
 void Lifter::LiftSseSqrt(const Instr& inst, Facet op_type) {
     llvm::Value* op1 = OpLoad(inst.op(1), op_type);
-    OpStoreVec(inst.op(0), CreateUnaryIntrinsic(llvm::Intrinsic::sqrt, op1));
+    OpStoreVec(inst.op(0), irb.CreateUnaryIntrinsic(llvm::Intrinsic::sqrt, op1));
 }
 
 void Lifter::LiftSseCvt(const Instr& inst, Facet src_type, Facet dst_type) {

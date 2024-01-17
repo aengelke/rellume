@@ -153,14 +153,9 @@ int main(int argc, char** argv) {
         std::unique_ptr<llvm::MemoryBuffer> asmbuf = llvm::MemoryBuffer::getMemBuffer(asmline_ref.drop_front(4));
         srcmgr.AddNewSourceBuffer(std::move(asmbuf), llvm::SMLoc());
 
-#if LL_LLVM_MAJOR >= 13
         llvm::MCContext ctx(triple, mai.get(), mri.get(), sti.get(), &srcmgr);
         mofi.initMCObjectFileInfo(ctx, true);
         ctx.setObjectFileInfo(&mofi);
-#else
-        llvm::MCContext ctx(mai.get(), mri.get(), &mofi, &srcmgr);
-        mofi.InitMCObjectFileInfo(triple, true, ctx);
-#endif
 
         auto mab = std::unique_ptr<llvm::MCAsmBackend>(target->createMCAsmBackend(*sti, *mri, options));
         if (mab == nullptr) {
@@ -168,11 +163,7 @@ int main(int argc, char** argv) {
             return 1;
         }
 
-#if LL_LLVM_MAJOR >= 15
         auto mce = std::unique_ptr<llvm::MCCodeEmitter>(target->createMCCodeEmitter(*mcii, ctx));
-#else
-        auto mce = std::unique_ptr<llvm::MCCodeEmitter>(target->createMCCodeEmitter(*mcii, *mri, ctx));
-#endif
         if (mce == nullptr) {
             std::cerr << "error getting MCCodeEmitter" << std::endl;
             return 1;

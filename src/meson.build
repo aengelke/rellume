@@ -16,8 +16,6 @@ endforeach
 
 rellume_inc_priv = include_directories('.')
 rellume_flags = [
-  '-DLL_LLVM_MAJOR='+libllvm.version().split('.')[0],
-  '-DRELLUME_ENABLE_CPP_HEADER',
   '-fvisibility=hidden',
   '-fno-exceptions',
   '-fno-unwind-tables',

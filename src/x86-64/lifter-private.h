@@ -73,11 +73,7 @@ private:
     }
     unsigned VectorElementCount(llvm::Type* ty) {
         auto ec = llvm::cast<llvm::VectorType>(ty)->getElementCount();
-#if LL_LLVM_MAJOR >= 12
         return ec.getFixedValue();
-#else
-        return ec.Min;
-#endif
     }
     ArchReg MapReg(const Instr::Reg reg);
 

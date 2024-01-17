@@ -75,11 +75,7 @@ void Lifter::LiftArith(const Instr& inst, bool sub) {
         auto ordering = llvm::AtomicOrdering::SequentiallyConsistent;
         llvm::Value* addr = OpAddr(inst.op(0), op2->getType());
         // Add op2 to *addr and return previous value
-#if LL_LLVM_MAJOR >= 13
         op1 = irb.CreateAtomicRMW(atomic_op, addr, op2, {}, ordering);
-#else
-        op1 = irb.CreateAtomicRMW(atomic_op, addr, op2, ordering);
-#endif
     }
 
     llvm::Value* res = irb.CreateBinOp(arith_op, op1, op2);
@@ -104,11 +100,7 @@ void Lifter::LiftCmpxchg(const Instr& inst) {
         auto ord = llvm::AtomicOrdering::SequentiallyConsistent;
         llvm::Value* ptr = OpAddr(inst.op(0), src->getType());
         // Do an atomic cmpxchg, compare *ptr with acc and set to src if equal
-#if LL_LLVM_MAJOR >= 13
         auto cmpxchg = irb.CreateAtomicCmpXchg(ptr, acc, src, {}, ord, ord);
-#else
-        llvm::Value* cmpxchg = irb.CreateAtomicCmpXchg(ptr, acc, src, ord, ord);
-#endif
         dst = irb.CreateExtractValue(cmpxchg, {0});
         FlagCalcSub(irb.CreateSub(acc, dst), acc, dst);
         SetReg(ArchReg::ZF, irb.CreateExtractValue(cmpxchg, {1}));
@@ -132,11 +124,7 @@ void Lifter::LiftXchg(const Instr& inst) {
     if (inst.op(0).is_mem()) { // always atomic
         auto ord = llvm::AtomicOrdering::SequentiallyConsistent;
         llvm::Value* addr = OpAddr(inst.op(0), op2->getType());
-#if LL_LLVM_MAJOR >= 13
         op1 = irb.CreateAtomicRMW(llvm::AtomicRMWInst::Xchg, addr, op2, {}, ord);
-#else
-        op1 = irb.CreateAtomicRMW(llvm::AtomicRMWInst::Xchg, addr, op2, ord);
-#endif
     } else {
         op1 = OpLoad(inst.op(0), Facet::I);
         OpStoreGp(inst.op(0), op2);
@@ -163,11 +151,7 @@ void Lifter::LiftAndOrXor(const Instr& inst, llvm::Instruction::BinaryOps op,
     } else {
         auto ord = llvm::AtomicOrdering::SequentiallyConsistent;
         llvm::Value* addr = OpAddr(inst.op(0), op2->getType());
-#if LL_LLVM_MAJOR >= 13
         op1 = irb.CreateAtomicRMW(armw_op, addr, op2, {}, ord);
-#else
-        op1 = irb.CreateAtomicRMW(armw_op, addr, op2, ord);
-#endif
     }
 
     llvm::Value* res = irb.CreateBinOp(op, op1, op2);
@@ -187,11 +171,7 @@ void Lifter::LiftNot(const Instr& inst) {
         auto ord = llvm::AtomicOrdering::SequentiallyConsistent;
         llvm::Value* mask = irb.getIntN(inst.op(0).bits(), -1);
         llvm::Value* addr = OpAddr(inst.op(0), mask->getType());
-#if LL_LLVM_MAJOR >= 13
         irb.CreateAtomicRMW(llvm::AtomicRMWInst::Xor, addr, mask, {}, ord);
-#else
-        irb.CreateAtomicRMW(llvm::AtomicRMWInst::Xor, addr, mask, ord);
-#endif
     }
 }
 
@@ -219,11 +199,7 @@ void Lifter::LiftIncDec(const Instr& inst) {
     } else {
         auto ord = llvm::AtomicOrdering::SequentiallyConsistent;
         llvm::Value* addr = OpAddr(inst.op(0), op2->getType());
-#if LL_LLVM_MAJOR >= 13
         op1 = irb.CreateAtomicRMW(atomic_op, addr, op2, {}, ord);
-#else
-        op1 = irb.CreateAtomicRMW(atomic_op, addr, op2, ord);
-#endif
         res = irb.CreateBinOp(arith_op, op1, op2);
     }
     if (sub)
@@ -559,11 +535,7 @@ void Lifter::LiftBittest(const Instr& inst, llvm::Instruction::BinaryOps op,
     llvm::Value* val;
     if (inst.has_lock()) {
         auto ord = llvm::AtomicOrdering::SequentiallyConsistent;
-#if LL_LLVM_MAJOR >= 13
         val = irb.CreateAtomicRMW(atomic_op, addr, modmask, {}, ord);
-#else
-        val = irb.CreateAtomicRMW(atomic_op, addr, modmask, ord);
-#endif
         goto skip_writeback;
     }
 
@@ -589,13 +561,13 @@ skip_writeback:;
 
 void Lifter::LiftMovbe(const Instr& inst) {
     llvm::Value* src = OpLoad(inst.op(1), Facet::I);
-    OpStoreGp(inst.op(0), CreateUnaryIntrinsic(llvm::Intrinsic::bswap, src));
+    OpStoreGp(inst.op(0), irb.CreateUnaryIntrinsic(llvm::Intrinsic::bswap, src));
 }
 
 void Lifter::LiftBswap(const Instr& inst) {
     assert(inst.op(0).is_reg() && "bswap with non-reg operand");
     llvm::Value* src = OpLoad(inst.op(0), Facet::I);
-    OpStoreGp(inst.op(0), CreateUnaryIntrinsic(llvm::Intrinsic::bswap, src));
+    OpStoreGp(inst.op(0), irb.CreateUnaryIntrinsic(llvm::Intrinsic::bswap, src));
 }
 
 void Lifter::LiftJmp(const Instr& inst) {
