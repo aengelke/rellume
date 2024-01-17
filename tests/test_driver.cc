@@ -368,8 +368,8 @@ class TestCase {
         for (const auto& reg_entry : *regs) {
             if (skip_regs.count(reg_entry.first) > 0)
                 continue;
-            fail |= CheckReg(reg_entry.first, reg_entry.second, state_raw,
-                             expected_raw);
+            fail |= CheckReg(reg_entry.first, reg_entry.second, expected_raw,
+                             state_raw);
         }
 
         return should_pass ? fail : !fail;
