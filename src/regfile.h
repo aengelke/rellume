@@ -132,7 +132,6 @@ public:
     llvm::BasicBlock* GetInsertBlock();
     void SetInsertPoint(llvm::BasicBlock::iterator ip);
 
-    void Clear();
     void InitWithRegFile(RegFile* parent);
     using PhiDesc = std::tuple<ArchReg, Facet, llvm::PHINode*>;
     void InitWithPHIs(std::vector<PhiDesc>*);

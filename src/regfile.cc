@@ -188,13 +188,10 @@ public:
         irb.SetInsertPoint(ip->getParent(), ip);
     }
 
-    void Clear();
     void InitWithRegFile(RegFile* parent) {
-        Clear();
         this->parent = parent;
     }
     void InitWithPHIs(std::vector<PhiDesc>* desc_vec) {
-        Clear();
         phiDescs = desc_vec;
     }
 
@@ -224,11 +221,6 @@ private:
     /// values with the same or next larger size.
     std::pair<Register*, unsigned> GetRegFold(ArchReg reg, unsigned fullSize);
 };
-
-void RegFile::impl::Clear() {
-    for (auto& reg : regs)
-        reg.clear();
-}
 
 Register* RegFile::impl::AccessReg(ArchReg reg) {
     unsigned idx = reg.Index();
@@ -555,7 +547,6 @@ RegFile::~RegFile() {}
 
 llvm::BasicBlock* RegFile::GetInsertBlock() { return pimpl->GetInsertBlock(); }
 void RegFile::SetInsertPoint(llvm::BasicBlock::iterator ip) { pimpl->SetInsertPoint(ip); }
-void RegFile::Clear() { pimpl->Clear(); }
 void RegFile::InitWithRegFile(RegFile* r) { pimpl->InitWithRegFile(r); }
 void RegFile::InitWithPHIs(std::vector<PhiDesc>* d) { pimpl->InitWithPHIs(d); }
 llvm::Value* RegFile::GetReg(ArchReg r, Facet f) { return pimpl->GetReg(r, f); }

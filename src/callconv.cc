@@ -195,11 +195,10 @@ static void Pack(BasicBlock* bb, FunctionInfo& fi, llvm::Instruction* before) {
 template<typename F>
 static void Unpack(CallConv cconv, BasicBlock* bb, FunctionInfo& fi, F get_from_reg) {
     bb->InitRegFile(cconv.ToArch(), BasicBlock::Phis::NONE);
+    // New regfile with everything cleared
     RegFile& regfile = *bb->GetRegFile();
     llvm::IRBuilder<> irb(regfile.GetInsertBlock());
 
-    // Clear all facets before entering new values.
-    regfile.Clear();
     for (const auto& [sptr_idx, off, reg, facet] : CPUStructEntries(cconv)) {
         if (reg.Kind() == ArchReg::RegKind::INVALID)
             continue;
