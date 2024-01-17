@@ -325,7 +325,11 @@ class TestCase {
         else
             builder.setEngineKind(llvm::EngineKind::Interpreter);
         builder.setErrorStr(&error);
+#if LL_LLVM_MAJOR < 18
         builder.setOptLevel(llvm::CodeGenOpt::None);
+#else
+        builder.setOptLevel(llvm::CodeGenOptLevel::None);
+#endif
         builder.setTargetOptions(options);
 
         if (llvm::ExecutionEngine* engine = builder.create()) {
