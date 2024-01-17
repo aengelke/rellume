@@ -203,7 +203,7 @@ static void Unpack(CallConv cconv, BasicBlock* bb, FunctionInfo& fi, F get_from_
         if (reg.Kind() == ArchReg::RegKind::INVALID)
             continue;
         if (llvm::Value* reg_val = get_from_reg(reg)) {
-            regfile.SetReg(reg, reg_val, RegFile::INTO_ZERO);
+            regfile.Set(reg, reg_val);
             continue;
         }
 

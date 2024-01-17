@@ -137,15 +137,6 @@ public:
     void InitWithPHIs(std::vector<PhiDesc>*);
 
     llvm::Value* GetReg(ArchReg reg, Facet facet);
-    enum WriteMode {
-        /// Set full register, insert into zero,, mark dirty
-        INTO_ZERO,
-        /// Set full register, merge with any larger parts, mark dirty
-        MERGE,
-        /// Set smaller part *after a full set* to ease access to sub parts
-        EXTRA_PART
-    };
-    void SetReg(ArchReg reg, llvm::Value*, WriteMode mode);
 
     enum class Transform : uint8_t {
         None,
@@ -159,6 +150,11 @@ public:
         X86AuxFlag,
     };
 
+    /// Set full register, insert into zero or sign extend (integer types only)
+    void Set(ArchReg reg, llvm::Value* v, bool sext = false);
+    /// Merge existing value and only overwrite the lower part
+    void Merge(ArchReg reg, llvm::Value*);
+    /// Set full register with given, lazily evaluated, transformation
     void Set(ArchReg reg, Transform t, llvm::Value* v1, llvm::Value* v2 = nullptr, llvm::Value* v3 = nullptr);
 
     /// Modified registers not yet recorded in a CallConvPack in the FunctionInfo.

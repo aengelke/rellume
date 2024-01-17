@@ -61,6 +61,16 @@ unsigned RegisterSetBitIdx(ArchReg reg) {
     return 0xffffffff;
 }
 
+namespace {
+
+unsigned valueSize(llvm::Value* value) {
+    if (value->getType()->isPointerTy())
+        return 64;
+    unsigned size = value->getType()->getPrimitiveSizeInBits();
+    assert(size != 0);
+    return size;
+}
+
 struct Register {
     /// Whether the parts larger than the first value are also updated to zero.
     bool upperZero;
@@ -89,6 +99,7 @@ struct Register {
     llvm::SmallVector<Value, 2> values;
 
     Register() : upperZero(false), transform(RegFile::Transform::None), values() {}
+    Register(bool upperZero, llvm::Value* v);
     Register(RegFile::Transform t, llvm::Value* v1, llvm::Value* v2, llvm::Value* v3);
 
     void canonicalize(llvm::IRBuilder<>& irb);
@@ -99,6 +110,11 @@ struct Register {
         values.clear();
     }
 };
+
+Register::Register(bool upperZero, llvm::Value* v)
+        : upperZero(upperZero), transform(RegFile::Transform::None) {
+    values.push_back(Value(v, valueSize(v)));
+}
 
 Register::Register(RegFile::Transform t, llvm::Value* v1, llvm::Value* v2, llvm::Value* v3) {
     assert(t != RegFile::Transform::None);
@@ -165,6 +181,8 @@ void Register::canonicalize(llvm::IRBuilder<>& irb) {
     transform = RegFile::Transform::None;
 }
 
+} // end anonymous namespace
+
 class RegFile::impl {
 public:
     impl(Arch arch, llvm::BasicBlock* bb)
@@ -196,7 +214,8 @@ public:
     }
 
     llvm::Value* GetReg(ArchReg reg, Facet facet);
-    void SetReg(ArchReg reg, llvm::Value*, WriteMode mode);
+    void Set(ArchReg reg, llvm::Value* v, bool sext = false);
+    void Merge(ArchReg reg, llvm::Value* v);
     void Set(ArchReg reg, Transform transform, llvm::Value* v1, llvm::Value* v2, llvm::Value* v3);
 
     RegisterSet& DirtyRegs() { return dirty_regs; }
@@ -498,40 +517,25 @@ llvm::Value* RegFile::impl::GetReg(ArchReg reg, Facet facet) {
     return res;
 }
 
-void RegFile::impl::SetReg(ArchReg reg, llvm::Value* value, WriteMode mode) {
-    if (mode == RegFile::EXTRA_PART)
-        return; // this is just an optimization.
+void RegFile::impl::Set(ArchReg reg, llvm::Value* value, bool sext) {
+    assert(!sext && "sign-extension to full not implemented");
+    *AccessReg(reg) = Register(/*upperZero=*/true, value);
+    dirty_regs[RegisterSetBitIdx(reg)] = true;
+}
 
-    unsigned size;
-    if (value->getType()->isPointerTy())
-        size = 64;
-    else
-        size = value->getType()->getPrimitiveSizeInBits();
-    assert(size != 0);
+void RegFile::impl::Merge(ArchReg reg, llvm::Value* value) {
+    unsigned size = valueSize(value);
     Register* rv = AccessReg(reg);
-
-    switch (mode) {
-    case RegFile::INTO_ZERO:
-        rv->clear();
-        rv->upperZero = true;
-        rv->values.push_back(Register::Value(value, size));
-        break;
-    case RegFile::MERGE: {
-        rv->canonicalize(irb);
-        // Index of first value that is NOT LARGER than the size we overwrite.
-        unsigned mergeValuePoint = 0;
-        while (mergeValuePoint < rv->values.size()) {
-            if (rv->values[mergeValuePoint].size <= size)
-                break;
-            mergeValuePoint++;
-        }
-        rv->values.truncate(mergeValuePoint);
-        rv->values.push_back(Register::Value(value, size));
-        break;
+    rv->canonicalize(irb);
+    // Index of first value that is NOT LARGER than the size we overwrite.
+    unsigned mergeValuePoint = 0;
+    while (mergeValuePoint < rv->values.size()) {
+        if (rv->values[mergeValuePoint].size <= size)
+            break;
+        mergeValuePoint++;
     }
-    default:
-        assert(false);
-    }
+    rv->values.truncate(mergeValuePoint);
+    rv->values.push_back(Register::Value(value, size));
 
     dirty_regs[RegisterSetBitIdx(reg)] = true;
 }
@@ -550,8 +554,11 @@ void RegFile::SetInsertPoint(llvm::BasicBlock::iterator ip) { pimpl->SetInsertPo
 void RegFile::InitWithRegFile(RegFile* r) { pimpl->InitWithRegFile(r); }
 void RegFile::InitWithPHIs(std::vector<PhiDesc>* d) { pimpl->InitWithPHIs(d); }
 llvm::Value* RegFile::GetReg(ArchReg r, Facet f) { return pimpl->GetReg(r, f); }
-void RegFile::SetReg(ArchReg reg, llvm::Value* value, WriteMode mode) {
-    pimpl->SetReg(reg, value, mode);
+void RegFile::Set(ArchReg reg, llvm::Value* v, bool sext) {
+    pimpl->Set(reg, v, sext);
+}
+void RegFile::Merge(ArchReg reg, llvm::Value* value) {
+    pimpl->Merge(reg, value);
 }
 void RegFile::Set(ArchReg reg, Transform t, llvm::Value* v1, llvm::Value* v2, llvm::Value* v3) {
     pimpl->Set(reg, t, v1, v2, v3);

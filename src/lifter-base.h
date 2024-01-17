@@ -75,13 +75,7 @@ protected:
         return regfile->GetReg(reg, facet);
     }
     void SetReg(ArchReg reg, llvm::Value* value) {
-        regfile->SetReg(reg, value, RegFile::INTO_ZERO);
-    }
-    void SetRegMerge(ArchReg reg, llvm::Value* value) {
-        regfile->SetReg(reg, value, RegFile::MERGE);
-    }
-    void SetRegFacet(ArchReg reg, llvm::Value* value) {
-        regfile->SetReg(reg, value, RegFile::EXTRA_PART);
+        regfile->Set(reg, value);
     }
     llvm::Value* GetFlag(ArchReg reg) {
         if (reg == ArchReg::PF) {

@@ -54,9 +54,8 @@ public:
         assert(v->getType()->isIntegerTy());
         if (reg == 0)
             return;
+        // TODO: do sign extension lazily
         SetReg(ArchReg::GP(reg), irb.CreateSExt(v, irb.getInt64Ty()));
-        if (v->getType()->getIntegerBitWidth() == 32)
-            SetRegFacet(ArchReg::GP(reg), v);
     }
     void StoreFp(unsigned reg, llvm::Value* v) {
         SetReg(ArchReg::VEC(reg), v);

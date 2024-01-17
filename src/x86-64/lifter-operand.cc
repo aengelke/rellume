@@ -186,7 +186,7 @@ void Lifter::StoreGpFacet(ArchReg reg, Facet facet, llvm::Value* value) {
         value = irb.CreateShl(irb.CreateZExt(value, irb.getInt64Ty()), 8);
         SetReg(reg, irb.CreateOr(value, maskedOld));
     } else if (facet == Facet::I8 || facet == Facet::I16) {
-        SetRegMerge(reg, value);
+        regfile->Merge(reg, value);
     } else {
         SetReg(reg, value);
     }
@@ -218,7 +218,7 @@ void Lifter::OpStoreVec(const Instr::Op op, llvm::Value* value,
         ll_operand_set_alignment(store, value->getType(), alignment, true);
     } else {
         assert(op.is_reg() && "vec-store to non-mem/non-reg");
-        SetRegMerge(MapReg(op.reg()), value);
+        regfile->Merge(MapReg(op.reg()), value);
     }
 }
 
