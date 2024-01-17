@@ -456,14 +456,22 @@ void Lifter::LiftLea(const Instr& inst) {
     // Compute as integer
     unsigned addrsz = inst.op(1).addrsz() * 8;
     Facet facet = Facet{Facet::I}.Resolve(addrsz);
-    llvm::Value* res = irb.getIntN(addrsz, inst.op(1).off());
-    if (inst.op(1).base())
-        res = irb.CreateAdd(res, GetReg(MapReg(inst.op(1).base()), facet));
-    if (inst.op(1).scale() != 0) {
+    llvm::Value* res = nullptr;
+    if (inst.op(1).off())
+        res = irb.getIntN(addrsz, inst.op(1).off());
+    if (unsigned scale = inst.op(1).scale()) {
         llvm::Value* offset = GetReg(MapReg(inst.op(1).index()), facet);
-        offset = irb.CreateMul(offset, irb.getIntN(addrsz, inst.op(1).scale()));
-        res = irb.CreateAdd(res, offset);
+        if (scale > 1) {
+            unsigned shift = scale == 2 ? 1 : scale == 4 ? 2 : 3;
+            offset = irb.CreateShl(offset, irb.getIntN(addrsz, shift));
+        }
+        res = res ? irb.CreateAdd(offset, res) : offset;
     }
+    if (inst.op(1).base()){
+        llvm::Value* reg = GetReg(MapReg(inst.op(1).base()), facet);
+        res = res ? irb.CreateAdd(reg, res) : reg;
+    }
+    res = res ? res : irb.getIntN(addrsz, 0);
 
     llvm::Type* op_type = irb.getIntNTy(inst.op(0).bits());
     OpStoreGp(inst.op(0), irb.CreateZExtOrTrunc(res, op_type));
