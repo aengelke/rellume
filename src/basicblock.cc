@@ -103,7 +103,7 @@ void BasicBlock::BranchTo(llvm::Value* cond, BasicBlock& then,
 }
 
 bool BasicBlock::FillPhis() {
-    assert(llvm::pred_size(llvm_block) <= max_preds);
+    assert(predecessors.size() <= max_preds);
     if (empty_phis.empty())
         return false;
 
