@@ -54,7 +54,7 @@ void Lifter::FlagCalcAdd(llvm::Value* res, llvm::Value* lhs,
     regfile->Set(ArchReg::PF, RegFile::Transform::TruncI8, res);
     regfile->Set(ArchReg::AF, RegFile::Transform::X86AuxFlag, res, lhs, rhs);
     if (!skip_carry)
-        SetReg(ArchReg::CF, irb.CreateICmpULT(res, lhs));
+        regfile->Set(ArchReg::CF, RegFile::Transform::IsULT, res, lhs);
 
     if (cfg.enableOverflowIntrinsics) {
         llvm::Intrinsic::ID id = llvm::Intrinsic::sadd_with_overflow;
@@ -81,7 +81,7 @@ void Lifter::FlagCalcSub(llvm::Value* res, llvm::Value* lhs,
     regfile->Set(ArchReg::PF, RegFile::Transform::TruncI8, res);
     regfile->Set(ArchReg::AF, RegFile::Transform::X86AuxFlag, res, lhs, rhs);
     if (!skip_carry)
-        SetReg(ArchReg::CF, irb.CreateICmpULT(lhs, rhs));
+        regfile->Set(ArchReg::CF, RegFile::Transform::IsULT, lhs, rhs);
 
     // Set overflow flag using arithmetic comparisons
     SetReg(ArchReg::OF, irb.CreateICmpNE(sf, irb.CreateICmpSLT(lhs, rhs)));

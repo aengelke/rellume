@@ -105,6 +105,7 @@ Register::Register(RegFile::Transform t, llvm::Value* v1, llvm::Value* v2, llvm:
     unsigned size = 0;
     switch (t) {
     case RegFile::Transform::IsZero:
+    case RegFile::Transform::IsULT:
     case RegFile::Transform::IsNeg:
     case RegFile::Transform::X86AuxFlag:
         size = 1;
@@ -142,6 +143,9 @@ void Register::canonicalize(llvm::IRBuilder<>& irb) {
         break;
     case RegFile::Transform::IsNeg:
         values[0].valueA = irb.CreateIsNeg(v1);
+        break;
+    case RegFile::Transform::IsULT:
+        values[0].valueA = irb.CreateICmpULT(v1, v2);
         break;
     case RegFile::Transform::TruncI8:
         values[0].valueA = irb.CreateTrunc(v1, irb.getInt8Ty());

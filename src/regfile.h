@@ -152,6 +152,7 @@ public:
         None,
         IsZero,
         IsNeg,
+        IsULT,
         TruncI8,
         /// Create (aligned) load, operand: pointer, some value with load type
         Load,
