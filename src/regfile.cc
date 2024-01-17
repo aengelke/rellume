@@ -33,6 +33,7 @@
 #include <llvm/IR/Instructions.h>
 #include <llvm/IR/Intrinsics.h>
 
+#include <algorithm>
 #include <array>
 #include <cassert>
 #include <cstdint>
@@ -271,21 +272,29 @@ std::pair<Register*, unsigned> RegFile::impl::GetRegFold(ArchReg reg, unsigned f
     if (!rv->upperZero && (rv->values.empty() || rv->values[0].size < fullSize)) {
         // We need to get the value, so add a PHI node.
         auto nativeFacet = NativeFacet(reg);
-        llvm::Value* nativeVal = nullptr;
         if (parent) {
-            nativeVal = parent->GetReg(reg, nativeFacet);
+            auto [oldReg, _] = parent->pimpl->GetRegFold(reg, nativeFacet.Size());
+            if (rv->values.empty()) {
+                rv->values.append(oldReg->values); // easy case: we are clean
+            } else {
+                // Copy values from parent up to the point where we are dirty.
+                unsigned dirtySize = rv->values[0].size;
+                auto copyEnd = std::find_if(oldReg->values.begin(), oldReg->values.end(),
+                    [&] (Register::Value& rvv) { return rvv.size < dirtySize; });
+                rv->values.insert(rv->values.begin(), oldReg->values.begin(), copyEnd);
+            }
+            rv->upperZero = oldReg->upperZero;
         } else if (phiDescs) {
             llvm::IRBuilder<> phiirb(GetInsertBlock(), GetInsertBlock()->begin());
             auto phi = phiirb.CreatePHI(nativeFacet.Type(irb.getContext()), 4);
             phiDescs->push_back(std::make_tuple(reg, nativeFacet, phi));
-            nativeVal = phi;
+            Register::Value nativeRvv(phi, nativeFacet.Size());
+            nativeRvv.dirty = false;
+            rv->values.insert(rv->values.begin(), std::move(nativeRvv));
         } else {
             assert(false && "accessing unset register in entry block");
             return std::make_pair(nullptr, 0);
         }
-        Register::Value nativeRvv(nativeVal, nativeFacet.Size());
-        nativeRvv.dirty = false;
-        rv->values.insert(rv->values.begin(), std::move(nativeRvv));
     }
 
     if (rv->values.empty() && rv->upperZero) {
