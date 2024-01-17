@@ -370,8 +370,11 @@ bool Lifter::Lift(const Instr& inst) {
     case FRV_BGEU: LiftBranch(inst, llvm::CmpInst::ICMP_UGE); return true;
     case FRV_ECALL:
         if (rvi->imm == 0) {
+            SetIP(inst.end(), /*nofold=*/true);
             if (cfg.syscall_implementation)
                 CallExternalFunction(cfg.syscall_implementation);
+            // Return here, syscall could have updated the PC.
+            return true;
         } else {
             SetIP(inst.start(), /*nofold=*/true);
             return false;
