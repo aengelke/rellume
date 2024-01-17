@@ -116,16 +116,14 @@ void Lifter::LiftSseMovq(const Instr& inst, Facet type) {
 
 void Lifter::LiftSseMovScalar(const Instr& inst, Facet facet) {
     llvm::Value* src = OpLoad(inst.op(1), facet);
-    if (inst.op(1).is_mem()) {
+    // NB: we can't use regfile insert into zero: SSE preserves bits >= 128
+    if (inst.op(1).is_mem()) { // Loads from memory set bits 127...x to zero
         llvm::Type* el_ty = src->getType();
         unsigned el_sz = el_ty->getPrimitiveSizeInBits();
         llvm::Type* vector_ty = llvm::VectorType::get(el_ty, 128 / el_sz, false);
-        llvm::Value* zero = llvm::Constant::getNullValue(vector_ty);
-        llvm::Value* zext = irb.CreateInsertElement(zero, src, uint64_t{0});
-        OpStoreVec(inst.op(0), zext);
-    } else {
-        OpStoreVec(inst.op(0), src);
+        OpStoreVec(inst.op(0), llvm::Constant::getNullValue(vector_ty));
     }
+    OpStoreVec(inst.op(0), src);
 }
 
 void Lifter::LiftSseMovdq(const Instr& inst, Facet facet, Alignment alignment) {
