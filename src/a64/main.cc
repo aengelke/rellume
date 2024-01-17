@@ -1006,30 +1006,7 @@ llvm::Value* Lifter::GetScalar(farmdec::Reg r, farmdec::FPSize fsz, bool fp) {
 
 // Set an A64 vector register Vr to a scalar value.
 void Lifter::SetScalar(farmdec::Reg r, llvm::Value* val) {
-    auto elemty = val->getType();
-    unsigned bits = elemty->getPrimitiveSizeInBits();
-
-    // Loosely based on the x86 lifter's OpStoreVec: we need to insert
-    // (val : elemty) into a vector (nelem x elemty) that spans the
-    // entire V register (→ IVEC).
-    Facet ivec = Facet::V2I64;
-    auto ivecty = ivec.Type(irb.getContext());
-
-    // Does val fill the entire (128-bit) V register?
-    if (bits == ivec.Size()) {
-        SetReg(ArchReg::VEC(r), irb.CreateBitCast(val, ivecty));
-        SetRegFacet(ArchReg::VEC(r), val);
-        return;
-    }
-
-    unsigned nelem = ivec.Size() / bits;
-    auto vecty = llvm::VectorType::get(elemty, nelem, false);
-
-    llvm::Value* fullvec = llvm::Constant::getNullValue(vecty);
-    fullvec = irb.CreateInsertElement(fullvec, val, uint64_t{0});
-
-    SetReg(ArchReg::VEC(r), irb.CreateBitCast(fullvec, ivecty));
-    SetRegFacet(ArchReg::VEC(r), val);
+    SetReg(ArchReg::VEC(r), val);
 }
 
 // Shift or rotate the value v. No spurious instruction is generated if the shift
