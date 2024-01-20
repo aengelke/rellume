@@ -61,10 +61,7 @@ void Lifter::FlagCalcAdd(llvm::Value* res, llvm::Value* lhs,
         llvm::Value* packed = irb.CreateBinaryIntrinsic(id, lhs, rhs);
         SetReg(ArchReg::OF, irb.CreateExtractValue(packed, 1));
     } else {
-        auto zero = llvm::Constant::getNullValue(res->getType());
-        llvm::Value* tmp1 = irb.CreateNot(irb.CreateXor(lhs, rhs));
-        llvm::Value* tmp2 = irb.CreateAnd(tmp1, irb.CreateXor(res, lhs));
-        SetReg(ArchReg::OF, irb.CreateICmpSLT(tmp2, zero));
+        regfile->Set(ArchReg::OF, RegFile::Transform::AddOverflowFlag, res, lhs, rhs);
     }
 }
 

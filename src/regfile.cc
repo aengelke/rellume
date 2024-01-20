@@ -121,6 +121,7 @@ Register::Register(RegFile::Transform t, llvm::Value* v1, llvm::Value* v2, llvm:
     case RegFile::Transform::IsZero:
     case RegFile::Transform::IsULT:
     case RegFile::Transform::IsNeg:
+    case RegFile::Transform::AddOverflowFlag:
     case RegFile::Transform::X86AuxFlag:
         size = 1;
         break;
@@ -161,6 +162,14 @@ void Register::canonicalize(llvm::IRBuilder<>& irb) {
     case RegFile::Transform::IsULT:
         values[0].valueA = irb.CreateICmpULT(v1, v2);
         break;
+    case RegFile::Transform::AddOverflowFlag: {
+        // v1 = res, v2 = lhs, v3 = rhs
+        auto zero = llvm::Constant::getNullValue(v1->getType());
+        auto tmp1 = irb.CreateNot(irb.CreateXor(v2, v3));
+        auto tmp2 = irb.CreateAnd(tmp1, irb.CreateXor(v1, v2));
+        values[0].valueA = irb.CreateICmpSLT(tmp2, zero);
+        break;
+    }
     case RegFile::Transform::TruncI8:
         values[0].valueA = irb.CreateTrunc(v1, irb.getInt8Ty());
         break;

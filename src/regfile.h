@@ -140,6 +140,7 @@ public:
         IsZero,
         IsNeg,
         IsULT,
+        AddOverflowFlag,
         TruncI8,
         /// Create (aligned) load, operand: pointer, some value with load type
         Load,
