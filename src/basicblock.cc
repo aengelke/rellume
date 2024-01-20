@@ -110,10 +110,6 @@ bool BasicBlock::FillPhis() {
     for (const auto& [reg, facet, phi] : empty_phis) {
         for (BasicBlock* pred : predecessors) {
             llvm::Value* value = pred->regfile->GetReg(reg, facet);
-            if (facet == Facet::PTR && value->getType() != phi->getType()) {
-                llvm::IRBuilder<> irb(pred->llvm_block->getTerminator());
-                value = irb.CreatePointerCast(value, phi->getType());
-            }
             phi->addIncoming(value, pred->llvm_block);
             if (predecessors.size() == 1 && phi != value) {
                 phi->replaceAllUsesWith(value);
