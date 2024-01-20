@@ -942,19 +942,16 @@ void Lifter::SetGp(farmdec::Reg r, bool w32, llvm::Value* val) {
 }
 
 void Lifter::FlagCalcAdd(llvm::Value* res, llvm::Value* lhs, llvm::Value* rhs) {
-    auto zero = llvm::Constant::getNullValue(res->getType());
-    SetReg(ArchReg::ZF, irb.CreateICmpEQ(res, zero));
-    SetReg(ArchReg::SF, irb.CreateICmpSLT(res, zero));
-    SetReg(ArchReg::CF, irb.CreateICmpULT(res, lhs));
+    regfile->Set(ArchReg::ZF, RegFile::Transform::IsZero, res);
+    regfile->Set(ArchReg::SF, RegFile::Transform::IsNeg, res);
+    regfile->Set(ArchReg::CF, RegFile::Transform::IsULT, res, lhs);
 
     if (cfg.enableOverflowIntrinsics) {
         llvm::Intrinsic::ID id = llvm::Intrinsic::sadd_with_overflow;
         llvm::Value* packed = irb.CreateBinaryIntrinsic(id, lhs, rhs);
         SetReg(ArchReg::OF, irb.CreateExtractValue(packed, 1));
     } else {
-        llvm::Value* tmp1 = irb.CreateNot(irb.CreateXor(lhs, rhs));
-        llvm::Value* tmp2 = irb.CreateAnd(tmp1, irb.CreateXor(res, lhs));
-        SetReg(ArchReg::OF, irb.CreateICmpSLT(tmp2, zero));
+        regfile->Set(ArchReg::OF, RegFile::Transform::AddOverflowFlag, res, lhs, rhs);
     }
 }
 
@@ -968,9 +965,8 @@ void Lifter::FlagCalcSub(llvm::Value* res, llvm::Value* lhs, llvm::Value* rhs) {
 }
 
 void Lifter::FlagCalcLogic(llvm::Value* res) {
-    auto zero = llvm::Constant::getNullValue(res->getType());
-    SetReg(ArchReg::ZF, irb.CreateICmpEQ(res, zero));
-    SetReg(ArchReg::SF, irb.CreateICmpSLT(res, zero));
+    regfile->Set(ArchReg::ZF, RegFile::Transform::IsZero, res);
+    regfile->Set(ArchReg::SF, RegFile::Transform::IsNeg, res);
     SetReg(ArchReg::CF, irb.getFalse());
     SetReg(ArchReg::OF, irb.getFalse());
 }
