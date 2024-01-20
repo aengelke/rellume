@@ -51,12 +51,11 @@ bool Lifter::Lift(const Instr& inst) {
 
     // Add instruction marker
     if (cfg.instr_marker) {
-        llvm::Value* rip = GetReg(ArchReg::IP, Facet::I64);
         llvm::StringRef str_ref{reinterpret_cast<const char*>(&inst),
                                 sizeof(FdInstr)};
         llvm::MDString* md = llvm::MDString::get(irb.getContext(), str_ref);
         llvm::Value* md_val = llvm::MetadataAsValue::get(irb.getContext(), md);
-        irb.CreateCall(cfg.instr_marker, {rip, md_val});
+        irb.CreateCall(cfg.instr_marker, {AddrIPRel(), md_val});
     }
 
     // Check overridden implementations first.

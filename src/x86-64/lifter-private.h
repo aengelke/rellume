@@ -111,7 +111,7 @@ private:
         llvm::Type* ty;
         llvm::Value* di;
         llvm::Value* si;
-        llvm::Value* ip;
+        uint64_t ip;
     };
     RepInfo RepBegin(const Instr& inst);
     void RepEnd(RepInfo info);

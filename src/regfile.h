@@ -42,7 +42,6 @@ public:
     enum class RegKind : uint8_t {
         INVALID = 0,
         GP,     // 64-bit
-        IP,     // 64-bit
         FLAG,   // status flag
         VEC,    // >= 128-bit
     };
@@ -79,7 +78,6 @@ public:
     }
 
     static const ArchReg INVALID;
-    static const ArchReg IP;
     static const ArchReg ZF, SF, PF, CF, OF, AF, DF;
     // x86-64-specific names ignored by other archs
     static const ArchReg RAX, RCX, RDX, RBX, RSP, RBP, RSI, RDI;
@@ -89,7 +87,6 @@ public:
 };
 
 constexpr const ArchReg ArchReg::INVALID{ArchReg::RegKind::INVALID, 0};
-constexpr const ArchReg ArchReg::IP{ArchReg::RegKind::IP, 0};
 constexpr const ArchReg ArchReg::RAX = ArchReg::GP(0);
 constexpr const ArchReg ArchReg::RCX = ArchReg::GP(1);
 constexpr const ArchReg ArchReg::RDX = ArchReg::GP(2);
@@ -156,6 +153,14 @@ public:
     void Merge(ArchReg reg, llvm::Value*);
     /// Set full register with given, lazily evaluated, transformation
     void Set(ArchReg reg, Transform t, llvm::Value* v1, llvm::Value* v2 = nullptr, llvm::Value* v3 = nullptr);
+
+    void SetPC(uint64_t addr);
+    void SetPC(llvm::Value* addr);
+    void SetPCCond(llvm::Value* cond, uint64_t addr1, uint64_t addr2);
+    void SetPCCallret(llvm::Value* addr, uint64_t check);
+    llvm::Value* GetPCValue(llvm::Value* pcBase, uint64_t pcBaseAddr, uint64_t offset = 0);
+    /// Tuple of branch cond (or null), then addr (or 0), else addr (or 0)
+    std::tuple<llvm::Value*, uint64_t, uint64_t> GetPCBranch(llvm::Value* pcBase, uint64_t pcBaseAddr);
 
     /// Modified registers not yet recorded in a CallConvPack in the FunctionInfo.
     RegisterSet& DirtyRegs();

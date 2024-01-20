@@ -119,10 +119,7 @@ public:
     void LiftBranch(const Instr& inst, llvm::CmpInst::Predicate pred) {
         const FrvInst* rvi = inst;
         auto cond = irb.CreateICmp(pred, LoadGp(rvi->rs1), LoadGp(rvi->rs2));
-        SetReg(ArchReg::IP, irb.CreateSelect(cond,
-            AddrIPRel(rvi->imm, Facet::I64),
-            AddrIPRel(inst.len(), Facet::I64)
-        ));
+        SetIPCond(cond, inst.start() + rvi->imm, inst.end());
     }
     void LiftDivRem(const FrvInst* rvi, llvm::Instruction::BinaryOps op,
                      Facet f) {
@@ -297,12 +294,11 @@ bool Lifter::Lift(const Instr& inst) {
 
     // TODO: Add instruction marker
     if (cfg.instr_marker) {
-        llvm::Value* rip = GetReg(ArchReg::IP, Facet::I64);
         llvm::StringRef str_ref{reinterpret_cast<const char*>(rvi),
                                 sizeof(FrvInst)};
         llvm::MDString* md = llvm::MDString::get(irb.getContext(), str_ref);
         llvm::Value* md_val = llvm::MetadataAsValue::get(irb.getContext(), md);
-        irb.CreateCall(cfg.instr_marker, {rip, md_val});
+        irb.CreateCall(cfg.instr_marker, {AddrIPRel(), md_val});
     }
 
     // Check overridden implementations first.
@@ -320,13 +316,11 @@ bool Lifter::Lift(const Instr& inst) {
 
     case FRV_JAL:
     case FRV_JALR: {
-        llvm::Value* ret_addr = AddrIPRel(inst.len(), Facet::I64);
-        if (rvi->rs1 != FRV_REG_INV) {
-            auto tgt = irb.CreateAdd(LoadGp(rvi->rs1, Facet::I64), irb.getInt64(rvi->imm));
-            SetReg(ArchReg::IP, tgt);
-        } else {
-            SetReg(ArchReg::IP, AddrIPRel(rvi->imm, Facet::I64));
-        }
+        llvm::Value* ret_addr = AddrIPRel(inst.len());
+        if (rvi->rs1 != FRV_REG_INV)
+            SetIP(irb.CreateAdd(LoadGp(rvi->rs1, Facet::I64), irb.getInt64(rvi->imm)));
+        else
+            SetIP(inst.start() + rvi->imm);
         StoreGp(rvi->rd, ret_addr);
 
         // For discussion, see x86-64 lifting of call/ret.
@@ -337,10 +331,7 @@ bool Lifter::Lift(const Instr& inst) {
                 ForceReturn();
             } else if (rdl && (!rs1l || rvi->rs1 == rvi->rd)) {
                 CallExternalFunction(cfg.call_function);
-                llvm::Value* cont_addr = GetReg(ArchReg::IP, Facet::I64);
-                llvm::Value* eq = irb.CreateICmpEQ(cont_addr, ret_addr);
-                // This allows for optimization of the common case (equality).
-                SetReg(ArchReg::IP, irb.CreateSelect(eq, ret_addr, cont_addr));
+                SetIPCallret(inst.end());
             }
         }
         return true;
@@ -365,7 +356,7 @@ bool Lifter::Lift(const Instr& inst) {
         break;
 
     case FRV_LUI: StoreGp(rvi->rd, irb.getInt64(rvi->imm)); break;
-    case FRV_AUIPC: StoreGp(rvi->rd, AddrIPRel(rvi->imm, Facet::I64)); break;
+    case FRV_AUIPC: StoreGp(rvi->rd, AddrIPRel(rvi->imm)); break;
 
     case FRV_LB: LiftLoad(rvi, llvm::Instruction::SExt, Facet::I8); break;
     case FRV_LBU: LiftLoad(rvi, llvm::Instruction::ZExt, Facet::I8); break;

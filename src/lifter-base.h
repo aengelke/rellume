@@ -95,7 +95,21 @@ protected:
                 SetReg(reg, undef);
         }
     }
-    void SetIP(uint64_t inst_addr, bool nofold = false);
+    void SetIP(uint64_t inst_addr, bool nofold = false) {
+        if (nofold)
+            regfile->SetPC(irb.getInt64(inst_addr));
+        else
+            regfile->SetPC(inst_addr);
+    }
+    void SetIP(llvm::Value* addr) {
+        regfile->SetPC(addr);
+    }
+    void SetIPCond(llvm::Value* cond, uint64_t addr1, uint64_t addr2) {
+        regfile->SetPCCond(cond, addr1, addr2);
+    }
+    void SetIPCallret(uint64_t retaddr) {
+        regfile->SetPCCallret(AddrIPRel(), retaddr);
+    }
 
     void SetInsertBlock(BasicBlock* block) {
         ablock.SetInsertBlock(block);
@@ -103,7 +117,9 @@ protected:
         irb.SetInsertPoint(regfile->GetInsertBlock());
     }
 
-    llvm::Value* AddrIPRel(uint64_t off, Facet facet);
+    llvm::Value* AddrIPRel(uint64_t off = 0) {
+        return regfile->GetPCValue(fi.pc_base_value, fi.pc_base_addr, off);
+    }
     llvm::Value* AddrConst(uint64_t addr);
 
     void CallExternalFunction(llvm::Function* fn);

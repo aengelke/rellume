@@ -1,5 +1,5 @@
 [
-    {"name": "rip",  "size": 8,  "reg": ["IP", "I64"], "export": true},
+    {"name": "rip",  "size": 8,  "reg": ["INVALID", "I64"], "export": true},
     {"name": "x0",  "size": 8,  "reg": ["GP(0)", "I64"]},
     {"name": "x1",  "size": 8,  "reg": ["GP(1)", "I64"], "export": true},
     {"name": "x2",  "size": 8,  "reg": ["GP(2)", "I64"], "export": true},

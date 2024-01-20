@@ -46,8 +46,9 @@
 namespace rellume::x86_64 {
 
 ArchReg Lifter::MapReg(const Instr::Reg reg) {
+    assert(reg.rt != FD_RT_GPL || reg.ri != FD_REG_IP);
     if (reg.rt == FD_RT_GPL)
-        return reg.ri == FD_REG_IP ? ArchReg::IP : ArchReg::GP(reg.ri);
+        return ArchReg::GP(reg.ri);
     else if (reg.rt == FD_RT_GPH)
         return ArchReg::GP(reg.ri - FD_REG_AH);
     else if (reg.rt == FD_RT_VEC)
@@ -89,6 +90,10 @@ llvm::Value* Lifter::OpAddr(const Instr::Op op, llvm::Type* element_type,
 
         res = irb.CreateZExt(res, irb.getInt64Ty());
         return irb.CreateIntToPtr(res, irb.getPtrTy(addrspace));
+    }
+
+    if (op.base().ri == FD_REG_IP) {
+        return irb.CreateIntToPtr(AddrIPRel(op.off()), irb.getPtrTy());
     }
 
     llvm::Type* scale_type = nullptr;
@@ -155,8 +160,6 @@ llvm::Value* Lifter::OpLoad(const Instr::Op op, Facet facet,
     facet = facet.Resolve(op.bits());
     if (op.is_imm()) {
         return irb.getIntN(op.bits(), op.imm());
-    } else if (op.is_pcrel()) {
-        return AddrIPRel(op.pcrel(), facet);
     } else if (op.is_reg()) {
         if (facet == Facet::I8 && op.reg().rt == FD_RT_GPH)
             facet = Facet::I8H;

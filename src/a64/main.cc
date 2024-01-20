@@ -53,12 +53,11 @@ bool Lifter::Lift(const Instr& inst) {
 
     // Add instruction marker
     if (cfg.instr_marker) {
-        llvm::Value* rip = GetReg(ArchReg::IP, Facet::I64);
         llvm::StringRef str_ref{reinterpret_cast<const char*>(&inst),
                                 sizeof(FdInstr)};
         llvm::MDString* md = llvm::MDString::get(irb.getContext(), str_ref);
         llvm::Value* md_val = llvm::MetadataAsValue::get(irb.getContext(), md);
-        irb.CreateCall(cfg.instr_marker, {rip, md_val});
+        irb.CreateCall(cfg.instr_marker, {AddrIPRel(), md_val});
     }
 
     // Check overridden implementations first.
@@ -92,7 +91,7 @@ bool Lifter::Lift(const Instr& inst) {
     case farmdec::A64_ADRP: {
         // Scaling to page granularity is already handled in farmdec, but we need to mask out
         // the bottom 12 bits.
-        auto masked_pc = irb.CreateAnd(GetReg(ArchReg::IP, Facet::I64), irb.getInt64(~(uint64_t)4095));
+        auto masked_pc = irb.CreateAnd(AddrIPRel(), irb.getInt64(~(uint64_t)4095));
         SetGp(a64.rd, /*w32=*/false, irb.CreateAdd(masked_pc, irb.getInt64(a64.offset)));
         break;
     }
@@ -222,7 +221,7 @@ bool Lifter::Lift(const Instr& inst) {
         SetGp(a64.rd, w32, Shift(GetGp(a64.rn, w32), farmdec::SH_ROR, a64.imm));
         break;
     case farmdec::A64_BCOND:
-        SetReg(ArchReg::IP, irb.CreateSelect(IsTrue(fad_get_cond(a64.flags)), PCRel(a64.offset), PCRel(inst.len())));
+        SetIPCond(IsTrue(fad_get_cond(a64.flags)), inst.start() + a64.offset, inst.end());
         return true;
     case farmdec::A64_SVC:
         // SVC has an immediate, but cfg.syscall_implementation takes only a CPU state pointer.
@@ -354,7 +353,7 @@ bool Lifter::Lift(const Instr& inst) {
         SetIP(inst.start() + a64.offset);
         return true;
     case farmdec::A64_BR:
-        SetReg(ArchReg::IP, GetGp(a64.rn, false));
+        SetIP(GetGp(a64.rn, false));
         return true;
     case farmdec::A64_BL:
     case farmdec::A64_BLR: {
@@ -365,7 +364,7 @@ bool Lifter::Lift(const Instr& inst) {
         SetGp(30, false, ret_addr);        // X30: Link Register (LR)
 
         if (a64.op == farmdec::A64_BLR)
-            SetReg(ArchReg::IP, GetGp(a64.rn, false));
+            SetIP(GetGp(a64.rn, false));
         else
             SetIP(inst.start() + a64.offset);
 
@@ -374,9 +373,7 @@ bool Lifter::Lift(const Instr& inst) {
 
             // The external function call may manipulate the PC in non-obvious ways (e.g. exceptions).
             // See also the comment in the x86_64 LiftCall method.
-            llvm::Value* cont_addr = GetReg(ArchReg::IP, Facet::I64);
-            llvm::Value* eq = irb.CreateICmpEQ(cont_addr, ret_addr);
-            SetReg(ArchReg::IP, irb.CreateSelect(eq, ret_addr, cont_addr)); // common case
+            SetIPCallret(inst.end());
         }
         return true;
     }
@@ -384,7 +381,7 @@ bool Lifter::Lift(const Instr& inst) {
         if (cfg.call_ret_clobber_flags)
             SetFlagUndef({ArchReg::OF, ArchReg::SF, ArchReg::ZF, ArchReg::CF});
 
-        SetReg(ArchReg::IP, GetGp(a64.rn, false));
+        SetIP(GetGp(a64.rn, false));
 
         if (cfg.call_function) {
             // If we are in call-ret-lifting mode, forcefully return. Otherwise, we
@@ -397,9 +394,7 @@ bool Lifter::Lift(const Instr& inst) {
         // CBZ: rt == 0; CBNZ: rt != 0
         auto pred = (a64.op == farmdec::A64_CBZ) ? llvm::CmpInst::Predicate::ICMP_EQ : llvm::CmpInst::Predicate::ICMP_NE;
         auto do_branch = irb.CreateICmp(pred, GetGp(a64.rt, w32), irb.getIntN(bits, 0));
-        auto on_true = PCRel(a64.offset);
-        auto on_false = PCRel(inst.len()); // next instr
-        SetReg(ArchReg::IP, irb.CreateSelect(do_branch, on_true, on_false));
+        SetIPCond(do_branch, inst.start() + a64.offset, inst.end());
         return true;
     }
     case farmdec::A64_TBZ:
@@ -411,9 +406,7 @@ bool Lifter::Lift(const Instr& inst) {
         // TBZ: bit == 0; TBNZ: bit != 0
         auto pred = (a64.op == farmdec::A64_TBZ) ? llvm::CmpInst::Predicate::ICMP_EQ : llvm::CmpInst::Predicate::ICMP_NE;
         auto do_branch = irb.CreateICmp(pred, bit, irb.getIntN(bits, 0));
-        auto on_true = PCRel(a64.tbz.offset);
-        auto on_false = PCRel(inst.len()); // next instr
-        SetReg(ArchReg::IP, irb.CreateSelect(do_branch, on_true, on_false));
+        SetIPCond(do_branch, inst.start() + a64.tbz.offset, inst.end());
         return true;
     }
     case farmdec::A64_UDIV: {
@@ -1132,7 +1125,7 @@ llvm::AtomicOrdering Lifter::Ordering(farmdec::MemOrdering mo) {
 
 // Returns PC-relative address as i64, suitable for storing into PC again.
 llvm::Value* Lifter::PCRel(uint64_t off) {
-    return AddrIPRel(off, Facet::I64);
+    return AddrIPRel(off);
 }
 
 // Dispatches to the correct addressing mode handler.

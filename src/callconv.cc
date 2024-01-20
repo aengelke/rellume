@@ -199,6 +199,7 @@ static void Unpack(CallConv cconv, BasicBlock* bb, FunctionInfo& fi, F get_from_
     RegFile& regfile = *bb->GetRegFile();
     llvm::IRBuilder<> irb(regfile.GetInsertBlock());
 
+    regfile.SetPC(irb.CreateLoad(irb.getInt64Ty(), fi.sptr_raw));
     for (const auto& [sptr_idx, off, reg, facet] : CPUStructEntries(cconv)) {
         if (reg.Kind() == ArchReg::RegKind::INVALID)
             continue;
@@ -310,6 +311,7 @@ void CallConv::OptimizePacks(FunctionInfo& fi, BasicBlock* entry) {
         if (!regfile.StartsClean())
             regset |= bb_map.lookup(pack.bb).first;
         llvm::IRBuilder<> irb(pack.packBefore);
+        irb.CreateStore(regfile.GetPCValue(fi.pc_base_value, fi.pc_base_addr), fi.sptr_raw);
         for (const auto& [sptr_idx, off, reg, facet] : CPUStructEntries(*this)) {
             if (reg.Kind() == ArchReg::RegKind::INVALID)
                 continue;

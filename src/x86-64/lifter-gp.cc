@@ -429,25 +429,30 @@ void Lifter::LiftLea(const Instr& inst) {
     assert(inst.op(0).is_reg());
     assert(inst.op(1).is_mem());
 
-    // Compute as integer
-    unsigned addrsz = inst.op(1).addrsz() * 8;
-    Facet facet = Facet{Facet::I}.Resolve(addrsz);
     llvm::Value* res = nullptr;
-    if (inst.op(1).off())
-        res = irb.getIntN(addrsz, inst.op(1).off());
-    if (unsigned scale = inst.op(1).scale()) {
-        llvm::Value* offset = GetReg(MapReg(inst.op(1).index()), facet);
-        if (scale > 1) {
-            unsigned shift = scale == 2 ? 1 : scale == 4 ? 2 : 3;
-            offset = irb.CreateShl(offset, irb.getIntN(addrsz, shift));
+    if (inst.op(1).base().ri == FD_REG_IP) {
+        res = AddrIPRel(inst.op(1).off());
+    } else {
+        // Compute as integer
+        unsigned addrsz = inst.op(1).addrsz() * 8;
+        Facet facet = Facet{Facet::I}.Resolve(addrsz);
+        if (inst.op(1).off())
+            res = irb.getIntN(addrsz, inst.op(1).off());
+        if (unsigned scale = inst.op(1).scale()) {
+            llvm::Value* offset = GetReg(MapReg(inst.op(1).index()), facet);
+            if (scale > 1) {
+                unsigned shift = scale == 2 ? 1 : scale == 4 ? 2 : 3;
+                offset = irb.CreateShl(offset, irb.getIntN(addrsz, shift));
+            }
+            res = res ? irb.CreateAdd(offset, res) : offset;
         }
-        res = res ? irb.CreateAdd(offset, res) : offset;
+        if (inst.op(1).base()){
+            llvm::Value* reg = GetReg(MapReg(inst.op(1).base()), facet);
+            res = res ? irb.CreateAdd(reg, res) : reg;
+        }
+        res = res ? res : irb.getIntN(addrsz, 0);
     }
-    if (inst.op(1).base()){
-        llvm::Value* reg = GetReg(MapReg(inst.op(1).base()), facet);
-        res = res ? irb.CreateAdd(reg, res) : reg;
-    }
-    res = res ? res : irb.getIntN(addrsz, 0);
+
 
     llvm::Type* op_type = irb.getIntNTy(inst.op(0).bits());
     OpStoreGp(inst.op(0), irb.CreateZExtOrTrunc(res, op_type));
@@ -572,24 +577,21 @@ void Lifter::LiftBswap(const Instr& inst) {
 
 void Lifter::LiftJmp(const Instr& inst) {
     // Force default data segment, 3e is notrack.
-    SetReg(ArchReg::IP, OpLoad(inst.op(0), Facet::I64, ALIGN_NONE, FD_REG_DS));
+    if (inst.op(0).is_pcrel())
+        SetIP(inst.end() + inst.op(0).pcrel());
+    else
+        SetIP(OpLoad(inst.op(0), Facet::I64, ALIGN_NONE, FD_REG_DS));
 }
 
 void Lifter::LiftJcc(const Instr& inst, Condition cond) {
-    SetReg(ArchReg::IP, irb.CreateSelect(FlagCond(cond),
-        OpLoad(inst.op(0), Facet::I64),
-        GetReg(ArchReg::IP, Facet::I64)
-    ));
+    SetIPCond(FlagCond(cond), inst.end() + inst.op(0).pcrel(), inst.end());
 }
 
 void Lifter::LiftJcxz(const Instr& inst) {
     unsigned sz = inst.addrsz();
     llvm::Value* cx = GetReg(ArchReg::RCX, Facet::In(sz * 8));
     llvm::Value* cond = irb.CreateICmpEQ(cx, irb.getIntN(sz*8, 0));
-    SetReg(ArchReg::IP, irb.CreateSelect(cond,
-        OpLoad(inst.op(0), Facet::I64),
-        GetReg(ArchReg::IP, Facet::I64)
-    ));
+    SetIPCond(cond, inst.end() + inst.op(0).pcrel(), inst.end());
 }
 
 void Lifter::LiftLoop(const Instr& inst) {
@@ -607,10 +609,7 @@ void Lifter::LiftLoop(const Instr& inst) {
     else if (inst.type() == FDI_LOOPNZ)
         cond = irb.CreateAnd(cond, irb.CreateNot(GetFlag(ArchReg::ZF)));
 
-    SetReg(ArchReg::IP, irb.CreateSelect(cond,
-        OpLoad(inst.op(0), Facet::I64),
-        GetReg(ArchReg::IP, Facet::I64)
-    ));
+    SetIPCond(cond, inst.end() + inst.op(0).pcrel(), inst.end());
 }
 
 void Lifter::LiftCall(const Instr& inst) {
@@ -619,10 +618,13 @@ void Lifter::LiftCall(const Instr& inst) {
                       ArchReg::CF});
 
     // Force default data segment, 3e is notrack.
-    llvm::Value* new_rip = OpLoad(inst.op(0), Facet::I, ALIGN_NONE, FD_REG_DS);
-    llvm::Value* ret_addr = GetReg(ArchReg::IP, Facet::I64);
-    StackPush(ret_addr);
-    SetReg(ArchReg::IP, new_rip);
+    llvm::Value* new_rip;
+    if (inst.op(0).is_pcrel())
+        new_rip = AddrIPRel(inst.op(0).pcrel());
+    else
+        new_rip = OpLoad(inst.op(0), Facet::I, ALIGN_NONE, FD_REG_DS);
+    StackPush(AddrIPRel()); // return address
+    SetIP(new_rip);
 
     if (cfg.call_function) {
         CallExternalFunction(cfg.call_function);
@@ -632,10 +634,7 @@ void Lifter::LiftCall(const Instr& inst) {
         // We will continue with the tail_function (if specified) and enlarge
         // our shadow stack; and things will be slow. If someone uses such
         // constructs often or on a critical path, they get what they deserve.
-        llvm::Value* cont_addr = GetReg(ArchReg::IP, Facet::I64);
-        llvm::Value* eq = irb.CreateICmpEQ(cont_addr, ret_addr);
-        // This allows for optimization of the common case (equality).
-        SetReg(ArchReg::IP, irb.CreateSelect(eq, ret_addr, cont_addr));
+        SetIPCallret(inst.end());
     }
 }
 
@@ -645,7 +644,7 @@ void Lifter::LiftRet(const Instr& inst) {
         SetFlagUndef({ArchReg::OF, ArchReg::SF, ArchReg::ZF, ArchReg::AF, ArchReg::PF,
                       ArchReg::CF});
 
-    SetReg(ArchReg::IP, StackPop());
+    SetIP(StackPop());
 
     if (inst.op(0)) {
         llvm::Value* rsp = GetReg(ArchReg::RSP, Facet::PTR);
@@ -661,7 +660,7 @@ void Lifter::LiftRet(const Instr& inst) {
 }
 
 void Lifter::LiftSyscall(const Instr& inst) {
-    SetReg(ArchReg::RCX, GetReg(ArchReg::IP, Facet::I64));
+    SetReg(ArchReg::RCX, AddrIPRel());
     SetReg(ArchReg::GP(11), FlagAsReg(64));
 
     if (cfg.syscall_implementation)
@@ -717,7 +716,7 @@ Lifter::RepInfo Lifter::RepBegin(const Instr& inst) {
     if (info.mode != RepInfo::NO_REP) {
         info.loop_block = ablock.AddBlock();
         info.cont_block = ablock.AddBlock();
-        info.ip = GetReg(ArchReg::IP, Facet::I64);
+        info.ip = inst.end();
 
         llvm::Value* count = GetReg(ArchReg::RCX, Facet::I64);
         llvm::Value* zero = llvm::Constant::getNullValue(count->getType());
@@ -768,7 +767,7 @@ void Lifter::RepEnd(RepInfo info) {
 
     // Ensure that we don't generate an unused PHI node which may end up in the
     // register file if the REP is at the end of a basic block.
-    SetReg(ArchReg::IP, info.ip);
+    SetIP(info.ip);
 }
 
 void Lifter::LiftLods(const Instr& inst) {
@@ -788,7 +787,6 @@ void Lifter::LiftStos(const Instr& inst) {
         auto di = GetReg(ArchReg::RDI, Facet::PTR);
         auto cx = GetReg(ArchReg::RCX, Facet::I64);
         auto ax = GetReg(ArchReg::RAX, Facet::I8);
-        auto ip = GetReg(ArchReg::IP, Facet::I64);
 
         auto* df0_block = ablock.AddBlock();
         auto* df1_block = ablock.AddBlock();
@@ -811,7 +809,7 @@ void Lifter::LiftStos(const Instr& inst) {
 
         SetInsertBlock(cont_block);
         SetReg(ArchReg::RCX, irb.getInt64(0));
-        SetReg(ArchReg::IP, ip);
+        SetIP(inst.end());
         return;
     }
 

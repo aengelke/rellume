@@ -40,6 +40,7 @@
 #include <llvm/IR/Function.h>
 #include <llvm/IR/GlobalValue.h>
 #include <llvm/IR/InstIterator.h>
+#include <llvm/IR/Instructions.h>
 #include <llvm/IR/Intrinsics.h>
 #include <llvm/IR/Type.h>
 #include <llvm/IR/Verifier.h>
@@ -61,7 +62,6 @@ class LiftHelper {
     std::unique_ptr<ArchBasicBlock> exit_block;
 
     ArchBasicBlock& ResolveAddr(uint64_t addr);
-    ArchBasicBlock& ResolveAddr(llvm::Value* addr);
 
 public:
     LiftHelper(Function* func) : func(func) {}
@@ -70,6 +70,8 @@ public:
 };
 
 ArchBasicBlock& LiftHelper::ResolveAddr(uint64_t addr) {
+    if (!addr)
+        return *exit_block;
     auto block_it = block_map.find(addr);
     if (block_it != block_map.end())
         return *(block_it->second);
@@ -88,37 +90,6 @@ ArchBasicBlock& LiftHelper::ResolveAddr(uint64_t addr) {
     auto ab = std::make_unique<ArchBasicBlock>(fi.fn, phi_mode, func->cfg->arch,
                                                instr_it->second.preds);
     return *(block_map[addr] = std::move(ab));
-}
-
-ArchBasicBlock& LiftHelper::ResolveAddr(llvm::Value* addr) {
-    uint64_t addr_skew = 0;
-
-    // Strip off the base_rip from the expression.
-    // Trivial case: no offset has ever been added.
-    if (addr == fi.pc_base_value) {
-        addr_skew = fi.pc_base_addr;
-        addr = llvm::ConstantInt::get(addr->getType(), 0);
-    }
-    // We can either have an instruction...
-    if (auto binop = llvm::dyn_cast<llvm::BinaryOperator>(addr)) {
-        if (binop->getOpcode() == llvm::Instruction::Add &&
-            binop->getOperand(0) == fi.pc_base_value) {
-            addr_skew = fi.pc_base_addr;
-            addr = binop->getOperand(1);
-        }
-    }
-    // ... or a constant expression for this.
-    if (auto expr = llvm::dyn_cast<llvm::ConstantExpr>(addr)) {
-        if (expr->getOpcode() == llvm::Instruction::Add &&
-            expr->getOperand(0) == fi.pc_base_value) {
-            addr_skew = fi.pc_base_addr;
-            addr = expr->getOperand(1);
-        }
-    }
-
-    if (auto const_addr = llvm::dyn_cast<llvm::ConstantInt>(addr))
-        return ResolveAddr(addr_skew + const_addr->getZExtValue());
-    return *exit_block;
 }
 
 llvm::Function* LiftHelper::Lift() {
@@ -186,7 +157,7 @@ llvm::Function* LiftHelper::Lift() {
             fi.pc_base_value = nullptr;
         } else {
             RegFile* entry_rf = entry_block->GetInsertBlock()->GetRegFile();
-            fi.pc_base_value = entry_rf->GetReg(ArchReg::IP, Facet::I64);
+            fi.pc_base_value = entry_rf->GetPCValue(nullptr, 0);
         }
     }
 
@@ -220,19 +191,26 @@ llvm::Function* LiftHelper::Lift() {
                     cur_ab->BranchTo(*exit_block);
                     continue;
                 }
-                llvm::Value* next_rip = regfile->GetReg(ArchReg::IP, Facet::I64);
-                if (auto select = llvm::dyn_cast<llvm::SelectInst>(next_rip)) {
-                    cur_ab->BranchTo(select->getCondition(),
-                                     ResolveAddr(select->getTrueValue()),
-                                     ResolveAddr(select->getFalseValue()));
-                } else {
-                    cur_ab->BranchTo(ResolveAddr(next_rip));
-                }
+                auto [cond, addr1, addr2] = regfile->GetPCBranch(fi.pc_base_value, fi.pc_base_addr);
+                if (auto cst = llvm::dyn_cast<llvm::ConstantInt>(cond))
+                    cur_ab->BranchTo(ResolveAddr(cst->isZero() ? addr2 : addr1));
+                else
+                    cur_ab->BranchTo(cond, ResolveAddr(addr1), ResolveAddr(addr2));
             }
         }
     }
 
     exit_block->GetInsertBlock()->InitRegFile(cfg->arch, phi_mode, /*seal=*/true);
+    {
+        llvm::BasicBlock* exitbb = *exit_block->GetInsertBlock();
+        const auto& preds = exit_block->GetInsertBlock()->Predecessors();
+        auto phi = llvm::PHINode::Create(llvm::Type::getInt64Ty(ctx), preds.size(), "", exitbb);
+        for (BasicBlock* pred : preds) {
+            auto predpc = pred->GetRegFile()->GetPCValue(fi.pc_base_value, fi.pc_base_addr);
+            phi->addIncoming(predpc, *pred);
+        }
+        exit_block->GetInsertBlock()->GetRegFile()->SetPC(phi);
+    }
 
     // Exit block packs values together and optionally returns something.
     if (cfg->tail_function) {

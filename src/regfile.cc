@@ -46,8 +46,6 @@ namespace rellume {
 
 unsigned RegisterSetBitIdx(ArchReg reg) {
     switch (reg.Kind()) {
-    case ArchReg::RegKind::IP:
-        return 0;
     case ArchReg::RegKind::FLAG:
         return 1 + reg.Index();
     case ArchReg::RegKind::GP:
@@ -218,11 +216,45 @@ public:
     void Merge(ArchReg reg, llvm::Value* v);
     void Set(ArchReg reg, Transform transform, llvm::Value* v1, llvm::Value* v2, llvm::Value* v3);
 
+    void SetPC(uint64_t addr) {
+        pc = PCReg{PCReg::Const, nullptr, addr, 0};
+    }
+    void SetPC(llvm::Value* addr) {
+        pc = PCReg{PCReg::Value, addr, 0, 0};
+    }
+    void SetPCCond(llvm::Value* cond, uint64_t addr1, uint64_t addr2) {
+        pc = PCReg{PCReg::CondBr, cond, addr1, addr2};
+    }
+    void SetPCCallret(llvm::Value* addr, uint64_t check) {
+        pc = PCReg{PCReg::Check, addr, check, 0};
+    }
+    llvm::Value* GetPCValue(llvm::Value* pcBase, uint64_t pcBaseAddr, uint64_t offset);
+    std::tuple<llvm::Value*, uint64_t, uint64_t> GetPCBranch(llvm::Value* pcBase, uint64_t pcBaseAddr);
+
     RegisterSet& DirtyRegs() { return dirty_regs; }
     bool StartsClean() { return !parent && !phiDescs; }
 
 private:
+    struct PCReg {
+        enum Mode {
+            Uninitialized,
+            /// An arbitrary, opaque LLVM-IR value
+            Value,
+            /// Offset to pc_base
+            Const,
+            /// Conditional branch, two offsets to pc_base
+            CondBr,
+            /// Check for callret mode, branch(value == offset, offset, value)
+            Check
+        };
+        Mode mode = Uninitialized;
+        llvm::Value* llvmVal;
+        uint64_t offset1;
+        uint64_t offset2;
+    };
+
     llvm::IRBuilder<> irb;
+    PCReg pc;
     std::array<Register, 72> regs;
 
     RegFile* parent = nullptr;
@@ -239,14 +271,17 @@ private:
     /// dirty and missing parts if necessary. Returns the index into register
     /// values with the same or next larger size.
     std::pair<Register*, unsigned> GetRegFold(ArchReg reg, unsigned fullSize);
+
+    llvm::Value* AddrPCBase(llvm::Value* pcBase, uint64_t pcBaseAddr, uint64_t addr) {
+        if (pcBase)
+            return irb.CreateAdd(pcBase, irb.getInt64(addr - pcBaseAddr));
+        return irb.getInt64(addr);
+    }
 };
 
 Register* RegFile::impl::AccessReg(ArchReg reg) {
     unsigned idx = reg.Index();
     switch (reg.Kind()) {
-    case ArchReg::RegKind::IP:
-        assert(idx < 1);
-        return &regs[0 + idx];
     case ArchReg::RegKind::FLAG:
         assert(idx < 7);
         return &regs[1 + idx];
@@ -257,6 +292,7 @@ Register* RegFile::impl::AccessReg(ArchReg reg) {
         assert(idx < 32);
         return &regs[40 + idx];
     default:
+        assert(false);
         return nullptr;
     }
 }
@@ -264,8 +300,6 @@ Register* RegFile::impl::AccessReg(ArchReg reg) {
 Facet RegFile::impl::NativeFacet(ArchReg reg) {
     switch (reg.Kind()) {
     case ArchReg::RegKind::GP:
-        return Facet::I64;
-    case ArchReg::RegKind::IP:
         return Facet::I64;
     case ArchReg::RegKind::FLAG:
         if (reg == ArchReg::PF)
@@ -546,6 +580,43 @@ void RegFile::impl::Set(ArchReg reg, Transform transform, llvm::Value* v1,
     dirty_regs[RegisterSetBitIdx(reg)] = true;
 }
 
+llvm::Value* RegFile::impl::GetPCValue(llvm::Value* pcBase, uint64_t pcBaseAddr, uint64_t offset) {
+    switch (pc.mode) {
+    case PCReg::Value:
+    case PCReg::Check:
+        if (offset)
+            return irb.CreateAdd(pc.llvmVal, irb.getInt64(offset));
+        return pc.llvmVal;
+    case PCReg::Const:
+        return AddrPCBase(pcBase, pcBaseAddr, pc.offset1 + offset);
+    case PCReg::CondBr:
+        return irb.CreateSelect(pc.llvmVal,
+            AddrPCBase(pcBase, pcBaseAddr, pc.offset1 + offset),
+            AddrPCBase(pcBase, pcBaseAddr, pc.offset2 + offset));
+    default:
+        assert(false);
+        return nullptr;
+    }
+}
+
+std::tuple<llvm::Value*, uint64_t, uint64_t> RegFile::impl::GetPCBranch(llvm::Value* pcBase, uint64_t pcBaseAddr) {
+    switch (pc.mode) {
+    case PCReg::Value:
+        return std::make_tuple(irb.getTrue(), 0, 0);
+    case PCReg::Const:
+        return std::make_tuple(irb.getTrue(), pc.offset1, 0);
+    case PCReg::CondBr:
+        return std::make_tuple(pc.llvmVal, pc.offset1, pc.offset2);
+    case PCReg::Check: {
+        auto cond = irb.CreateICmpEQ(pc.llvmVal, AddrPCBase(pcBase, pcBaseAddr, pc.offset1));
+        return std::make_tuple(cond, pc.offset1, 0);
+    }
+    default:
+        assert(false);
+        return std::make_tuple(nullptr, 0, 0);
+    }
+}
+
 RegFile::RegFile(Arch arch, llvm::BasicBlock* bb) : pimpl{std::make_unique<impl>(arch, bb)} {}
 RegFile::~RegFile() {}
 
@@ -562,6 +633,24 @@ void RegFile::Merge(ArchReg reg, llvm::Value* value) {
 }
 void RegFile::Set(ArchReg reg, Transform t, llvm::Value* v1, llvm::Value* v2, llvm::Value* v3) {
     pimpl->Set(reg, t, v1, v2, v3);
+}
+void RegFile::SetPC(uint64_t addr) {
+    pimpl->SetPC(addr);
+}
+void RegFile::SetPC(llvm::Value* addr) {
+    pimpl->SetPC(addr);
+}
+void RegFile::SetPCCond(llvm::Value* cond, uint64_t addr1, uint64_t addr2) {
+    pimpl->SetPCCond(cond, addr1, addr2);
+}
+void RegFile::SetPCCallret(llvm::Value* addr, uint64_t check) {
+    pimpl->SetPCCallret(addr, check);
+}
+std::tuple<llvm::Value*, uint64_t, uint64_t> RegFile::GetPCBranch(llvm::Value* pcBase, uint64_t pcBaseAddr) {
+    return pimpl->GetPCBranch(pcBase, pcBaseAddr);
+}
+llvm::Value* RegFile::GetPCValue(llvm::Value* pcBase, uint64_t pcBaseAddr, uint64_t offset) {
+    return pimpl->GetPCValue(pcBase, pcBaseAddr, offset);
 }
 RegisterSet& RegFile::DirtyRegs() { return pimpl->DirtyRegs(); }
 bool RegFile::StartsClean() { return pimpl->StartsClean(); }

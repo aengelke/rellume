@@ -31,37 +31,6 @@
 
 namespace rellume {
 
-void LifterBase::SetIP(uint64_t inst_addr, bool nofold) {
-    llvm::Value* rip;
-    if (fi.pc_base_value) {
-        llvm::Value* off = irb.getInt64(inst_addr - fi.pc_base_addr);
-        rip = irb.CreateAdd(fi.pc_base_value, off);
-    } else {
-        rip = irb.getInt64(inst_addr);
-    }
-    if (nofold) {
-        auto bitcast = llvm::Instruction::BitCast;
-        rip = irb.Insert(llvm::CastInst::Create(bitcast, rip, rip->getType()));
-    }
-    SetReg(ArchReg::IP, rip);
-}
-
-llvm::Value* LifterBase::AddrIPRel(uint64_t off, Facet facet) {
-    llvm::Value* rip = GetReg(ArchReg::IP, facet);
-    llvm::Value* rip_off = irb.getIntN(facet.Size(), off);
-
-    // For position independent code, RIP has the structure "base_rip + off"
-    // where "off" is defined from the instruction address. Simplify
-    // expressions by attaching the constant offset to the second operand.
-    if (auto binop = llvm::dyn_cast<llvm::BinaryOperator>(rip)) {
-        if (binop->getOpcode() == llvm::Instruction::Add) {
-            auto base_off = irb.CreateAdd(binop->getOperand(1), rip_off);
-            return irb.CreateAdd(binop->getOperand(0), base_off);
-        }
-    }
-    return irb.CreateAdd(rip, rip_off);
-}
-
 llvm::Value* LifterBase::AddrConst(uint64_t addr) {
     if (addr == 0)
         return llvm::ConstantPointerNull::get(irb.getPtrTy());

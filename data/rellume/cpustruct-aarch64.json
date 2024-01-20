@@ -1,5 +1,5 @@
 [
-    {"name": "pc",  "size": 8,  "reg": ["IP", "I64"], "export": true},
+    {"name": "pc",  "size": 8,  "reg": ["INVALID", "I64"], "export": true},
     {"name": "n",   "size": 1,  "reg": ["FLAG(1)", "I1"]},
     {"name": "z",   "size": 1,  "reg": ["FLAG(0)", "I1"]},
     {"name": "c",   "size": 1,  "reg": ["FLAG(3)", "I1"]},
