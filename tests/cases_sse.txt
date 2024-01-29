@@ -10,6 +10,10 @@ code="pminub xmm0, xmm1" xmm0=bbbbbbbbbbbbbbbb:0xf0,0x78,0x3c,0x1e,0x0f,0x87,0xc
 code="addsubps xmm0, xmm1" xmm0=ffff:8,16,24,32 xmm1=ffff:1,2,4,8 => xmm0=ffff:7,18,20,40
 code="addsubpd xmm0, xmm1" xmm0=dd:8,16 xmm1=dd:1,2 => xmm0=dd:7,18
 
+code="xorps xmm0, xmm0" => xmm0=qq:0,0
+code="xorpd xmm9, xmm9" => xmm9=qq:0,0
+code="pxor xmm15, xmm15" => xmm15=qq:0,0
+
 code="ucomiss xmm0, xmm1" xmm0=llll:0xFF800000,0,0,0 xmm1=llll:0,0,0,0 => zf=00 pf=00 cf=01 of=00 af=00 sf=00
 code="ucomiss xmm0, xmm1" xmm0=llll:0,0,0,0 xmm1=llll:0xFF800000,0,0,0 => zf=00 pf=00 cf=00 of=00 af=00 sf=00
 code="ucomiss xmm0, xmm1" xmm0=llll:0xFF800001,0,0,0 xmm1=llll:0,0,0,0 => zf=01 pf=01 cf=01 of=00 af=00 sf=00

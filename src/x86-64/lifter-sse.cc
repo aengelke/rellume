@@ -193,6 +193,13 @@ void Lifter::LiftSseMovhpd(const Instr& inst) {
 
 void Lifter::LiftSseBinOp(const Instr& inst, llvm::Instruction::BinaryOps op,
                            Facet op_type) {
+    if (op == llvm::Instruction::Xor && inst.op(0).is_reg() &&
+        inst.op(1).is_reg() && inst.op(0).reg().ri == inst.op(1).reg().ri) {
+        auto ty = op_type.Resolve(inst.op(0).bits()).Type(irb.getContext());
+        OpStoreVec(inst.op(0), llvm::Constant::getNullValue(ty));
+        return;
+    }
+
     llvm::Value* op1 = OpLoad(inst.op(0), op_type, ALIGN_IMP);
     llvm::Value* op2 = OpLoad(inst.op(1), op_type, ALIGN_IMP);
     OpStoreVec(inst.op(0), irb.CreateBinOp(op, op1, op2), ALIGN_IMP);
