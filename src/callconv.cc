@@ -315,12 +315,45 @@ void CallConv::OptimizePacks(FunctionInfo& fi, BasicBlock* entry) {
         for (const auto& [sptr_idx, off, reg, facet] : CPUStructEntries(*this)) {
             if (reg.Kind() == ArchReg::RegKind::INVALID)
                 continue;
-            if (!regset[RegisterSetBitIdx(reg)])
+            unsigned regidx = RegisterSetBitIdx(reg);
+            if (!regset[regidx])
                 continue;
-            llvm::Value* reg_val = regfile.GetReg(reg, facet);
+            // Find best position for store. Hoist stores up to predecessors
+            // where possible to avoid executing stores on code paths that never
+            // write the register, but don't hoist them inside loops or similar.
+            BasicBlock* bb = pack.bb;
+            RegFile* rf = &regfile;
+            while (!rf->StartsClean() && !rf->DirtyRegs()[regidx]) {
+                // Try to find single predecessor where register is written.
+                BasicBlock* dirtyPred = nullptr;
+                for (BasicBlock* pred : bb->Predecessors()) {
+                    // Ignore predecessors where the register is never written.
+                    if (!bb_map.lookup(pred).second[regidx])
+                        continue;
+                    if (dirtyPred) {
+                        dirtyPred = nullptr;
+                        break;
+                    }
+                    dirtyPred = pred;
+                }
+                // If there is no single dirty predecessor or if that has
+                // multiple successors (possibly a loop), abort.
+                if (!dirtyPred || dirtyPred->Successors().size() != 1)
+                    break;
+
+                bb = dirtyPred;
+                rf = bb->GetRegFile();
+            }
+
+            llvm::Value* reg_val = rf->GetReg(reg, facet);
             if (llvm::isa<llvm::UndefValue>(reg_val))
                 continue; // Just remove stores of undef.
-            irb.CreateStore(reg_val, fi.sptr[sptr_idx]);
+            if (rf != &regfile) {
+                auto terminator = rf->GetInsertBlock()->getTerminator();
+                new llvm::StoreInst(reg_val, fi.sptr[sptr_idx], terminator);
+            } else {
+                irb.CreateStore(reg_val, fi.sptr[sptr_idx]);
+            }
         }
     }
 }
