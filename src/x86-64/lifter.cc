@@ -141,6 +141,7 @@ bool Lifter::Lift(const Instr& inst) {
     case FDI_TZCNT: LiftBitscan(inst, /*trailing=*/true); break; // TODO: support TZCNT
     case FDI_BSR: LiftBitscan(inst, /*trailing=*/false); break;
     case FDI_LZCNT: LiftBitscan(inst, /*trailing=*/false); break; // TODO: support LZCNT
+    case FDI_POPCNT: LiftPopcnt(inst); break;
     case FDI_BT: LiftBittest(inst, llvm::Instruction::Or, llvm::AtomicRMWInst::Or); break;
     case FDI_BTC: LiftBittest(inst, llvm::Instruction::Xor, llvm::AtomicRMWInst::Xor); break;
     case FDI_BTR: LiftBittest(inst, llvm::Instruction::And, llvm::AtomicRMWInst::And); break;

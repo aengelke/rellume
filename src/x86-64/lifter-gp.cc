@@ -511,6 +511,18 @@ void Lifter::LiftBitscan(const Instr& inst, bool trailing) {
     SetFlagUndef({ArchReg::OF, ArchReg::SF, ArchReg::AF, ArchReg::PF, ArchReg::CF});
 }
 
+void Lifter::LiftPopcnt(const Instr& inst) {
+    llvm::Value* src = OpLoad(inst.op(1), Facet::I);
+    OpStoreGp(inst.op(0), irb.CreateUnaryIntrinsic(llvm::Intrinsic::ctpop, src));
+
+    FlagCalcZ(src);
+    SetReg(ArchReg::OF, irb.getFalse());
+    SetReg(ArchReg::SF, irb.getFalse());
+    SetReg(ArchReg::AF, irb.getFalse());
+    SetReg(ArchReg::PF, irb.getInt8(1)); // constant 1 for low 8 bits -> PF=0
+    SetReg(ArchReg::CF, irb.getFalse());
+}
+
 void Lifter::LiftBittest(const Instr& inst, llvm::Instruction::BinaryOps op,
                          llvm::AtomicRMWInst::BinOp atomic_op) {
     llvm::Value* index = OpLoad(inst.op(1), Facet::I);

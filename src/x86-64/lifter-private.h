@@ -138,6 +138,7 @@ private:
     void LiftCext(const Instr& inst);
     void LiftCsep(const Instr& inst);
     void LiftBitscan(const Instr& inst, bool trailing);
+    void LiftPopcnt(const Instr& inst);
     void LiftBittest(const Instr& inst, llvm::Instruction::BinaryOps op,
                      llvm::AtomicRMWInst::BinOp atomic_op);
     void LiftMovbe(const Instr& inst);
