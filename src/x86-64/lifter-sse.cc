@@ -612,6 +612,28 @@ void Lifter::LiftSsePsadbw(const Instr& inst) {
     OpStoreVec(inst.op(0), res);
 }
 
+void Lifter::LiftSsePmaddubsw(const Instr& inst) {
+    llvm::Value* a = OpLoad(inst.op(1), Facet::VI8);
+    llvm::Value* b = OpLoad(inst.op(0), Facet::VI8);
+    llvm::Value* undef = llvm::UndefValue::get(a->getType());
+
+    // Pattern taken from llvm/test/CodeGen/X86/pmaddubsw.ll
+    auto aEven = CreateShuffleVector(a, undef, {0, 2, 4, 6, 8, 10, 12, 14});
+    auto aOdd = CreateShuffleVector(a, undef, {1, 3, 5, 7, 9, 11, 13, 15});
+    auto bEven = CreateShuffleVector(b, undef, {0, 2, 4, 6, 8, 10, 12, 14});
+    auto bOdd = CreateShuffleVector(b, undef, {1, 3, 5, 7, 9, 11, 13, 15});
+    auto exTy = llvm::VectorType::get(irb.getInt32Ty(), 8, false);
+    aEven = irb.CreateSExt(aEven, exTy);
+    aOdd = irb.CreateSExt(aOdd, exTy);
+    bEven = irb.CreateZExt(bEven, exTy);
+    bOdd = irb.CreateZExt(bOdd, exTy);
+
+    auto evenMul = irb.CreateMul(aEven, bEven);
+    auto oddMul = irb.CreateMul(aOdd, bOdd);
+    auto add = irb.CreateAdd(evenMul, oddMul);
+    OpStoreVec(inst.op(0), SaturateTrunc(irb, add, /*sign=*/true));
+}
+
 void Lifter::LiftSsePack(const Instr& inst, Facet src_type, bool sign) {
     llvm::Value* op1 = OpLoad(inst.op(0), src_type, ALIGN_MAX);
     llvm::Value* op2 = OpLoad(inst.op(1), src_type, ALIGN_MAX);
