@@ -191,6 +191,21 @@ void Lifter::LiftSseMovhpd(const Instr& inst) {
     }
 }
 
+static std::pair<llvm::Value*, llvm::Value*> horzToVert(llvm::IRBuilder<>& irb,
+                                                        llvm::Value* op1,
+                                                        llvm::Value* op2) {
+    auto ec = llvm::cast<llvm::VectorType>(op1->getType())->getElementCount();
+    llvm::SmallVector<int, 16> mask1, mask2;
+    for (unsigned i = 0; i < ec.getFixedValue(); i++) {
+        mask1.push_back(2 * i);
+        mask2.push_back(2 * i + 1);
+    }
+
+    llvm::Value* shuf1 = irb.CreateShuffleVector(op1, op2, mask1);
+    llvm::Value* shuf2 = irb.CreateShuffleVector(op1, op2, mask2);
+    return std::make_pair(shuf1, shuf2);
+}
+
 void Lifter::LiftSseBinOp(const Instr& inst, llvm::Instruction::BinaryOps op,
                            Facet op_type) {
     if (op == llvm::Instruction::Xor && inst.op(0).is_reg() &&
@@ -209,16 +224,7 @@ void Lifter::LiftSseHorzOp(const Instr& inst, llvm::Instruction::BinaryOps op,
                            Facet op_type) {
     llvm::Value* op1 = OpLoad(inst.op(0), op_type, ALIGN_MAX);
     llvm::Value* op2 = OpLoad(inst.op(1), op_type, ALIGN_MAX);
-    auto cnt = VectorElementCount(op1->getType());
-
-    llvm::SmallVector<int, 16> mask1, mask2;
-    for (unsigned i = 0; i < cnt; i++) {
-        mask1.push_back(2 * i);
-        mask2.push_back(2 * i + 1);
-    }
-
-    llvm::Value* shuf1 = irb.CreateShuffleVector(op1, op2, mask1);
-    llvm::Value* shuf2 = irb.CreateShuffleVector(op1, op2, mask2);
+    auto [shuf1, shuf2] = horzToVert(irb, op1, op2);
     OpStoreVec(inst.op(0), irb.CreateBinOp(op, shuf1, shuf2));
 }
 
