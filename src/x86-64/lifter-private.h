@@ -220,7 +220,7 @@ private:
     void LiftSsePmaddwd(const Instr&);
     void LiftSsePaddsubSaturate(const Instr& inst,
                                 llvm::Instruction::BinaryOps calc_op, bool sign,
-                                Facet op_ty);
+                                bool horz, Facet op_ty);
     void LiftSsePsadbw(const Instr&);
     void LiftSsePmaddubsw(const Instr&);
     void LiftSsePack(const Instr&, Facet, bool sign);

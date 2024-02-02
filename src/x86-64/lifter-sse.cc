@@ -580,9 +580,11 @@ static llvm::Value* SaturateTrunc(llvm::IRBuilder<>& irb, llvm::Value* val,
 
 void Lifter::LiftSsePaddsubSaturate(const Instr& inst,
                                     llvm::Instruction::BinaryOps calc_op,
-                                    bool sign, Facet op_ty) {
-    llvm::Value* src1 = OpLoad(inst.op(0), op_ty);
-    llvm::Value* src2 = OpLoad(inst.op(1), op_ty);
+                                    bool sign, bool horz, Facet op_ty) {
+    llvm::Value* src1 = OpLoad(inst.op(0), op_ty, ALIGN_MAX);
+    llvm::Value* src2 = OpLoad(inst.op(1), op_ty, ALIGN_MAX);
+    if (horz)
+        std::tie(src1, src2) = horzToVert(irb, src1, src2);
     llvm::Instruction::CastOps cast = sign ? llvm::Instruction::SExt
                                            : llvm::Instruction::ZExt;
 
