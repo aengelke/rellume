@@ -492,6 +492,31 @@ void Lifter::LiftSsePshiftBytes(const Instr& inst) {
         OpStoreVec(inst.op(0), irb.CreateShuffleVector(zero, src, mask));
 }
 
+void Lifter::LiftSsePalignr(const Instr& inst) {
+    unsigned imm = inst.op(2).imm();
+    llvm::Value* src1 = OpLoad(inst.op(0), Facet::V16I8, ALIGN_MAX);
+    // Unconditionally load operand, might be in memory
+    llvm::Value* src2 = OpLoad(inst.op(1), Facet::V16I8, ALIGN_MAX);
+    llvm::Value* res;
+    if (imm == 0) {
+        res = src2;
+    } else if (imm == 16) {
+        res = src1;
+    } else if (imm >= 32) {
+        res = llvm::Constant::getNullValue(src1->getType());
+    } else {
+        if (imm > 16) {
+            src2 = src1;
+            src1 = llvm::Constant::getNullValue(src1->getType());
+        }
+        int mask[16];
+        for (int i = 0; i < 16; i++)
+            mask[i] = i + (imm & 0xf);
+        res = irb.CreateShuffleVector(src2, src1, mask);
+    }
+    OpStoreVec(inst.op(0), res);
+}
+
 void Lifter::LiftSsePavg(const Instr& inst, Facet op_type) {
     llvm::Value* src1 = OpLoad(inst.op(0), op_type);
     llvm::Value* src2 = OpLoad(inst.op(1), op_type);

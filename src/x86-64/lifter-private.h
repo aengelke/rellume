@@ -212,6 +212,7 @@ private:
     void LiftSseMovdup(const Instr&, Facet, unsigned off);
     void LiftSsePshiftElement(const Instr&, llvm::Instruction::BinaryOps op, Facet op_type);
     void LiftSsePshiftBytes(const Instr&);
+    void LiftSsePalignr(const Instr&);
     void LiftSsePavg(const Instr&, Facet);
     void LiftSsePmulhw(const Instr&, llvm::Instruction::CastOps cast);
     void LiftSsePmuldq(const Instr&, llvm::Instruction::CastOps ext);

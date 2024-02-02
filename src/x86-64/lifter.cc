@@ -368,6 +368,7 @@ bool Lifter::Lift(const Instr& inst) {
     case FDI_SSE_PSRAD: LiftSsePshiftElement(inst, llvm::Instruction::AShr, Facet::VI32); break;
     case FDI_SSE_PSLLDQ: LiftSsePshiftBytes(inst); break;
     case FDI_SSE_PSRLDQ: LiftSsePshiftBytes(inst); break;
+    case FDI_SSE_PALIGNR: LiftSsePalignr(inst); break;
     case FDI_SSE_PACKSSWB: LiftSsePack(inst, Facet::VI16, /*sign=*/true); break;
     case FDI_SSE_PACKSSDW: LiftSsePack(inst, Facet::VI32, /*sign=*/true); break;
     case FDI_SSE_PACKUSWB: LiftSsePack(inst, Facet::VI16, /*sign=*/false); break;
