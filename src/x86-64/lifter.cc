@@ -411,6 +411,9 @@ bool Lifter::Lift(const Instr& inst) {
     case FDI_SSE_PABSB: LiftSsePabs(inst, Facet::VI8); break;
     case FDI_SSE_PABSW: LiftSsePabs(inst, Facet::VI16); break;
     case FDI_SSE_PABSD: LiftSsePabs(inst, Facet::VI32); break;
+    case FDI_SSE_PSIGNB: LiftSsePsign(inst, Facet::VI8); break;
+    case FDI_SSE_PSIGNW: LiftSsePsign(inst, Facet::VI16); break;
+    case FDI_SSE_PSIGND: LiftSsePsign(inst, Facet::VI32); break;
     case FDI_SSE_PMOVMSKB: LiftSseMovmsk(inst, Facet::VI8); break;
     case FDI_SSE_MOVMSKPS: LiftSseMovmsk(inst, Facet::VI32); break;
     case FDI_SSE_MOVMSKPD: LiftSseMovmsk(inst, Facet::VI64); break;

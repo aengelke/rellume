@@ -702,6 +702,17 @@ void Lifter::LiftSsePabs(const Instr& inst, Facet type) {
     OpStoreVec(inst.op(0), irb.CreateSelect(cmp, src, neg));
 }
 
+void Lifter::LiftSsePsign(const Instr& inst, Facet type) {
+    llvm::Value* src1 = OpLoad(inst.op(0), type, ALIGN_MAX);
+    llvm::Value* src2 = OpLoad(inst.op(1), type, ALIGN_MAX);
+    llvm::Value* zero = llvm::Constant::getNullValue(src2->getType());
+    // src2 < 0 => -src1; src2 == 0 => zero; src2 > 0 => src1
+    llvm::Value* cmpZero = irb.CreateICmpEQ(src2, zero);
+    llvm::Value* cmpNeg = irb.CreateICmpSLT(src2, zero);
+    llvm::Value* neg = irb.CreateSelect(cmpNeg, irb.CreateNeg(src1), src1);
+    OpStoreVec(inst.op(0), irb.CreateSelect(cmpZero, zero, neg));
+}
+
 void Lifter::LiftSseMovmsk(const Instr& inst, Facet op_type) {
     llvm::Value* src = OpLoad(inst.op(1), op_type, ALIGN_MAX);
     llvm::Value* zero = llvm::Constant::getNullValue(src->getType());
