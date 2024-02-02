@@ -207,8 +207,8 @@ static std::pair<llvm::Value*, llvm::Value*> horzToVert(llvm::IRBuilder<>& irb,
 }
 
 void Lifter::LiftSseBinOp(const Instr& inst, llvm::Instruction::BinaryOps op,
-                           Facet op_type) {
-    if (op == llvm::Instruction::Xor && inst.op(0).is_reg() &&
+                          bool horz, Facet op_type) {
+    if (!horz && op == llvm::Instruction::Xor && inst.op(0).is_reg() &&
         inst.op(1).is_reg() && inst.op(0).reg().ri == inst.op(1).reg().ri) {
         auto ty = op_type.Resolve(inst.op(0).bits()).Type(irb.getContext());
         OpStoreVec(inst.op(0), llvm::Constant::getNullValue(ty));
@@ -217,15 +217,9 @@ void Lifter::LiftSseBinOp(const Instr& inst, llvm::Instruction::BinaryOps op,
 
     llvm::Value* op1 = OpLoad(inst.op(0), op_type, ALIGN_IMP);
     llvm::Value* op2 = OpLoad(inst.op(1), op_type, ALIGN_IMP);
+    if (horz)
+        std::tie(op1, op2) = horzToVert(irb, op1, op2);
     OpStoreVec(inst.op(0), irb.CreateBinOp(op, op1, op2), ALIGN_IMP);
-}
-
-void Lifter::LiftSseHorzOp(const Instr& inst, llvm::Instruction::BinaryOps op,
-                           Facet op_type) {
-    llvm::Value* op1 = OpLoad(inst.op(0), op_type, ALIGN_MAX);
-    llvm::Value* op2 = OpLoad(inst.op(1), op_type, ALIGN_MAX);
-    auto [shuf1, shuf2] = horzToVert(irb, op1, op2);
-    OpStoreVec(inst.op(0), irb.CreateBinOp(op, shuf1, shuf2));
 }
 
 void Lifter::LiftSseAddSub(const Instr& inst, Facet op_type) {
