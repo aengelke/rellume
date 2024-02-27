@@ -174,15 +174,66 @@ static span<const CPUStructEntry> CPUStructEntries(CallConv cconv) {
     }
 }
 
+static const char ** CPURegisterNameMap(CallConv cconv) {
+#ifdef RELLUME_WITH_X86_64
+    static const char * x86_64_reg_index_to_name[] = {
+#define RELLUME_MAPPED_REG(nameu,...) #nameu,
+#include <rellume/cpustruct-x86_64-private.inc>
+#undef RELLUME_MAPPED_REG
+    };
+#endif // RELLUME_WITH_X86_64
+
+#ifdef RELLUME_WITH_RV64
+    static const char * rv64_reg_index_to_name[] = {
+#define RELLUME_MAPPED_REG(nameu,...) #nameu,
+#include <rellume/cpustruct-rv64-private.inc>
+#undef RELLUME_MAPPED_REG
+    };
+#endif // RELLUME_WITH_RV64
+
+#ifdef RELLUME_WITH_AARCH64
+    static const char * aarch64_reg_index_to_name[] = {
+#define RELLUME_MAPPED_REG(nameu,...) #nameu,
+#include <rellume/cpustruct-aarch64-private.inc>
+#undef RELLUME_MAPPED_REG
+    };
+#endif // RELLUME_WITH_AARCH64
+
+    switch (cconv) {
+    default: 
+        return NULL;
+
+#ifdef RELLUME_WITH_X86_64
+    case CallConv::X86_64_SPTR:
+        return x86_64_reg_index_to_name;
+#endif // RELLUME_WITH_X86_64
+
+#ifdef RELLUME_WITH_RV64
+    case CallConv::RV64_SPTR:
+        return rv64_reg_index_to_name;
+#endif // RELLUME_WITH_RV64
+
+#ifdef RELLUME_WITH_AARCH64
+    case CallConv::AArch64_SPTR:
+        return aarch64_reg_index_to_name;
+#endif // RELLUME_WITH_AARCH64
+    }
+
+    return NULL;
+}
+
 
 void CallConv::InitSptrs(BasicBlock* bb, FunctionInfo& fi) {
     llvm::IRBuilder<> irb(*bb);
     llvm::Type* i8 = irb.getInt8Ty();
 
     const auto& cpu_struct_entries = CPUStructEntries(*this);
+    const char ** reg_map = CPURegisterNameMap(*this);
+    
     fi.sptr.resize(cpu_struct_entries.size());
-    for (const auto& [sptr_idx, off, reg, facet] : cpu_struct_entries)
-        fi.sptr[sptr_idx] = irb.CreateConstGEP1_64(i8, fi.sptr_raw, off);
+    for (const auto& [sptr_idx, off, reg, facet] : cpu_struct_entries) {
+        fi.sptr[sptr_idx] = irb.CreateConstGEP1_64(i8, fi.sptr_raw, off, reg_map[sptr_idx]);
+    }
 }
 
 static void Pack(BasicBlock* bb, FunctionInfo& fi, llvm::Instruction* before) {
