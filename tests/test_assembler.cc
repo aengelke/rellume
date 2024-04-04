@@ -88,7 +88,7 @@ int main(int argc, char** argv) {
 #ifdef TARGET_RV64
     } else if (!strcmp(argv[1], "rv64")) {
         triplestr = "riscv64-unknown-linux-gnu";
-        cpufeatures = "+m,+a,+f,+d,+c";
+        cpufeatures = "+m,+a,+f,+d,+c,+zba,+zbb,+zbc,+zbs";
         LLVMInitializeRISCVTargetInfo();
         LLVMInitializeRISCVTarget();
         LLVMInitializeRISCVTargetMC();

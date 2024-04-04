@@ -1,0 +1,79 @@
+code="add.uw x1, x2, x3" x2=q:0x1000000090000000 x3=q:0x2000000080000000 => x1=q:0x2000000110000000
+code="andn x1, x2, x3" x2=q:0x0f0f x3=q:0x00ff => x1=q:0x0f00
+code="bclr x1, x2, x3" x2=q:0x1234567898abcdef x3=q:0x0000000000000000 => x1=q:0x1234567898abcdee
+code="bclr x1, x2, x3" x2=q:0x1234567898abcdef x3=q:0x0000000000000003 => x1=q:0x1234567898abcde7
+code="bclr x1, x2, x3" x2=q:0x1234567898abcdef x3=q:0x0000abc000000003 => x1=q:0x1234567898abcde7
+code="bclri x1, x2, 5" x2=q:0x1234567898abcdef => x1=q:0x1234567898abcdcf
+code="bext x1, x2, x3" x2=q:0x1234567898abcdef x3=q:0x0000000000000005 => x1=q:1
+code="bext x1, x2, x3" x2=q:0x1234567898abcdef x3=q:0x0000000000000004 => x1=q:0
+code="bext x1, x2, x3" x2=q:0x1234567898abcdef x3=q:0x0000abc000000005 => x1=q:1
+code="bext x1, x2, x3" x2=q:0x1234567898abcdef x3=q:0x0000abc000000004 => x1=q:0
+code="bexti x1, x2, 5" x2=q:0x1234567898abcdef => x1=q:1
+code="bexti x1, x2, 4" x2=q:0x1234567898abcdef => x1=q:0
+code="binv x1, x2, x3" x2=q:0x1234567898abcdef x3=q:0x0000000000000003 => x1=q:0x1234567898abcde7
+code="binv x1, x2, x3" x2=q:0x1234567898abcde7 x3=q:0x0000000000000003 => x1=q:0x1234567898abcdef
+code="binv x1, x2, x3" x2=q:0x1234567898abcdef x3=q:0x000abc0000000003 => x1=q:0x1234567898abcde7
+code="binv x1, x2, x3" x2=q:0x1234567898abcde7 x3=q:0x000abc0000000003 => x1=q:0x1234567898abcdef
+code="binvi x1, x2, 3" x2=q:0x1234567898abcdef => x1=q:0x1234567898abcde7
+code="binvi x1, x2, 3" x2=q:0x1234567898abcde7 => x1=q:0x1234567898abcdef
+code="bset x1, x2, x3" x2=q:0x1234567898abcde7 x3=q:0x0000000000000003 => x1=q:0x1234567898abcdef
+code="bset x1, x2, x3" x2=q:0x1234567898abcde7 x3=q:0x000abc0000000003 => x1=q:0x1234567898abcdef
+code="bseti x1, x2, 9" x2=q:0x1234567898abcdef => x1=q:0x1234567898abcfef
+code="clmul x1, x2, x3" x2=q:0x000000000000abcd x3=q:0x0000000000001234 => x1=q:0x000000000bf62044
+code="clmulh x1, x2, x3" x2=q:0xabcd000000000000 x3=q:0x1234000000000000 => x1=q:0x0bf6204400000000
+code="clmulr x1, x2, x3" x2=q:0xabcd000000000000 x3=q:0x1234000000000000 => x1=q:0x17ec408800000000
+code="clz x1, x2" x2=q:0x0000000800000000 => x1=q:28
+code="clz x1, x2" x2=q:0x0000000000000000 => x1=q:64
+code="clzw x1, x2" x2=q:0x1000000800000000 => x1=q:32
+code="clzw x1, x2" x2=q:0x0000000000008000 => x1=q:16
+code="cpop x1, x2" x2=q:0x0000000000000000 => x1=q:0
+code="cpop x1, x2" x2=q:0x00000f0000f00000 => x1=q:8
+code="cpopw x1, x2" x2=q:0x0000000000000000 => x1=q:0
+code="cpopw x1, x2" x2=q:0xf00f000000000f00 => x1=q:4
+code="cpopw x1, x2" x2=q:0x00000000000f0f0a => x1=q:10
+code="ctz x1, x2" x2=q:0x00080000f0010000 => x1=q:16
+code="ctz x1, x2" x2=q:0x0000000000000000 => x1=q:64
+code="ctzw x1, x2" x2=q:0x00080000f0010000 => x1=q:16
+code="ctzw x1, x2" x2=q:0x1000000000000000 => x1=q:32
+code="orc.b x1, x2" x2=q:0x0000000000000000 => x1=q:0x0000000000000000
+code="orc.b x1, x2" x2=q:0x0f00010020008040 => x1=q:0xff00ff00ff00ffff
+code="orn x1, x2, x3" x2=q:0x0000000000000f0f x3=q:0x00000000000000ff => x1=q:0xffffffffffffff0f
+code="rev8 x1, x2" x2=q:0x1234567890abcdef => x1=q:0xefcdab9078563412
+# JIT-only, because the interpreter doesn't support required intrinsics
++jit code="max x1, x2, x3" x2=q:0x80000000000abcde x3=q:0x0000000000000001 => x1=q:0x0000000000000001
++jit code="max x1, x2, x3" x2=q:0x00000000000abcde x3=q:0x0000000000000001 => x1=q:0x00000000000abcde
++jit code="maxu x1, x2, x3" x2=q:0x800000000000abcd x3=q:0x000000000f000001 => x1=q:0x800000000000abcd
++jit code="maxu x1, x2, x3" x2=q:0x000000000000abcd x3=q:0x000000000f000001 => x1=q:0x000000000f000001
++jit code="min x1, x2, x3" x2=q:0x0000000000000000 x3=q:0x0000000000000001 => x1=q:0x0000000000000000
++jit code="min x1, x2, x3" x2=q:0x8000000000000000 x3=q:0x0000000000000001 => x1=q:0x8000000000000000
++jit code="minu x1, x2, x3" x2=q:0x0000000000000000 x3=q:0x0000000000000001 => x1=q:0x0000000000000000
++jit code="minu x1, x2, x3" x2=q:0x8000000000000000 x3=q:0x0000000000a00001 => x1=q:0x0000000000a00001
++jit code="rol x1, x2, x3" x2=q:0x1234567890abcdef x3=q:0x0000000000000004 => x1=q:0x234567890abcdef1
++jit code="rol x1, x2, x3" x2=q:0x1234567890abcdef x3=q:0x00abcd0000000004 => x1=q:0x234567890abcdef1
++jit code="rolw x1, x2, x3" x2=q:0x1234567890abcdef x3=q:0x0000000000000004 => x1=q:0x000000000abcdef9
++jit code="rolw x1, x2, x3" x2=q:0x1234567898abcdef x3=q:0x0000000000000004 => x1=q:0xffffffff8abcdef9
++jit code="rolw x1, x2, x3" x2=q:0x1234567890abcdef x3=q:0x0000000000000024 => x1=q:0x000000000abcdef9
++jit code="ror x1, x2, x3" x2=q:0x1234567890abcdef x3=q:0x0000000000000004 => x1=q:0xf1234567890abcde
++jit code="ror x1, x2, x3" x2=q:0x1234567890abcdef x3=q:0x000abc0000000004 => x1=q:0xf1234567890abcde
++jit code="rori x1, x2, 12" x2=q:0x1234567890abcdef => x1=q:0xdef1234567890abc
++jit code="roriw x1, x2, 8" x2=q:0x1234567890abcdef => x1=q:0xffffffffef90abcd
++jit code="roriw x1, x2, 28" x2=q:0x1234567890abcdef => x1=q:0x000000000abcdef9
++jit code="rorw x1, x2, x3" x2=q:0x1234567890abcde0 x3=q:0x0000000000000004 => x1=q:0x00000000090abcde
++jit code="rorw x1, x2, x3" x2=q:0x1234567890abcde8 x3=q:0x0000000000000004 => x1=q:0xffffffff890abcde
++jit code="rorw x1, x2, x3" x2=q:0x1234567890abcde0 x3=q:0x0000000000000024 => x1=q:0x00000000090abcde
+code="sext.b x1, x2" x2=q:0x001230000000008a => x1=q:0xffffffffffffff8a
+code="sext.b x1, x2" x2=q:0x012340000000006b => x1=q:0x000000000000006b
+code="sext.h x1, x2" x2=q:0x0000001230000fff => x1=q:0x0000000000000fff
+code="sext.h x1, x2" x2=q:0x0006430000008abc => x1=q:0xffffffffffff8abc
+code="sh1add x1, x2, x3" x2=q:0x000000000000abcd x3=q:0x0000000000001234 => x1=q:0x00000000000169ce
+code="sh1add.uw x1, x2, x3" x2=q:0x000000000000abcd x3=q:0x0000000000001234 => x1=q:0x00000000000169ce
+code="sh1add.uw x1, x2, x3" x2=q:0xffffffff0000abcd x3=q:0x0000000000001234 => x1=q:0x00000000000169ce
+code="sh2add x1, x2, x3" x2=q:0x000000000000abcd x3=q:0x0000000000001234 => x1=q:0x000000000002c168
+code="sh2add.uw x1, x2, x3" x2=q:0x000000000000abcd x3=q:0x0000000000001234 => x1=q:0x000000000002c168
+code="sh2add.uw x1, x2, x3" x2=q:0xffffffff0000abcd x3=q:0x0000000000001234 => x1=q:0x000000000002c168
+code="sh3add x1, x2, x3" x2=q:0x000000000000abcd x3=q:0x0000000000001234 => x1=q:0x000000000005709c
+code="sh3add.uw x1, x2, x3" x2=q:0x000000000000abcd x3=q:0x0000000000001234 => x1=q:0x000000000005709c
+code="sh3add.uw x1, x2, x3" x2=q:0xffffffff0000abcd x3=q:0x0000000000001234 => x1=q:0x000000000005709c
+code="slli.uw x1, x2, 16" x2=q:0x0123456789abcdef => x1=q:0x000089abcdef0000
+code="xnor x1, x2, x3" x2=q:0x0000000000000f0f x3=q:0x00000000000000ff => x1=q:0xfffffffffffff00f
+code="zext.h x1, x2" x2=q:0x0ab892100000abcd => x1=q:0x000000000000abcd
