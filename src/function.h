@@ -90,7 +90,7 @@ private:
     };
     llvm::DenseMap<uint64_t, InstrMapEntry> instr_map; // map addr -> instr
 
-    std::vector<CodeRange> code_ranges = {{0, 0}};
+    llvm::SmallVector<CodeRange, 32> code_ranges = {{0, 0}};
 
     friend class LiftHelper;
 };

@@ -156,7 +156,7 @@ std::pair<InstrKind, uint64_t> classifyInstr(Arch arch, const Instr& inst) {
 int Function::Decode(uintptr_t addr, DecodeStop stop, MemReader memacc) {
     uint8_t inst_buf[15];
 
-    llvm::SmallVector<uint64_t> addr_stack;
+    llvm::SmallVector<uint64_t, 32> addr_stack;
     addr_stack.push_back(addr);
     while (!addr_stack.empty()) {
         uint64_t start_addr = addr_stack.back();
