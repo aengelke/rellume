@@ -450,7 +450,11 @@ void Lifter::LiftSsePshiftElement(const Instr& inst,
                                   llvm::Instruction::BinaryOps op,
                                   Facet op_type) {
     llvm::Value* src = OpLoad(inst.op(0), op_type);
-    llvm::Value* shift = OpLoad(inst.op(1), Facet::I64);
+    llvm::Value* shift;
+    if (!inst.op(1).is_imm())
+        shift = OpLoad(inst.op(1), Facet::I64);
+    else
+        shift = irb.getInt64(inst.op(1).imm());
 
     llvm::VectorType* vec_ty = llvm::cast<llvm::VectorType>(src->getType());
     llvm::Type* elem_ty = vec_ty->getElementType();
