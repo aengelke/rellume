@@ -435,7 +435,9 @@ bool Lifter::Lift(const Instr& inst) {
 
     // TODO: implement atomic semantics for LR/SC.
     case FRV_LRW: StoreGp(rvi->rd, irb.CreateLoad(irb.getInt32Ty(), LoadGp(rvi->rs1, Facet::PTR))); break;
+    case FRV_LRD: StoreGp(rvi->rd, irb.CreateLoad(irb.getInt64Ty(), LoadGp(rvi->rs1, Facet::PTR))); break;
     case FRV_SCW: StoreGp(rvi->rd, irb.getInt32(0)); irb.CreateStore(LoadGp(rvi->rs2, Facet::I32), LoadGp(rvi->rs1, Facet::PTR)); break;
+    case FRV_SCD: StoreGp(rvi->rd, irb.getInt32(0)); irb.CreateStore(LoadGp(rvi->rs2, Facet::I64), LoadGp(rvi->rs1, Facet::PTR)); break;
     case FRV_FENCE: break; // TODO: fences
 
     case FRV_AMOSWAPW: LiftAmo(rvi, llvm::AtomicRMWInst::Xchg, Facet::I32); break;
