@@ -786,7 +786,7 @@ void Lifter::LiftLods(const Instr& inst) {
     RepInfo rep_info = RepBegin(inst); // NOTE: this modifies control flow!
 
     unsigned size = inst.opsz();
-    StoreGp(ArchReg::RAX, irb.CreateLoad(irb.getIntNTy(size), rep_info.di));
+    StoreGp(ArchReg::RAX, irb.CreateLoad(rep_info.ty, rep_info.si));
 
     RepEnd(rep_info); // NOTE: this modifies control flow!
 }
