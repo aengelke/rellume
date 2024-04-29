@@ -47,7 +47,7 @@
 
 namespace rellume {
 
-BasicBlock::BasicBlock(llvm::Function* fn, size_t max_preds)
+ArchBasicBlock::ArchBasicBlock(llvm::Function* fn, size_t max_preds)
         : max_preds(max_preds) {
     llvm_block = llvm::BasicBlock::Create(fn->getContext(), "", fn, nullptr);
 
@@ -55,7 +55,7 @@ BasicBlock::BasicBlock(llvm::Function* fn, size_t max_preds)
         predecessors.reserve(max_preds);
 }
 
-void BasicBlock::InitRegFile(Arch arch, Phis phi_mode, bool seal) {
+void ArchBasicBlock::InitRegFile(Arch arch, Phis phi_mode, bool seal) {
     // When sealing the block, we know that no more predecessors will follow.
     if (seal)
         max_preds = predecessors.size();
@@ -68,32 +68,32 @@ void BasicBlock::InitRegFile(Arch arch, Phis phi_mode, bool seal) {
             // Initialize all registers with a generator which adds a PHI node
             // when the value-facet combination is requested.
             empty_phis.reserve(32);
-            regfile->InitWithPHIs(&empty_phis);
+            regfile->InitWithPHIs(llvm_block, &empty_phis);
         }
     }
 }
 
-void BasicBlock::BranchTo(BasicBlock& next) {
-    assert(!llvm_block->getTerminator() && "attempting to add second terminator");
+void ArchBasicBlock::BranchTo(ArchBasicBlock& next) {
+    assert(!EndBlock()->getTerminator() && "attempting to add second terminator");
 
-    llvm::IRBuilder<> irb(llvm_block);
+    llvm::IRBuilder<> irb(EndBlock());
     auto branch = irb.CreateBr(next.llvm_block);
     regfile->SetInsertPoint(branch->getIterator());
     next.predecessors.push_back(this);
     successors.push_back(&next);
 }
 
-void BasicBlock::BranchTo(llvm::Value* cond, BasicBlock& then,
-                             BasicBlock& other) {
+void ArchBasicBlock::BranchTo(llvm::Value* cond, ArchBasicBlock& then,
+                              ArchBasicBlock& other) {
     // In case both blocks are the same create a single branch only.
     if (std::addressof(then) == std::addressof(other)) {
         BranchTo(then);
         return;
     }
 
-    assert(!llvm_block->getTerminator() && "attempting to add second terminator");
+    assert(!EndBlock()->getTerminator() && "attempting to add second terminator");
 
-    llvm::IRBuilder<> irb(llvm_block);
+    llvm::IRBuilder<> irb(EndBlock());
     auto branch = irb.CreateCondBr(cond, then.llvm_block, other.llvm_block);
     regfile->SetInsertPoint(branch->getIterator());
     then.predecessors.push_back(this);
@@ -102,15 +102,15 @@ void BasicBlock::BranchTo(llvm::Value* cond, BasicBlock& then,
     successors.push_back(&other);
 }
 
-bool BasicBlock::FillPhis() {
+bool ArchBasicBlock::FillPhis() {
     assert(predecessors.size() <= max_preds);
     if (empty_phis.empty())
         return false;
 
     for (const auto& [reg, facet, phi] : empty_phis) {
-        for (BasicBlock* pred : predecessors) {
+        for (ArchBasicBlock* pred : predecessors) {
             llvm::Value* value = pred->regfile->GetReg(reg, facet);
-            phi->addIncoming(value, pred->llvm_block);
+            phi->addIncoming(value, pred->EndBlock());
             if (predecessors.size() == 1 && phi != value) {
                 phi->replaceAllUsesWith(value);
             }

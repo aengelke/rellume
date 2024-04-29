@@ -105,16 +105,32 @@ private:
     struct RepInfo {
         enum RepMode { NO_REP, REP, REPZ, REPNZ };
         RepMode mode;
-        BasicBlock* loop_block;
-        BasicBlock* cont_block;
+        llvm::BasicBlock* header_block;
+        llvm::BasicBlock* loop_block;
+        llvm::BasicBlock* cont_block;
 
         llvm::Type* ty;
+        llvm::Value* adj;
         llvm::Value* di;
         llvm::Value* si;
-        uint64_t ip;
+        llvm::PHINode* loop_di = nullptr;
+        llvm::PHINode* loop_si = nullptr;
+        llvm::PHINode* loop_count = nullptr;
+        llvm::PHINode* cont_di = nullptr;
+        llvm::PHINode* cont_si = nullptr;
+        llvm::PHINode* cont_count = nullptr;
+        llvm::Value* flags[6];
+
+        llvm::PHINode* merge(llvm::Value* oldVal, llvm::Value* loopVal) {
+            llvm::PHINode* phi = llvm::PHINode::Create(oldVal->getType(), 2, "", cont_block->begin());
+            phi->addIncoming(oldVal, header_block);
+            phi->addIncoming(loopVal, loop_block);
+            return phi;
+        }
+        // uint64_t ip;
     };
     RepInfo RepBegin(const Instr& inst);
-    void RepEnd(RepInfo info);
+    void RepEnd(RepInfo info, llvm::Value* cmpA = nullptr, llvm::Value* cmpB = nullptr);
 
     void LiftMovgp(const Instr&);
     void LiftMovzx(const Instr&);

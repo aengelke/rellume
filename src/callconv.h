@@ -59,23 +59,23 @@ public:
     unsigned CpuStructParamIdx() const;
     Arch ToArch() const;
 
-    void InitSptrs(BasicBlock* bb, FunctionInfo& fi);
+    void InitSptrs(ArchBasicBlock* bb, FunctionInfo& fi);
 
     // Pack values from regfile into the CPU struct. The return value for the
     // function is returned (or NULL for void).
-    llvm::ReturnInst* Return(BasicBlock* bb, FunctionInfo& fi) const;
+    llvm::ReturnInst* Return(ArchBasicBlock* bb, FunctionInfo& fi) const;
 
     // Unpack values from val (usually the function) into the register file. For
     // SPTR, val can also be the CPU struct pointer directly.
-    void UnpackParams(BasicBlock* bb, FunctionInfo& fi) const;
+    void UnpackParams(ArchBasicBlock* bb, FunctionInfo& fi) const;
 
     /// Call the function fn at the end of block bb of the lifted function fi.
-    llvm::CallInst* Call(llvm::Function* fn, BasicBlock* bb, FunctionInfo& fi,
-                         bool tail_call = false);
+    llvm::CallInst* Call(llvm::Function* fn, ArchBasicBlock* bb,
+                         FunctionInfo& fi, bool tail_call = false);
 
     /// Optimize a function's CallConvPacks to minimize the number of store
     /// instructions passed to the LLVM optimizer.
-    void OptimizePacks(FunctionInfo& fi, BasicBlock* entry);
+    void OptimizePacks(FunctionInfo& fi, ArchBasicBlock* entry);
 
     CallConv() = default;
     constexpr CallConv(Value value) : value(value) {}

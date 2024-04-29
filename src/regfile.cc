@@ -212,11 +212,15 @@ public:
     void SetInsertPoint(llvm::BasicBlock::iterator ip) {
         irb.SetInsertPoint(ip->getParent(), ip);
     }
+    void SetInsertPoint(llvm::BasicBlock* block) {
+        irb.SetInsertPoint(block);
+    }
 
     void InitWithRegFile(RegFile* parent) {
         this->parent = parent;
     }
-    void InitWithPHIs(std::vector<PhiDesc>* desc_vec) {
+    void InitWithPHIs(llvm::BasicBlock* phiBlock, std::vector<PhiDesc>* desc_vec) {
+        this->phiBlock = phiBlock;
         phiDescs = desc_vec;
     }
 
@@ -267,6 +271,7 @@ private:
     std::array<Register, 72> regs;
 
     RegFile* parent = nullptr;
+    llvm::BasicBlock* phiBlock = nullptr;
     std::vector<PhiDesc>* phiDescs = nullptr;
 
     Facet ivec_facet;
@@ -343,7 +348,7 @@ std::pair<Register*, unsigned> RegFile::impl::GetRegFold(ArchReg reg, unsigned f
             }
             rv->upperZero = oldReg->upperZero;
         } else if (phiDescs) {
-            llvm::IRBuilder<> phiirb(GetInsertBlock(), GetInsertBlock()->begin());
+            llvm::IRBuilder<> phiirb(phiBlock, phiBlock->begin());
             auto phi = phiirb.CreatePHI(nativeFacet.Type(irb.getContext()), 4);
             phiDescs->push_back(std::make_tuple(reg, nativeFacet, phi));
             Register::Value nativeRvv(phi, nativeFacet.Size());
@@ -631,8 +636,9 @@ RegFile::~RegFile() {}
 
 llvm::BasicBlock* RegFile::GetInsertBlock() { return pimpl->GetInsertBlock(); }
 void RegFile::SetInsertPoint(llvm::BasicBlock::iterator ip) { pimpl->SetInsertPoint(ip); }
+void RegFile::SetInsertPoint(llvm::BasicBlock* block) { pimpl->SetInsertPoint(block); }
 void RegFile::InitWithRegFile(RegFile* r) { pimpl->InitWithRegFile(r); }
-void RegFile::InitWithPHIs(std::vector<PhiDesc>* d) { pimpl->InitWithPHIs(d); }
+void RegFile::InitWithPHIs(llvm::BasicBlock* phiBlock, std::vector<PhiDesc>* d) { pimpl->InitWithPHIs(phiBlock, d); }
 llvm::Value* RegFile::GetReg(ArchReg r, Facet f) { return pimpl->GetReg(r, f); }
 void RegFile::Set(ArchReg reg, llvm::Value* v, bool sext) {
     pimpl->Set(reg, v, sext);
