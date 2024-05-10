@@ -50,8 +50,6 @@ struct LLConfig {
     bool call_ret_clobber_flags = false;
     /// Use native registers FS and GS for segmented memory access
     bool use_native_segment_base = false;
-    /// Generate PHI nodes for all facets (instead of only one per register)
-    bool full_facets = false;
     /// Verify the IR after lifting.
     bool verify_ir = false;
     /// Don't use absolute instruction addresses to set RIP. The actual RIP is

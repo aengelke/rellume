@@ -56,7 +56,6 @@ namespace rellume {
 class LiftHelper {
     Function* func;
     FunctionInfo fi;
-    ArchBasicBlock::Phis phi_mode;
     llvm::DenseMap<uint64_t, std::unique_ptr<ArchBasicBlock>> block_map;
 
     std::unique_ptr<ArchBasicBlock> exit_block;
@@ -134,7 +133,6 @@ llvm::Function* LiftHelper::Lift() {
     fi.fn = fn;
     fi.sptr_raw = &fn->arg_begin()[cpu_param_idx];
 
-    phi_mode = cfg->full_facets ? ArchBasicBlock::Phis::ALL : ArchBasicBlock::Phis::NATIVE;
     // Create entry basic block as first block in the function.
     auto entry_block = std::make_unique<ArchBasicBlock>(fn, 0);
     // Initialize the sptr pointers in the function info.
@@ -165,7 +163,7 @@ llvm::Function* LiftHelper::Lift() {
             if (decinst.new_block) {
                 cur_ab = &ResolveAddr(decinst.inst.start());
                 assert(!cur_ab->GetRegFile());
-                cur_ab->InitRegFile(cfg->arch, nullptr, phi_mode);
+                cur_ab->InitWithPHIs(cfg->arch);
             }
 
             bool success = lift_fn(decinst.inst, fi, *cfg, *cur_ab);
@@ -197,7 +195,7 @@ llvm::Function* LiftHelper::Lift() {
         }
     }
 
-    exit_block->InitRegFile(cfg->arch, nullptr, phi_mode, /*seal=*/true);
+    exit_block->InitWithPHIs(cfg->arch, /*seal=*/true);
     {
         llvm::BasicBlock* exitbb = exit_block->BeginBlock();
         const auto& preds = exit_block->Predecessors();

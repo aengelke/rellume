@@ -55,21 +55,17 @@ ArchBasicBlock::ArchBasicBlock(llvm::Function* fn, size_t max_preds)
         predecessors.reserve(max_preds);
 }
 
-void ArchBasicBlock::InitRegFile(Arch arch, llvm::BasicBlock* bb, Phis phi_mode, bool seal) {
-    // When sealing the block, we know that no more predecessors will follow.
-    if (seal)
-        max_preds = predecessors.size();
+void ArchBasicBlock::InitWithPHIs(Arch arch, bool seal) {
+    InitEmpty(arch, llvm_block);
 
-    regfile = std::make_unique<RegFile>(arch, bb ? bb : llvm_block);
-    if (phi_mode != Phis::NONE) {
-        if (max_preds == 1 && predecessors.size() == 1) {
-            regfile->InitWithRegFile(predecessors[0]->GetRegFile());
-        } else {
-            // Initialize all registers with a generator which adds a PHI node
-            // when the value-facet combination is requested.
-            empty_phis.reserve(32);
-            regfile->InitWithPHIs(llvm_block, &empty_phis);
-        }
+    // When sealing the block, we know that no more predecessors will follow.
+    if ((seal || max_preds == 1) && predecessors.size() == 1) {
+        regfile->InitWithRegFile(predecessors[0]->GetRegFile());
+    } else {
+        // Initialize all registers with a generator which adds a PHI node
+        // when the value-facet combination is requested.
+        empty_phis.reserve(32);
+        regfile->InitWithPHIs(llvm_block, &empty_phis);
     }
 }
 

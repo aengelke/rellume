@@ -194,7 +194,7 @@ static void Pack(ArchBasicBlock* bb, FunctionInfo& fi, llvm::Instruction* before
 
 template<typename F>
 static void Unpack(CallConv cconv, ArchBasicBlock* bb, llvm::BasicBlock* llvmBlock, FunctionInfo& fi, F get_from_reg) {
-    bb->InitRegFile(cconv.ToArch(), llvmBlock, ArchBasicBlock::Phis::NONE);
+    bb->InitEmpty(cconv.ToArch(), llvmBlock);
     // New regfile with everything cleared
     RegFile& regfile = *bb->GetRegFile();
     llvm::IRBuilder<> irb(regfile.GetInsertBlock());
@@ -224,7 +224,7 @@ llvm::ReturnInst* CallConv::Return(ArchBasicBlock* bb, FunctionInfo& fi) const {
 }
 
 void CallConv::UnpackParams(ArchBasicBlock* bb, FunctionInfo& fi) const {
-    Unpack(*this, bb, nullptr, fi, [&fi] (ArchReg reg) {
+    Unpack(*this, bb, bb->BeginBlock(), fi, [&fi] (ArchReg reg) {
         return nullptr;
     });
 }

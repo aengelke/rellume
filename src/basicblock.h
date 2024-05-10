@@ -37,8 +37,6 @@ namespace rellume {
 
 class ArchBasicBlock {
 public:
-    enum class Phis { NONE, NATIVE, ALL };
-
     ArchBasicBlock(llvm::Function* fn, size_t max_preds);
 
     ArchBasicBlock(ArchBasicBlock&& rhs);
@@ -51,7 +49,10 @@ public:
     void BranchTo(llvm::Value* cond, ArchBasicBlock& then, ArchBasicBlock& other);
     bool FillPhis();
 
-    void InitRegFile(Arch arch, llvm::BasicBlock* bb, Phis phi_mode, bool seal = false);
+    void InitEmpty(Arch arch, llvm::BasicBlock* bb) {
+        regfile = std::make_unique<RegFile>(arch, bb);
+    }
+    void InitWithPHIs(Arch arch, bool seal = false);
     std::unique_ptr<RegFile> TakeRegFile() {
         return std::move(regfile);
     }
