@@ -165,7 +165,7 @@ llvm::Function* LiftHelper::Lift() {
             if (decinst.new_block) {
                 cur_ab = &ResolveAddr(decinst.inst.start());
                 assert(!cur_ab->GetRegFile());
-                cur_ab->InitRegFile(cfg->arch, phi_mode);
+                cur_ab->InitRegFile(cfg->arch, nullptr, phi_mode);
             }
 
             bool success = lift_fn(decinst.inst, fi, *cfg, *cur_ab);
@@ -197,7 +197,7 @@ llvm::Function* LiftHelper::Lift() {
         }
     }
 
-    exit_block->InitRegFile(cfg->arch, phi_mode, /*seal=*/true);
+    exit_block->InitRegFile(cfg->arch, nullptr, phi_mode, /*seal=*/true);
     {
         llvm::BasicBlock* exitbb = exit_block->BeginBlock();
         const auto& preds = exit_block->Predecessors();
