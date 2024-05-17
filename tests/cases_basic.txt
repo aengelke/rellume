@@ -446,38 +446,39 @@ code="sar eax, 1" rax=q:0x00000000 => rax=q:0x00000000 of=00 sf=00 zf=01 af=unde
 
 code="shl eax, cl" rax=q:0xffffffff rcx=q:0x1 => rax=q:0xfffffffe of=00 sf=01 zf=00 af=undef pf=00 cf=01
 
+# NB: bsf/bsr with zero source leave destination unmodified
 code="bsf rdx, rax" rax=q:0xabcdef9012345678 => rdx=q:0x3 of=undef sf=undef zf=00 af=undef pf=undef cf=undef
 code="bsf rdx, rax" rax=q:0x8000000000000000 => rdx=q:0x3f of=undef sf=undef zf=00 af=undef pf=undef cf=undef
 code="bsf rdx, rax" rax=q:0xffffffffffffffff => rdx=q:0x0 of=undef sf=undef zf=00 af=undef pf=undef cf=undef
 code="bsf rdx, rax" rax=q:0x1 => rdx=q:0x0 of=undef sf=undef zf=00 af=undef pf=undef cf=undef
-code="bsf rdx, rax" rax=q:0x0 => rdx=undef of=undef sf=undef zf=01 af=undef pf=undef cf=undef
+code="bsf rdx, rax" rax=q:0x0 => of=undef sf=undef zf=01 af=undef pf=undef cf=undef
 code="bsf edx, eax" rax=q:0x12345678 => rdx=q:0x3 of=undef sf=undef zf=00 af=undef pf=undef cf=undef
 code="bsf edx, eax" rax=q:0x80000000 => rdx=q:0x1f of=undef sf=undef zf=00 af=undef pf=undef cf=undef
 code="bsf edx, eax" rax=q:0xffffffff => rdx=q:0x0 of=undef sf=undef zf=00 af=undef pf=undef cf=undef
 code="bsf edx, eax" rax=q:0x1 => rdx=q:0x0 of=undef sf=undef zf=00 af=undef pf=undef cf=undef
-code="bsf edx, eax" rax=q:0x0 => rdx=undef of=undef sf=undef zf=01 af=undef pf=undef cf=undef
+code="bsf edx, eax" rax=q:0x0 => of=undef sf=undef zf=01 af=undef pf=undef cf=undef
 code="bsf dx, ax" rax=q:0x12345678 rdx=q:0x0 => rdx=q:0x3 of=undef sf=undef zf=00 af=undef pf=undef cf=undef
 code="bsf dx, ax" rax=q:0x8000 rdx=q:0x0 => rdx=q:0xf of=undef sf=undef zf=00 af=undef pf=undef cf=undef
 code="bsf dx, ax" rax=q:0xffff rdx=q:0x0 => rdx=q:0x0 of=undef sf=undef zf=00 af=undef pf=undef cf=undef
 code="bsf dx, ax" rax=q:0x1 rdx=q:0x0 => rdx=q:0x0 of=undef sf=undef zf=00 af=undef pf=undef cf=undef
-code="bsf dx, ax" rax=q:0x0 rdx=q:0x0 => rdx=undef of=undef sf=undef zf=01 af=undef pf=undef cf=undef
-code="bsf dx, ax" rax=q:0xffff0000 rdx=q:0x0 => rdx=undef of=undef sf=undef zf=01 af=undef pf=undef cf=undef
+code="bsf dx, ax" rax=q:0x0 rdx=q:0x0 => of=undef sf=undef zf=01 af=undef pf=undef cf=undef
+code="bsf dx, ax" rax=q:0xffff0000 rdx=q:0x0 => of=undef sf=undef zf=01 af=undef pf=undef cf=undef
 code="bsr rdx, rax" rax=q:0x2bcdef9012345678 => rdx=q:0x3d of=undef sf=undef zf=00 af=undef pf=undef cf=undef
 code="bsr rdx, rax" rax=q:0x8000000000000000 => rdx=q:0x3f of=undef sf=undef zf=00 af=undef pf=undef cf=undef
 code="bsr rdx, rax" rax=q:0xffffffffffffffff => rdx=q:0x3f of=undef sf=undef zf=00 af=undef pf=undef cf=undef
 code="bsr rdx, rax" rax=q:0x1 => rdx=q:0x0 of=undef sf=undef zf=00 af=undef pf=undef cf=undef
-code="bsr rdx, rax" rax=q:0x0 => rdx=undef of=undef sf=undef zf=01 af=undef pf=undef cf=undef
+code="bsr rdx, rax" rax=q:0x0 => of=undef sf=undef zf=01 af=undef pf=undef cf=undef
 code="bsr edx, eax" rax=q:0x12345678 => rdx=q:0x1c of=undef sf=undef zf=00 af=undef pf=undef cf=undef
 code="bsr edx, eax" rax=q:0x80000000 => rdx=q:0x1f of=undef sf=undef zf=00 af=undef pf=undef cf=undef
 code="bsr edx, eax" rax=q:0xffffffff => rdx=q:0x1f of=undef sf=undef zf=00 af=undef pf=undef cf=undef
 code="bsr edx, eax" rax=q:0x1234567800000001 => rdx=q:0x0 of=undef sf=undef zf=00 af=undef pf=undef cf=undef
-code="bsr edx, eax" rax=q:0x1234567800000000 => rdx=undef of=undef sf=undef zf=01 af=undef pf=undef cf=undef
+code="bsr edx, eax" rax=q:0x1234567800000000 => of=undef sf=undef zf=01 af=undef pf=undef cf=undef
 code="bsr dx, ax" rax=q:0x12345678 rdx=q:0x0 => rdx=q:0xe of=undef sf=undef zf=00 af=undef pf=undef cf=undef
 code="bsr dx, ax" rax=q:0x8000 rdx=q:0x0 => rdx=q:0xf of=undef sf=undef zf=00 af=undef pf=undef cf=undef
 code="bsr dx, ax" rax=q:0xffff rdx=q:0x0 => rdx=q:0xf of=undef sf=undef zf=00 af=undef pf=undef cf=undef
 code="bsr dx, ax" rax=q:0x12340001 rdx=q:0x0 => rdx=q:0x0 of=undef sf=undef zf=00 af=undef pf=undef cf=undef
-code="bsr dx, ax" rax=q:0x12340000 rdx=q:0x0 => rdx=undef of=undef sf=undef zf=01 af=undef pf=undef cf=undef
-code="bsr dx, ax" rax=q:0xffff0000 rdx=q:0x0 => rdx=undef of=undef sf=undef zf=01 af=undef pf=undef cf=undef
+code="bsr dx, ax" rax=q:0x12340000 rdx=q:0x0 => of=undef sf=undef zf=01 af=undef pf=undef cf=undef
+code="bsr dx, ax" rax=q:0xffff0000 rdx=q:0x0 => of=undef sf=undef zf=01 af=undef pf=undef cf=undef
 
 code="popcnt eax, edx" rdx=q:0 => rax=q:0 of=00 sf=00 zf=01 af=00 pf=00 cf=00
 code="popcnt eax, edx" rdx=q:1 => rax=q:1 of=00 sf=00 zf=00 af=00 pf=00 cf=00

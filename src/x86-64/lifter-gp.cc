@@ -497,17 +497,27 @@ void Lifter::LiftCsep(const Instr& inst) {
 }
 
 void Lifter::LiftBitscan(const Instr& inst, bool trailing) {
+    unsigned sz = inst.op(1).bits();
+    llvm::Value* dst = OpLoad(inst.op(0), sz == 16 ? Facet::I16 : Facet::I64);
     llvm::Value* src = OpLoad(inst.op(1), Facet::I);
     auto id = trailing ? llvm::Intrinsic::cttz : llvm::Intrinsic::ctlz;
     llvm::Value* res = irb.CreateBinaryIntrinsic(id, src,
                                                  /*zero_undef=*/irb.getTrue());
-    if (!trailing) {
-        unsigned sz = inst.op(1).bits();
+    if (!trailing)
         res = irb.CreateSub(irb.getIntN(sz, sz - 1), res);
+    // BSF/BSR don't modify dest if src is zero. This is specified on AMD, and
+    // Intel apparently behaves similar on all x86-64 implementations. There is
+    // also no zero extension of 32-bit operands.
+    // See: https://sourceware.org/bugzilla/show_bug.cgi?id=31748
+    llvm::Value* eq = irb.CreateIsNull(src);
+    if (sz == 32) {
+        res = irb.CreateZExt(res, irb.getInt64Ty());
+        SetReg(MapReg(inst.op(0).reg()), irb.CreateSelect(eq, dst, res));
+    } else {
+        OpStoreGp(inst.op(0), irb.CreateSelect(eq, dst, res));
     }
-    OpStoreGp(inst.op(0), res);
 
-    FlagCalcZ(src);
+    SetReg(ArchReg::ZF, eq);
     SetFlagUndef({ArchReg::OF, ArchReg::SF, ArchReg::AF, ArchReg::PF, ArchReg::CF});
 }
 
