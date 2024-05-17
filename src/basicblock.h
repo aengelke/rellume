@@ -60,10 +60,10 @@ public:
         return regfile.get();
     }
 
-    const std::vector<ArchBasicBlock*>& Predecessors() const {
+    const llvm::ArrayRef<ArchBasicBlock*> Predecessors() const {
         return predecessors;
     }
-    const std::vector<ArchBasicBlock*>& Successors() const {
+    const llvm::ArrayRef<ArchBasicBlock*> Successors() const {
         return successors;
     }
 
@@ -82,8 +82,8 @@ private:
     std::unique_ptr<RegFile> regfile;
 
     size_t max_preds;
-    std::vector<ArchBasicBlock*> predecessors;
-    std::vector<ArchBasicBlock*> successors;
+    llvm::SmallVector<ArchBasicBlock*, 2> predecessors;
+    llvm::SmallVector<ArchBasicBlock*, 2> successors;
     std::vector<std::tuple<ArchReg, Facet, llvm::PHINode*>> empty_phis;
 };
 
