@@ -361,15 +361,15 @@ public:
         res->addIncoming(irb.getInt64(0), *enter_block);
         i->addIncoming(start_i, *enter_block);
 
-        auto condition = irb.CreateICmpEQ(irb.CreateAnd(irb.CreateLShr(rs2,i), irb.getInt64(1)), irb.getInt64(0));
-        llvm::Value* xor_operand;
+        auto condition = irb.CreateICmpEQ(irb.CreateAnd(irb.CreateShl(irb.getInt64(1),i), rs2), irb.getInt64(0));
+        llvm::Value* xor_operand = nullptr;
         switch (rvi->mnem) {
             case FRV_CLMUL: xor_operand = irb.CreateShl(rs1, i); break;
             case FRV_CLMULH: xor_operand = irb.CreateLShr(rs1, irb.CreateSub(irb.getInt64(64), i)); break;
             case FRV_CLMULR: xor_operand = irb.CreateLShr(rs1, irb.CreateSub(irb.getInt64(63), i)); break;
             default: assert(false);
         }
-        auto next_res = irb.CreateSelect(condition, res, irb.CreateXor(res, xor_operand));
+        auto next_res = irb.CreateXor(res, irb.CreateSelect(condition, irb.getInt64(0), xor_operand));
         auto next_i = irb.CreateAdd(i, irb.getInt64(1));
         auto end_i = rvi->mnem == FRV_CLMULR ? irb.getInt64(63) : irb.getInt64(64);
         loop_block->BranchTo(irb.CreateICmpEQ(next_i, end_i), *cont_block, *loop_block);
@@ -377,7 +377,7 @@ public:
         i->addIncoming(next_i, *loop_block);
 
         SetInsertBlock(cont_block);
-        StoreGp(rvi->rd, res);
+        StoreGp(rvi->rd, next_res);
     }
 };
 
