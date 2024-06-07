@@ -348,8 +348,9 @@ std::pair<Register*, unsigned> RegFile::impl::GetRegFold(ArchReg reg, unsigned f
             }
             rv->upperZero = oldReg->upperZero;
         } else if (phiDescs) {
-            llvm::IRBuilder<> phiirb(phiBlock, phiBlock->begin());
-            auto phi = phiirb.CreatePHI(nativeFacet.Type(irb.getContext()), 4);
+            auto phiTy = nativeFacet.Type(irb.getContext());
+            auto phi = llvm::PHINode::Create(phiTy, 4);
+            phi->insertInto(phiBlock, phiBlock->begin());
             phiDescs->push_back(std::make_tuple(reg, nativeFacet, phi));
             Register::Value nativeRvv(phi, nativeFacet.Size());
             nativeRvv.dirty = false;

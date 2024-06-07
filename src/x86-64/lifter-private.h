@@ -122,7 +122,8 @@ private:
         llvm::Value* flags[6];
 
         llvm::PHINode* merge(llvm::Value* oldVal, llvm::Value* loopVal) {
-            llvm::PHINode* phi = llvm::PHINode::Create(oldVal->getType(), 2, "", cont_block->begin());
+            llvm::PHINode* phi = llvm::PHINode::Create(oldVal->getType(), 2);
+            phi->insertInto(cont_block, cont_block->begin());
             phi->addIncoming(oldVal, header_block);
             phi->addIncoming(loopVal, loop_block);
             return phi;
