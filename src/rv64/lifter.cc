@@ -320,62 +320,34 @@ public:
         StoreGp(rvi->rd, res);
     }
     void LiftOrcb(const FrvInst* rvi) {
-        auto rs1 = LoadGp(rvi->rs1);
+        auto i8x8type = llvm::VectorType::get(irb.getInt8Ty(), llvm::ElementCount::getFixed(8));
+        auto rs1 = irb.CreateBitCast(LoadGp(rvi->rs1), i8x8type);
+        auto zeroes = llvm::ConstantVector::getSplat(llvm::ElementCount::getFixed(8), irb.getInt8(0));
+        auto res = irb.CreateSExt(irb.CreateICmpNE(rs1, zeroes), i8x8type);
 
-        auto enter_block = ablock.GetInsertBlock();
-        auto loop_block = ablock.AddBlock();
-        auto cont_block = ablock.AddBlock();
-        enter_block->BranchTo(*loop_block);
-
-        SetInsertBlock(loop_block);
-        auto res = irb.CreatePHI(irb.getInt64Ty(), 2);
-        auto i = irb.CreatePHI(irb.getInt64Ty(), 2);
-        res->addIncoming(irb.getInt64(0), *enter_block);
-        i->addIncoming(irb.getInt64(0xFF), *enter_block);
-
-        auto condition = irb.CreateICmpEQ(irb.CreateAnd(rs1, i), irb.getInt64(0));
-        auto next_res = irb.CreateSelect(condition, res, irb.CreateOr(res, i));
-        auto next_i = irb.CreateShl(i, 8);
-        loop_block->BranchTo(irb.CreateICmpEQ(next_i, irb.getInt64(0)), *cont_block, *loop_block);
-        res->addIncoming(next_res, *loop_block);
-        i->addIncoming(next_i, *loop_block);
-
-        SetInsertBlock(cont_block);
-        StoreGp(rvi->rd, next_res);
+        StoreGp(rvi->rd, irb.CreateBitCast(res, irb.getInt64Ty()));
     }
     void LiftCLMul(const FrvInst* rvi) {
         auto rs1 = LoadGp(rvi->rs1);
         auto rs2 = LoadGp(rvi->rs2);
 
-        auto enter_block = ablock.GetInsertBlock();
-        auto loop_block = ablock.AddBlock();
-        auto cont_block = ablock.AddBlock();
-        enter_block->BranchTo(*loop_block);
+        llvm::Value* res = irb.getInt64(0);
+        uint64_t start_i = rvi->mnem == FRV_CLMULH ? 1 : 0;
+        uint64_t end_i = rvi->mnem == FRV_CLMULR ? 63 : 64;
 
-        SetInsertBlock(loop_block);
-        auto res = irb.CreatePHI(irb.getInt64Ty(), 2);
-        auto i = irb.CreatePHI(irb.getInt64Ty(), 2);
-        auto start_i = rvi->mnem == FRV_CLMULH ? irb.getInt64(1) : irb.getInt64(0);
-        res->addIncoming(irb.getInt64(0), *enter_block);
-        i->addIncoming(start_i, *enter_block);
-
-        auto condition = irb.CreateICmpEQ(irb.CreateAnd(irb.CreateShl(irb.getInt64(1),i), rs2), irb.getInt64(0));
-        llvm::Value* xor_operand = nullptr;
-        switch (rvi->mnem) {
-            case FRV_CLMUL: xor_operand = irb.CreateShl(rs1, i); break;
-            case FRV_CLMULH: xor_operand = irb.CreateLShr(rs1, irb.CreateSub(irb.getInt64(64), i)); break;
-            case FRV_CLMULR: xor_operand = irb.CreateLShr(rs1, irb.CreateSub(irb.getInt64(63), i)); break;
-            default: assert(false);
+        for (uint64_t i = start_i; i < end_i; i++) {
+            auto condition = irb.CreateICmpEQ(irb.CreateAnd(irb.getInt64(1ul << i), rs2), irb.getInt64(0));
+            llvm::Value* xor_operand = nullptr;
+            switch (rvi->mnem) {
+                case FRV_CLMUL: xor_operand = irb.CreateShl(rs1, irb.getInt64(i)); break;
+                case FRV_CLMULH: xor_operand = irb.CreateLShr(rs1, irb.getInt64(64-i)); break;
+                case FRV_CLMULR: xor_operand = irb.CreateLShr(rs1, irb.getInt64(63-i)); break;
+                default: assert(false);
+            }
+            res = irb.CreateXor(res, irb.CreateSelect(condition, irb.getInt64(0), xor_operand));
         }
-        auto next_res = irb.CreateXor(res, irb.CreateSelect(condition, irb.getInt64(0), xor_operand));
-        auto next_i = irb.CreateAdd(i, irb.getInt64(1));
-        auto end_i = rvi->mnem == FRV_CLMULR ? irb.getInt64(63) : irb.getInt64(64);
-        loop_block->BranchTo(irb.CreateICmpEQ(next_i, end_i), *cont_block, *loop_block);
-        res->addIncoming(next_res, *loop_block);
-        i->addIncoming(next_i, *loop_block);
 
-        SetInsertBlock(cont_block);
-        StoreGp(rvi->rd, next_res);
+        StoreGp(rvi->rd, res);
     }
 };
 
