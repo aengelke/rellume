@@ -307,8 +307,7 @@ public:
     }
     void LiftBitInstruction(const FrvInst *rvi, llvm::Instruction::BinaryOps op,
                             llvm::Value *index, bool invert) {
-        unsigned width = index->getType()->getIntegerBitWidth();
-        index = irb.CreateAnd(index, irb.getIntN(width, width - 1));
+        index = irb.CreateAnd(index, irb.getInt64(63));
         auto rhs = irb.CreateShl(irb.getInt64(1), index);
         if (invert)
             rhs = irb.CreateNot(rhs);
@@ -316,8 +315,7 @@ public:
         StoreGp(rvi->rd, res);
     }
     void LiftBitExtract(const FrvInst* rvi, llvm::Value *index) {
-        unsigned width = index->getType()->getIntegerBitWidth();
-        index = irb.CreateAnd(index, irb.getIntN(width, width - 1));
+        index = irb.CreateAnd(index, irb.getInt64(63));
         auto res = irb.CreateAnd(irb.CreateLShr(LoadGp(rvi->rs1), index), irb.getInt64(1));
         StoreGp(rvi->rd, res);
     }
