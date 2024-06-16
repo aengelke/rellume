@@ -191,28 +191,35 @@ void Lifter::LiftSseMovhpd(const Instr& inst) {
     }
 }
 
-void Lifter::LiftSseBinOp(const Instr& inst, llvm::Instruction::BinaryOps op,
-                           Facet op_type) {
-    llvm::Value* op1 = OpLoad(inst.op(0), op_type, ALIGN_IMP);
-    llvm::Value* op2 = OpLoad(inst.op(1), op_type, ALIGN_IMP);
-    OpStoreVec(inst.op(0), irb.CreateBinOp(op, op1, op2), ALIGN_IMP);
-}
-
-void Lifter::LiftSseHorzOp(const Instr& inst, llvm::Instruction::BinaryOps op,
-                           Facet op_type) {
-    llvm::Value* op1 = OpLoad(inst.op(0), op_type, ALIGN_MAX);
-    llvm::Value* op2 = OpLoad(inst.op(1), op_type, ALIGN_MAX);
-    auto cnt = VectorElementCount(op1->getType());
-
+static std::pair<llvm::Value*, llvm::Value*> horzToVert(llvm::IRBuilder<>& irb,
+                                                        llvm::Value* op1,
+                                                        llvm::Value* op2) {
+    auto ec = llvm::cast<llvm::VectorType>(op1->getType())->getElementCount();
     llvm::SmallVector<int, 16> mask1, mask2;
-    for (unsigned i = 0; i < cnt; i++) {
+    for (unsigned i = 0; i < ec.getFixedValue(); i++) {
         mask1.push_back(2 * i);
         mask2.push_back(2 * i + 1);
     }
 
     llvm::Value* shuf1 = irb.CreateShuffleVector(op1, op2, mask1);
     llvm::Value* shuf2 = irb.CreateShuffleVector(op1, op2, mask2);
-    OpStoreVec(inst.op(0), irb.CreateBinOp(op, shuf1, shuf2));
+    return std::make_pair(shuf1, shuf2);
+}
+
+void Lifter::LiftSseBinOp(const Instr& inst, llvm::Instruction::BinaryOps op,
+                          bool horz, Facet op_type) {
+    if (!horz && op == llvm::Instruction::Xor && inst.op(0).is_reg() &&
+        inst.op(1).is_reg() && inst.op(0).reg().ri == inst.op(1).reg().ri) {
+        auto ty = op_type.Resolve(inst.op(0).bits()).Type(irb.getContext());
+        OpStoreVec(inst.op(0), llvm::Constant::getNullValue(ty));
+        return;
+    }
+
+    llvm::Value* op1 = OpLoad(inst.op(0), op_type, ALIGN_IMP);
+    llvm::Value* op2 = OpLoad(inst.op(1), op_type, ALIGN_IMP);
+    if (horz)
+        std::tie(op1, op2) = horzToVert(irb, op1, op2);
+    OpStoreVec(inst.op(0), irb.CreateBinOp(op, op1, op2), ALIGN_IMP);
 }
 
 void Lifter::LiftSseAddSub(const Instr& inst, Facet op_type) {
@@ -443,7 +450,11 @@ void Lifter::LiftSsePshiftElement(const Instr& inst,
                                   llvm::Instruction::BinaryOps op,
                                   Facet op_type) {
     llvm::Value* src = OpLoad(inst.op(0), op_type);
-    llvm::Value* shift = OpLoad(inst.op(1), Facet::I64);
+    llvm::Value* shift;
+    if (!inst.op(1).is_imm())
+        shift = OpLoad(inst.op(1), Facet::I64);
+    else
+        shift = irb.getInt64(inst.op(1).imm());
 
     llvm::VectorType* vec_ty = llvm::cast<llvm::VectorType>(src->getType());
     llvm::Type* elem_ty = vec_ty->getElementType();
@@ -483,6 +494,31 @@ void Lifter::LiftSsePshiftBytes(const Instr& inst) {
         OpStoreVec(inst.op(0), irb.CreateShuffleVector(src, zero, mask));
     else
         OpStoreVec(inst.op(0), irb.CreateShuffleVector(zero, src, mask));
+}
+
+void Lifter::LiftSsePalignr(const Instr& inst) {
+    unsigned imm = inst.op(2).imm();
+    llvm::Value* src1 = OpLoad(inst.op(0), Facet::V16I8, ALIGN_MAX);
+    // Unconditionally load operand, might be in memory
+    llvm::Value* src2 = OpLoad(inst.op(1), Facet::V16I8, ALIGN_MAX);
+    llvm::Value* res;
+    if (imm == 0) {
+        res = src2;
+    } else if (imm == 16) {
+        res = src1;
+    } else if (imm >= 32) {
+        res = llvm::Constant::getNullValue(src1->getType());
+    } else {
+        if (imm > 16) {
+            src2 = src1;
+            src1 = llvm::Constant::getNullValue(src1->getType());
+        }
+        int mask[16];
+        for (int i = 0; i < 16; i++)
+            mask[i] = i + (imm & 0xf);
+        res = irb.CreateShuffleVector(src2, src1, mask);
+    }
+    OpStoreVec(inst.op(0), res);
 }
 
 void Lifter::LiftSsePavg(const Instr& inst, Facet op_type) {
@@ -567,9 +603,11 @@ static llvm::Value* SaturateTrunc(llvm::IRBuilder<>& irb, llvm::Value* val,
 
 void Lifter::LiftSsePaddsubSaturate(const Instr& inst,
                                     llvm::Instruction::BinaryOps calc_op,
-                                    bool sign, Facet op_ty) {
-    llvm::Value* src1 = OpLoad(inst.op(0), op_ty);
-    llvm::Value* src2 = OpLoad(inst.op(1), op_ty);
+                                    bool sign, bool horz, Facet op_ty) {
+    llvm::Value* src1 = OpLoad(inst.op(0), op_ty, ALIGN_MAX);
+    llvm::Value* src2 = OpLoad(inst.op(1), op_ty, ALIGN_MAX);
+    if (horz)
+        std::tie(src1, src2) = horzToVert(irb, src1, src2);
     llvm::Instruction::CastOps cast = sign ? llvm::Instruction::SExt
                                            : llvm::Instruction::ZExt;
 
@@ -603,6 +641,28 @@ void Lifter::LiftSsePsadbw(const Instr& inst) {
     llvm::Value* res = irb.CreateInsertElement(zero_ext, lowr, uint64_t{0});
     res = irb.CreateInsertElement(res, highr, uint64_t{4});
     OpStoreVec(inst.op(0), res);
+}
+
+void Lifter::LiftSsePmaddubsw(const Instr& inst) {
+    llvm::Value* a = OpLoad(inst.op(1), Facet::VI8);
+    llvm::Value* b = OpLoad(inst.op(0), Facet::VI8);
+    llvm::Value* undef = llvm::UndefValue::get(a->getType());
+
+    // Pattern taken from llvm/test/CodeGen/X86/pmaddubsw.ll
+    auto aEven = CreateShuffleVector(a, undef, {0, 2, 4, 6, 8, 10, 12, 14});
+    auto aOdd = CreateShuffleVector(a, undef, {1, 3, 5, 7, 9, 11, 13, 15});
+    auto bEven = CreateShuffleVector(b, undef, {0, 2, 4, 6, 8, 10, 12, 14});
+    auto bOdd = CreateShuffleVector(b, undef, {1, 3, 5, 7, 9, 11, 13, 15});
+    auto exTy = llvm::VectorType::get(irb.getInt32Ty(), 8, false);
+    aEven = irb.CreateSExt(aEven, exTy);
+    aOdd = irb.CreateSExt(aOdd, exTy);
+    bEven = irb.CreateZExt(bEven, exTy);
+    bOdd = irb.CreateZExt(bOdd, exTy);
+
+    auto evenMul = irb.CreateMul(aEven, bEven);
+    auto oddMul = irb.CreateMul(aOdd, bOdd);
+    auto add = irb.CreateAdd(evenMul, oddMul);
+    OpStoreVec(inst.op(0), SaturateTrunc(irb, add, /*sign=*/true));
 }
 
 void Lifter::LiftSsePack(const Instr& inst, Facet src_type, bool sign) {
@@ -644,6 +704,17 @@ void Lifter::LiftSsePabs(const Instr& inst, Facet type) {
     llvm::Value* neg = irb.CreateSub(zero, src);
     llvm::Value* cmp = irb.CreateICmpSGE(src, zero);
     OpStoreVec(inst.op(0), irb.CreateSelect(cmp, src, neg));
+}
+
+void Lifter::LiftSsePsign(const Instr& inst, Facet type) {
+    llvm::Value* src1 = OpLoad(inst.op(0), type, ALIGN_MAX);
+    llvm::Value* src2 = OpLoad(inst.op(1), type, ALIGN_MAX);
+    llvm::Value* zero = llvm::Constant::getNullValue(src2->getType());
+    // src2 < 0 => -src1; src2 == 0 => zero; src2 > 0 => src1
+    llvm::Value* cmpZero = irb.CreateICmpEQ(src2, zero);
+    llvm::Value* cmpNeg = irb.CreateICmpSLT(src2, zero);
+    llvm::Value* neg = irb.CreateSelect(cmpNeg, irb.CreateNeg(src1), src1);
+    OpStoreVec(inst.op(0), irb.CreateSelect(cmpZero, zero, neg));
 }
 
 void Lifter::LiftSseMovmsk(const Instr& inst, Facet op_type) {

@@ -105,16 +105,33 @@ private:
     struct RepInfo {
         enum RepMode { NO_REP, REP, REPZ, REPNZ };
         RepMode mode;
-        BasicBlock* loop_block;
-        BasicBlock* cont_block;
+        llvm::BasicBlock* header_block;
+        llvm::BasicBlock* loop_block;
+        llvm::BasicBlock* cont_block;
 
         llvm::Type* ty;
+        llvm::Value* adj;
         llvm::Value* di;
         llvm::Value* si;
-        uint64_t ip;
+        llvm::PHINode* loop_di = nullptr;
+        llvm::PHINode* loop_si = nullptr;
+        llvm::PHINode* loop_count = nullptr;
+        llvm::PHINode* cont_di = nullptr;
+        llvm::PHINode* cont_si = nullptr;
+        llvm::PHINode* cont_count = nullptr;
+        llvm::Value* flags[6];
+
+        llvm::PHINode* merge(llvm::Value* oldVal, llvm::Value* loopVal) {
+            llvm::PHINode* phi = llvm::PHINode::Create(oldVal->getType(), 2);
+            phi->insertInto(cont_block, cont_block->begin());
+            phi->addIncoming(oldVal, header_block);
+            phi->addIncoming(loopVal, loop_block);
+            return phi;
+        }
+        // uint64_t ip;
     };
     RepInfo RepBegin(const Instr& inst);
-    void RepEnd(RepInfo info);
+    void RepEnd(RepInfo info, llvm::Value* cmpA = nullptr, llvm::Value* cmpB = nullptr);
 
     void LiftMovgp(const Instr&);
     void LiftMovzx(const Instr&);
@@ -138,6 +155,7 @@ private:
     void LiftCext(const Instr& inst);
     void LiftCsep(const Instr& inst);
     void LiftBitscan(const Instr& inst, bool trailing);
+    void LiftPopcnt(const Instr& inst);
     void LiftBittest(const Instr& inst, llvm::Instruction::BinaryOps op,
                      llvm::AtomicRMWInst::BinOp atomic_op);
     void LiftMovbe(const Instr& inst);
@@ -185,9 +203,7 @@ private:
     void LiftFstsw(const Instr&);
     void LiftStmxcsr(const Instr&);
     void LiftSseMovq(const Instr&, Facet type);
-    void LiftSseBinOp(const Instr&, llvm::Instruction::BinaryOps op,
-                      Facet type);
-    void LiftSseHorzOp(const Instr&, llvm::Instruction::BinaryOps op,
+    void LiftSseBinOp(const Instr&, llvm::Instruction::BinaryOps op, bool horz,
                       Facet type);
     void LiftSseMovScalar(const Instr&, Facet);
     void LiftSseMovdq(const Instr&, Facet, Alignment);
@@ -213,18 +229,21 @@ private:
     void LiftSseMovdup(const Instr&, Facet, unsigned off);
     void LiftSsePshiftElement(const Instr&, llvm::Instruction::BinaryOps op, Facet op_type);
     void LiftSsePshiftBytes(const Instr&);
+    void LiftSsePalignr(const Instr&);
     void LiftSsePavg(const Instr&, Facet);
     void LiftSsePmulhw(const Instr&, llvm::Instruction::CastOps cast);
     void LiftSsePmuldq(const Instr&, llvm::Instruction::CastOps ext);
     void LiftSsePmaddwd(const Instr&);
     void LiftSsePaddsubSaturate(const Instr& inst,
                                 llvm::Instruction::BinaryOps calc_op, bool sign,
-                                Facet op_ty);
+                                bool horz, Facet op_ty);
     void LiftSsePsadbw(const Instr&);
+    void LiftSsePmaddubsw(const Instr&);
     void LiftSsePack(const Instr&, Facet, bool sign);
     void LiftSsePcmp(const Instr&, llvm::CmpInst::Predicate, Facet);
     void LiftSsePminmax(const Instr&, llvm::CmpInst::Predicate, Facet);
     void LiftSsePabs(const Instr&, Facet);
+    void LiftSsePsign(const Instr&, Facet);
     void LiftSseMovmsk(const Instr&, Facet op_type);
     void LiftSsePmovx(const Instr&, llvm::Instruction::CastOps ext, Facet from, Facet to);
 };

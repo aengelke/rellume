@@ -497,18 +497,40 @@ void Lifter::LiftCsep(const Instr& inst) {
 }
 
 void Lifter::LiftBitscan(const Instr& inst, bool trailing) {
+    unsigned sz = inst.op(1).bits();
+    llvm::Value* dst = OpLoad(inst.op(0), sz == 16 ? Facet::I16 : Facet::I64);
     llvm::Value* src = OpLoad(inst.op(1), Facet::I);
     auto id = trailing ? llvm::Intrinsic::cttz : llvm::Intrinsic::ctlz;
     llvm::Value* res = irb.CreateBinaryIntrinsic(id, src,
                                                  /*zero_undef=*/irb.getTrue());
-    if (!trailing) {
-        unsigned sz = inst.op(1).bits();
+    if (!trailing)
         res = irb.CreateSub(irb.getIntN(sz, sz - 1), res);
+    // BSF/BSR don't modify dest if src is zero. This is specified on AMD, and
+    // Intel apparently behaves similar on all x86-64 implementations. There is
+    // also no zero extension of 32-bit operands.
+    // See: https://sourceware.org/bugzilla/show_bug.cgi?id=31748
+    llvm::Value* eq = irb.CreateIsNull(src);
+    if (sz == 32) {
+        res = irb.CreateZExt(res, irb.getInt64Ty());
+        SetReg(MapReg(inst.op(0).reg()), irb.CreateSelect(eq, dst, res));
+    } else {
+        OpStoreGp(inst.op(0), irb.CreateSelect(eq, dst, res));
     }
-    OpStoreGp(inst.op(0), res);
+
+    SetReg(ArchReg::ZF, eq);
+    SetFlagUndef({ArchReg::OF, ArchReg::SF, ArchReg::AF, ArchReg::PF, ArchReg::CF});
+}
+
+void Lifter::LiftPopcnt(const Instr& inst) {
+    llvm::Value* src = OpLoad(inst.op(1), Facet::I);
+    OpStoreGp(inst.op(0), irb.CreateUnaryIntrinsic(llvm::Intrinsic::ctpop, src));
 
     FlagCalcZ(src);
-    SetFlagUndef({ArchReg::OF, ArchReg::SF, ArchReg::AF, ArchReg::PF, ArchReg::CF});
+    SetReg(ArchReg::OF, irb.getFalse());
+    SetReg(ArchReg::SF, irb.getFalse());
+    SetReg(ArchReg::AF, irb.getFalse());
+    SetReg(ArchReg::PF, irb.getInt8(1)); // constant 1 for low 8 bits -> PF=0
+    SetReg(ArchReg::CF, irb.getFalse());
 }
 
 void Lifter::LiftBittest(const Instr& inst, llvm::Instruction::BinaryOps op,
@@ -712,20 +734,8 @@ Lifter::RepInfo Lifter::RepBegin(const Instr& inst) {
     else
         info.mode = RepInfo::NO_REP;
 
-    // Iff instruction has REP/REPZ/REPNZ, add branching logic
-    if (info.mode != RepInfo::NO_REP) {
-        info.loop_block = ablock.AddBlock();
-        info.cont_block = ablock.AddBlock();
-        info.ip = inst.end();
-
-        llvm::Value* count = GetReg(ArchReg::RCX, Facet::I64);
-        llvm::Value* zero = llvm::Constant::getNullValue(count->getType());
-        llvm::Value* enter_loop = irb.CreateICmpNE(count, zero);
-        ablock.GetInsertBlock()->BranchTo(enter_loop, *info.loop_block,
-                                          *info.cont_block);
-
-        SetInsertBlock(info.loop_block);
-    }
+    llvm::Value* df = GetFlag(ArchReg::DF);
+    info.adj = irb.CreateSelect(df, irb.getInt64(-1), irb.getInt64(1));
 
     info.ty = irb.getIntNTy(inst.opsz() * 8);
     if (inst.type() != FDI_LODS)
@@ -733,50 +743,130 @@ Lifter::RepInfo Lifter::RepBegin(const Instr& inst) {
     if (inst.type() != FDI_STOS && inst.type() != FDI_SCAS)
         info.si = GetReg(ArchReg::RSI, Facet::PTR);
 
+    // Iff instruction has REP/REPZ/REPNZ, add branching logic
+    if (info.mode != RepInfo::NO_REP) {
+        info.header_block = irb.GetInsertBlock();
+        info.loop_block = llvm::BasicBlock::Create(irb.getContext(), "", fi.fn);
+        info.cont_block = llvm::BasicBlock::Create(irb.getContext(), "", fi.fn);
+
+        if (condrep) {
+            info.flags[0] = GetFlag(ArchReg::OF);
+            info.flags[1] = GetFlag(ArchReg::SF);
+            info.flags[2] = GetFlag(ArchReg::ZF);
+            info.flags[3] = GetFlag(ArchReg::AF);
+            info.flags[4] = GetFlag(ArchReg::PF);
+            info.flags[5] = GetFlag(ArchReg::CF);
+        }
+
+        llvm::Value* count = GetReg(ArchReg::RCX, Facet::I64);
+        llvm::Value* zero = llvm::Constant::getNullValue(count->getType());
+        llvm::Value* enter_loop = irb.CreateICmpNE(count, zero);
+        irb.CreateCondBr(enter_loop, info.loop_block, info.cont_block);
+        SetInsertBlock(info.loop_block);
+
+        auto createPhi = [&] (llvm::BasicBlock* bb, llvm::Value* val) {
+            llvm::PHINode* phi = llvm::PHINode::Create(val->getType(), 2, "", bb);
+            phi->addIncoming(val, info.header_block);
+            return phi;
+        };
+        if (info.di) {
+            info.cont_di = createPhi(info.cont_block, info.di);
+            info.di = info.loop_di = createPhi(info.loop_block, info.di);
+        }
+        if (info.si) {
+            info.cont_si = createPhi(info.cont_block, info.si);
+            info.si = info.loop_si = createPhi(info.loop_block, info.si);
+        }
+        info.cont_count = createPhi(info.cont_block, count);
+        info.loop_count = createPhi(info.loop_block, count);
+    }
+
     return info;
 }
 
-void Lifter::RepEnd(RepInfo info) {
-    // First update pointer registers with direction flag
-    llvm::Value* df = GetFlag(ArchReg::DF);
-    llvm::Value* adj = irb.CreateSelect(df, irb.getInt64(-1), irb.getInt64(1));
-
-    if (info.di)
-        SetReg(ArchReg::RDI, irb.CreateGEP(info.ty, info.di, adj));
-    if (info.si)
-        SetReg(ArchReg::RSI, irb.CreateGEP(info.ty, info.si, adj));
-
+void Lifter::RepEnd(RepInfo info, llvm::Value* cmpA, llvm::Value* cmpB) {
     // If instruction has REP/REPZ/REPNZ, add branching logic
-    if (info.mode == RepInfo::NO_REP)
+    if (info.mode == RepInfo::NO_REP) {
+        if (info.di)
+            SetReg(ArchReg::RDI, irb.CreateGEP(info.ty, info.di, info.adj));
+        if (info.si)
+            SetReg(ArchReg::RSI, irb.CreateGEP(info.ty, info.si, info.adj));
+        if (cmpA && cmpB) {
+            // Perform a normal CMP operation.
+            FlagCalcSub(irb.CreateSub(cmpA, cmpB), cmpA, cmpB);
+        }
         return;
+    }
+
+    // First update pointer registers with direction flag
+    if (info.loop_di) {
+        llvm::Value* adjDi = irb.CreateGEP(info.ty, info.loop_di, info.adj);
+        info.loop_di->addIncoming(adjDi, info.loop_block);
+        info.cont_di->addIncoming(adjDi, info.loop_block);
+    }
+    if (info.loop_si) {
+        llvm::Value* adjSi = irb.CreateGEP(info.ty, info.loop_si, info.adj);
+        info.loop_si->addIncoming(adjSi, info.loop_block);
+        info.cont_si->addIncoming(adjSi, info.loop_block);
+    }
 
     // Decrement count and check.
-    llvm::Value* count = GetReg(ArchReg::RCX, Facet::I64);
+    llvm::Value* count = info.loop_count;
     count = irb.CreateSub(count, irb.getInt64(1));
-    SetReg(ArchReg::RCX, count);
+    info.loop_count->addIncoming(count, info.loop_block);
+    info.cont_count->addIncoming(count, info.loop_block);
 
     llvm::Value* zero = llvm::Constant::getNullValue(count->getType());
     llvm::Value* cond = irb.CreateICmpNE(count, zero);
     if (info.mode == RepInfo::REPZ)
-        cond = irb.CreateAnd(cond, GetFlag(ArchReg::ZF));
+        cond = irb.CreateAnd(cond, irb.CreateICmpEQ(cmpA, cmpB));
     else if (info.mode == RepInfo::REPNZ)
-        cond = irb.CreateAnd(cond, irb.CreateNot(GetFlag(ArchReg::ZF)));
+        cond = irb.CreateAnd(cond, irb.CreateICmpNE(cmpA, cmpB));
 
-    ablock.GetInsertBlock()->BranchTo(cond, *info.loop_block, *info.cont_block);
+    irb.CreateCondBr(cond, info.loop_block, info.cont_block);
     SetInsertBlock(info.cont_block);
 
-    // Ensure that we don't generate an unused PHI node which may end up in the
-    // register file if the REP is at the end of a basic block.
-    SetIP(info.ip);
+    if (cmpA && cmpB) {
+        llvm::Value* lf = info.merge(irb.getFalse(), irb.getTrue());
+        // Ok, very stupid flag computation. If someone uses these flags, they
+        // get the slow code they want.
+        cmpA = info.merge(llvm::ConstantInt::getNullValue(cmpA->getType()), cmpA);
+        cmpB = info.merge(llvm::ConstantInt::getNullValue(cmpB->getType()), cmpB);
+
+        // Perform a normal CMP operation.
+        FlagCalcSub(irb.CreateSub(cmpA, cmpB), cmpA, cmpB);
+        // Merge flags
+        SetReg(ArchReg::OF, irb.CreateSelect(lf, GetFlag(ArchReg::OF), info.flags[0]));
+        SetReg(ArchReg::SF, irb.CreateSelect(lf, GetFlag(ArchReg::SF), info.flags[1]));
+        SetReg(ArchReg::ZF, irb.CreateSelect(lf, GetFlag(ArchReg::ZF), info.flags[2]));
+        SetReg(ArchReg::AF, irb.CreateSelect(lf, GetFlag(ArchReg::AF), info.flags[3]));
+        SetReg(ArchReg::PF, irb.CreateNot(irb.CreateSelect(lf, GetFlag(ArchReg::PF), info.flags[4])));
+        SetReg(ArchReg::CF, irb.CreateSelect(lf, GetFlag(ArchReg::CF), info.flags[5]));
+    }
+
+    if (info.cont_di)
+        SetReg(ArchReg::RDI, info.cont_di);
+    if (info.cont_si)
+        SetReg(ArchReg::RSI, info.cont_si);
+    SetReg(ArchReg::RCX, info.cont_count);
 }
 
 void Lifter::LiftLods(const Instr& inst) {
+    llvm::Value* oldAx = nullptr;
+    if (inst.has_rep())
+        oldAx = GetReg(ArchReg::RAX, Facet::In(inst.opsz() == 4 ? 64 : inst.opsz() * 8));
+
     RepInfo rep_info = RepBegin(inst); // NOTE: this modifies control flow!
-
-    unsigned size = inst.opsz();
-    StoreGp(ArchReg::RAX, irb.CreateLoad(irb.getIntNTy(size), rep_info.di));
-
+    llvm::Value* newAx = irb.CreateLoad(rep_info.ty, rep_info.si);
+    if (inst.has_rep() && inst.opsz() == 4)
+        newAx = irb.CreateZExt(newAx, oldAx->getType());
     RepEnd(rep_info); // NOTE: this modifies control flow!
+
+    if (inst.has_rep()) {
+        StoreGp(ArchReg::RAX, rep_info.merge(oldAx, newAx));
+    } else {
+        StoreGp(ArchReg::RAX, newAx);
+    }
 }
 
 void Lifter::LiftStos(const Instr& inst) {
@@ -787,71 +877,62 @@ void Lifter::LiftStos(const Instr& inst) {
         auto di = GetReg(ArchReg::RDI, Facet::PTR);
         auto cx = GetReg(ArchReg::RCX, Facet::I64);
         auto ax = GetReg(ArchReg::RAX, Facet::I8);
+        auto df = GetFlag(ArchReg::DF);
 
-        auto* df0_block = ablock.AddBlock();
-        auto* df1_block = ablock.AddBlock();
-        auto* cont_block = ablock.AddBlock();
+        auto* df0_block = llvm::BasicBlock::Create(irb.getContext(), "", fi.fn);
+        auto* df1_block = llvm::BasicBlock::Create(irb.getContext(), "", fi.fn);
+        auto* cont_block = llvm::BasicBlock::Create(irb.getContext(), "", fi.fn);
+        auto* di_phi = llvm::PHINode::Create(di->getType(), 2, "", cont_block);
 
-        llvm::Value* df = GetFlag(ArchReg::DF);
-        ablock.GetInsertBlock()->BranchTo(df, *df1_block, *df0_block);
+        irb.CreateCondBr(df, df1_block, df0_block);
 
         SetInsertBlock(df0_block);
         irb.CreateMemSet(di, ax, cx, llvm::Align());
-        SetReg(ArchReg::RDI, irb.CreateGEP(ty, di, cx));
-        ablock.GetInsertBlock()->BranchTo(*cont_block);
+        di_phi->addIncoming(irb.CreateGEP(ty, di, cx), df0_block);
+        irb.CreateBr(cont_block);
 
         SetInsertBlock(df1_block);
         auto adj = irb.CreateSub(irb.getInt64(1), cx);
         auto base = irb.CreateGEP(ty, di, adj);
         irb.CreateMemSet(base, ax, cx, llvm::Align());
-        SetReg(ArchReg::RDI, irb.CreateGEP(ty, base, irb.getInt64(-1)));
-        ablock.GetInsertBlock()->BranchTo(*cont_block);
+        di_phi->addIncoming(irb.CreateGEP(ty, base, irb.getInt64(-1)), df1_block);
+        irb.CreateBr(cont_block);
 
         SetInsertBlock(cont_block);
+        SetReg(ArchReg::RDI, di_phi);
         SetReg(ArchReg::RCX, irb.getInt64(0));
-        SetIP(inst.end());
         return;
     }
 
     // TODO: optimize REP STOSB and other sizes with constant zero to llvm
     // memset intrinsic.
-    RepInfo rep_info = RepBegin(inst); // NOTE: this modifies control flow!
-
     auto ax = GetReg(ArchReg::RAX, Facet::In(inst.opsz() * 8));
-    irb.CreateStore(ax, rep_info.di);
 
+    RepInfo rep_info = RepBegin(inst); // NOTE: this modifies control flow!
+    irb.CreateStore(ax, rep_info.di);
     RepEnd(rep_info); // NOTE: this modifies control flow!
 }
 
 void Lifter::LiftMovs(const Instr& inst) {
     // TODO: optimize REP MOVSB to use llvm memcpy intrinsic.
     RepInfo rep_info = RepBegin(inst); // NOTE: this modifies control flow!
-
     irb.CreateStore(irb.CreateLoad(rep_info.ty, rep_info.si), rep_info.di);
-
     RepEnd(rep_info); // NOTE: this modifies control flow!
 }
 
 void Lifter::LiftScas(const Instr& inst) {
-    RepInfo rep_info = RepBegin(inst); // NOTE: this modifies control flow!
-
     auto src = GetReg(ArchReg::RAX, Facet::In(inst.opsz() * 8));
-    llvm::Value* dst = irb.CreateLoad(rep_info.ty, rep_info.di);
-    // Perform a normal CMP operation.
-    FlagCalcSub(irb.CreateSub(src, dst), src, dst);
 
-    RepEnd(rep_info); // NOTE: this modifies control flow!
+    RepInfo rep_info = RepBegin(inst); // NOTE: this modifies control flow!
+    llvm::Value* dst = irb.CreateLoad(rep_info.ty, rep_info.di);
+    RepEnd(rep_info, src, dst); // NOTE: this modifies control flow!
 }
 
 void Lifter::LiftCmps(const Instr& inst) {
     RepInfo rep_info = RepBegin(inst); // NOTE: this modifies control flow!
-
     llvm::Value* src = irb.CreateLoad(rep_info.ty, rep_info.si);
     llvm::Value* dst = irb.CreateLoad(rep_info.ty, rep_info.di);
-    // Perform a normal CMP operation.
-    FlagCalcSub(irb.CreateSub(src, dst), src, dst);
-
-    RepEnd(rep_info); // NOTE: this modifies control flow!
+    RepEnd(rep_info, src, dst); // NOTE: this modifies control flow!
 }
 
 } // namespace::x86_64

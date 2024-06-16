@@ -66,7 +66,7 @@ namespace SptrIdx::aarch64 {
 }
 #endif // RELLUME_WITH_AARCH64
 
-class BasicBlock;
+class ArchBasicBlock;
 class RegFile;
 
 /// CallConvPack records which registers were changed in a basic block,
@@ -78,7 +78,7 @@ class RegFile;
 struct CallConvPack {
     std::unique_ptr<RegFile> regfile;
     llvm::Instruction* packBefore;
-    BasicBlock* bb;
+    ArchBasicBlock* bb;
 };
 
 /// FunctionInfo holds the LLVM objects of the lifted function and its

@@ -56,7 +56,6 @@ namespace rellume {
 class LiftHelper {
     Function* func;
     FunctionInfo fi;
-    BasicBlock::Phis phi_mode;
     llvm::DenseMap<uint64_t, std::unique_ptr<ArchBasicBlock>> block_map;
 
     std::unique_ptr<ArchBasicBlock> exit_block;
@@ -87,8 +86,7 @@ ArchBasicBlock& LiftHelper::ResolveAddr(uint64_t addr) {
     if (!func->instrs[instr_it->second.instr_idx].new_block)
         return *exit_block;
     // We will lift something for that address, so create the block.
-    auto ab = std::make_unique<ArchBasicBlock>(fi.fn, phi_mode, func->cfg->arch,
-                                               instr_it->second.preds);
+    auto ab = std::make_unique<ArchBasicBlock>(fi.fn, instr_it->second.preds);
     return *(block_map[addr] = std::move(ab));
 }
 
@@ -135,18 +133,15 @@ llvm::Function* LiftHelper::Lift() {
     fi.fn = fn;
     fi.sptr_raw = &fn->arg_begin()[cpu_param_idx];
 
-    phi_mode = cfg->full_facets ? BasicBlock::Phis::ALL : BasicBlock::Phis::NATIVE;
     // Create entry basic block as first block in the function.
-    auto entry_block = std::make_unique<ArchBasicBlock>(fn,
-                                                        BasicBlock::Phis::NONE,
-                                                        cfg->arch, 0);
+    auto entry_block = std::make_unique<ArchBasicBlock>(fn, 0);
     // Initialize the sptr pointers in the function info.
-    cfg->callconv.InitSptrs(entry_block->GetInsertBlock(), fi);
+    cfg->callconv.InitSptrs(entry_block.get(), fi);
     // And initially fill register file.
-    cfg->callconv.UnpackParams(entry_block->GetInsertBlock(), fi);
+    cfg->callconv.UnpackParams(entry_block.get(), fi);
     entry_block->BranchTo(ResolveAddr(entry_ip));
 
-    exit_block = std::make_unique<ArchBasicBlock>(fn, phi_mode, cfg->arch, SIZE_MAX);
+    exit_block = std::make_unique<ArchBasicBlock>(fn, SIZE_MAX);
 
     if (cfg->pc_base_value) {
         fi.pc_base_addr = cfg->pc_base_addr;
@@ -156,7 +151,7 @@ llvm::Function* LiftHelper::Lift() {
         if (!cfg->position_independent_code) {
             fi.pc_base_value = nullptr;
         } else {
-            RegFile* entry_rf = entry_block->GetInsertBlock()->GetRegFile();
+            RegFile* entry_rf = entry_block->GetRegFile();
             fi.pc_base_value = entry_rf->GetPCValue(nullptr, 0);
         }
     }
@@ -167,8 +162,8 @@ llvm::Function* LiftHelper::Lift() {
             const auto& decinst = func->instrs[i];
             if (decinst.new_block) {
                 cur_ab = &ResolveAddr(decinst.inst.start());
-                assert(!cur_ab->GetInsertBlock()->GetRegFile());
-                cur_ab->GetInsertBlock()->InitRegFile(cfg->arch, phi_mode);
+                assert(!cur_ab->GetRegFile());
+                cur_ab->InitWithPHIs(cfg->arch);
             }
 
             bool success = lift_fn(decinst.inst, fi, *cfg, *cur_ab);
@@ -184,7 +179,7 @@ llvm::Function* LiftHelper::Lift() {
 
             // Finish block by adding branches
             if (i >= func->instrs.size() - 1 || func->instrs[i + 1].new_block) {
-                RegFile* regfile = cur_ab->GetInsertBlock()->GetRegFile();
+                RegFile* regfile = cur_ab->GetRegFile();
                 if (!regfile || regfile->GetInsertBlock()->getTerminator())
                     continue;
                 if (decinst.inhibit_branch) {
@@ -200,28 +195,28 @@ llvm::Function* LiftHelper::Lift() {
         }
     }
 
-    exit_block->GetInsertBlock()->InitRegFile(cfg->arch, phi_mode, /*seal=*/true);
+    exit_block->InitWithPHIs(cfg->arch, /*seal=*/true);
     {
-        llvm::BasicBlock* exitbb = *exit_block->GetInsertBlock();
-        const auto& preds = exit_block->GetInsertBlock()->Predecessors();
+        llvm::BasicBlock* exitbb = exit_block->BeginBlock();
+        const auto& preds = exit_block->Predecessors();
         auto phi = llvm::PHINode::Create(llvm::Type::getInt64Ty(ctx), preds.size(), "", exitbb);
-        for (BasicBlock* pred : preds) {
+        for (ArchBasicBlock* pred : preds) {
             auto predpc = pred->GetRegFile()->GetPCValue(fi.pc_base_value, fi.pc_base_addr);
-            phi->addIncoming(predpc, *pred);
+            phi->addIncoming(predpc, pred->EndBlock());
         }
-        exit_block->GetInsertBlock()->GetRegFile()->SetPC(phi);
+        exit_block->GetRegFile()->SetPC(phi);
     }
 
     // Exit block packs values together and optionally returns something.
     if (cfg->tail_function) {
         CallConv cconv = CallConv::FromFunction(cfg->tail_function, cfg->arch);
         // Force a tail call to the specified function.
-        cconv.Call(cfg->tail_function, exit_block->GetInsertBlock(), fi, true);
+        cconv.Call(cfg->tail_function, exit_block.get(), fi, true);
     } else {
-        cfg->callconv.Return(exit_block->GetInsertBlock(), fi);
+        cfg->callconv.Return(exit_block.get(), fi);
     }
 
-    cfg->callconv.OptimizePacks(fi, entry_block->GetInsertBlock());
+    cfg->callconv.OptimizePacks(fi, entry_block.get());
 
     // Walk over blocks as long as phi nodes could have been added. We stop when
     // alls phis are filled.

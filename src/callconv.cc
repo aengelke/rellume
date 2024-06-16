@@ -175,8 +175,8 @@ static span<const CPUStructEntry> CPUStructEntries(CallConv cconv) {
 }
 
 
-void CallConv::InitSptrs(BasicBlock* bb, FunctionInfo& fi) {
-    llvm::IRBuilder<> irb(*bb);
+void CallConv::InitSptrs(ArchBasicBlock* bb, FunctionInfo& fi) {
+    llvm::IRBuilder<> irb(bb->BeginBlock());
     llvm::Type* i8 = irb.getInt8Ty();
 
     const auto& cpu_struct_entries = CPUStructEntries(*this);
@@ -185,7 +185,7 @@ void CallConv::InitSptrs(BasicBlock* bb, FunctionInfo& fi) {
         fi.sptr[sptr_idx] = irb.CreateConstGEP1_64(i8, fi.sptr_raw, off);
 }
 
-static void Pack(BasicBlock* bb, FunctionInfo& fi, llvm::Instruction* before) {
+static void Pack(ArchBasicBlock* bb, FunctionInfo& fi, llvm::Instruction* before) {
     CallConvPack& pack_info = fi.call_conv_packs.emplace_back();
     pack_info.regfile = bb->TakeRegFile();
     pack_info.packBefore = before;
@@ -193,8 +193,8 @@ static void Pack(BasicBlock* bb, FunctionInfo& fi, llvm::Instruction* before) {
 }
 
 template<typename F>
-static void Unpack(CallConv cconv, BasicBlock* bb, FunctionInfo& fi, F get_from_reg) {
-    bb->InitRegFile(cconv.ToArch(), BasicBlock::Phis::NONE);
+static void Unpack(CallConv cconv, ArchBasicBlock* bb, llvm::BasicBlock* llvmBlock, FunctionInfo& fi, F get_from_reg) {
+    bb->InitEmpty(cconv.ToArch(), llvmBlock);
     // New regfile with everything cleared
     RegFile& regfile = *bb->GetRegFile();
     llvm::IRBuilder<> irb(regfile.GetInsertBlock());
@@ -216,26 +216,26 @@ static void Unpack(CallConv cconv, BasicBlock* bb, FunctionInfo& fi, F get_from_
     }
 }
 
-llvm::ReturnInst* CallConv::Return(BasicBlock* bb, FunctionInfo& fi) const {
+llvm::ReturnInst* CallConv::Return(ArchBasicBlock* bb, FunctionInfo& fi) const {
     llvm::IRBuilder<> irb(bb->GetRegFile()->GetInsertBlock());
     llvm::ReturnInst* ret = irb.CreateRetVoid();
     Pack(bb, fi, ret);
     return ret;
 }
 
-void CallConv::UnpackParams(BasicBlock* bb, FunctionInfo& fi) const {
-    Unpack(*this, bb, fi, [&fi] (ArchReg reg) {
+void CallConv::UnpackParams(ArchBasicBlock* bb, FunctionInfo& fi) const {
+    Unpack(*this, bb, bb->BeginBlock(), fi, [&fi] (ArchReg reg) {
         return nullptr;
     });
 }
 
-llvm::CallInst* CallConv::Call(llvm::Function* fn, BasicBlock* bb,
+llvm::CallInst* CallConv::Call(llvm::Function* fn, ArchBasicBlock* bb,
                                FunctionInfo& fi, bool tail_call) {
     llvm::SmallVector<llvm::Value*, 16> call_args;
     call_args.resize(fn->arg_size());
     call_args[CpuStructParamIdx()] = fi.sptr_raw;
 
-    llvm::IRBuilder<> irb(*bb);
+    llvm::IRBuilder<> irb(bb->EndBlock());
 
     llvm::CallInst* call = irb.CreateCall(fn->getFunctionType(), fn, call_args);
     call->setCallingConv(fn->getCallingConv());
@@ -252,28 +252,28 @@ llvm::CallInst* CallConv::Call(llvm::Function* fn, BasicBlock* bb,
         return call;
     }
 
-    Unpack(*this, bb, fi, [] (ArchReg reg) {
+    Unpack(*this, bb, irb.GetInsertBlock(), fi, [] (ArchReg reg) {
         return nullptr;
     });
 
     return call;
 }
 
-void CallConv::OptimizePacks(FunctionInfo& fi, BasicBlock* entry) {
+void CallConv::OptimizePacks(FunctionInfo& fi, ArchBasicBlock* entry) {
     // Map of basic block to dirty register at (beginning, end) of the block.
-    llvm::DenseMap<BasicBlock*, std::pair<RegisterSet, RegisterSet>> bb_map;
+    llvm::DenseMap<ArchBasicBlock*, std::pair<RegisterSet, RegisterSet>> bb_map;
 
-    llvm::SmallPtrSet<BasicBlock*, 16> queue;
-    llvm::SmallVector<BasicBlock*, 16> queue_vec;
+    llvm::SmallPtrSet<ArchBasicBlock*, 16> queue;
+    llvm::SmallVector<ArchBasicBlock*, 16> queue_vec;
     queue.insert(entry);
     queue_vec.push_back(entry);
 
     while (!queue.empty()) {
-        llvm::SmallVector<BasicBlock*, 16> new_queue_vec;
-        for (BasicBlock* bb : queue_vec) {
+        llvm::SmallVector<ArchBasicBlock*, 16> new_queue_vec;
+        for (ArchBasicBlock* bb : queue_vec) {
             queue.erase(bb);
             RegisterSet pre;
-            for (BasicBlock* pred : bb->Predecessors())
+            for (ArchBasicBlock* pred : bb->Predecessors())
                 pre |= bb_map.lookup(pred).second;
 
             RegisterSet post;
@@ -289,7 +289,7 @@ void CallConv::OptimizePacks(FunctionInfo& fi, BasicBlock* entry) {
             // If it is the first time we look at bb, or the set of dirty
             // registers changed, look at successors (again).
             if (inserted || it->second.second != post) {
-                for (BasicBlock* succ : bb->Successors()) {
+                for (ArchBasicBlock* succ : bb->Successors()) {
                     // If user not in the set, then add it to the vector.
                     if (queue.insert(succ).second)
                         new_queue_vec.push_back(succ);
@@ -315,12 +315,45 @@ void CallConv::OptimizePacks(FunctionInfo& fi, BasicBlock* entry) {
         for (const auto& [sptr_idx, off, reg, facet] : CPUStructEntries(*this)) {
             if (reg.Kind() == ArchReg::RegKind::INVALID)
                 continue;
-            if (!regset[RegisterSetBitIdx(reg)])
+            unsigned regidx = RegisterSetBitIdx(reg);
+            if (!regset[regidx])
                 continue;
-            llvm::Value* reg_val = regfile.GetReg(reg, facet);
+            // Find best position for store. Hoist stores up to predecessors
+            // where possible to avoid executing stores on code paths that never
+            // write the register, but don't hoist them inside loops or similar.
+            ArchBasicBlock* bb = pack.bb;
+            RegFile* rf = &regfile;
+            while (!rf->StartsClean() && !rf->DirtyRegs()[regidx]) {
+                // Try to find single predecessor where register is written.
+                ArchBasicBlock* dirtyPred = nullptr;
+                for (ArchBasicBlock* pred : bb->Predecessors()) {
+                    // Ignore predecessors where the register is never written.
+                    if (!bb_map.lookup(pred).second[regidx])
+                        continue;
+                    if (dirtyPred) {
+                        dirtyPred = nullptr;
+                        break;
+                    }
+                    dirtyPred = pred;
+                }
+                // If there is no single dirty predecessor or if that has
+                // multiple successors (possibly a loop), abort.
+                if (!dirtyPred || dirtyPred->Successors().size() != 1)
+                    break;
+
+                bb = dirtyPred;
+                rf = bb->GetRegFile();
+            }
+
+            llvm::Value* reg_val = rf->GetReg(reg, facet);
             if (llvm::isa<llvm::UndefValue>(reg_val))
                 continue; // Just remove stores of undef.
-            irb.CreateStore(reg_val, fi.sptr[sptr_idx]);
+            if (rf != &regfile) {
+                auto terminator = rf->GetInsertBlock()->getTerminator();
+                new llvm::StoreInst(reg_val, fi.sptr[sptr_idx], terminator);
+            } else {
+                irb.CreateStore(reg_val, fi.sptr[sptr_idx]);
+            }
         }
     }
 }

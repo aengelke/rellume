@@ -15,7 +15,7 @@ if get_option('warning_level').to_int() >= 3
   endif
 endif
 
-llvm_version = ['>=15', '<18']
+llvm_version = ['>=16', '<19']
 # First, attempt to use the shared library.
 libllvm = dependency('llvm', version: llvm_version, static: false,
                      method: 'config-tool', include_type: 'system',

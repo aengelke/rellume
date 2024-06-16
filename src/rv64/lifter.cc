@@ -141,30 +141,34 @@ public:
             is_spc = is_zero;
         }
 
-        BasicBlock* div_block = ablock.AddBlock();
-        BasicBlock* spc_block = ablock.AddBlock();
-        BasicBlock* cont_block = ablock.AddBlock();
-        ablock.GetInsertBlock()->BranchTo(is_spc, *spc_block, *div_block);
+        auto div_block = llvm::BasicBlock::Create(irb.getContext(), "", fi.fn);
+        auto spc_block = llvm::BasicBlock::Create(irb.getContext(), "", fi.fn);
+        auto cont_block = llvm::BasicBlock::Create(irb.getContext(), "", fi.fn);
+        auto rd_phi = llvm::PHINode::Create(zero->getType(), 2, "", cont_block);
+        irb.CreateCondBr(is_spc, spc_block, div_block);
 
         SetInsertBlock(div_block);
-        StoreGp(rvi->rd, irb.CreateBinOp(op, dividend, divisor));
-        ablock.GetInsertBlock()->BranchTo(*cont_block);
+        rd_phi->addIncoming(irb.CreateBinOp(op, dividend, divisor), div_block);
+        irb.CreateBr(cont_block);
 
         SetInsertBlock(spc_block);
+        llvm::Value* spcRes = nullptr;
         switch (op) {
-        case llvm::Instruction::UDiv: StoreGp(rvi->rd, minusone); break;
-        case llvm::Instruction::URem: StoreGp(rvi->rd, dividend); break;
+        case llvm::Instruction::UDiv: spcRes = minusone; break;
+        case llvm::Instruction::URem: spcRes = dividend; break;
         case llvm::Instruction::SDiv:
-            StoreGp(rvi->rd, irb.CreateSelect(is_minusone, dividend, minusone));
+            spcRes = irb.CreateSelect(is_minusone, dividend, minusone);
             break;
         case llvm::Instruction::SRem:
-            StoreGp(rvi->rd, irb.CreateSelect(is_minusone, zero, dividend));
+            spcRes = irb.CreateSelect(is_minusone, zero, dividend);
             break;
         default: assert(false);
         }
-        ablock.GetInsertBlock()->BranchTo(*cont_block);
+        rd_phi->addIncoming(spcRes, spc_block);
+        irb.CreateBr(cont_block);
 
         SetInsertBlock(cont_block);
+        StoreGp(rvi->rd, rd_phi);
     }
 
     void LiftAmo(const FrvInst* rvi, llvm::AtomicRMWInst::BinOp op, Facet f) {
@@ -504,7 +508,9 @@ bool Lifter::Lift(const Instr& inst) {
 
     // TODO: implement atomic semantics for LR/SC.
     case FRV_LRW: StoreGp(rvi->rd, irb.CreateLoad(irb.getInt32Ty(), LoadGp(rvi->rs1, Facet::PTR))); break;
+    case FRV_LRD: StoreGp(rvi->rd, irb.CreateLoad(irb.getInt64Ty(), LoadGp(rvi->rs1, Facet::PTR))); break;
     case FRV_SCW: StoreGp(rvi->rd, irb.getInt32(0)); irb.CreateStore(LoadGp(rvi->rs2, Facet::I32), LoadGp(rvi->rs1, Facet::PTR)); break;
+    case FRV_SCD: StoreGp(rvi->rd, irb.getInt32(0)); irb.CreateStore(LoadGp(rvi->rs2, Facet::I64), LoadGp(rvi->rs1, Facet::PTR)); break;
     case FRV_FENCE: break; // TODO: fences
 
     case FRV_AMOSWAPW: LiftAmo(rvi, llvm::AtomicRMWInst::Xchg, Facet::I32); break;

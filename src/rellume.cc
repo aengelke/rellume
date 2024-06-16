@@ -105,7 +105,6 @@ void ll_config_set_use_native_segment_base(LLConfig* cfg, bool enable) {
     unwrap(cfg)->use_native_segment_base = enable;
 }
 void ll_config_enable_full_facets(LLConfig* cfg, bool enable) {
-    unwrap(cfg)->full_facets = enable;
 }
 bool ll_config_set_architecture(LLConfig* cfg, const char *s) {
     if (!strcmp(s, "x86-64") || !strcmp(s, "x86_64")) {

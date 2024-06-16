@@ -51,7 +51,7 @@ protected:
     const LLConfig& cfg;
 
     LifterBase(FunctionInfo& fi, const LLConfig& cfg, ArchBasicBlock& ab)
-            : ablock(ab), regfile(ab.GetInsertBlock()->GetRegFile()),
+            : ablock(ab), regfile(ab.GetRegFile()),
               irb(regfile->GetInsertBlock()), fi(fi), cfg(cfg) {
         // Set fast-math flags. Newer LLVM supports FastMathFlags::getFast().
         if (cfg.enableFastMath) {
@@ -111,10 +111,9 @@ protected:
         regfile->SetPCCallret(AddrIPRel(), retaddr);
     }
 
-    void SetInsertBlock(BasicBlock* block) {
-        ablock.SetInsertBlock(block);
-        regfile = block->GetRegFile();
-        irb.SetInsertPoint(regfile->GetInsertBlock());
+    void SetInsertBlock(llvm::BasicBlock* block) {
+        ablock.GetRegFile()->SetInsertPoint(block);
+        irb.SetInsertPoint(block);
     }
 
     llvm::Value* AddrIPRel(uint64_t off = 0) {
@@ -125,7 +124,7 @@ protected:
     void CallExternalFunction(llvm::Function* fn);
 
     void ForceReturn() {
-        cfg.callconv.Return(ablock.GetInsertBlock(), fi);
+        cfg.callconv.Return(&ablock, fi);
     }
 };
 
