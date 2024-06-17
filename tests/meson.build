@@ -7,6 +7,7 @@ casefiles = {
   ],
   'rv64': [
     'cases_rv64_basic.txt',
+    'cases_rv64_bitmanip.txt',
   ],
   'aarch64': [
     'a64_data_proc.txt',

@@ -47,6 +47,9 @@ public:
             return llvm::Constant::getNullValue(facet.Type(irb.getContext()));
         return GetReg(ArchReg::GP(reg), facet);
     }
+    llvm::Value* LoadUw(unsigned reg) {
+        return irb.CreateZExt(LoadGp(reg, Facet::I32), irb.getInt64Ty());
+    }
     llvm::Value* LoadFp(unsigned reg, Facet facet) {
         return GetReg(ArchReg::VEC(reg), facet);
     }
@@ -283,6 +286,72 @@ public:
             op = irb.CreateFNeg(op);
         auto binop = sub ? llvm::Instruction::FSub : llvm::Instruction::FAdd;
         StoreFp(rvi->rd, irb.CreateBinOp(binop, op, LoadFp(rvi->rs3, f)));
+    }
+    void LiftShNAdd(const FrvInst* rvi, int n, bool word) {
+        auto shifted = irb.CreateShl(word ? LoadUw(rvi->rs1) : LoadGp(rvi->rs1), irb.getInt64(n));
+        auto res = irb.CreateBinOp(llvm::Instruction::Add, LoadGp(rvi->rs2), shifted);
+        StoreGp(rvi->rd, res);
+    }
+    void LiftUnaryIntrinsic(const FrvInst* rvi, llvm::Intrinsic::ID id, Facet f) {
+        auto res = irb.CreateUnaryIntrinsic(id, LoadGp(rvi->rs1, f));
+        StoreGp(rvi->rd, res);
+    }
+    void LiftCountZerosIntrinsic(const FrvInst* rvi, llvm::Intrinsic::ID id, Facet f) {
+        auto res = irb.CreateBinaryIntrinsic(id, LoadGp(rvi->rs1, f), irb.getInt1(0));
+        StoreGp(rvi->rd, res);
+    }
+    void LiftBinaryIntrinsic(const FrvInst* rvi, llvm::Intrinsic::ID id, Facet f) {
+        auto res = irb.CreateBinaryIntrinsic(id, LoadGp(rvi->rs1, f), LoadGp(rvi->rs2, f));
+        StoreGp(rvi->rd, res);
+    }
+    void LiftRotateIntrinsic(const FrvInst* rvi, llvm::Intrinsic::ID id, llvm::Value* shiftop, bool word) {
+        auto rs1 = LoadGp(rvi->rs1, word ? Facet::I32 : Facet::I64);
+        auto res = irb.CreateIntrinsic(word ? irb.getInt32Ty() : irb.getInt64Ty(), id, {rs1, rs1, shiftop});
+        StoreGp(rvi->rd, irb.CreateSExt(res, irb.getInt64Ty()));
+    }
+    void LiftBitInstruction(const FrvInst *rvi, llvm::Instruction::BinaryOps op,
+                            llvm::Value *index, bool invert) {
+        index = irb.CreateAnd(index, irb.getInt64(63));
+        auto rhs = irb.CreateShl(irb.getInt64(1), index);
+        if (invert)
+            rhs = irb.CreateNot(rhs);
+        auto res = irb.CreateBinOp(op, LoadGp(rvi->rs1), rhs);
+        StoreGp(rvi->rd, res);
+    }
+    void LiftBitExtract(const FrvInst* rvi, llvm::Value *index) {
+        index = irb.CreateAnd(index, irb.getInt64(63));
+        auto res = irb.CreateAnd(irb.CreateLShr(LoadGp(rvi->rs1), index), irb.getInt64(1));
+        StoreGp(rvi->rd, res);
+    }
+    void LiftOrcb(const FrvInst* rvi) {
+        auto i8x8type = llvm::VectorType::get(irb.getInt8Ty(), llvm::ElementCount::getFixed(8));
+        auto rs1 = irb.CreateBitCast(LoadGp(rvi->rs1), i8x8type);
+        auto zeroes = llvm::ConstantVector::getSplat(llvm::ElementCount::getFixed(8), irb.getInt8(0));
+        auto res = irb.CreateSExt(irb.CreateICmpNE(rs1, zeroes), i8x8type);
+
+        StoreGp(rvi->rd, irb.CreateBitCast(res, irb.getInt64Ty()));
+    }
+    void LiftCLMul(const FrvInst* rvi) {
+        auto rs1 = LoadGp(rvi->rs1);
+        auto rs2 = LoadGp(rvi->rs2);
+
+        llvm::Value* res = irb.getInt64(0);
+        uint64_t start_i = rvi->mnem == FRV_CLMULH ? 1 : 0;
+        uint64_t end_i = rvi->mnem == FRV_CLMULR ? 63 : 64;
+
+        for (uint64_t i = start_i; i < end_i; i++) {
+            auto condition = irb.CreateICmpEQ(irb.CreateAnd(irb.getInt64(1ul << i), rs2), irb.getInt64(0));
+            llvm::Value* xor_operand = nullptr;
+            switch (rvi->mnem) {
+                case FRV_CLMUL: xor_operand = irb.CreateShl(rs1, irb.getInt64(i)); break;
+                case FRV_CLMULH: xor_operand = irb.CreateLShr(rs1, irb.getInt64(64-i)); break;
+                case FRV_CLMULR: xor_operand = irb.CreateLShr(rs1, irb.getInt64(63-i)); break;
+                default: assert(false);
+            }
+            res = irb.CreateXor(res, irb.CreateSelect(condition, irb.getInt64(0), xor_operand));
+        }
+
+        StoreGp(rvi->rd, res);
     }
 };
 
@@ -531,6 +600,49 @@ bool Lifter::Lift(const Instr& inst) {
     case FRV_FCVTSD: StoreFp(rvi->rd, irb.CreateFPTrunc(LoadFp(rvi->rs1, Facet::F64), irb.getFloatTy())); break;
     case FRV_FCVTDS: StoreFp(rvi->rd, irb.CreateFPExt(LoadFp(rvi->rs1, Facet::F32), irb.getDoubleTy())); break;
     case FRV_FCLASSD: LiftFclass(rvi, Facet::I64); break;
+    case FRV_ADDUW: StoreGp(rvi->rd, irb.CreateBinOp(llvm::Instruction::Add, LoadGp(rvi->rs2, Facet::I64), LoadUw(rvi->rs1))); break;
+    case FRV_SH1ADD: LiftShNAdd(rvi, 1, /*word=*/false); break;
+    case FRV_SH2ADD: LiftShNAdd(rvi, 2, /*word=*/false); break;
+    case FRV_SH3ADD: LiftShNAdd(rvi, 3, /*word=*/false); break;
+    case FRV_SH1ADDUW: LiftShNAdd(rvi, 1, /*word=*/true); break;
+    case FRV_SH2ADDUW: LiftShNAdd(rvi, 2, /*word=*/true); break;
+    case FRV_SH3ADDUW: LiftShNAdd(rvi, 3, /*word=*/true); break;
+    case FRV_SLLIUW: StoreGp(rvi->rd, irb.CreateShl(LoadUw(rvi->rs1),irb.getInt64(rvi->imm))); break;
+    case FRV_ANDN: StoreGp(rvi->rd, irb.CreateAnd(LoadGp(rvi->rs1), irb.CreateNot(LoadGp(rvi->rs2)))); break;
+    case FRV_CLZ: LiftCountZerosIntrinsic(rvi, llvm::Intrinsic::ctlz, Facet::I64); break;
+    case FRV_CLZW: LiftCountZerosIntrinsic(rvi, llvm::Intrinsic::ctlz, Facet::I32); break;
+    case FRV_CPOP: LiftUnaryIntrinsic(rvi, llvm::Intrinsic::ctpop, Facet::I64); break;
+    case FRV_CPOPW: LiftUnaryIntrinsic(rvi, llvm::Intrinsic::ctpop, Facet::I32); break;
+    case FRV_CTZ: LiftCountZerosIntrinsic(rvi, llvm::Intrinsic::cttz, Facet::I64); break;
+    case FRV_CTZW: LiftCountZerosIntrinsic(rvi, llvm::Intrinsic::cttz, Facet::I32); break;
+    case FRV_MAX: LiftBinaryIntrinsic(rvi, llvm::Intrinsic::smax, Facet::I64); break;
+    case FRV_MAXU: LiftBinaryIntrinsic(rvi, llvm::Intrinsic::umax, Facet::I64); break;
+    case FRV_MIN: LiftBinaryIntrinsic(rvi, llvm::Intrinsic::smin, Facet::I64); break;
+    case FRV_MINU: LiftBinaryIntrinsic(rvi, llvm::Intrinsic::umin, Facet::I64); break;
+    case FRV_ORCB: LiftOrcb(rvi); break;
+    case FRV_ORN: StoreGp(rvi->rd, irb.CreateOr(LoadGp(rvi->rs1), irb.CreateNot(LoadGp(rvi->rs2)))); break;
+    case FRV_REV8: LiftUnaryIntrinsic(rvi, llvm::Intrinsic::bswap, Facet::I64); break;
+    case FRV_ROL: LiftRotateIntrinsic(rvi, llvm::Intrinsic::fshl, LoadGp(rvi->rs2, Facet::I64), /*word=*/false); break;
+    case FRV_ROLW: LiftRotateIntrinsic(rvi, llvm::Intrinsic::fshl, LoadGp(rvi->rs2, Facet::I32), /*word=*/true); break;
+    case FRV_ROR: LiftRotateIntrinsic(rvi, llvm::Intrinsic::fshr, LoadGp(rvi->rs2, Facet::I64), /*word=*/false); break;
+    case FRV_RORW: LiftRotateIntrinsic(rvi, llvm::Intrinsic::fshr, LoadGp(rvi->rs2, Facet::I32), /*word=*/true); break;
+    case FRV_RORI: LiftRotateIntrinsic(rvi, llvm::Intrinsic::fshr, irb.getInt64(rvi->imm), /*word=*/false); break;
+    case FRV_RORIW: LiftRotateIntrinsic(rvi, llvm::Intrinsic::fshr, irb.getInt32(rvi->imm), /*word=*/true); break;
+    case FRV_SEXTB: StoreGp(rvi->rd, LoadGp(rvi->rs1, Facet::I8)); break;
+    case FRV_SEXTH: StoreGp(rvi->rd, LoadGp(rvi->rs1, Facet::I16)); break;
+    case FRV_XNOR: StoreGp(rvi->rd, irb.CreateNot(irb.CreateXor(LoadGp(rvi->rs1), LoadGp(rvi->rs2)))); break;
+    case FRV_ZEXTH: StoreGp(rvi->rd, irb.CreateZExt(LoadGp(rvi->rs1, Facet::I16), irb.getInt64Ty())); break;
+    case FRV_CLMUL: 
+    case FRV_CLMULH: 
+    case FRV_CLMULR: LiftCLMul(rvi); break;
+    case FRV_BCLR: LiftBitInstruction(rvi, llvm::Instruction::And, LoadGp(rvi->rs2), /*invert=*/true); break;
+    case FRV_BCLRI: LiftBitInstruction(rvi, llvm::Instruction::And, irb.getInt64(rvi->imm), /*invert=*/true); break;
+    case FRV_BEXT: LiftBitExtract(rvi, LoadGp(rvi->rs2)); break;
+    case FRV_BEXTI: LiftBitExtract(rvi, irb.getInt64(rvi->imm)); break;
+    case FRV_BINV: LiftBitInstruction(rvi, llvm::Instruction::Xor, LoadGp(rvi->rs2), /*invert=*/false); break;
+    case FRV_BINVI: LiftBitInstruction(rvi, llvm::Instruction::Xor, irb.getInt64(rvi->imm), /*invert=*/false); break;
+    case FRV_BSET: LiftBitInstruction(rvi, llvm::Instruction::Or, LoadGp(rvi->rs2), /*invert=*/false); break;
+    case FRV_BSETI: LiftBitInstruction(rvi, llvm::Instruction::Or, irb.getInt64(rvi->imm), /*invert=*/false); break;
     }
 
     SetIP(inst.end());
