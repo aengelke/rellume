@@ -29,6 +29,7 @@
 #include "instr.h"
 #include "regfile.h"
 
+#include <cmath>
 #include <cstdint>
 
 #include <llvm/IR/Constants.h>
@@ -234,7 +235,7 @@ bool Lifter::LiftSIMD(farmdec::Inst a64) {
         }
         // Concat(z, 0), since both sides of shufflevector must have same size.
         auto xyz = irb.CreateShuffleVector(xy, Concat(va, z, llvm::Constant::getNullValue(TypeOf(va))), xyzmask);
-        auto ptrty = irb.CreatePointerCast(addr, xyz->getType()->getPointerTo());
+        auto ptrty = irb.CreatePointerCast(addr, irb.getPtrTy());
         irb.CreateAlignedStore(xyz, ptrty, llvm::Align(1));
         break;
     }
@@ -275,7 +276,7 @@ bool Lifter::LiftSIMD(farmdec::Inst a64) {
             xyzwmask.push_back(2*i + 2*nelem + 1);
         }
         auto xyzw = irb.CreateShuffleVector(xy, zw, xyzwmask);
-        auto ptrty = irb.CreatePointerCast(addr, xyzw->getType()->getPointerTo());
+        auto ptrty = irb.CreatePointerCast(addr, irb.getPtrTy());
         irb.CreateAlignedStore(xyzw, ptrty, llvm::Align(1));
         break;
     }
@@ -608,7 +609,7 @@ bool Lifter::LiftSIMD(farmdec::Inst a64) {
     case farmdec::A64_BIC_VEC_IMM: {
         auto lhs = GetVec(a64.rd, va);
         unsigned bits = ElemTypeOf(va)->getPrimitiveSizeInBits();
-        auto rhs = irb.CreateVectorSplat(NumElem(va), irb.getIntN(bits, a64.imm));
+        auto rhs = irb.CreateVectorSplat(NumElem(va), getIntN(bits, a64.imm));
         SetVec(a64.rd, irb.CreateAnd(lhs, irb.CreateNot(rhs)));
         break;
     }
@@ -644,7 +645,7 @@ bool Lifter::LiftSIMD(farmdec::Inst a64) {
     case farmdec::A64_CLZ_VEC: {
         auto val = GetVec(a64.rn, va);
         auto mod = irb.GetInsertBlock()->getModule();
-        auto fn = llvm::Intrinsic::getDeclaration(mod, llvm::Intrinsic::ctlz, {val->getType()});
+        auto fn = llvm::Intrinsic::getOrInsertDeclaration(mod, llvm::Intrinsic::ctlz, {val->getType()});
         SetVec(a64.rd, irb.CreateCall(fn, {val, /*is_zero_undef=*/irb.getFalse()}));
         break;
     }
@@ -663,7 +664,7 @@ bool Lifter::LiftSIMD(farmdec::Inst a64) {
     case farmdec::A64_ORR_VEC_IMM: {
         auto lhs = GetVec(a64.rd, va);
         unsigned bits = ElemTypeOf(va)->getPrimitiveSizeInBits();
-        auto rhs = irb.CreateVectorSplat(NumElem(va), irb.getIntN(bits, a64.imm));
+        auto rhs = irb.CreateVectorSplat(NumElem(va), getIntN(bits, a64.imm));
         SetVec(a64.rd, irb.CreateOr(lhs, rhs));
         break;
     }
@@ -726,7 +727,7 @@ bool Lifter::LiftSIMD(farmdec::Inst a64) {
         } else {
             auto lhs = GetVec(a64.rn, va);
             unsigned bits = ElemTypeOf(va)->getPrimitiveSizeInBits();
-            auto rhs = irb.CreateVectorSplat(NumElem(va), irb.getIntN(bits, a64.imm));
+            auto rhs = irb.CreateVectorSplat(NumElem(va), getIntN(bits, a64.imm));
             SetVec(a64.rd, irb.CreateShl(lhs, rhs));
         }
         break;
@@ -767,7 +768,7 @@ bool Lifter::LiftSIMD(farmdec::Inst a64) {
         auto lhs = (sgn) ? irb.CreateSExt(vn_half, extty) : irb.CreateZExt(vn_half, extty);
 
         unsigned bits = ElemTypeOf(dstva)->getPrimitiveSizeInBits();
-        auto rhs = irb.CreateVectorSplat(NumElem(dstva), irb.getIntN(bits, a64.imm));
+        auto rhs = irb.CreateVectorSplat(NumElem(dstva), getIntN(bits, a64.imm));
 
         SetVec(a64.rd, irb.CreateShl(lhs, rhs));
         break;
@@ -781,7 +782,7 @@ bool Lifter::LiftSIMD(farmdec::Inst a64) {
         } else {
             auto lhs = GetVec(a64.rn, va);
             unsigned bits = ElemTypeOf(va)->getPrimitiveSizeInBits();
-            auto rhs = irb.CreateVectorSplat(NumElem(va), irb.getIntN(bits, a64.imm));
+            auto rhs = irb.CreateVectorSplat(NumElem(va), getIntN(bits, a64.imm));
             SetVec(a64.rd, (sgn) ? irb.CreateAShr(lhs, rhs) : irb.CreateLShr(lhs, rhs));
         }
         break;
@@ -792,7 +793,7 @@ bool Lifter::LiftSIMD(farmdec::Inst a64) {
 
         auto lhs = GetVec(a64.rn, srcva);
         unsigned bits = ElemTypeOf(srcva)->getPrimitiveSizeInBits();
-        auto rhs = irb.CreateVectorSplat(NumElem(srcva), irb.getIntN(bits, a64.imm));
+        auto rhs = irb.CreateVectorSplat(NumElem(srcva), getIntN(bits, a64.imm));
         auto res = irb.CreateLShr(lhs, rhs);
         InsertInHalf(a64.rd, va, Narrow(res));
         break;
@@ -884,7 +885,7 @@ bool Lifter::LiftSIMD(farmdec::Inst a64) {
             SetScalar(a64.rd, irb.getInt64(a64.imm));
             break;
         }
-        Dup(a64.rd, va, irb.getIntN(bits, a64.imm));
+        Dup(a64.rd, va, getIntN(bits, a64.imm));
         break;
     }
     case farmdec::A64_SMOV: {
@@ -1160,7 +1161,7 @@ bool Lifter::LiftSIMD(farmdec::Inst a64) {
 
         // Rounded halving: rhalve(x) = (x+1) / 2, rounding away instead of truncating towards zero.
         if (round) {
-            rhs = irb.CreateAdd(rhs, irb.CreateVectorSplat(NumElem(va), irb.getIntN(extty->getScalarSizeInBits(), 1)));
+            rhs = irb.CreateAdd(rhs, irb.CreateVectorSplat(NumElem(va), getIntN(extty->getScalarSizeInBits(), 1)));
         }
         auto sum = irb.CreateAdd(lhs, rhs);
         auto halved = (sgn) ? irb.CreateAShr(sum, 1) : irb.CreateLShr(sum, 1);
@@ -1569,7 +1570,7 @@ void Lifter::LiftCmXX(llvm::CmpInst::Predicate cmp, farmdec::Reg rd, farmdec::Ve
 
 // Like LiftCmXX, but has scalar Dd, Dn, Dm operands.
 void Lifter::LiftScalarCmXX(llvm::CmpInst::Predicate cmp, farmdec::Reg rd, farmdec::Reg rn, farmdec::Reg rm, bool zero, bool fp) {
-    llvm::Value* zero_val = (fp) ? llvm::ConstantFP::get(irb.getDoubleTy(), 0.0) : irb.getInt64(0);
+    llvm::Value* zero_val = llvm::Constant::getNullValue(fp ? irb.getDoubleTy() : irb.getInt64Ty());
 
     auto lhs = GetScalar(rn, farmdec::FSZ_D, fp);
     auto rhs = (zero) ? zero_val : GetScalar(rm, farmdec::FSZ_D, fp);

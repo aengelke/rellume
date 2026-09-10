@@ -6,6 +6,7 @@
 #include <llvm/MC/MCContext.h>
 #include <llvm/MC/MCInstrInfo.h>
 #include <llvm/MC/MCObjectFileInfo.h>
+#include <llvm/MC/MCObjectStreamer.h>
 #include <llvm/MC/MCObjectWriter.h>
 #include <llvm/MC/MCParser/MCAsmParser.h>
 #include <llvm/MC/MCParser/MCTargetAsmParser.h>
@@ -29,24 +30,39 @@
 #include <iomanip>
 
 
+class PlainStreamer : public llvm::MCObjectStreamer {
+public:
+    PlainStreamer(llvm::MCContext &Context,
+                             std::unique_ptr<llvm::MCAsmBackend> TAB,
+                             std::unique_ptr<llvm::MCObjectWriter> OW,
+                             std::unique_ptr<llvm::MCCodeEmitter> Emitter)
+    : llvm::MCObjectStreamer(Context, std::move(TAB), std::move(OW),
+                       std::move(Emitter)) {}
+
+  bool emitSymbolAttribute(llvm::MCSymbol *Symbol, llvm::MCSymbolAttr Attribute) override {
+    return false;
+  }
+  void emitCommonSymbol(llvm::MCSymbol *Symbol, uint64_t Size,
+                        llvm::Align ByteAlignment) override {}
+};
+
 class PlainObjectWriter : public llvm::MCObjectWriter {
-    llvm::raw_pwrite_stream& stream;
+    llvm::raw_svector_ostream& stream;
 
 public:
-    PlainObjectWriter(llvm::raw_pwrite_stream& stream) : stream(stream) {}
+    PlainObjectWriter(llvm::raw_svector_ostream& stream) : stream(stream) {}
 
-    void executePostLayoutBinding(llvm::MCAssembler& Asm, const llvm::MCAsmLayout& Layout) override {}
-    void recordRelocation(llvm::MCAssembler &Asm, const llvm::MCAsmLayout &Layout,
-                          const llvm::MCFragment *Fragment,
+    void executePostLayoutBinding() override {}
+    void recordRelocation(const llvm::MCFragment &Fragment,
                           const llvm::MCFixup &Fixup, llvm::MCValue Target,
                           uint64_t &FixedValue) override {
         assert(false && "relocations not supported");
     }
-    uint64_t writeObject(llvm::MCAssembler &Asm, const llvm::MCAsmLayout &Layout) override {
+    uint64_t writeObject() override {
         uint64_t offset = stream.tell();
-        for (llvm::MCSection& sec : Asm) {
-            assert(sec.getKind().isText() && "non-text sections not supported");
-            Asm.writeSectionData(stream, &sec, Layout);
+        for (llvm::MCSection& sec : *Asm) {
+            assert(sec.isText() && "non-text sections not supported");
+            Asm->writeSectionData(stream, &sec);
         }
         return stream.tell() - offset;
     }
@@ -115,14 +131,22 @@ int main(int argc, char** argv) {
         return 1;
     }
 
+#if LLVM_VERSION_MAJOR >= 22
+    auto mri = std::unique_ptr<llvm::MCRegisterInfo>(target->createMCRegInfo(triple));
+#else
     auto mri = std::unique_ptr<llvm::MCRegisterInfo>(target->createMCRegInfo(triple.str()));
+#endif
     if (!mri) {
         std::cerr << "error getting MCRegisterInfo" << std::endl;
         return 1;
     }
 
     llvm::MCTargetOptions options;
+#if LLVM_VERSION_MAJOR >= 22
+    auto mai = std::unique_ptr<llvm::MCAsmInfo>(target->createMCAsmInfo(*mri, triple, options));
+#else
     auto mai = std::unique_ptr<llvm::MCAsmInfo>(target->createMCAsmInfo(*mri, triple.str(), options));
+#endif
     if (!mai) {
         std::cerr << "error getting MCAsmInfo" << std::endl;
         return 1;
@@ -134,7 +158,11 @@ int main(int argc, char** argv) {
         return 1;
     }
 
+#if LLVM_VERSION_MAJOR >= 22
+    auto sti = std::unique_ptr<llvm::MCSubtargetInfo>(target->createMCSubtargetInfo(triple, "", cpufeatures));
+#else
     auto sti = std::unique_ptr<llvm::MCSubtargetInfo>(target->createMCSubtargetInfo(triple.str(), "", cpufeatures));
+#endif
     if (!sti) {
         std::cerr << "error getting MCSubtargetInfo" << std::endl;
         return 1;
@@ -153,7 +181,11 @@ int main(int argc, char** argv) {
         std::unique_ptr<llvm::MemoryBuffer> asmbuf = llvm::MemoryBuffer::getMemBuffer(asmline_ref.drop_front(4));
         srcmgr.AddNewSourceBuffer(std::move(asmbuf), llvm::SMLoc());
 
+#if LLVM_VERSION_MAJOR >= 23
+        llvm::MCContext ctx(triple, *mai, *mri, *sti, &srcmgr);
+#else
         llvm::MCContext ctx(triple, mai.get(), mri.get(), sti.get(), &srcmgr);
+#endif
         mofi.initMCObjectFileInfo(ctx, true);
         ctx.setObjectFileInfo(&mofi);
 
@@ -177,9 +209,8 @@ int main(int argc, char** argv) {
             return 1;
         }
 
-        llvm::MCStreamer* streamer = target->createMCObjectStreamer(triple, ctx,
-                            std::move(mab), std::move(ow), std::move(mce), *sti,
-                            options.MCRelaxAll, false, false);
+        auto streamer = std::make_unique<PlainStreamer>(ctx, std::move(mab), std::move(ow),
+                            std::move(mce));
         if (streamer == nullptr) {
             std::cerr << "error getting MCObjectStreamer" << std::endl;
             return 1;
@@ -193,9 +224,14 @@ int main(int argc, char** argv) {
         }
         map->setAssemblerDialect(dialect);
 
+#if LLVM_VERSION_MAJOR >= 23
+        llvm::MCTargetAsmParser* tap = target->createMCAsmParser(*sti, *map,
+                                                                 *mcii);
+#else
         llvm::MCTargetAsmParser* tap = target->createMCAsmParser(*sti, *map,
                                                                  *mcii,
                                                                  options);
+#endif
         if (map == nullptr) {
             std::cerr << "error getting MCTargetAsmParser" << std::endl;
             return 1;
@@ -211,7 +247,6 @@ int main(int argc, char** argv) {
 
         delete tap;
         delete map;
-        delete streamer;
     }
 
     return retval;

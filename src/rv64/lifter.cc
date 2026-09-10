@@ -86,13 +86,13 @@ public:
     }
     void LiftBinOpI(const FrvInst* rvi, llvm::Instruction::BinaryOps op,
                     Facet f) {
-        llvm::Value* imm = irb.getIntN(f.Size(), rvi->imm);
+        llvm::Value* imm = getIntN(f.Size(), rvi->imm);
         StoreGp(rvi->rd, irb.CreateBinOp(op, LoadGp(rvi->rs1, f), imm));
     }
     void LiftShift(const FrvInst* rvi, llvm::Instruction::BinaryOps op,
                    llvm::Value* shiftop) {
         unsigned width = shiftop->getType()->getIntegerBitWidth();
-        shiftop = irb.CreateAnd(shiftop, irb.getIntN(width, width - 1));
+        shiftop = irb.CreateAnd(shiftop, getIntN(width, width - 1));
         llvm::Value* src = LoadGp(rvi->rs1, Facet::In(width));
         StoreGp(rvi->rd, irb.CreateBinOp(op, src, shiftop));
     }
@@ -126,8 +126,8 @@ public:
     }
     void LiftDivRem(const FrvInst* rvi, llvm::Instruction::BinaryOps op,
                      Facet f) {
-        llvm::Value* zero = irb.getIntN(f.Size(), 0);
-        llvm::Value* minusone = irb.getIntN(f.Size(), -1);
+        llvm::Value* zero = getIntN(f.Size(), 0);
+        llvm::Value* minusone = getIntN(f.Size(), -1);
         llvm::Value* dividend = LoadGp(rvi->rs1, f);
         llvm::Value* divisor = LoadGp(rvi->rs2, f);
 
@@ -182,7 +182,6 @@ public:
         }
         llvm::Value* val = LoadGp(rvi->rs2, f);
         llvm::Value* ptr = LoadGp(rvi->rs1, Facet::PTR);
-        ptr = irb.CreatePointerCast(ptr, f.Type(irb.getContext())->getPointerTo());
         StoreGp(rvi->rd, irb.CreateAtomicRMW(op, ptr, val, {}, ordering));
     }
 
@@ -234,10 +233,10 @@ public:
         llvm::Value* abs_op = irb.CreateBitCast(LoadFp(rvi->rs1, f), int_ty);
         llvm::Value* sign_op = irb.CreateBitCast(LoadFp(rvi->rs2, f), int_ty);
         if (!keep && zero)
-            abs_op = irb.CreateAnd(abs_op, irb.getIntN(sz, (1ul << (sz-1)) - 1));
+            abs_op = irb.CreateAnd(abs_op, getIntN(sz, (1ul << (sz-1)) - 1));
         else if (!keep && !zero)
-            abs_op = irb.CreateOr(abs_op, irb.getIntN(sz, 1ul << (sz-1)));
-        sign_op = irb.CreateAnd(sign_op, irb.getIntN(sz, 1ul << (sz-1)));
+            abs_op = irb.CreateOr(abs_op, getIntN(sz, 1ul << (sz-1)));
+        sign_op = irb.CreateAnd(sign_op, getIntN(sz, 1ul << (sz-1)));
         abs_op = irb.CreateXor(abs_op, sign_op);
         StoreFp(rvi->rd, irb.CreateBitCast(abs_op, f.Type(irb.getContext())));
     }
@@ -254,27 +253,27 @@ public:
         unsigned nanidx = sz == 32 ? 22 : 51;
 
         // TODO: find a more performant way for FP classification
-        llvm::Value* sign = irb.CreateAnd(v, irb.getIntN(sz, 1ul << (sz-1)));
-        llvm::Value* exp = irb.CreateAnd(v, irb.getIntN(sz, expmsk));
-        llvm::Value* expzero = irb.CreateICmpEQ(exp, irb.getIntN(sz, 0));
-        llvm::Value* expmax = irb.CreateICmpEQ(exp, irb.getIntN(sz, expmsk));
-        llvm::Value* mant = irb.CreateAnd(v, irb.getIntN(sz, mantmsk));
-        llvm::Value* mantnotzero = irb.CreateICmpNE(mant, irb.getIntN(sz, 0));
+        llvm::Value* sign = irb.CreateAnd(v, getIntN(sz, 1ul << (sz-1)));
+        llvm::Value* exp = irb.CreateAnd(v, getIntN(sz, expmsk));
+        llvm::Value* expzero = irb.CreateICmpEQ(exp, getIntN(sz, 0));
+        llvm::Value* expmax = irb.CreateICmpEQ(exp, getIntN(sz, expmsk));
+        llvm::Value* mant = irb.CreateAnd(v, getIntN(sz, mantmsk));
+        llvm::Value* mantnotzero = irb.CreateICmpNE(mant, getIntN(sz, 0));
 
         // First construct values 4..7
         llvm::Value* mze = irb.CreateZExt(mantnotzero, irb.getIntNTy(sz));
-        mze = irb.CreateOr(mze, irb.getIntN(sz, 4));
+        mze = irb.CreateOr(mze, getIntN(sz, 4));
         llvm::Value* mme = irb.CreateZExt(expmax, irb.getIntNTy(sz));
-        mme = irb.CreateOr(mme, irb.getIntN(sz, 6));
+        mme = irb.CreateOr(mme, getIntN(sz, 6));
         llvm::Value* res = irb.CreateSelect(expzero, mze, mme);
 
         // Values 0..3 are mirrored from values 4..7
-        llvm::Value* resneg = irb.CreateXor(res, irb.getIntN(sz, 7));
-        res = irb.CreateSelect(irb.CreateICmpEQ(sign, irb.getIntN(sz, 0)), res, resneg);
+        llvm::Value* resneg = irb.CreateXor(res, getIntN(sz, 7));
+        res = irb.CreateSelect(irb.CreateICmpEQ(sign, getIntN(sz, 0)), res, resneg);
 
         // NaN (8/9) overrides others.
         llvm::Value* signaling = irb.CreateLShr(mant, nanidx);
-        signaling = irb.CreateOr(signaling, irb.getIntN(sz, 8));
+        signaling = irb.CreateOr(signaling, getIntN(sz, 8));
         llvm::Value* isnan = irb.CreateAnd(expmax, mantnotzero);
         res = irb.CreateSelect(isnan, signaling, res);
         StoreGp(rvi->rd, res);

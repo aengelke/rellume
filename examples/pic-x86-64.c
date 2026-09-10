@@ -25,10 +25,11 @@
 
 int main(void) {
     // Create LLVM module
-    LLVMModuleRef mod = LLVMModuleCreateWithName("lifter");
+    LLVMContextRef ctx = LLVMContextCreate();
+    LLVMModuleRef mod = LLVMModuleCreateWithNameInContext("lifter", ctx);
 
-    LLVMValueRef pcbase = LLVMAddGlobal(mod, LLVMInt8Type(), "pcbase");
-    LLVMValueRef pcbase_val = LLVMConstPtrToInt(pcbase, LLVMInt64Type());
+    LLVMValueRef pcbase = LLVMAddGlobal(mod, LLVMInt8TypeInContext(ctx), "pcbase");
+    LLVMValueRef pcbase_val = LLVMConstPtrToInt(pcbase, LLVMInt64TypeInContext(ctx));
 
     static const unsigned char code[] = {
         0x48, 0x8B, 0x0D, 0x00, 0x00, 0x34, 0x12, // mov rcx, [rip+0x12340000]

@@ -24,7 +24,6 @@
 #ifndef RELLUME_FUNCTION_INFO_H
 #define RELLUME_FUNCTION_INFO_H
 
-#include <cstdbool>
 #include <cstdint>
 #include <memory>
 #include <vector>

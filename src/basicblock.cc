@@ -70,7 +70,11 @@ void ArchBasicBlock::InitWithPHIs(Arch arch, bool seal) {
 }
 
 void ArchBasicBlock::BranchTo(ArchBasicBlock& next) {
+#if LLVM_VERSION_MAJOR >= 23
+    assert(!EndBlock()->hasTerminator() && "attempting to add second terminator");
+#else
     assert(!EndBlock()->getTerminator() && "attempting to add second terminator");
+#endif
 
     llvm::IRBuilder<> irb(EndBlock());
     auto branch = irb.CreateBr(next.llvm_block);
@@ -87,7 +91,11 @@ void ArchBasicBlock::BranchTo(llvm::Value* cond, ArchBasicBlock& then,
         return;
     }
 
+#if LLVM_VERSION_MAJOR >= 23
+    assert(!EndBlock()->hasTerminator() && "attempting to add second terminator");
+#else
     assert(!EndBlock()->getTerminator() && "attempting to add second terminator");
+#endif
 
     llvm::IRBuilder<> irb(EndBlock());
     auto branch = irb.CreateCondBr(cond, then.llvm_block, other.llvm_block);

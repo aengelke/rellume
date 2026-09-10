@@ -125,7 +125,7 @@ llvm::Function* LiftHelper::Lift() {
     unsigned cpu_param_idx = cfg->callconv.CpuStructParamIdx();
     fn->addFnAttr(llvm::Attribute::NullPointerIsValid);
     fn->addParamAttr(cpu_param_idx, llvm::Attribute::NoAlias);
-    fn->addParamAttr(cpu_param_idx, llvm::Attribute::NoCapture);
+    // fn->addParamAttr(cpu_param_idx, llvm::Attribute::NoCapture);
     auto align_attr = llvm::Attribute::get(ctx, llvm::Attribute::Alignment, 16);
     fn->addParamAttr(cpu_param_idx, align_attr);
     fn->addDereferenceableParamAttr(cpu_param_idx, 0x190);
@@ -180,7 +180,11 @@ llvm::Function* LiftHelper::Lift() {
             // Finish block by adding branches
             if (i >= func->instrs.size() - 1 || func->instrs[i + 1].new_block) {
                 RegFile* regfile = cur_ab->GetRegFile();
+#if LLVM_VERSION_MAJOR >= 23
+                if (!regfile || regfile->GetInsertBlock()->hasTerminator())
+#else
                 if (!regfile || regfile->GetInsertBlock()->getTerminator())
+#endif
                     continue;
                 if (decinst.inhibit_branch) {
                     cur_ab->BranchTo(*exit_block);

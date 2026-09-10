@@ -126,6 +126,18 @@ protected:
     void ForceReturn() {
         cfg.callconv.Return(&ablock, fi);
     }
+
+    // Helper for porting to LLVM 23, which silently changed the semantics of
+    // getIntN.
+    llvm::Constant* getIntN(unsigned n, uint64_t v) {
+        switch (n) {
+        case 8: return irb.getInt8(v);
+        case 16: return irb.getInt16(v);
+        case 32: return irb.getInt32(v);
+        case 64: return irb.getInt64(v);
+        default: llvm_unreachable("invalid operand size");
+        }
+    }
 };
 
 } // namespace rellume

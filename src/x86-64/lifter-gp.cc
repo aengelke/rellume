@@ -136,7 +136,7 @@ void Lifter::LiftAndOrXor(const Instr& inst, llvm::Instruction::BinaryOps op,
                           llvm::AtomicRMWInst::BinOp armw_op, bool writeback) {
     if (inst.type() == FDI_XOR && inst.op(0).is_reg() && inst.op(1).is_reg() &&
         inst.op(0).reg().ri == inst.op(1).reg().ri && inst.op(0).size() >= 4) {
-        OpStoreGp(inst.op(0), irb.getIntN(8 * inst.op(0).size(), 0));
+        OpStoreGp(inst.op(0), getIntN(8 * inst.op(0).size(), 0));
         FlagCalcSAPLogic(irb.getInt64(0));
         SetReg(ArchReg::ZF, irb.getTrue());
         SetReg(ArchReg::CF, irb.getFalse());
@@ -169,7 +169,7 @@ void Lifter::LiftNot(const Instr& inst) {
         OpStoreGp(inst.op(0), irb.CreateNot(OpLoad(inst.op(0), Facet::I)));
     } else {
         auto ord = llvm::AtomicOrdering::SequentiallyConsistent;
-        llvm::Value* mask = irb.getIntN(inst.op(0).bits(), -1);
+        llvm::Value* mask = getIntN(inst.op(0).bits(), -1);
         llvm::Value* addr = OpAddr(inst.op(0), mask->getType());
         irb.CreateAtomicRMW(llvm::AtomicRMWInst::Xor, addr, mask, {}, ord);
     }
@@ -186,7 +186,7 @@ void Lifter::LiftNeg(const Instr& inst) {
 
 void Lifter::LiftIncDec(const Instr& inst) {
     llvm::Value* op1;
-    llvm::Value* op2 = irb.getIntN(inst.op(0).bits(), 1);
+    llvm::Value* op2 = getIntN(inst.op(0).bits(), 1);
     llvm::Value* res = nullptr;
 
     bool sub = inst.type() == FDI_DEC;
@@ -263,7 +263,7 @@ void Lifter::LiftShiftdouble(const Instr& inst) {
     auto id = inst.type() == FDI_SHLD ? llvm::Intrinsic::fshl
                                        : llvm::Intrinsic::fshr;
     llvm::Module* module = irb.GetInsertBlock()->getModule();
-    auto intrinsic = llvm::Intrinsic::getDeclaration(module, id, {ty});
+    auto intrinsic = llvm::Intrinsic::getOrInsertDeclaration(module, id, {ty});
     if (inst.type() == FDI_SHLD)
         res = irb.CreateCall(intrinsic, {src1, src2, shift});
     else if (inst.type() == FDI_SHRD)
@@ -293,7 +293,7 @@ void Lifter::LiftRotate(const Instr& inst) {
     auto id = inst.type() == FDI_ROL ? llvm::Intrinsic::fshl
                                       : llvm::Intrinsic::fshr;
     llvm::Module* module = irb.GetInsertBlock()->getModule();
-    auto intrinsic = llvm::Intrinsic::getDeclaration(module, id, {ty});
+    auto intrinsic = llvm::Intrinsic::getOrInsertDeclaration(module, id, {ty});
     llvm::Value* res = irb.CreateCall(intrinsic, {src, src, shift});
     OpStoreGp(inst.op(0), res);
 
@@ -436,13 +436,15 @@ void Lifter::LiftLea(const Instr& inst) {
         // Compute as integer
         unsigned addrsz = inst.op(1).addrsz() * 8;
         Facet facet = Facet{Facet::I}.Resolve(addrsz);
-        if (inst.op(1).off())
-            res = irb.getIntN(addrsz, inst.op(1).off());
+        if (inst.op(1).off()) {
+            uint64_t mask = addrsz <= 32 ? 0xffffffff : ~uint64_t{0};
+            res = getIntN(addrsz, inst.op(1).off() & mask);
+        }
         if (unsigned scale = inst.op(1).scale()) {
             llvm::Value* offset = GetReg(MapReg(inst.op(1).index()), facet);
             if (scale > 1) {
                 unsigned shift = scale == 2 ? 1 : scale == 4 ? 2 : 3;
-                offset = irb.CreateShl(offset, irb.getIntN(addrsz, shift));
+                offset = irb.CreateShl(offset, getIntN(addrsz, shift));
             }
             res = res ? irb.CreateAdd(offset, res) : offset;
         }
@@ -450,7 +452,7 @@ void Lifter::LiftLea(const Instr& inst) {
             llvm::Value* reg = GetReg(MapReg(inst.op(1).base()), facet);
             res = res ? irb.CreateAdd(reg, res) : reg;
         }
-        res = res ? res : irb.getIntN(addrsz, 0);
+        res = res ? res : getIntN(addrsz, 0);
     }
 
 
@@ -504,7 +506,7 @@ void Lifter::LiftBitscan(const Instr& inst, bool trailing) {
     llvm::Value* res = irb.CreateBinaryIntrinsic(id, src,
                                                  /*zero_undef=*/irb.getTrue());
     if (!trailing)
-        res = irb.CreateSub(irb.getIntN(sz, sz - 1), res);
+        res = irb.CreateSub(getIntN(sz, sz - 1), res);
     // BSF/BSR don't modify dest if src is zero. This is specified on AMD, and
     // Intel apparently behaves similar on all x86-64 implementations. There is
     // also no zero extension of 32-bit operands.
@@ -555,8 +557,8 @@ void Lifter::LiftBittest(const Instr& inst, llvm::Instruction::BinaryOps op,
     if (index->getType()->getIntegerBitWidth() != op_size)
         index = irb.CreateZExt(index, irb.getIntNTy(op_size));
     // Truncated here because memory operand may need full value.
-    index = irb.CreateAnd(index, irb.getIntN(op_size, op_size-1));
-    llvm::Value* mask = irb.CreateShl(irb.getIntN(op_size, 1), index);
+    index = irb.CreateAnd(index, getIntN(op_size, op_size-1));
+    llvm::Value* mask = irb.CreateShl(getIntN(op_size, 1), index);
     llvm::Value* modmask = inst.type() != FDI_BTR ? mask : irb.CreateNot(mask);
 
     llvm::Value* val;
@@ -582,7 +584,7 @@ void Lifter::LiftBittest(const Instr& inst, llvm::Instruction::BinaryOps op,
 skip_writeback:;
     llvm::Value* bit = irb.CreateAnd(val, mask);
     // Zero flag is not modified
-    SetReg(ArchReg::CF, irb.CreateICmpNE(bit, irb.getIntN(op_size, 0)));
+    SetReg(ArchReg::CF, irb.CreateICmpNE(bit, getIntN(op_size, 0)));
     SetFlagUndef({ArchReg::OF, ArchReg::SF, ArchReg::AF, ArchReg::PF});
 }
 
@@ -612,7 +614,7 @@ void Lifter::LiftJcc(const Instr& inst, Condition cond) {
 void Lifter::LiftJcxz(const Instr& inst) {
     unsigned sz = inst.addrsz();
     llvm::Value* cx = GetReg(ArchReg::RCX, Facet::In(sz * 8));
-    llvm::Value* cond = irb.CreateICmpEQ(cx, irb.getIntN(sz*8, 0));
+    llvm::Value* cond = irb.CreateICmpEQ(cx, getIntN(sz*8, 0));
     SetIPCond(cond, inst.end() + inst.op(0).pcrel(), inst.end());
 }
 
@@ -621,11 +623,11 @@ void Lifter::LiftLoop(const Instr& inst) {
 
     // Decrement RCX/ECX
     llvm::Value* cx = GetReg(ArchReg::RCX, Facet::In(sz * 8));
-    cx = irb.CreateSub(cx, irb.getIntN(sz * 8, 1));
+    cx = irb.CreateSub(cx, getIntN(sz * 8, 1));
     StoreGp(ArchReg::RCX, cx);
 
     // Construct condition
-    llvm::Value* cond = irb.CreateICmpNE(cx, irb.getIntN(sz*8, 0));
+    llvm::Value* cond = irb.CreateICmpNE(cx, getIntN(sz*8, 0));
     if (inst.type() == FDI_LOOPZ)
         cond = irb.CreateAnd(cond, GetFlag(ArchReg::ZF));
     else if (inst.type() == FDI_LOOPNZ)
@@ -715,7 +717,7 @@ void Lifter::LiftCpuid(const Instr& inst) {
 void Lifter::LiftRdtsc(const Instr& inst) {
     llvm::Module* module = irb.GetInsertBlock()->getModule();
     auto id = llvm::Intrinsic::readcyclecounter;
-    auto intrinsic = llvm::Intrinsic::getDeclaration(module, id);
+    auto intrinsic = llvm::Intrinsic::getOrInsertDeclaration(module, id);
     llvm::Value* res = irb.CreateCall(intrinsic);
     llvm::Value* lo = irb.CreateTrunc(res, irb.getInt32Ty());
     llvm::Value* hi = irb.CreateLShr(res, irb.getInt64(32));

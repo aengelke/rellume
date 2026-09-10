@@ -27,6 +27,7 @@
 #include "instr.h"
 
 #include <llvm/IR/IRBuilder.h>
+#include <llvm/IR/Module.h>
 #include <llvm/IR/Value.h>
 
 #include <algorithm>
@@ -50,7 +51,7 @@ void Lifter::LiftPrefetch(const Instr& inst, unsigned rw, unsigned locality) {
     llvm::SmallVector<llvm::Type*, 1> tys;
     tys.push_back(irb.getPtrTy());
     auto id = llvm::Intrinsic::prefetch;
-    llvm::Function* intrinsic = llvm::Intrinsic::getDeclaration(module, id, tys);
+    llvm::Function* intrinsic = llvm::Intrinsic::getOrInsertDeclaration(module, id, tys);
 
     llvm::Value* addr = OpAddr(inst.op(0), irb.getInt8Ty());
     // Prefetch addr for read/write with given locality into the data cache.
@@ -531,7 +532,7 @@ void Lifter::LiftSsePavg(const Instr& inst, Facet op_type) {
     unsigned elem_cnt = VectorElementCount(vec_ty);
 
     llvm::Type* ext_ty = llvm::VectorType::getExtendedElementVectorType(vec_ty);
-    llvm::Value* ones = irb.CreateVectorSplat(elem_cnt, irb.getIntN(elem_size*2, 1));
+    llvm::Value* ones = irb.CreateVectorSplat(elem_cnt, getIntN(elem_size*2, 1));
     llvm::Value* ext1 = irb.CreateZExt(src1, ext_ty);
     llvm::Value* ext2 = irb.CreateZExt(src2, ext_ty);
     llvm::Value* sum = irb.CreateAdd(irb.CreateAdd(ext1, ext2), ones);

@@ -32,7 +32,6 @@
 #include <llvm/IR/Module.h>
 #include <llvm/IR/Value.h>
 
-#include <cstdbool>
 #include <cstdint>
 #include <cstring>
 

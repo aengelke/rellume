@@ -30,6 +30,7 @@
 #include "instr.h"
 #include "regfile.h"
 
+#include <cmath>
 #include <cstdint>
 
 #include <llvm/IR/Constants.h>
@@ -115,13 +116,13 @@ bool Lifter::Lift(const Instr& inst) {
         uint64_t clrmask = ~ (0xffffuL << a64.movk.lsl);
         uint64_t shiftedimm = static_cast<uint64_t>(a64.movk.imm16) << a64.movk.lsl;
         auto val = GetGp(a64.rd, w32);
-        val = irb.CreateAnd(val, irb.getIntN(bits, clrmask));   // clear 16 bits at point of insertion...
-        val = irb.CreateOr(val, irb.getIntN(bits, shiftedimm)); // ...and fill in the immediate
+        val = irb.CreateAnd(val, getIntN(bits, clrmask));   // clear 16 bits at point of insertion...
+        val = irb.CreateOr(val, getIntN(bits, shiftedimm)); // ...and fill in the immediate
         SetGp(a64.rd, w32, val);
         break;
     }
     case farmdec::A64_MOV_IMM:
-        SetGp(a64.rd, w32, irb.getIntN(bits, a64.imm));
+        SetGp(a64.rd, w32, getIntN(bits, a64.imm));
         break;
     case farmdec::A64_SBFM:
         assert(false && "SBFM should only appear as one of its aliases ASR_IMM, SBFIZ, SBFX");
@@ -139,8 +140,8 @@ bool Lifter::Lift(const Instr& inst) {
         //     rd = (msb_set) ? extended : field;
         //
         uint64_t sext_mask = ~0uL << (a64.bfm.lsb + a64.bfm.width - 1);
-        auto sext_mask_value = irb.getIntN(bits, sext_mask); // truncates to 32-bit if required
-        auto msb_set = irb.CreateICmpNE(irb.CreateAnd(field, sext_mask_value), irb.getIntN(bits, 0));
+        auto sext_mask_value = getIntN(bits, sext_mask); // truncates to 32-bit if required
+        auto msb_set = irb.CreateICmpNE(irb.CreateAnd(field, sext_mask_value), getIntN(bits, 0));
         auto extended = irb.CreateOr(irb.CreateOr(field, sext_mask_value));
         auto val = irb.CreateSelect(msb_set, extended, field);
 
@@ -152,8 +153,8 @@ bool Lifter::Lift(const Instr& inst) {
 
         // See above.
         uint64_t sext_mask = ~0uL << (a64.bfm.width - 1);
-        auto sext_mask_value = irb.getIntN(bits, sext_mask); // truncates to 32-bit if required
-        auto msb_set = irb.CreateICmpNE(irb.CreateAnd(field, sext_mask_value), irb.getIntN(bits, 0));
+        auto sext_mask_value = getIntN(bits, sext_mask); // truncates to 32-bit if required
+        auto msb_set = irb.CreateICmpNE(irb.CreateAnd(field, sext_mask_value), getIntN(bits, 0));
         auto extended = irb.CreateOr(irb.CreateOr(field, sext_mask_value));
         auto val = irb.CreateSelect(msb_set, extended, field);
 
@@ -165,14 +166,14 @@ bool Lifter::Lift(const Instr& inst) {
         break;
     case farmdec::A64_BFC: {
         uint64_t clrmask = ~(ones(a64.bfm.width) << a64.bfm.lsb);
-        SetGp(a64.rd, w32, irb.CreateAnd(GetGp(a64.rd, w32), irb.getIntN(bits, clrmask)));
+        SetGp(a64.rd, w32, irb.CreateAnd(GetGp(a64.rd, w32), getIntN(bits, clrmask)));
         break;
     }
     case farmdec::A64_BFI: {
         auto src = MoveField(GetGp(a64.rn, w32), w32, a64.bfm.lsb, a64.bfm.width);
 
         uint64_t clrmask = ~(ones(a64.bfm.width) << a64.bfm.lsb);
-        auto dst = irb.CreateAnd(GetGp(a64.rd, w32), irb.getIntN(bits, clrmask));
+        auto dst = irb.CreateAnd(GetGp(a64.rd, w32), getIntN(bits, clrmask));
 
         SetGp(a64.rd, w32, irb.CreateOr(src, dst));
         break;
@@ -181,7 +182,7 @@ bool Lifter::Lift(const Instr& inst) {
         auto src = Extract(GetGp(a64.rn, w32), w32, a64.bfm.lsb, a64.bfm.width);
 
         uint64_t clrmask = ~ones(a64.bfm.width);
-        auto dst = irb.CreateAnd(GetGp(a64.rd, w32), irb.getIntN(bits, clrmask));
+        auto dst = irb.CreateAnd(GetGp(a64.rd, w32), getIntN(bits, clrmask));
 
         SetGp(a64.rd, w32, irb.CreateOr(src, dst));
         break;
@@ -316,7 +317,7 @@ bool Lifter::Lift(const Instr& inst) {
             break;
         }
         case 0xda10: {// NZCV (bits 31-28)
-            llvm::Value* nzcv = irb.getIntN(64, 0);
+            llvm::Value* nzcv = irb.getInt64(0);
             nzcv = irb.CreateOr(nzcv, irb.CreateShl(irb.CreateZExt(GetFlag(ArchReg::SF), irb.getInt64Ty()), 31)); // nzcv |= n << 31
             nzcv = irb.CreateOr(nzcv, irb.CreateShl(irb.CreateZExt(GetFlag(ArchReg::ZF), irb.getInt64Ty()), 30)); // nzcv |= z << 30
             nzcv = irb.CreateOr(nzcv, irb.CreateShl(irb.CreateZExt(GetFlag(ArchReg::CF), irb.getInt64Ty()), 29)); // nzcv |= c << 29
@@ -327,22 +328,22 @@ bool Lifter::Lift(const Instr& inst) {
         case 0xda20: // FPCR
             // Bits: AHP(26), DN(25), FZ(24), RMode(23:22), IDE(15), IXE(12), UFE(11), OFE(10), DZE(9), IOE(8)
             // All bits = 0 indicates IEEE 754 with round to nearest and no exceptions.
-            SetGp(a64.rt, /*w32=*/false, irb.getIntN(64, 0));
+            SetGp(a64.rt, /*w32=*/false, irb.getInt64(0));
             break;
         case 0xda21: // FPSR
             // XXX We cannot check for "normal" FP errors, but we should store QC in the CPU state and output it here.
             // Bits: QC(27), IDC(7), IXC(4), UFC(3), OFC(2), DZC(1), IOC(0).
-            SetGp(a64.rt, /*w32=*/false, irb.getIntN(64, 0));
+            SetGp(a64.rt, /*w32=*/false, irb.getInt64(0));
             break;
         case 0xd807: // DCZID_EL0
-            SetGp(a64.rt, /*w32=*/false, irb.getIntN(64, 0x04)); // 4 → 64-byte block size wanted by musl and glibc
+            SetGp(a64.rt, /*w32=*/false, irb.getInt64(0x04)); // 4 → 64-byte block size wanted by musl and glibc
             break;
         case 0xc000: // MIDR_EL1
             // Bits: Implementer(31:24), Variant(23:20), Architecture(19:16), PartNum(15:4), Revision(3:0).
             // We set Architecture to 0b1111 to indicate ARMv8, but we do not implement the feature registers
             // ID_AA64* because they are not commonly read in userspace (the compiler knows the features of
             // the target, so why would the generated code check them?).
-            SetGp(a64.rt, /*w32=*/false, irb.getIntN(64, 0xfuL << 16));
+            SetGp(a64.rt, /*w32=*/false, irb.getInt64(0xfuL << 16));
             break;
         default:
             goto unhandled;
@@ -393,7 +394,7 @@ bool Lifter::Lift(const Instr& inst) {
     case farmdec::A64_CBNZ: {
         // CBZ: rt == 0; CBNZ: rt != 0
         auto pred = (a64.op == farmdec::A64_CBZ) ? llvm::CmpInst::Predicate::ICMP_EQ : llvm::CmpInst::Predicate::ICMP_NE;
-        auto do_branch = irb.CreateICmp(pred, GetGp(a64.rt, w32), irb.getIntN(bits, 0));
+        auto do_branch = irb.CreateICmp(pred, GetGp(a64.rt, w32), getIntN(bits, 0));
         SetIPCond(do_branch, inst.start() + a64.offset, inst.end());
         return true;
     }
@@ -401,11 +402,11 @@ bool Lifter::Lift(const Instr& inst) {
     case farmdec::A64_TBNZ: {
         assert(a64.tbz.bit < bits);
         uint64_t mask = ((uint64_t)1) << a64.tbz.bit;
-        auto bit = irb.CreateAnd(GetGp(a64.rt, w32), irb.getIntN(bits, mask)); // bit := rt & (1 << bit)
+        auto bit = irb.CreateAnd(GetGp(a64.rt, w32), getIntN(bits, mask)); // bit := rt & (1 << bit)
 
         // TBZ: bit == 0; TBNZ: bit != 0
         auto pred = (a64.op == farmdec::A64_TBZ) ? llvm::CmpInst::Predicate::ICMP_EQ : llvm::CmpInst::Predicate::ICMP_NE;
-        auto do_branch = irb.CreateICmp(pred, bit, irb.getIntN(bits, 0));
+        auto do_branch = irb.CreateICmp(pred, bit, getIntN(bits, 0));
         SetIPCond(do_branch, inst.start() + a64.tbz.offset, inst.end());
         return true;
     }
@@ -416,9 +417,9 @@ bool Lifter::Lift(const Instr& inst) {
         // div(a,0) => 0. We need to make sure the division does not fault
         // _before_ we even arrive at the final select where we discard it.
         // Hence safe_rhs.
-        auto is_zero = irb.CreateICmpEQ(rhs, irb.getIntN(bits, 0));
-        auto safe_rhs = irb.CreateSelect(is_zero, irb.getIntN(bits, 1), rhs);
-        auto val = irb.CreateSelect(is_zero, irb.getIntN(bits, 0), irb.CreateUDiv(lhs, safe_rhs));
+        auto is_zero = irb.CreateICmpEQ(rhs, getIntN(bits, 0));
+        auto safe_rhs = irb.CreateSelect(is_zero, getIntN(bits, 1), rhs);
+        auto val = irb.CreateSelect(is_zero, getIntN(bits, 0), irb.CreateUDiv(lhs, safe_rhs));
 
         SetGp(a64.rd, w32, val);
         break;
@@ -428,16 +429,16 @@ bool Lifter::Lift(const Instr& inst) {
         auto rhs = GetGp(a64.rm, w32);
 
         // See above
-        auto is_zero = irb.CreateICmpEQ(rhs, irb.getIntN(bits, 0));
-        auto safe_rhs = irb.CreateSelect(is_zero, irb.getIntN(bits, 1), rhs);
+        auto is_zero = irb.CreateICmpEQ(rhs, getIntN(bits, 0));
+        auto safe_rhs = irb.CreateSelect(is_zero, getIntN(bits, 1), rhs);
 
         // sdiv(INT_MIN,-1) => INT_MIN. sdiv overflow is also UB, so we need
         // the same precautions as for the div-by-zero case.
-        auto int_min = irb.getIntN(bits, (w32) ? INT32_MIN : INT64_MIN);
-        auto is_min = irb.CreateAnd(irb.CreateICmpEQ(lhs, int_min), irb.CreateICmpEQ(rhs, irb.getIntN(bits, -1)));
-        safe_rhs = irb.CreateSelect(is_min, irb.getIntN(bits, 1), safe_rhs);
+        auto int_min = getIntN(bits, (w32) ? INT32_MIN : INT64_MIN);
+        auto is_min = irb.CreateAnd(irb.CreateICmpEQ(lhs, int_min), irb.CreateICmpEQ(rhs, getIntN(bits, -1)));
+        safe_rhs = irb.CreateSelect(is_min, getIntN(bits, 1), safe_rhs);
         auto val = irb.CreateSelect(is_min, int_min, irb.CreateSDiv(lhs, safe_rhs));
-        val = irb.CreateSelect(is_zero, irb.getIntN(bits, 0), val);
+        val = irb.CreateSelect(is_zero, getIntN(bits, 0), val);
         SetGp(a64.rd, w32, val);
         break;
     }
@@ -463,7 +464,7 @@ bool Lifter::Lift(const Instr& inst) {
         auto lhs = GetGp(a64.rn, w32);
         auto amount = irb.CreateAnd(GetGp(a64.rm, w32), (w32) ? 0x1f : 0x3f); // lowest 5 or 6 bit
         auto mod = irb.GetInsertBlock()->getModule();
-        auto fn = llvm::Intrinsic::getDeclaration(mod, llvm::Intrinsic::fshr, {lhs->getType()});
+        auto fn = llvm::Intrinsic::getOrInsertDeclaration(mod, llvm::Intrinsic::fshr, {lhs->getType()});
         SetGp(a64.rd, w32, irb.CreateCall(fn, {lhs, lhs, amount}));
         break;
     }
@@ -500,7 +501,7 @@ bool Lifter::Lift(const Instr& inst) {
         auto intr = llvm::Intrinsic::ctlz;
         auto lz = irb.CreateBinaryIntrinsic(intr, irb.CreateXor(val, sgnext),
                                             /*zeroundef=*/irb.getFalse());
-        SetGp(a64.rd, w32, irb.CreateSub(lz, irb.getIntN(w32 ? 32 : 64, 1)));
+        SetGp(a64.rd, w32, irb.CreateSub(lz, getIntN(w32 ? 32 : 64, 1)));
         break;
     }
     case farmdec::A64_AND_SHIFTED:
@@ -565,7 +566,7 @@ bool Lifter::Lift(const Instr& inst) {
     case farmdec::A64_CCMN_IMM:
     case farmdec::A64_CCMP_IMM: {
         auto lhs = GetGp(a64.rn, w32);
-        auto rhs = irb.getIntN(bits, a64.ccmp.imm5);
+        auto rhs = getIntN(bits, a64.ccmp.imm5);
         LiftCCmp(lhs, rhs, fad_get_cond(a64.flags), a64.ccmp.nzcv, (a64.op == farmdec::A64_CCMN_IMM));
         break;
     }
@@ -577,13 +578,13 @@ bool Lifter::Lift(const Instr& inst) {
     }
     case farmdec::A64_CSINC: { // rd := (cond) ? rn : rm+1;
         auto on_true = GetGp(a64.rn, w32);
-        auto on_false = irb.CreateAdd(GetGp(a64.rm, w32), irb.getIntN(bits, 1));
+        auto on_false = irb.CreateAdd(GetGp(a64.rm, w32), getIntN(bits, 1));
         SetGp(a64.rd, w32, irb.CreateSelect(IsTrue(fad_get_cond(a64.flags)), on_true, on_false));
         break;
     }
     case farmdec::A64_CINC: { // rd := (cond) ? rn+1 : rn;
         auto val = GetGp(a64.rn, w32);
-        auto on_true = irb.CreateAdd(val, irb.getIntN(bits, 1));
+        auto on_true = irb.CreateAdd(val, getIntN(bits, 1));
         auto on_false = val;
         SetGp(a64.rd, w32, irb.CreateSelect(IsTrue(fad_get_cond(a64.flags)), on_true, on_false));
         break;
@@ -604,7 +605,7 @@ bool Lifter::Lift(const Instr& inst) {
         break;
     }
     case farmdec::A64_CSETM: { // rd := (cond) ? -1 : 0;
-        SetGp(a64.rd, w32, irb.CreateSelect(IsTrue(fad_get_cond(a64.flags)), irb.getIntN(bits, -1), irb.getIntN(bits, 0)));
+        SetGp(a64.rd, w32, irb.CreateSelect(IsTrue(fad_get_cond(a64.flags)), getIntN(bits, -1), getIntN(bits, 0)));
         break;
     }
     case farmdec::A64_CSNEG: { // rd := (cond) ? rn : -rm;
@@ -651,7 +652,7 @@ bool Lifter::Lift(const Instr& inst) {
     case farmdec::A64_SMULH: {
         auto lhs = GetGp(a64.rn, /*w32=*/false);
         auto rhs = GetGp(a64.rm, /*w32=*/false);
-        auto long_val = MulAddSub(irb.getIntN(64, 0), llvm::Instruction::Add, lhs, rhs, llvm::Instruction::SExt);
+        auto long_val = MulAddSub(irb.getInt64(0), llvm::Instruction::Add, lhs, rhs, llvm::Instruction::SExt);
         auto high_half = irb.CreateLShr(long_val, irb.getIntN(128, 64));
         SetGp(a64.rd, /*w32=*/false, irb.CreateTrunc(high_half, irb.getInt64Ty()));
         break;
@@ -669,7 +670,7 @@ bool Lifter::Lift(const Instr& inst) {
     case farmdec::A64_UMULH: {
         auto lhs = GetGp(a64.rn, /*w32=*/false);
         auto rhs = GetGp(a64.rm, /*w32=*/false);
-        auto long_val = MulAddSub(irb.getIntN(64, 0), llvm::Instruction::Add, lhs, rhs, llvm::Instruction::ZExt);
+        auto long_val = MulAddSub(irb.getInt64(0), llvm::Instruction::Add, lhs, rhs, llvm::Instruction::ZExt);
         auto high_half = irb.CreateLShr(long_val, irb.getIntN(128, 64));
         SetGp(a64.rd, /*w32=*/false, irb.CreateTrunc(high_half, irb.getInt64Ty()));
         break;
@@ -689,7 +690,7 @@ bool Lifter::Lift(const Instr& inst) {
     case farmdec::A64_STXR:
     case farmdec::A64_STXP:
         LiftLoadStore(a64, w32);
-        SetGp(a64.ldst_order.rs, w32, irb.getIntN(bits, 0));
+        SetGp(a64.ldst_order.rs, w32, getIntN(bits, 0));
         break;
     case farmdec::A64_LDP:
     case farmdec::A64_STP:
@@ -720,7 +721,7 @@ bool Lifter::Lift(const Instr& inst) {
         llvm::SmallVector<llvm::Type*, 1> tys;
         tys.push_back(irb.getPtrTy());
         auto mod = irb.GetInsertBlock()->getModule();
-        auto fn = llvm::Intrinsic::getDeclaration(mod, llvm::Intrinsic::prefetch, tys);
+        auto fn = llvm::Intrinsic::getOrInsertDeclaration(mod, llvm::Intrinsic::prefetch, tys);
         irb.CreateCall(fn, {addr, irb.getInt32(is_write), irb.getInt32(locality), irb.getInt32(is_data)});
         break;
     }
@@ -920,7 +921,7 @@ llvm::Value* Lifter::GetGp(farmdec::Reg r, bool w32, bool ptr) {
     }
 
     if (r == farmdec::ZERO_REG) {
-        return irb.getIntN(bits, 0);
+        return getIntN(bits, 0);
     }
     if (r == farmdec::STACK_POINTER) {
         return GetReg(ArchReg::A64_SP, fc);
@@ -1011,8 +1012,8 @@ llvm::Value* Lifter::Shift(llvm::Value* v, farmdec::Shift sh, uint32_t amount) {
     case farmdec::SH_ASR: return irb.CreateAShr(v, (uint64_t) amount);
     case farmdec::SH_ROR:
         auto mod = irb.GetInsertBlock()->getModule();
-        auto fn = llvm::Intrinsic::getDeclaration(mod, llvm::Intrinsic::fshr, {v->getType()});
-        return irb.CreateCall(fn, {v, v, irb.getIntN(v->getType()->getIntegerBitWidth(), amount)});
+        auto fn = llvm::Intrinsic::getOrInsertDeclaration(mod, llvm::Intrinsic::fshr, {v->getType()});
+        return irb.CreateCall(fn, {v, v, getIntN(v->getType()->getIntegerBitWidth(), amount)});
     }
     return v; // no change
 }
@@ -1141,15 +1142,15 @@ llvm::Value* Lifter::Addr(llvm::Type* elemty, farmdec::Inst inst) {
     case farmdec::AM_OFF_EXT:
         return Addr(elemty, inst.rn, inst.rm, static_cast<farmdec::ExtendType>(inst.extend.type), inst.extend.lsl);
     case farmdec::AM_PRE:
-        SetGp(inst.rn, /*w32=*/false, irb.CreateAdd(GetGp(inst.rn, /*w32=*/false), irb.getIntN(64, inst.imm))); // rn += imm
+        SetGp(inst.rn, /*w32=*/false, irb.CreateAdd(GetGp(inst.rn, /*w32=*/false), irb.getInt64(inst.imm))); // rn += imm
         return Addr(elemty, inst.rn);
     case farmdec::AM_POST: {
         auto addr = Addr(elemty, inst.rn);
-        SetGp(inst.rn, /*w32=*/false, irb.CreateAdd(GetGp(inst.rn, /*w32=*/false), irb.getIntN(64, inst.imm))); // rn += imm
+        SetGp(inst.rn, /*w32=*/false, irb.CreateAdd(GetGp(inst.rn, /*w32=*/false), irb.getInt64(inst.imm))); // rn += imm
         return addr;
     }
     case farmdec::AM_LITERAL:
-        return irb.CreateIntToPtr(PCRel(inst.offset), elemty->getPointerTo());
+        return irb.CreateIntToPtr(PCRel(inst.offset), irb.getPtrTy());
     }
 
     assert(false && "invalid addrmode");
@@ -1159,14 +1160,14 @@ llvm::Value* Lifter::Addr(llvm::Type* elemty, farmdec::Inst inst) {
 // AM_PRE and AM_POST also make use of this, but add an immediate to base
 // before or after this call.
 llvm::Value* Lifter::Addr(llvm::Type* elemty, farmdec::Reg base) {
-    return irb.CreatePointerCast(GetGp(base, false, /*ptr=*/true), elemty->getPointerTo());
+    return irb.CreatePointerCast(GetGp(base, false, /*ptr=*/true), irb.getPtrTy());
 }
 
 // AM_OFF_IMM addressing mode: [base, #imm].
 llvm::Value* Lifter::Addr(llvm::Type* elemty, farmdec::Reg base, uint64_t off) {
     auto ptr = GetGp(base, false, /*ptr=*/true);
     auto byteaddr = irb.CreateConstGEP1_64(irb.getInt8Ty(), ptr, off);
-    return irb.CreatePointerCast(byteaddr, elemty->getPointerTo());
+    return irb.CreatePointerCast(byteaddr, irb.getPtrTy());
 }
 
 // AM_OFF_REG addressing mode: [base, Xoff {, LSL #imm}]. #imm is log2(size in bytes) or #0.
@@ -1181,7 +1182,7 @@ llvm::Value* Lifter::Addr(llvm::Type* elemty, farmdec::Reg base, farmdec::Reg of
     if (lsl == 0 && elemty != irb.getInt8Ty()) {
         auto baseval = GetGp(base, false);
         auto byteaddr = irb.CreateAdd(baseval, GetGp(off, false));
-        return irb.CreateIntToPtr(byteaddr, elemty->getPointerTo());
+        return irb.CreateIntToPtr(byteaddr, irb.getPtrTy());
     }
 
     // Usual case of lsl == log2(size in bytes), e.g. log2(4)==2 for i32.
@@ -1193,7 +1194,7 @@ llvm::Value* Lifter::Addr(llvm::Type* elemty, farmdec::Reg base, farmdec::Reg of
     //     elemty *elemptr = (elemty*)base
     //     return elemptr + idx;
     //
-    auto elemptr = irb.CreatePointerCast(GetGp(base, false, /*ptr=*/true),  elemty->getPointerTo());
+    auto elemptr = irb.CreatePointerCast(GetGp(base, false, /*ptr=*/true),  irb.getPtrTy());
     return irb.CreateGEP(elemty, elemptr, GetGp(off, false));
 }
 
@@ -1212,9 +1213,9 @@ llvm::Value* Lifter::Addr(llvm::Type* elemty, farmdec::Reg base, farmdec::Reg of
     if (lsl == 0 && elemty != irb.getInt8Ty()) {
         auto baseval = GetGp(base, false);
         auto byteaddr = irb.CreateAdd(baseval, extended_off);
-        return irb.CreateIntToPtr(byteaddr, elemty->getPointerTo());
+        return irb.CreateIntToPtr(byteaddr, irb.getPtrTy());
     }
-    auto elemptr = irb.CreatePointerCast(GetGp(base, false, /*ptr=*/true),  elemty->getPointerTo());
+    auto elemptr = irb.CreatePointerCast(GetGp(base, false, /*ptr=*/true),  irb.getPtrTy());
     return irb.CreateGEP(elemty, elemptr, extended_off);
 }
 
@@ -1231,8 +1232,8 @@ static uint64_t ones(int n) {
 // The value v must be of type i32 or i64.
 llvm::Value* Lifter::Extract(llvm::Value* v, bool w32, unsigned lsb, unsigned width) {
     int bits = (w32) ? 32 : 64;
-    v = irb.CreateLShr(v, irb.getIntN(bits, lsb));
-    return irb.CreateAnd(v, irb.getIntN(bits, ones(width)));
+    v = irb.CreateLShr(v, getIntN(bits, lsb));
+    return irb.CreateAnd(v, getIntN(bits, ones(width)));
 }
 
 // Move the #width least significant bits to the bit position lsb.
@@ -1242,8 +1243,8 @@ llvm::Value* Lifter::Extract(llvm::Value* v, bool w32, unsigned lsb, unsigned wi
 llvm::Value* Lifter::MoveField(llvm::Value* v, bool w32, unsigned lsb, unsigned width) {
     int bits = (w32) ? 32 : 64;
     uint64_t mask = ones(width);
-    v = irb.CreateAnd(v, irb.getIntN(bits, mask));
-    return irb.CreateShl(v, irb.getIntN(bits, lsb));
+    v = irb.CreateAnd(v, getIntN(bits, mask));
+    return irb.CreateShl(v, getIntN(bits, lsb));
 }
 
 // Given base, lhs, rhs : iN, calculate (base ± (lhs*rhs)) : i(N*2). This never overflows.
@@ -1268,7 +1269,7 @@ void Lifter::LiftBinOp(farmdec::Inst a64, bool w32, llvm::Instruction::BinaryOps
     switch (kind) {
     case BinOpKind::SHIFT: rhs = Shift(GetGp(a64.rm, w32), static_cast<farmdec::Shift>(a64.shift.type), a64.shift.amount); break;
     case BinOpKind::EXT: rhs = Extend(GetGp(a64.rm, w32), w32, static_cast<farmdec::ExtendType>(a64.extend.type), a64.extend.lsl); break;
-    case BinOpKind::IMM: rhs = irb.getIntN((w32) ? 32 : 64, a64.imm); break;
+    case BinOpKind::IMM: rhs = getIntN((w32) ? 32 : 64, a64.imm); break;
     }
     if (invert_rhs) {
         rhs = irb.CreateNot(rhs);

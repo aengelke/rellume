@@ -26,6 +26,7 @@
 #include "basicblock.h"
 #include "function-info.h"
 #include "regfile.h"
+#include <llvm/ADT/SmallPtrSet.h>
 #include <llvm/IR/Function.h>
 #include <llvm/IR/Instruction.h>
 #include <llvm/IR/Instructions.h>
@@ -224,7 +225,7 @@ llvm::ReturnInst* CallConv::Return(ArchBasicBlock* bb, FunctionInfo& fi) const {
 }
 
 void CallConv::UnpackParams(ArchBasicBlock* bb, FunctionInfo& fi) const {
-    Unpack(*this, bb, bb->BeginBlock(), fi, [&fi] (ArchReg reg) {
+    Unpack(*this, bb, bb->BeginBlock(), fi, [] (ArchReg reg) {
         return nullptr;
     });
 }
@@ -349,8 +350,8 @@ void CallConv::OptimizePacks(FunctionInfo& fi, ArchBasicBlock* entry) {
             if (llvm::isa<llvm::UndefValue>(reg_val))
                 continue; // Just remove stores of undef.
             if (rf != &regfile) {
-                auto terminator = rf->GetInsertBlock()->getTerminator();
-                new llvm::StoreInst(reg_val, fi.sptr[sptr_idx], terminator);
+                auto it = rf->GetInsertBlock()->getTerminator()->getIterator();
+                new llvm::StoreInst(reg_val, fi.sptr[sptr_idx], it);
             } else {
                 irb.CreateStore(reg_val, fi.sptr[sptr_idx]);
             }

@@ -26,7 +26,6 @@
 
 #include "arch.h"
 #include "callconv.h"
-#include <cstdbool>
 #include <cstdint>
 #include <unordered_map>
 

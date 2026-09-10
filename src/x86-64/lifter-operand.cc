@@ -67,12 +67,12 @@ llvm::Value* Lifter::OpAddr(const Instr::Op op, llvm::Type* element_type,
         // pointers, so use integer arithmetic directly.
         Facet addrsz_facet = op.addrsz() == 8 ? Facet::I64 : Facet::I32;
 
-        llvm::Value* res = irb.getIntN(8 * op.addrsz(), op.off());
+        llvm::Value* res = getIntN(8 * op.addrsz(), op.off());
         if (op.base())
             res = irb.CreateAdd(res, GetReg(MapReg(op.base()), addrsz_facet));
         if (op.scale() != 0) {
             llvm::Value* ireg = GetReg(MapReg(op.index()), addrsz_facet);
-            llvm::Value* scaled_val = irb.getIntN(8 * op.addrsz(), op.scale());
+            llvm::Value* scaled_val = getIntN(8 * op.addrsz(), op.scale());
             res = irb.CreateAdd(res, irb.CreateMul(ireg, scaled_val));
         }
 
@@ -159,7 +159,7 @@ llvm::Value* Lifter::OpLoad(const Instr::Op op, Facet facet,
                                 Alignment alignment, unsigned seg) {
     facet = facet.Resolve(op.bits());
     if (op.is_imm()) {
-        return irb.getIntN(op.bits(), op.imm());
+        return getIntN(op.bits(), op.imm());
     } else if (op.is_reg()) {
         if (facet == Facet::I8 && op.reg().rt == FD_RT_GPH)
             facet = Facet::I8H;

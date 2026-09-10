@@ -25,7 +25,8 @@
 
 int main(void) {
     // Create LLVM module
-    LLVMModuleRef mod = LLVMModuleCreateWithName("lifter");
+    LLVMContextRef ctx = LLVMContextCreate();
+    LLVMModuleRef mod = LLVMModuleCreateWithNameInContext("lifter", ctx);
 
     static const unsigned char code[] = {
         0x48, 0x89, 0xf8, // mov rax,rdi
