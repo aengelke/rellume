@@ -26,7 +26,6 @@ if not libllvm.found()
                        method: 'config-tool', include_type: 'system',
                        modules: ['x86', 'aarch64', 'riscv', 'executionengine'])
 endif
-add_project_arguments(['-DLL_LLVM_MAJOR='+libllvm.version().split('.')[0]], language: 'cpp')
 
 architectures = []
 archdeps = []
